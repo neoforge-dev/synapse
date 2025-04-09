@@ -1,34 +1,28 @@
 # Active Context
 
 ## Current Focus
-- Fixing dependency and import issues in the codebase
-- Resolving FastAPI response model type errors
-- Ensuring proper type annotations for dependencies
+- Resolve FastAPI response model type errors (esp. query router).
+- Fix dependency/import issues (incl. tests).
+- Ensure consistent type annotations for dependencies & interfaces.
 
-## Recent Changes
-- Added missing API settings (api_host, api_port)
-- Created LLM protocols and types modules
-- Updated Memgraph client imports to use pymgclient
-- Fixed settings references in embedding service
+## Recent Changes (High-Level)
+- Added API settings (host, port).
+- Introduced LLM protocols/types.
+- Switched to `pymgclient`.
+- Fixed various settings references.
 
 ## Active Decisions
-1. Using pymgclient instead of mgclient for Memgraph integration
-2. Standardizing on GraphRepository interface for type annotations
-3. Maintaining consistent settings naming across the codebase
+- Using `pymgclient` for Memgraph.
+- Standardizing on `GraphRepository` interface type hints.
+- Maintaining consistent settings naming.
 
 ## Next Steps
-1. Fix FastAPI response model type errors in query router
-2. Resolve remaining import issues in test files
-3. Ensure proper type annotations for all dependencies
-4. Update test configurations to match new settings
+1. Fix FastAPI response model type errors (query router).
+2. Resolve remaining import issues (tests).
+3. Ensure proper type annotations across dependencies.
+4. Update test configurations for new settings.
 
 ## Open Questions
-- Should we consolidate the graph repository interfaces?
-- How to handle the duplicate test_memgraph_store.py files?
-- What's the best way to handle the FastAPI response model type errors?
-
-## Current Challenges
-1. FastAPI response model type errors in query router
-2. Inconsistent type annotations between interfaces and implementations
-3. Duplicate test files causing import conflicts
-4. Missing or incorrect settings references in various modules 
+- Consolidate graph repository interfaces?
+- Handle duplicate `test_memgraph_store.py` files?
+- Best approach for FastAPI response model type errors? 

@@ -1,36 +1,16 @@
-# Progress
+# Progress: GraphRAG MCP
 
-## What Works
-- Basic FastAPI application structure
-- Graph repository interface
-- Protocol-based service interfaces
-- Test framework setup
+## What Works (Core Components)
+- Basic FastAPI application structure.
+- Abstracted Graph Repository interface.
+- Protocol-based service interfaces (e.g., for LLMs).
+- Initial test framework setup (`pytest`).
+- Core Pydantic models for domain entities.
 
-## What's Left to Build
-- Fix FastAPI response model type errors
-- Resolve import and dependency issues
-- Consolidate graph repository interfaces
-- Update test configurations
+## What's Left (High-Level Goals)
+- **Stability:** Resolve current FastAPI type errors & import/dependency conflicts.
+- **Ingestion:** Implement and test the full document processing -> KG building pipeline.
+- **Querying:** Implement and test the core GraphRAG query engine logic.
+- **Refinement:** Consolidate interfaces (e.g., graph repo), update test configs.
 
-## Current Status
-- Working on fixing dependency and import issues
-- Addressing FastAPI response model type errors
-- Updating settings and configurations
-
-## Known Issues
-1. FastAPI response model type errors in query router
-2. Inconsistent type annotations between interfaces and implementations
-3. Duplicate test files causing import conflicts
-4. Missing or incorrect settings references in various modules
-
-## Next Steps
-1. Fix FastAPI response model type errors
-2. Resolve remaining import issues
-3. Update test configurations
-4. Consolidate graph repository interfaces
-
-## Recent Changes
-- Added missing API settings
-- Created LLM protocols and types
-- Updated Memgraph client imports
-- Fixed settings references 
+*(See `active-context.md` for detailed current focus, issues, and next steps.)* 
