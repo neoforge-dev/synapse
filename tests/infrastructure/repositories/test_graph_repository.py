@@ -1,6 +1,6 @@
 from graph_rag.domain.models import Document, Chunk, Edge
 import pytest
-from graph_rag.infrastructure.repositories.graph_repository import GraphRepository
+from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
 
 @pytest.mark.asyncio
 async def test_delete_document(graph_repository: MemgraphRepository, sample_document):

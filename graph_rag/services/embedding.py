@@ -1,5 +1,5 @@
 from sentence_transformers import SentenceTransformer
-from typing import List, Union
+from typing import List, Union, Protocol
 import logging
 
 from graph_rag.config.settings import settings # Updated import
@@ -9,12 +9,14 @@ from graph_rag.core.interfaces import EmbeddingService # Import the protocol
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+class EmbeddingService(Protocol):
+    """Protocol for embedding services."""
 class SentenceTransformerEmbeddingService(EmbeddingService): # Implement the protocol
     """Service to handle text embedding generation using Sentence Transformers."""
     _model: SentenceTransformer
     _model_name: str
 
-    def __init__(self, model_name: str = settings.EMBEDDING_MODEL_NAME):
+    def __init__(self, model_name: str = settings.EMBEDDING_MODEL):
         self._model_name = model_name
         self._load_model() # Load model on initialization
 

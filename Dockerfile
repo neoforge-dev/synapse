@@ -7,26 +7,28 @@ WORKDIR /app
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app \
-    PATH="/root/.cargo/bin:${PATH}"
+    PYTHONPATH=/app
+# Rely on standard PATH
 
-# Install system dependencies
+# Install system dependencies needed for builds
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Copy only the files needed for dependency installation
+# Copy project definition
 COPY pyproject.toml ./
+# Copy README as setuptools might look for it
+COPY README.md ./
 
-# Install dependencies
-RUN uv pip install --system -e .
-
-# Copy the rest of the application
+# Copy the application code BEFORE installing the local package
 COPY . .
+
+# Install the project and its dependencies using standard pip
+# Now it can find the 'graph_rag' directory
+RUN pip install --no-cache-dir .
+
+# Download spaCy model needed by the application
+RUN python -m spacy download en_core_web_sm
 
 # Create a non-root user
 RUN useradd -m appuser && chown -R appuser:appuser /app
@@ -36,4 +38,4 @@ USER appuser
 EXPOSE 8000
 
 # Command to run the application
-CMD ["uvicorn", "graph_rag.api.main:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["uvicorn", "graph_rag.api.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"] 

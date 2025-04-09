@@ -2,6 +2,10 @@
 import pytest
 import os
 import logging
+from typing import Dict, Any
+import pymgclient as mgclient
+from unittest.mock import AsyncMock, MagicMock, patch
+import numpy as np
 
 from graph_rag.config.settings import settings # Use configured settings
 from graph_rag.stores.memgraph_store import MemgraphStore
@@ -11,6 +15,8 @@ from graph_rag.core.document_processor import SimpleDocumentProcessor, SentenceS
 from graph_rag.core.persistent_kg_builder import PersistentKnowledgeGraphBuilder
 from graph_rag.core.graph_rag_engine import SimpleGraphRAGEngine
 from graph_rag.models import Document, Chunk, Entity, Relationship
+from graph_rag.api.main import app
+from graph_rag.services.embedding import EmbeddingService
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +30,6 @@ requires_memgraph = pytest.mark.skipif(
 )
 
 # Helper to check connection (copied from test_memgraph_store)
-import mgclient
 def check_memgraph_connection(host=MEMGRAPH_HOST, port=MEMGRAPH_PORT) -> bool:
     try:
         conn = mgclient.connect(host=host, port=port)
@@ -88,6 +93,37 @@ def rag_engine(
         vector_store=vector_store,
         entity_extractor=entity_extractor
     )
+
+@pytest.fixture
+def mock_neo4j_driver():
+    """Fixture to mock the Neo4j driver."""
+    driver = AsyncMock()
+    session = AsyncMock()
+    driver.session.return_value = session
+    return driver
+
+@pytest.fixture
+def mock_embedding_service():
+    """Mock the EmbeddingService class methods globally for service tests."""
+    with patch('graph_rag.services.embedding.EmbeddingService', autospec=True) as mock_emb_service:
+        # Mock the encode method
+        def mock_encode(texts):
+            if isinstance(texts, str):
+                return np.random.rand(EMBEDDING_DIM).tolist()
+            else:
+                return [np.random.rand(EMBEDDING_DIM).tolist() for _ in texts]
+        
+        mock_emb_service.encode.side_effect = mock_encode
+        mock_emb_service._get_model.return_value = MagicMock() # Mock the internal model loading
+        mock_emb_service.get_embedding_dim.return_value = EMBEDDING_DIM
+        yield mock_emb_service
+
+@pytest.fixture
+def client(mock_neo4j_driver, mock_embedding_service):
+    """Create a test client with mocked dependencies."""
+    with patch('graph_rag.stores.memgraph_store.MemgraphStore', return_value=mock_neo4j_driver):
+        with patch('graph_rag.services.embedding.EmbeddingService', return_value=mock_embedding_service):
+            return app.test_client()
 
 # --- E2E Test --- 
 
@@ -180,3 +216,66 @@ def test_mvp_ingest_and_query_flow(
     # assert "London" in graph_entity_names2 # Neighbor of Acme? Depends on relationships
 
     logger.info("E2E MVP test completed successfully.") 
+
+@pytest.mark.asyncio
+async def test_query_endpoint(client):
+    """Test the query endpoint with a simple question."""
+    # Mock the response from the graph store
+    mock_result = AsyncMock()
+    mock_result.data.return_value = [
+        {"c": {"id": "chunk1", "text": "Test chunk 1"}},
+        {"c": {"id": "chunk2", "text": "Test chunk 2"}}
+    ]
+    client.application.extensions['graph_store'].session.return_value.run.return_value = mock_result
+
+    # Make a request to the query endpoint
+    response = await client.post('/query', json={'query': 'What is the test about?'})
+    
+    # Check the response
+    assert response.status_code == 200
+    data = await response.get_json()
+    assert 'answer' in data
+    assert 'relevant_chunks' in data
+    assert 'graph_context' in data
+    assert 'metadata' in data
+    assert len(data['relevant_chunks']) == 2
+
+@pytest.mark.asyncio
+async def test_query_endpoint_with_entities(client):
+    """Test the query endpoint with a question that should extract entities."""
+    # Mock the response from the graph store
+    mock_result = AsyncMock()
+    mock_result.data.return_value = [
+        {"c": {"id": "chunk1", "text": "Test chunk 1"}},
+        {"c": {"id": "chunk2", "text": "Test chunk 2"}}
+    ]
+    client.application.extensions['graph_store'].session.return_value.run.return_value = mock_result
+
+    # Make a request to the query endpoint
+    response = await client.post('/query', json={'query': 'Tell me about Alice and Bob'})
+    
+    # Check the response
+    assert response.status_code == 200
+    data = await response.get_json()
+    assert 'answer' in data
+    assert 'relevant_chunks' in data
+    assert 'graph_context' in data
+    assert 'metadata' in data
+    assert len(data['relevant_chunks']) == 2
+    assert 'entities' in data['metadata']
+    assert len(data['metadata']['entities']) > 0
+
+@pytest.mark.asyncio
+async def test_query_endpoint_error_handling(client):
+    """Test error handling in the query endpoint."""
+    # Mock an error from the graph store
+    client.application.extensions['graph_store'].session.return_value.run.side_effect = Exception("Test error")
+
+    # Make a request to the query endpoint
+    response = await client.post('/query', json={'query': 'What is the test about?'})
+    
+    # Check the error response
+    assert response.status_code == 500
+    data = await response.get_json()
+    assert 'error' in data
+    assert 'Test error' in data['error'] 

@@ -68,3 +68,51 @@ clean: ## Remove cache files and build artifacts
 	find . -type f -name "*.pyc" -delete
 	find . -type d -name "__pycache__" -delete
 	rm -rf build dist *.egg-info .pytest_cache .ruff_cache $(VENV_DIR) 
+
+.PHONY: install test lint format clean run-deps stop-deps
+
+# Development
+install:
+	$(UV) pip install -e ".[dev]"
+
+# Testing
+test:
+	$(UV) run pytest -v tests/ -m "not $(TEST_MARKER_INTEGRATION)"
+
+test-integration:
+	$(UV) run pytest -v tests/infrastructure/ -m "$(TEST_MARKER_INTEGRATION)"
+
+# Code Quality
+lint:
+	$(UV) run ruff check .
+	$(UV) run ruff format --check .
+
+format:
+	$(UV) run ruff format .
+
+# Dependencies
+run-deps:
+	docker-compose up -d memgraph
+
+stop-deps:
+	docker-compose down
+
+# Cleanup
+clean:
+	find . -type d -name "__pycache__" -exec rm -rf {} +
+	find . -type f -name "*.pyc" -delete
+	find . -type f -name "*.pyo" -delete
+	find . -type f -name "*.pyd" -delete
+	find . -type f -name ".coverage" -delete
+	find . -type d -name ".pytest_cache" -exec rm -rf {} +
+	find . -type d -name ".ruff_cache" -exec rm -rf {} +
+	find . -type d -name "*.egg-info" -exec rm -rf {} +
+	find . -type d -name "dist" -exec rm -rf {} +
+	find . -type d -name "build" -exec rm -rf {} +
+
+# Development Workflow
+dev: install run-deps
+	$(UV) pip install -e ".[dev]"
+
+# CI/CD
+ci: lint test 

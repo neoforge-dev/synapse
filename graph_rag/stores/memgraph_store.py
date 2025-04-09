@@ -2,7 +2,7 @@ import logging
 import time
 from typing import List, Dict, Any, Optional, Tuple
 
-import mgclient # Memgraph client library
+import pymgclient as mgclient # Memgraph client library
 
 from graph_rag.core.graph_store import GraphStore
 from graph_rag.models import Entity, Relationship
@@ -129,7 +129,7 @@ class MemgraphStore(GraphStore):
                 raise
         raise mgclient.OperationalError(f"Query failed after {self.max_retries} retries: {query}")
 
-    def _node_to_entity(self, node: mgclient.Node) -> Entity:
+    def _node_to_entity(self, node: Any) -> Entity:
         """Converts an mgclient.Node to an Entity object."""
         props = node.properties
         entity_id = props.pop('id', None) # Remove id from metadata
@@ -147,7 +147,7 @@ class MemgraphStore(GraphStore):
         
         return Entity(id=entity_id, name=entity_name, type=entity_type, metadata=metadata)
 
-    def _relationship_to_relationship(self, rel: mgclient.Relationship, source_map: Dict[int, Entity], target_map: Dict[int, Entity]) -> Optional[Relationship]:
+    def _relationship_to_relationship(self, rel: Any, source_map: Dict[int, Entity], target_map: Dict[int, Entity]) -> Optional[Relationship]:
         """Converts an mgclient.Relationship to a Relationship object."""
         source_node = source_map.get(rel.start_node.id)
         target_node = target_map.get(rel.end_node.id)

@@ -41,7 +41,7 @@ async def create_chunk(
             detail=f"Failed to save chunk. Check logs for details."
         )
 
-@router.get("/by_document/{document_id}", response_model=List[schemas.ChunkRead])
+@router.get("/by_document/{document_id}", response_model=List[schemas.ChunkResponse])
 async def get_chunks_by_document(
     document_id: str,
     repo: GraphRepositoryDep
@@ -53,15 +53,11 @@ async def get_chunks_by_document(
         logger.info(f"Found {len(chunks)} chunks for document {document_id}")
         # Map domain models to response schemas
         return [
-            schemas.ChunkRead(
+            schemas.ChunkResponse(
                 id=c.id,
-                type=c.type,
-                content=c.content,
+                text=c.content,
                 document_id=c.document_id,
-                embedding=c.embedding,
-                created_at=c.created_at,
-                updated_at=c.updated_at,
-                properties={}
+                metadata=c.metadata
             ) for c in chunks
         ]
     except Exception as e:

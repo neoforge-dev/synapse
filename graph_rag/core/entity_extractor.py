@@ -1,8 +1,5 @@
 from graph_rag.core.interfaces import EntityExtractor, ExtractionResult, ExtractedEntity
 import logging
-import spacy
-from spacy.language import Language # For type hinting
-import re
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Dict
 import uuid # Added for ID generation
@@ -66,31 +63,18 @@ class MockEntityExtractor(EntityExtractor):
 
 class SpacyEntityExtractor(EntityExtractor):
     """Extracts named entities using a spaCy model."""
-    _nlp: Language | None = None
-    _model_name: str
-
     def __init__(self, model_name: str = "en_core_web_sm"):
-        self._model_name = model_name
-        self._load_model() # Load model on initialization
-        
-    def _load_model(self) -> None:
-        """Loads the spaCy model."""
-        if self._nlp is not None:
-            return
-            
-        logger.info(f"Loading spaCy model: {self._model_name}")
+        self.model_name = model_name
+        self.nlp = None
         try:
-            self._nlp = spacy.load(self._model_name, disable=["parser", "lemmatizer"]) # Disable unused pipes
-            logger.info(f"spaCy model '{self._model_name}' loaded successfully.")
-        except OSError:
-            error_msg = f"spaCy model '{self._model_name}' not found. " \
-                         f"Please download it: python -m spacy download {self._model_name}"
-            logger.error(error_msg, exc_info=True)
-            raise RuntimeError(f"Failed to load spaCy model: {self._model_name}. Please download it.")
-        except Exception as e:
-            error_msg = f"Failed to load spaCy model '{self._model_name}': {e}"
-            logger.error(error_msg, exc_info=True)
-            raise RuntimeError(error_msg)
+            # Import spacy only when the class is instantiated
+            import spacy 
+            self.nlp = spacy.load(self.model_name)
+            logger.info(f"spaCy model '{self.model_name}' loaded successfully.")
+        except ImportError:
+            error_msg = f"Failed to load spaCy model '{self.model_name}'. Please install spaCy."
+            logger.error(error_msg)
+            self.nlp = None # Ensure nlp is None if loading fails
 
     def _normalize_entity_text(self, text: str) -> str:
         """Normalizes entity text to create a more stable ID (simple example)."""
@@ -105,9 +89,16 @@ class SpacyEntityExtractor(EntityExtractor):
         """Extracts entities from all chunks in a document using spaCy NER.
            Relationships are not extracted by this implementation.
         """
-        if self._nlp is None:
-             # This shouldn't happen if __init__ loaded correctly, but check defensively
-             raise RuntimeError("spaCy model is not loaded.")
+        if not self.nlp:
+            logger.error(f"spaCy model '{self.model_name}' is not loaded. Cannot extract entities.")
+            return ProcessedDocument(
+                id=document.id,
+                content=document.content,
+                metadata=document.metadata.copy(),
+                chunks=document.chunks,
+                entities=[],
+                relationships=[]
+            )
 
         all_entities: Dict[str, Entity] = {}
         logger.info(f"Starting spaCy entity extraction for document {document.id} ({len(document.chunks)} chunks)")
@@ -118,7 +109,7 @@ class SpacyEntityExtractor(EntityExtractor):
                 continue
             
             try:
-                spacy_doc = self._nlp(chunk.text)
+                spacy_doc = self.nlp(chunk.text)
             except Exception as e:
                  logger.error(f"spaCy processing failed for chunk {chunk.id}: {e}", exc_info=True)
                  continue # Skip chunk on error

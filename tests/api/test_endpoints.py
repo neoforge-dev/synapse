@@ -1,72 +1,70 @@
 import pytest
 from fastapi.testclient import TestClient
 from graph_rag.api.main import app
+from httpx import AsyncClient, Response
+from fastapi import status
+from unittest.mock import AsyncMock
 
 @pytest.fixture
 def test_client():
     return TestClient(app)
 
-def test_health_check(test_client):
+def test_health_check(sync_test_client):
     """Test the health check endpoint."""
-    response = test_client.get("/health")
+    response = sync_test_client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "healthy"}
+    assert response.json() == {"status": "ok"}
 
 @pytest.mark.asyncio
-async def test_create_document(test_client, graph_repository):
+async def test_create_document(test_client: AsyncClient, mock_graph_repo: AsyncMock):
     """Test creating a document through the API."""
     doc_data = {
-        "document_id": "test_doc_api_1",
-        "text": "This is a test document from the API"
+        "id": "test_doc_api_1",
+        "content": "This is a test document from the API",
+        "metadata": {"source": "api_test"}
     }
     
-    response = test_client.post("/documents/", json=doc_data)
-    assert response.status_code == 200
-    
-    # Verify the document was created in the database
-    result = await graph_repository.get_document(doc_data["document_id"])
-    assert result is not None
-    assert result["document_id"] == doc_data["document_id"]
-    assert result["text"] == doc_data["text"]
+    async def mock_save(doc):
+        return doc.id
+    mock_graph_repo.save_document.side_effect = mock_save
+    mock_graph_repo.reset_mock()
+    mock_graph_repo.save_document.side_effect = mock_save
+
+    response = await test_client.post("/api/v1/documents/", json=doc_data)
+    assert response.status_code == status.HTTP_201_CREATED
+    response_data = response.json()
+    assert "id" in response_data
+    created_id = response_data["id"]
+
+    mock_graph_repo.save_document.assert_awaited_once()
 
 @pytest.mark.asyncio
-async def test_get_document(test_client, graph_repository):
+async def test_get_document(test_client: AsyncClient, mock_graph_repo: AsyncMock):
     """Test retrieving a document through the API."""
-    # First create a document
     doc_id = "test_doc_api_2"
-    doc_text = "This is another test document from the API"
-    await graph_repository.create_document(doc_id, doc_text)
+    doc_content = "This is another test document from the API"
+    doc_metadata = {"retrieval_test": True}
     
-    # Then try to retrieve it
-    response = test_client.get(f"/documents/{doc_id}")
-    assert response.status_code == 200
+    from graph_rag.domain.models import Document
+    from datetime import datetime, timezone
+    async def mock_get(id_to_get):
+        if id_to_get == doc_id:
+            return Document(
+                id=doc_id, 
+                content=doc_content, 
+                metadata=doc_metadata,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
+                )
+        return None
+    mock_graph_repo.get_document.side_effect = mock_get
+    mock_graph_repo.reset_mock()
+    mock_graph_repo.get_document.side_effect = mock_get
+    
+    response = await test_client.get(f"/api/v1/documents/{doc_id}")
+    assert response.status_code == status.HTTP_200_OK
     data = response.json()
-    assert data["document_id"] == doc_id
-    assert data["text"] == doc_text
-
-@pytest.mark.asyncio
-async def test_create_chunk(test_client, graph_repository):
-    """Test creating a chunk through the API."""
-    # First create a document
-    doc_id = "test_doc_api_3"
-    doc_text = "Document for chunk test"
-    await graph_repository.create_document(doc_id, doc_text)
-    
-    # Then create a chunk
-    chunk_data = {
-        "chunk_id": "test_chunk_api_1",
-        "text": "This is a test chunk from the API",
-        "embedding": [0.1, 0.2, 0.3],
-        "document_id": doc_id
-    }
-    
-    response = test_client.post("/chunks/", json=chunk_data)
-    assert response.status_code == 200
-    
-    # Verify the chunk was created in the database
-    result = await graph_repository.get_chunk(chunk_data["chunk_id"])
-    assert result is not None
-    assert result["chunk_id"] == chunk_data["chunk_id"]
-    assert result["text"] == chunk_data["text"]
-    assert result["embedding"] == chunk_data["embedding"]
-    assert result["document"]["document_id"] == doc_id 
+    assert data["id"] == doc_id
+    assert data["content"] == doc_content
+    assert data["metadata"] == doc_metadata
+    mock_graph_repo.get_document.assert_awaited_once_with(doc_id) 

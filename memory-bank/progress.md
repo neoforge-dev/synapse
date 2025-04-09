@@ -1,22 +1,36 @@
-# Progress: GraphRAG MCP
+# Progress
 
-## Key Milestones Achieved
-- Project Setup & Clean Architecture structure.
-- Basic FastAPI app with health check.
-- Memgraph connection via `GraphRepository`.
-- Typer CLI (`synapse`) structure with `ingest` command prototype.
-- Initial `spacy` integration for entity extraction.
-- Core service refactoring.
-- Basic integration tests for `GraphRepository`.
-- CLI command renamed to `synapse`.
-- Python 3.13 build issues resolved (switched to 3.11/3.12).
+## What Works
+- Basic FastAPI application structure
+- Graph repository interface
+- Protocol-based service interfaces
+- Test framework setup
 
-## Immediate Next Steps (Priority Order)
-1. Implement core graph storage logic in `ingest` command (Nodes: Document, Chunk, Entity; Relationships: HAS_CHUNK, MENTIONED_IN).
-2. Define and implement basic `/api/v1/query` endpoint (accept query text).
-3. Implement basic query logic: Find entities in query -> Retrieve related Chunks/Documents from Memgraph.
-4. Add integration tests for ingest storing data correctly.
-5. Add integration tests for query retrieving basic context.
+## What's Left to Build
+- Fix FastAPI response model type errors
+- Resolve import and dependency issues
+- Consolidate graph repository interfaces
+- Update test configurations
 
-## Known Issues / Blockers
-- None currently critical. 
+## Current Status
+- Working on fixing dependency and import issues
+- Addressing FastAPI response model type errors
+- Updating settings and configurations
+
+## Known Issues
+1. FastAPI response model type errors in query router
+2. Inconsistent type annotations between interfaces and implementations
+3. Duplicate test files causing import conflicts
+4. Missing or incorrect settings references in various modules
+
+## Next Steps
+1. Fix FastAPI response model type errors
+2. Resolve remaining import issues
+3. Update test configurations
+4. Consolidate graph repository interfaces
+
+## Recent Changes
+- Added missing API settings
+- Created LLM protocols and types
+- Updated Memgraph client imports
+- Fixed settings references 

@@ -84,6 +84,12 @@ class VectorSearcher(Protocol):
     async def search_similar_chunks(self, query_vector: List[float], limit: int = 10) -> List[SearchResultData]:
         ...
 
+class EmbeddingService(Protocol):
+    """Interface for generating embeddings from text."""
+    async def generate_embedding(self, text: str) -> List[float]:
+        """Generates a vector embedding for the given text."""
+        ...
+
 class KeywordSearcher(Protocol):
     """Interface for keyword-based search."""
     async def search_chunks_by_keyword(self, query: str, limit: int = 10) -> List[SearchResultData]:

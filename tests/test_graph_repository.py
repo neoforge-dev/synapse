@@ -1,6 +1,7 @@
 import pytest
 from datetime import datetime
-from typing import Any
+from typing import Any, Dict
+from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
 
 from graph_rag.domain.models import Document, Chunk, Edge
 
@@ -88,4 +89,25 @@ async def test_nonexistent_chunks(
 ) -> None:
     """Test retrieving chunks for a nonexistent document."""
     chunks = await graph_repository.get_chunks_by_document("nonexistent")
-    assert len(chunks) == 0 
+    assert len(chunks) == 0
+
+
+@pytest.mark.asyncio
+async def test_delete_document(
+    graph_repository: MemgraphRepository,
+    sample_document: dict[str, Any]
+) -> None:
+    """Test deleting a document."""
+    # Create document
+    document = Document(**sample_document)
+    
+    # Save document
+    doc_id = await graph_repository.save_document(document)
+    assert doc_id == document.id
+    
+    # Delete document
+    await graph_repository.delete_document(doc_id)
+    
+    # Retrieve document
+    retrieved_doc = await graph_repository.get_document(doc_id)
+    assert retrieved_doc is None 

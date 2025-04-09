@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List
 
-from graph_rag.infrastructure.repositories.graph_repository import GraphRepository
+from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
 from graph_rag.domain.models import Chunk
 from graph_rag.services.embedding import EmbeddingService
 
@@ -17,7 +17,7 @@ class SearchResult(BaseModel):
 class SearchService:
     """Service for performing search operations over the graph."""
     
-    def __init__(self, repository: GraphRepository):
+    def __init__(self, repository: MemgraphRepository):
         self.repository = repository
         self.embedding_service = EmbeddingService
         

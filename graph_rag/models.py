@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
+from datetime import datetime
 
 @dataclass
 class Chunk:
@@ -9,6 +10,8 @@ class Chunk:
     document_id: str
     metadata: Dict[str, Any] = field(default_factory=dict)
     embedding: Optional[List[float]] = None # Optional vector embedding
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 @dataclass
 class Document:
@@ -17,6 +20,8 @@ class Document:
     content: str
     metadata: Dict[str, Any] = field(default_factory=dict)
     chunks: List[Chunk] = field(default_factory=list)
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 @dataclass
 class Entity:
@@ -25,6 +30,8 @@ class Entity:
     name: str
     type: str
     metadata: Dict[str, Any] = field(default_factory=dict)
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 @dataclass
 class Relationship:
@@ -33,6 +40,8 @@ class Relationship:
     target: Entity
     type: str
     metadata: Dict[str, Any] = field(default_factory=dict)
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 @dataclass
 class ProcessedDocument(Document):

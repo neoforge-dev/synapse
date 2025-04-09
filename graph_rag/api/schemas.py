@@ -70,3 +70,49 @@ class DeleteResponse(BaseModel):
 # NodeBase, EdgeBase, DocumentCreate, ChunkCreate, DocumentRead, ChunkRead,
 # CreateResponse, DocumentIngestionRequest, DocumentIngestionResponse, 
 # SearchRequest, VectorSearchRequest, SearchResultResponse, SearchResponse, DocumentUpdateMetadata 
+
+class CreateResponse(BaseModel):
+    """Response schema for create operations that return an ID."""
+    id: str 
+
+class DocumentCreate(BaseModel):
+    """Schema for creating a new document."""
+    content: str
+    metadata: Optional[Dict[str, Any]] = None
+
+class DocumentResponse(BaseModel):
+    """Schema for document response."""
+    id: str
+    type: str # Added type field
+    content: str
+    metadata: Dict[str, Any]
+    created_at: Optional[datetime] = None # Added created_at
+    updated_at: Optional[datetime] = None # Added updated_at
+
+class ChunkCreate(BaseModel):
+    """Schema for creating a new chunk."""
+    text: str
+    document_id: str
+    metadata: Optional[Dict[str, Any]] = None
+
+class ChunkResponse(BaseModel):
+    """Schema for chunk response."""
+    id: str
+    text: str
+    document_id: str
+    metadata: Dict[str, Any]
+
+class QueryRequest(BaseModel):
+    """Schema for query request."""
+    query_text: str
+    k: int = 5
+
+class ResultItem(BaseModel):
+    """Schema for a single result item."""
+    content: str
+    metadata: Dict[str, Any]
+
+class QueryResult(BaseModel):
+    """Schema for query response."""
+    query: str
+    results: List[ResultItem] 

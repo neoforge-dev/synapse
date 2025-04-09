@@ -21,6 +21,7 @@ from graph_rag.services.embedding import SentenceTransformerEmbeddingService
 from graph_rag.core.document_processor import SimpleDocumentProcessor
 from graph_rag.core.entity_extractor import SpacyEntityExtractor
 from graph_rag.core.persistent_kg_builder import PersistentKnowledgeGraphBuilder
+from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,18 @@ def get_graph_rag_engine(request: Request) -> GraphRAGEngine:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Core RAG engine is not available.")
     return request.app.state.graph_rag_engine
 
+def get_graph_repository(request: Request) -> MemgraphRepository:
+    """Provides the GraphRepository instance from app state."""
+    if not hasattr(request.app.state, 'graph_repository') or request.app.state.graph_repository is None:
+        logger.error("GraphRepository not found in application state.")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Graph repository is not available.")
+    return request.app.state.graph_repository
+
+def get_graph_repo(request: Request) -> MemgraphRepository:
+    if not hasattr(request.app.state, 'graph_repo') or request.app.state.graph_repo is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Graph repository not initialized")
+    return request.app.state.graph_repo
+
 # --- Dependency Type Aliases for Routers --- 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 MemgraphStoreDep = Annotated[MemgraphStore, Depends(get_memgraph_store)]
@@ -84,6 +97,7 @@ DocumentProcessorDep = Annotated[DocumentProcessor, Depends(get_document_process
 EntityExtractorDep = Annotated[EntityExtractor, Depends(get_entity_extractor)]
 KnowledgeGraphBuilderDep = Annotated[KnowledgeGraphBuilder, Depends(get_kg_builder)]
 GraphRAGEngineDep = Annotated[GraphRAGEngine, Depends(get_graph_rag_engine)]
+GraphRepositoryDep = Annotated[MemgraphRepository, Depends(get_graph_repository)]
 
 # VectorSearcher, KeywordSearcher, GraphSearcher are usually implemented by the store/repo
 # We inject the store and the engine uses it for searching.

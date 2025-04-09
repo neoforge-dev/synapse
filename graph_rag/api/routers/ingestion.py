@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import Callable
+from typing import Callable, Any
 from fastapi import APIRouter, Depends, HTTPException, Body, status, BackgroundTasks
 
 from graph_rag.api.models import IngestRequest, IngestResponse
@@ -8,7 +8,7 @@ from graph_rag.models import Document # Import core model
 from graph_rag.core.document_processor import DocumentProcessor
 from graph_rag.core.entity_extractor import EntityExtractor
 from graph_rag.core.knowledge_graph_builder import KnowledgeGraphBuilder
-from graph_rag.infrastructure.repositories.graph_repository import GraphRepository
+from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ async def process_document(
     doc_processor: DocumentProcessor,
     entity_extractor: EntityExtractor,
     kg_builder: KnowledgeGraphBuilder,
-    graph_repository: GraphRepository
+    graph_repository: MemgraphRepository
 ):
     """Background task to process a document."""
     try:
@@ -69,7 +69,7 @@ def create_ingestion_router(
         doc_processor: DocumentProcessor = Depends(doc_processor_dep),
         entity_extractor: EntityExtractor = Depends(entity_extractor_dep),
         kg_builder: KnowledgeGraphBuilder = Depends(kg_builder_dep),
-        graph_repository: GraphRepository = Depends(graph_repository_dep)
+        graph_repository: MemgraphRepository = Depends(graph_repository_dep)
     ):
         """Asynchronous endpoint to ingest a document."""
         

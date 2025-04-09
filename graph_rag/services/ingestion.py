@@ -5,7 +5,7 @@ from pydantic import BaseModel
 import logging
 
 from graph_rag.domain.models import Document, Chunk, Edge
-from graph_rag.infrastructure.repositories.graph_repository import GraphRepository
+from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
 from graph_rag.services.embedding import EmbeddingService
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ class IngestionResult(BaseModel):
 class IngestionService:
     """Service for ingesting documents, chunking them, and storing in the graph."""
     
-    def __init__(self, repository: GraphRepository):
+    def __init__(self, repository: MemgraphRepository):
         self.repository = repository
         # Ensure embedding model is loaded on service initialization 
         # (or handle potential loading errors gracefully)

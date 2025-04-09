@@ -1,117 +1,160 @@
 import pytest
 from httpx import AsyncClient
 from fastapi import status
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
-from graph_rag.api.main import app # Assuming app is accessible
-from graph_rag.core.graph_rag_engine import QueryResult
-from graph_rag.models import Chunk
+# Removed direct app import
+# from graph_rag.api.main import app 
+from graph_rag.api.models import QueryResult, ResultItem
+from graph_rag.core.interfaces import EntityExtractor
+# Removed direct repo import, use dependency injection/mocking
+# from graph_rag.infrastructure.repositories.graph_repository import GraphRepository
 
 # Mark all tests in this module as async
-pytestmark = pytest.mark.asyncio 
+pytestmark = pytest.mark.asyncio
 
-@pytest.fixture(scope="module")
-async def async_client() -> AsyncClient:
-    """Provides an async test client for the FastAPI app."""
-    # Use dependency overrides here if needed to inject mock engine for specific tests
-    async with AsyncClient(app=app, base_url="http://testserver") as client:
-        yield client
+# Removed local async_client fixture
+# @pytest.fixture(scope="module")
+# async def async_client() -> AsyncClient:
+#     """Provides an async test client for the FastAPI app."""
+#     async with AsyncClient(app=app, base_url="http://testserver") as client:
+#         yield client
 
-# --- Test Cases --- 
+# --- Test Cases ---
 
-async def test_query_success(async_client: AsyncClient):
+# Use the shared 'test_client' fixture from conftest.py
+# Mock dependencies using fixtures or direct patching within tests
+async def test_query_success(test_client: AsyncClient):
     """Test successful query processing."""
     payload = {
         "query_text": "Tell me about Alice.",
-        "config": {"k": 5}
+        "k": 5
     }
-    
-    # --- Mocking the RAG Engine --- 
-    # We need to mock the rag_engine dependency within the API for this test
-    # This assumes the engine dependency is setup correctly in main.py and query.py
-    mock_engine_result = QueryResult(
-        answer="Alice is a test entity.",
-        relevant_chunks=[
-            Chunk(id="c1", text="Alice info...", document_id="doc1", metadata={}),
-            Chunk(id="c2", text="More about Alice...", document_id="doc2", metadata={})
-        ],
-        graph_context=None, # Keep it simple for now
-        metadata={"source": "mock_engine"}
-    )
-    
-    # Use FastAPI's dependency overrides to inject a mock engine
-    # Note: Adjust the path `graph_rag.api.routers.query.get_rag_engine` if your dependency setup differs
-    # This assumes `get_rag_engine` is the dependency function used in the router
-    # If the dependency is directly on the class, the path might be different.
-    # Let's assume `get_rag_engine` is defined in `main.py` and used by the router factory.
-    # Path needs adjustment based on where get_rag_engine is defined and used.
-    # Assuming it's defined in main.py and accessible via the request state mechanism:
-    
-    # Simpler approach for testing: Patch the actual engine instance used by the API
-    # This is less ideal than dependency override but easier if override setup is complex.
-    # Patch target should be the instance created during lifespan, often in app.state
-    with patch("graph_rag.api.main.app.state.rag_engine", new_callable=MagicMock) as mock_engine:
-        mock_engine.query.return_value = mock_engine_result
-        
-        response = await async_client.post("/api/v1/query/", json=payload)
-        
-        # Verify the mock was called
-        mock_engine.query.assert_called_once_with(
-            query_text=payload["query_text"],
-            config=payload["config"]
-        )
 
-    # --- Assertions --- 
-    assert response.status_code == status.HTTP_200_OK
-    response_data = response.json()
-    
-    assert response_data["answer"] == mock_engine_result.answer
-    assert len(response_data["relevant_chunks"]) == len(mock_engine_result.relevant_chunks)
-    assert response_data["relevant_chunks"][0]["id"] == mock_engine_result.relevant_chunks[0].id
-    assert response_data["relevant_chunks"][0]["text"] == mock_engine_result.relevant_chunks[0].text
-    assert response_data["graph_context"] is None
-    assert response_data["metadata"] == mock_engine_result.metadata
-    
-async def test_query_missing_query_text(async_client: AsyncClient):
+    # Mock the dependencies
+    mock_entities = [MagicMock(name="Alice")]
+    mock_entities[0].name = "Alice"
+
+    mock_results = [
+        {
+            "chunk_id": "c1",
+            "chunk_content": "Alice info...",
+            "document_id": "doc1"
+        },
+        {
+            "chunk_id": "c2",
+            "chunk_content": "More about Alice...",
+            "document_id": "doc2"
+        }
+    ]
+
+    # Mock the entity extractor dependency function
+    mock_entity_extractor = MagicMock(spec=EntityExtractor)
+    mock_entity_extractor.extract_entities.return_value = mock_entities
+
+    # Mock the graph repository dependency function
+    # Assuming GraphRepository has execute_read
+    mock_graph_repository = AsyncMock() # Use AsyncMock for async methods
+    mock_graph_repository.execute_read.return_value = mock_results
+
+    # Patch the dependency *getter functions*
+    with patch("graph_rag.api.routers.query.get_entity_extractor", return_value=mock_entity_extractor) as mock_get_extractor, \
+         patch("graph_rag.api.routers.query.get_graph_repository", return_value=mock_graph_repository) as mock_get_repo:
+
+        response = await test_client.post("/api/v1/query/", json=payload)
+
+        # Verify the mocks were called (on the instance returned by the getter)
+        mock_entity_extractor.extract_entities.assert_called_once_with(payload["query_text"])
+        mock_graph_repository.execute_read.assert_called_once()
+
+        # Verify the response
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+
+        assert response_data["query"] == payload["query_text"]
+        assert len(response_data["results"]) == len(mock_results)
+        assert response_data["results"][0]["content"] == mock_results[0]["chunk_content"]
+        assert response_data["results"][0]["metadata"]["chunk_id"] == mock_results[0]["chunk_id"]
+        assert response_data["results"][0]["metadata"]["document_id"] == mock_results[0]["document_id"]
+
+async def test_query_missing_query_text(test_client: AsyncClient):
     """Test query request missing the required 'query_text' field."""
-    payload = { 
+    payload = {
         # Missing "query_text"
-        "config": {}
+        "k": 5
     }
-    
-    response = await async_client.post("/api/v1/query/", json=payload)
-    
+
+    response = await test_client.post("/api/v1/query/", json=payload)
+
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     response_data = response.json()
     assert "detail" in response_data
     assert any("query_text" in err.get("loc", []) and "missing" in err.get("type", "") for err in response_data.get("detail", []))
 
-async def test_query_engine_error(async_client: AsyncClient):
-    """Test query handling when the RAG engine raises an exception."""
+async def test_query_no_entities(test_client: AsyncClient):
+    """Test query handling when no entities are extracted."""
     payload = {
-        "query_text": "Query that causes error",
-        "config": {}
+        "query_text": "This query has no entities",
+        "k": 5
     }
 
-    error_message = "Engine processing failed spectacularly!"
-    # Patch the engine instance to raise an error
-    with patch("graph_rag.api.main.app.state.rag_engine", new_callable=MagicMock) as mock_engine:
-        mock_engine.query.side_effect = RuntimeError(error_message)
-        
-        response = await async_client.post("/api/v1/query/", json=payload)
-        
-        mock_engine.query.assert_called_once_with(
-            query_text=payload["query_text"],
-            config=payload["config"]
-        )
+    # Mock the entity extractor to return no entities
+    mock_entity_extractor = MagicMock(spec=EntityExtractor)
+    mock_entity_extractor.extract_entities.return_value = []
 
-    assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-    response_data = response.json()
-    assert "detail" in response_data
-    assert "Failed to process query" in response_data["detail"]
-    # The specific error message might be included depending on the exception handler
-    # assert error_message in response_data["detail"]
-    assert response_data.get("error_type") == "RuntimeError"
+    # Mock the graph repository (should not be called)
+    mock_graph_repository = AsyncMock()
+
+    # Patch the dependencies
+    with patch("graph_rag.api.routers.query.get_entity_extractor", return_value=mock_entity_extractor) as mock_get_extractor, \
+         patch("graph_rag.api.routers.query.get_graph_repository", return_value=mock_graph_repository) as mock_get_repo:
+
+        response = await test_client.post("/api/v1/query/", json=payload)
+
+        # Verify the mocks were called
+        mock_entity_extractor.extract_entities.assert_called_once_with(payload["query_text"])
+        mock_graph_repository.execute_read.assert_not_called()
+
+        # Verify the response
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+
+        assert response_data["query"] == payload["query_text"]
+        assert len(response_data["results"]) == 0
+
+async def test_query_graph_error(test_client: AsyncClient):
+    """Test query handling when the graph repository raises an exception."""
+    payload = {
+        "query_text": "Tell me about Alice.",
+        "k": 5
+    }
+
+    # Mock the entity extractor
+    mock_entities = [MagicMock(name="Alice")]
+    mock_entities[0].name = "Alice"
+
+    mock_entity_extractor = MagicMock(spec=EntityExtractor)
+    mock_entity_extractor.extract_entities.return_value = mock_entities
+
+    # Mock the graph repository to raise an error
+    mock_graph_repository = AsyncMock()
+    mock_graph_repository.execute_read.side_effect = Exception("Graph query failed")
+
+    # Patch the dependencies
+    with patch("graph_rag.api.routers.query.get_entity_extractor", return_value=mock_entity_extractor) as mock_get_extractor, \
+         patch("graph_rag.api.routers.query.get_graph_repository", return_value=mock_graph_repository) as mock_get_repo:
+
+        response = await test_client.post("/api/v1/query/", json=payload)
+
+        # Verify the mocks were called
+        mock_entity_extractor.extract_entities.assert_called_once_with(payload["query_text"])
+        mock_graph_repository.execute_read.assert_called_once()
+
+        # Verify the error response
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        response_data = response.json()
+        assert "detail" in response_data
+        assert "Failed to query graph for context" in response_data["detail"]
 
 # TODO: Add test for query with graph context returned
 # TODO: Add test for different config parameters (e.g., testing 'k') 

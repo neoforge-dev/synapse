@@ -20,9 +20,18 @@ class IngestResponse(BaseModel):
 
 class QueryRequest(BaseModel):
     """Request model for submitting a query."""
-    query_text: str = Field(..., description="The natural language query.")
-    config: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Optional query configuration (e.g., k for vector search).")
-    # stream: bool = Field(False, description="Whether to stream the response.") # Add later if streaming is implemented
+    query_text: str = Field(..., description="The user's query text.")
+    k: int = Field(3, description="Number of results to return.")
+
+class ResultItem(BaseModel):
+    """Represents a single result item from a query."""
+    content: str = Field(..., description="The content of the result (e.g., chunk text).")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata about the result (e.g., chunk_id, document_id).")
+
+class QueryResult(BaseModel):
+    """Response model for a query result."""
+    query: str = Field(..., description="The original query text.")
+    results: List[ResultItem] = Field(..., description="List of relevant results matching the query.")
 
 class QueryResultChunk(BaseModel):
     """Represents a chunk relevant to the query result."""

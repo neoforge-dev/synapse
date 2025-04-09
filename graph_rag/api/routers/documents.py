@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Response
+from fastapi import APIRouter, HTTPException, status, Response, Depends
 from typing import List, Dict, Any # Added Dict, Any
 import logging # Import logging
 import uuid
@@ -39,7 +39,7 @@ async def create_document(
             detail=f"Failed to save document. Check logs for details."
         )
 
-@router.get("/{document_id}", response_model=schemas.DocumentRead)
+@router.get("/{document_id}", response_model=schemas.DocumentResponse)
 async def get_document(
     document_id: str,
     repo: GraphRepositoryDep
@@ -57,7 +57,7 @@ async def get_document(
         
         logger.info(f"Successfully retrieved document {document_id}")
         # Map domain model to response schema
-        return schemas.DocumentRead(
+        return schemas.DocumentResponse(
             id=document.id,
             type=document.type,
             content=document.content,
@@ -121,78 +121,71 @@ async def delete_document(
         )
 
 @router.patch(
-    "/{document_id}", 
-    response_model=schemas.DocumentRead, 
-    summary="Update Document Metadata"
+    "/{document_id}",
+    response_model=schemas.DocumentResponse, # Corrected response model
+    summary="Update Document Metadata",
+    description="Updates the metadata of a specific document by its ID.",
+    responses={
+        404: {"description": "Document not found"},
+        500: {"description": "Internal server error during update"},
+    },
+    tags=["Documents"]
 )
 async def update_document_metadata(
     document_id: str,
-    update_data: schemas.DocumentUpdateMetadata,
-    repo: GraphRepositoryDep
-):
-    """
-    Update specific properties of a document (currently only metadata).
-    Uses PATCH semantics - only updates fields provided in the request body.
-    """
-    logger.info(f"Attempting to update metadata for document {document_id}")
-    
-    properties_to_update: Dict[str, Any] = update_data.model_dump(exclude_unset=True)
-    
-    if not properties_to_update:
-         logger.warning(f"PATCH request for document {document_id} received with no fields to update.")
-         # Fetch and return the current document state if no update fields are provided
-         current_doc = await repo.get_document(document_id)
-         if current_doc is None:
-             raise HTTPException(
-                 status_code=status.HTTP_404_NOT_FOUND,
-                 detail=f"Document with id {document_id} not found."
-             )
-         # Return current doc using the response model
-         return schemas.DocumentRead(
-             id=current_doc.id, type=current_doc.type, content=current_doc.content,
-             metadata=current_doc.metadata, created_at=current_doc.created_at,
-             updated_at=current_doc.updated_at, properties={}
-         )
+    update_data: schemas.DocumentUpdateMetadataRequest, # Corrected request schema type hint
+    graph_repo: GraphRepositoryDep, # Removed '= Depends()'
+    # entity_extractor: EntityExtractorDep = Depends(), # Keep if needed for updates
+) -> schemas.DocumentResponse:
+    """Updates the metadata for a document identified by `document_id`.
 
-    # Currently, only metadata is allowed. If other fields were sent, 
-    # update_data schema validation (if strict) or this check would handle it.
-    if "metadata" not in properties_to_update:
-         logger.warning(f"PATCH request for document {document_id} contained non-updatable fields: {properties_to_update.keys()}")
-         raise HTTPException(
-             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-             detail="Only 'metadata' field can be updated via PATCH."
-         )
-         
+    Args:
+        document_id (str): The unique ID of the document to update.
+        update_data (schemas.DocumentUpdateMetadataRequest): The new metadata to apply.
+        graph_repo (GraphRepository): Injected graph repository dependency.
+
+    Returns:
+        schemas.DocumentResponse: The updated document representation.
+
+    Raises:
+        HTTPException: 404 if the document is not found.
+        HTTPException: 500 if there's an error during the update.
+    """
+    logger.info(f"Attempting to update metadata for document ID: {document_id}")
     try:
-        updated_document = await repo.update_document_properties(document_id, properties_to_update)
-        
-        if updated_document is None:
-            logger.warning(f"Document {document_id} not found during update attempt.")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Document with id {document_id} not found."
-            )
-        
-        logger.info(f"Successfully updated metadata for document {document_id}")
-        # Map domain model to response schema
-        return schemas.DocumentRead(
-            id=updated_document.id,
-            type=updated_document.type,
-            content=updated_document.content,
-            metadata=updated_document.metadata,
-            created_at=updated_document.created_at,
-            updated_at=updated_document.updated_at,
-            properties={}
+        # Fetch the existing document first to ensure it exists
+        existing_node = await graph_repo.get_node(document_id)
+        if not existing_node or existing_node.get("_label") != "Document":
+            logger.warning(f"Update failed: Document ID {document_id} not found.")
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        # Update the metadata
+        updated_node_data = await graph_repo.update_node_properties(
+            document_id,
+            update_data.metadata
         )
 
-    except HTTPException: # Re-raise HTTP exceptions
-        raise
-    except Exception as e:
-        logger.error(f"API Error: Failed to update document {document_id}. Error: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update document {document_id}. Check logs for details."
+        if not updated_node_data:
+             # Should not happen if get_node succeeded, but handle defensively
+            logger.error(f"Update failed unexpectedly for document ID: {document_id} after verifying existence.")
+            raise HTTPException(status_code=500, detail="Failed to update document metadata after finding it")
+
+        logger.info(f"Successfully updated metadata for document ID: {document_id}")
+        # Return the updated document using DocumentResponse schema
+        return schemas.DocumentResponse(
+            id=updated_node_data["id"],
+            type=updated_node_data["_label"], # Assuming type is stored in _label
+            content=updated_node_data["content"], # Assuming content is stored
+            metadata=updated_node_data["metadata"],
+            created_at=updated_node_data.get("created_at"), # Use .get for optional fields
+            updated_at=updated_node_data.get("updated_at")
         )
+
+    except HTTPException as http_exc: # Re-raise HTTP exceptions
+        raise http_exc
+    except Exception as e:
+        logger.error(f"Error updating metadata for document {document_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error updating document: {e}")
 
 # TODO: Consider PUT endpoint for full document replacement?
 
