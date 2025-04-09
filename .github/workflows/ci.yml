@@ -1,0 +1,50 @@
+name: Python CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"] # Test against Python 3.11
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system -e '.[dev]' # Install app and dev dependencies
+
+      - name: Lint with Ruff
+        run: |
+          uv run ruff check . --output-format=github
+          uv run ruff format . --check
+
+      # Type Checking (Optional - can be slow, enable if needed)
+      # - name: Type check with MyPy
+      #   run: |
+      #     uv run mypy graph_rag/
+
+      - name: Test with pytest
+        run: |
+          # Note: This runs tests without a Memgraph instance.
+          # Consider using Docker services in Actions for integration tests later.
+          uv run pytest

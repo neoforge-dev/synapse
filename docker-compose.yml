@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  graph-rag:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      MEMGRAPH_URI: ${MEMGRAPH_URI:-bolt://memgraph:7687}
+      MEMGRAPH_USERNAME: ${MEMGRAPH_USERNAME:-}
+      MEMGRAPH_PASSWORD: ${MEMGRAPH_PASSWORD:-}
+      MEMGRAPH_MAX_POOL_SIZE: ${MEMGRAPH_MAX_POOL_SIZE:-50}
+      MEMGRAPH_CONNECTION_TIMEOUT: ${MEMGRAPH_CONNECTION_TIMEOUT:-10}
+      MEMGRAPH_RETRY_ATTEMPTS: ${MEMGRAPH_RETRY_ATTEMPTS:-3}
+      MEMGRAPH_RETRY_WAIT_SECONDS: ${MEMGRAPH_RETRY_WAIT_SECONDS:-1}
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-all-MiniLM-L6-v2}
+      VECTOR_SEARCH_SIMILARITY_THRESHOLD: ${VECTOR_SEARCH_SIMILARITY_THRESHOLD:-0.7}
+      DEBUG: ${DEBUG:-False}
+    depends_on:
+      - memgraph
+    volumes:
+      - .:/app
+    networks:
+      - graph-network
+
+  memgraph:
+    image: memgraph/memgraph-platform:latest
+    ports:
+      - "7687:7687"
+      - "7444:7444"
+      - "3000:3000"
+    volumes:
+      - memgraph_data:/var/lib/memgraph
+      - memgraph_logs:/var/log/memgraph
+    environment:
+      MEMGRAPH_MEMORY_LIMIT: 1G
+
+networks:
+  graph-network:
+    driver: bridge
+
+volumes:
+  memgraph_data:
+    driver: local
+  memgraph_logs:
+    driver: local
