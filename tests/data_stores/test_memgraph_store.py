@@ -1,6 +1,8 @@
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch, call
 import asyncio
+import uuid
+import os
 from typing import List, Dict, Any
 
 # Import driver classes for mocking

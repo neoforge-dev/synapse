@@ -22,6 +22,7 @@ from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRe
 from graph_rag.core.entity_extractor import EntityExtractor, MockEntityExtractor
 from graph_rag.api.dependencies import get_entity_extractor, get_graph_repository
 from graph_rag.api.main import create_app
+from graph_rag.core.debug_tools import GraphDebugger
 
 logger = logging.getLogger(__name__)
 
@@ -168,4 +169,16 @@ def sample_chunk() -> dict[str, Any]:
         "content": "This is a test chunk",
         "document_id": "doc1",
         "embedding": [0.1, 0.2, 0.3]
-    } 
+    }
+
+# --- Debugging Fixtures ---
+
+@pytest.fixture(scope="function")
+async def graph_debugger(memgraph_repo: MemgraphGraphRepository) -> GraphDebugger:
+    """Fixture for GraphDebugger instance using the shared MemgraphGraphRepository."""
+    # Assuming GraphDebugger needs the driver, accessed via the repo
+    if not memgraph_repo._driver or not memgraph_repo._is_connected:
+        await memgraph_repo.connect() # Ensure connection if needed
+    if not memgraph_repo._driver:
+         raise ValueError("Memgraph repository driver is not initialized after connect()")
+    return GraphDebugger(memgraph_repo._driver) 

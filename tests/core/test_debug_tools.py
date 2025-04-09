@@ -6,7 +6,9 @@ from pathlib import Path
 from typing import Dict, Any
 
 from graph_rag.core.debug_tools import GraphDebugger, SystemState, DebugContext
-from graph_rag.infrastructure.repositories.graph_repository import GraphRepository
+# Use the concrete implementation from conftest.py
+from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository 
+from graph_rag.domain.models import Document, Chunk, Entity, Relationship
 
 @pytest.mark.asyncio
 async def test_capture_system_state(graph_debugger: GraphDebugger):
@@ -85,50 +87,47 @@ async def test_save_and_load_debug_context(
     assert loaded_context.test_function == context.test_function
     assert loaded_context.error_message == context.error_message
 
-@pytest.fixture
-async def graph_debugger(graph_repository: GraphRepository) -> GraphDebugger:
-    """Fixture for GraphDebugger instance using the shared GraphRepository."""
-    # The GraphRepository instance from conftest provides the driver
-    return GraphDebugger(graph_repository.driver)
-
-@pytest.fixture(scope="module", autouse=True)
-async def setup_debug_test_data(graph_repository: GraphRepository):
-    """Set up specific graph data for debug tools tests."""
+@pytest.fixture(scope="function", autouse=True)
+async def setup_debug_test_data(memgraph_repo: MemgraphGraphRepository):
+    """Set up specific graph data for debug tools tests using memgraph_repo."""
     try:
-        # Create nodes
-        await graph_repository.execute_query("""
+        # Create nodes using the concrete repo
+        await memgraph_repo._execute_write_query("""
             CREATE (d1:Document {id: 'doc-debug-1', content: 'Debug test doc 1'}),
                    (d2:Document {id: 'doc-debug-2', content: 'Debug test doc 2'}),
-                   (e1:Entity {id: 'ent-debug-1', name: 'Debug Entity 1'}),
-                   (e2:Entity {id: 'ent-debug-2', name: 'Debug Entity 2'}),
+                   (e1:Person {id: 'ent-debug-1', name: 'Debug Person 1'}),
+                   (e2:Organisation {id: 'ent-debug-2', name: 'Debug Org 2'}),
                    (q1:Query {id: 'q-debug-1', text: 'Debug query 1'})
         """)
-        
-        # Create relationships
-        await graph_repository.execute_query("""
-            MATCH (d:Document {id: 'doc-debug-1'}), (e:Entity {id: 'ent-debug-1'})
-            CREATE (d)-[:CONTAINS {score: 0.9}]->(e);
-            
-            MATCH (d:Document {id: 'doc-debug-2'}), (e:Entity {id: 'ent-debug-2'})
-            CREATE (d)-[:CONTAINS {score: 0.8}]->(e);
 
+        # Create relationships one by one to avoid multi-statement issues
+        await memgraph_repo._execute_write_query("""
+            MATCH (d:Document {id: 'doc-debug-1'}), (e:Person {id: 'ent-debug-1'})
+            CREATE (d)-[:CONTAINS {score: 0.9}]->(e);
+        """)
+        await memgraph_repo._execute_write_query("""
+            MATCH (d:Document {id: 'doc-debug-2'}), (e:Organisation {id: 'ent-debug-2'})
+            CREATE (d)-[:CONTAINS {score: 0.8}]->(e);
+        """)
+        await memgraph_repo._execute_write_query("""
             MATCH (q:Query {id: 'q-debug-1'}), (d:Document {id: 'doc-debug-1'})
             CREATE (q)-[:RETRIEVED]->(d);
         """)
-        
+
         # Create necessary indices (if not already covered by global setup)
-        await graph_repository.execute_query("""
-            CREATE INDEX IF NOT EXISTS FOR (n:Entity) ON (n.id);
+        await memgraph_repo._execute_write_query("""
+            CREATE INDEX IF NOT EXISTS FOR (n:Person) ON (n.id);
+            CREATE INDEX IF NOT EXISTS FOR (n:Organisation) ON (n.id);
             CREATE INDEX IF NOT EXISTS FOR (n:Query) ON (n.id);
         """)
-        
+
         yield # Let tests run
-        
+
     finally:
         # Cleanup: Remove only the data created by this fixture
-        await graph_repository.execute_query("""
-            MATCH (n) WHERE n.id STARTS WITH 'doc-debug-' OR 
-                           n.id STARTS WITH 'ent-debug-' OR 
+        await memgraph_repo._execute_write_query("""
+            MATCH (n) WHERE n.id STARTS WITH 'doc-debug-' OR
+                           n.id STARTS WITH 'ent-debug-' OR
                            n.id STARTS WITH 'q-debug-'
             DETACH DELETE n
         """)
@@ -140,10 +139,12 @@ async def test_capture_system_state_integration(graph_debugger: GraphDebugger):
     
     assert isinstance(state, SystemState)
     assert "Document" in state.node_counts
-    assert "Entity" in state.node_counts
+    assert "Person" in state.node_counts
+    assert "Organisation" in state.node_counts
     assert "Query" in state.node_counts
     assert state.node_counts["Document"] >= 2  # Includes other test data potentially
-    assert state.node_counts["Entity"] >= 2
+    assert state.node_counts["Person"] >= 1
+    assert state.node_counts["Organisation"] >= 1
     assert state.node_counts["Query"] >= 1
     
     assert "CONTAINS" in state.relationship_counts
@@ -155,13 +156,14 @@ async def test_capture_system_state_integration(graph_debugger: GraphDebugger):
     index_names = [idx['name'] for idx in state.indexes]
     assert "index_document_id" in index_names # From global setup
     assert "index_chunk_id" in index_names    # From global setup
-    assert "index_entity_id" in index_names   # From local setup
+    assert "index_person_id" in index_names   # Check specific index name
+    assert "index_organisation_id" in index_names # Check specific index name
     assert "index_query_id" in index_names    # From local setup
 
 @pytest.mark.asyncio
 async def test_analyze_query_performance_integration(graph_debugger: GraphDebugger):
     """Test query performance analysis with actual data."""
-    query = "MATCH (d:Document {id: 'doc-debug-1'})-[:CONTAINS]->(e:Entity) RETURN d, e"
+    query = "MATCH (d:Document {id: 'doc-debug-1'})-[:CONTAINS]->(p:Person) RETURN d, p"
     result = await graph_debugger.analyze_query_performance(query)
     
     assert isinstance(result, dict)

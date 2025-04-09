@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from pydantic import BaseModel, Field
 
@@ -8,7 +8,7 @@ class Node(BaseModel):
     id: str = Field(..., description="Unique identifier for the node")
     type: str = Field(..., description="Type of the node")
     properties: dict = Field(default_factory=dict, description="Node properties")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
 
 
@@ -19,7 +19,7 @@ class Edge(BaseModel):
     source_id: str = Field(..., description="Source node ID")
     target_id: str = Field(..., description="Target node ID")
     properties: dict = Field(default_factory=dict, description="Edge properties")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
 
 
@@ -35,4 +35,15 @@ class Chunk(Node):
     type: str = "Chunk"
     content: str = Field(..., description="Chunk content")
     document_id: str = Field(..., description="Reference to parent document")
-    embedding: Optional[list[float]] = Field(None, description="Vector embedding of the chunk") 
+    embedding: Optional[list[float]] = Field(None, description="Vector embedding of the chunk")
+
+
+class Entity(Node):
+    """Represents a generic entity node in the graph."""
+    type: str = "Entity"
+    # Entities might have specific common properties, like 'name'
+    # Add them here if needed, otherwise inherits properties dict from Node
+
+
+# Type alias for clarity where Relationship is expected
+Relationship = Edge 

@@ -21,7 +21,8 @@ def mock_graph_repository():
 @pytest.fixture(autouse=True)
 def mock_embedding_service():
     """Mock the EmbeddingService class methods globally for service tests."""
-    with patch('graph_rag.services.ingestion.EmbeddingService', autospec=True) as mock_emb_service:
+    with patch('graph_rag.services.ingestion.EmbeddingService', autospec=True) as mock_emb_service_cls:
+        mock_instance = mock_emb_service_cls.return_value
         # Mock the encode method
         def mock_encode(texts):
             if isinstance(texts, str):
@@ -29,10 +30,9 @@ def mock_embedding_service():
             else:
                 return [np.random.rand(EMBEDDING_DIM).tolist() for _ in texts]
         
-        mock_emb_service.encode.side_effect = mock_encode
-        mock_emb_service._get_model.return_value = MagicMock() # Mock the internal model loading
-        mock_emb_service.get_embedding_dim.return_value = EMBEDDING_DIM
-        yield mock_emb_service
+        mock_instance.encode.side_effect = mock_encode
+        mock_instance.get_embedding_dim.return_value = EMBEDDING_DIM
+        yield mock_instance
 
 @pytest.fixture
 def sample_text():

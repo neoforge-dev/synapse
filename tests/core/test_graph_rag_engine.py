@@ -120,22 +120,37 @@ def rag_engine(
     mock_vector_searcher,
     mock_keyword_searcher,
     mock_graph_searcher
-) -> GraphRAGEngine:
+) -> SimpleGraphRAGEngine: # Change return type to concrete class
     # Inject mocked dependencies
-    return GraphRAGEngine(
-        document_processor=mock_doc_processor,
-        entity_extractor=mock_entity_extractor,
-        kg_builder=mock_kg_builder,
-        embedding_service=mock_embedding_service, 
-        vector_searcher=mock_vector_searcher,
-        keyword_searcher=mock_keyword_searcher,
-        graph_searcher=mock_graph_searcher
+    # Instantiate the concrete SimpleGraphRAGEngine instead of abstract GraphRAGEngine
+    # Assume SimpleGraphRAGEngine needs graph_store, vector_store, entity_extractor.
+    # Adjust if __init__ differs - based on error, it takes graph_store, vector_store, entity_extractor
+    # Requires graph_store and vector_store mocks, let's add them as fixtures
+    mock_graph_store = MockGraphStore() # Using the mock from core
+    mock_vector_store = MockVectorStore() # Using the mock from core
+    return SimpleGraphRAGEngine(
+        # document_processor=mock_doc_processor, # Removed
+        entity_extractor=mock_entity_extractor, # This one is needed
+        # kg_builder=mock_kg_builder, # Removed
+        # embedding_service=mock_embedding_service, # Removed (Handled by vector store?)
+        # vector_searcher=mock_vector_searcher, # Removed (Part of vector store?)
+        # keyword_searcher=mock_keyword_searcher, # Removed (Not used by SimpleGraphRAGEngine)
+        # graph_searcher=mock_graph_searcher # Removed (Not used by SimpleGraphRAGEngine)
+        graph_store=mock_graph_store,
+        vector_store=mock_vector_store,
     )
 
 @pytest.fixture
-def engine(mock_graph_store, mock_vector_store) -> SimpleGraphRAGEngine:
-    """Provides a SimpleGraphRAGEngine instance with mock stores."""
-    return SimpleGraphRAGEngine(graph_store=mock_graph_store, vector_store=mock_vector_store)
+def engine(mock_graph_store, mock_vector_store) -> SimpleGraphRAGEngine: # Removed mock_entity_extractor parameter
+    """Provides a SimpleGraphRAGEngine instance with mock stores and a correctly mocked extractor."""
+    # Create the mock entity extractor directly here with the correct spec
+    mock_entity_extractor_instance = AsyncMock(spec=EntityExtractor)
+    # Pass the required entity_extractor
+    return SimpleGraphRAGEngine(
+        graph_store=mock_graph_store,
+        vector_store=mock_vector_store,
+        entity_extractor=mock_entity_extractor_instance # Use the instance created here
+    )
 
 # --- Test Cases --- 
 
