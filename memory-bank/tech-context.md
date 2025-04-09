@@ -1,24 +1,27 @@
 # Technical Context: GraphRAG MCP
 
-## Runtime
-- Python 3.11+, FastAPI, Pydantic
-- Memgraph (with MAGE)
-- neo4j driver (Async)
-- sentence-transformers, Uvicorn
+## Core Stack
+- **Language:** Python 3.11+
+- **API Framework:** FastAPI
+- **CLI Framework:** Typer
+- **Graph Database:** Memgraph (via `neo4j` driver)
+- **Data Validation:** Pydantic v2
+- **Embeddings (Planned):** `sentence-transformers`
+- **Web Server:** Uvicorn
 
-## Development
-- uv package manager
-- Ruff, Black, MyPy
-- Pytest, pytest-asyncio
-- Typer CLI
+## Development Tools
+- **Package Manager:** `uv`
+- **Linting/Formatting:** Ruff, Black
+- **Type Checking:** MyPy
+- **Testing:** Pytest, pytest-asyncio
 
-## Environment
-- Docker & Docker Compose
-- python:3.11-slim base
-- .env config
-- GitHub Actions CI
+## Environment & Deployment
+- **Containerization:** Docker & Docker Compose (`python:3.11-slim` base)
+- **Configuration:** `.env` file
+- **CI/CD:** GitHub Actions (basic lint/test pipeline)
 
-## Setup
-- Build: docker-compose build
-- Run: docker-compose up
-- Test: docker-compose exec app pytest 
+## Setup Commands (Root Dir)
+- **Install:** `uv pip install -e .`
+- **Build Containers:** `docker-compose build`
+- **Run Services:** `docker-compose up`
+- **Run Tests:** `docker-compose exec app pytest tests/` 

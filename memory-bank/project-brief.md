@@ -1,16 +1,19 @@
 # Project Brief: GraphRAG MCP
 
-## Core
-- GraphRAG system using Memgraph & Python 3.11+
-- Clean Architecture: domain, core, infra, api, cli
+## Core Goal
+- Build a GraphRAG system using Memgraph & Python 3.11+.
+- Implement Clean Architecture principles.
 
-## MVP
-- **Flow:** Ingest → Embed → Store → Retrieve
-- **Search:** Vector & Keyword via MAGE
-- **Stack:** FastAPI, Typer CLI, Memgraph+MAGE, Pydantic v2
+## MVP Scope
+- **Ingestion:** Process documents, extract entities/relationships, store in Memgraph.
+- **Retrieval:** Query graph for context relevant to user query.
+- **Interfaces:** FastAPI backend, Typer CLI frontend.
 
-## QA
-- Ruff, Black, MyPy, Pytest
+## Key Technologies
+- Memgraph + MAGE (for graph storage & search)
+- Python 3.11+
 
-## Out of Scope
-- Advanced Graph algos, UI, Auth 
+## Out of Scope (MVP)
+- Advanced graph algorithms (beyond basic search)
+- UI frontend
+- Authentication/Authorization 

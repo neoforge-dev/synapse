@@ -96,4 +96,8 @@ markers = [
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::UserWarning"
-] 
+]
+
+[project.scripts]
+# graph-rag = "graph_rag.cli.main:app" # Old entry point
+synapse = "graph_rag.cli.main:app" # New entry point 

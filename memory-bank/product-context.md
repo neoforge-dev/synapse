@@ -1,14 +1,14 @@
 # Product Context: GraphRAG MCP
 
-## Value
-- GraphRAG improves RAG via relationship-based context
-- Better structured knowledge retrieval
+## Value Proposition
+- Enhance standard RAG with relationship-based context from knowledge graphs.
+- Improve accuracy and relevance for complex queries.
 
-## Users
-- Developers implementing RAG
-- Researchers needing structured knowledge
+## Target Users
+- Developers building RAG applications.
+- Researchers requiring structured knowledge interaction.
 
-## Goals
-- Simple integration
-- Clear contracts
-- Reliable performance 
+## High-Level Goals
+- Simple API/CLI integration.
+- Clear data contracts.
+- Reliable and performant operation. 

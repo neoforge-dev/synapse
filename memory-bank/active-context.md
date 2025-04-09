@@ -1,22 +1,14 @@
 # Active Context: GraphRAG MCP
 
-## Current
-- Fix Ingestion ID return
-- Improve error handling
-- Enhance test coverage
-- Implement admin features
-- Make CLI API URL configurable
+## Current Focus
+- Implement core query endpoint logic.
+- Refine Memgraph storage strategy (nodes/relationships).
+- Ensure basic query functionality passes integration tests.
+- Address `synapse ingest` error handling/feedback.
 
-## Recent
-- API/CLI implementation complete
-- Batch & streaming search added
-- Core tests added
-- Refactored core services
+## Critical Blockers
+- None currently identified (build issues resolved).
 
-## Blockers
-- Ingestion endpoint returns placeholder document_id
-- CI tests lack DB integration
-
-## Questions
-- Document content update strategy?
-- Transaction management approach? 
+## Open Questions
+- Optimal transaction management for multi-step graph writes?
+- Strategy for updating existing document content/graph elements? 
