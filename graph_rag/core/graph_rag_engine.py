@@ -85,30 +85,47 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
             logger.error(f"Entity extraction during query failed: {e}", exc_info=True)
             return [] # Return empty list on failure
         
-    def _find_entities_in_graph(self, entity_ids: List[str]) -> List[Entity]:
-        """Looks up entities by their IDs in the graph store."""
-        # Now uses the Entity ID directly, assuming it's the primary key in the graph
-        logger.debug(f"Searching graph for {len(entity_ids)} entity IDs: {entity_ids[:5]}...")
-        found_entities = []
-        processed_ids = set() # Avoid duplicate lookups
-        for entity_id in entity_ids:
-            if entity_id in processed_ids:
-                continue
-            try:
-                # Use the graph store's method to get entity by ID
-                entity = self._graph_store.get_entity_by_id(entity_id)
-                if entity:
-                    found_entities.append(entity)
-                    logger.debug(f"Found entity in graph by ID: {entity_id}")
-                else:
-                     logger.debug(f"Entity ID {entity_id} not found in graph.")
-            except Exception as e:
-                # Log error but continue trying other entities
-                logger.error(f"Error looking up entity ID {entity_id} in graph: {e}", exc_info=True)
-            processed_ids.add(entity_id)
+    def _find_entities_in_graph_by_properties(self, entities_from_extractor: List[Entity]) -> List[Entity]:
+        """Looks up entities from the extractor in the graph store using their properties.
+        
+        Uses name and type for lookup. Requires the GraphStore to have 
+        search_entities_by_properties implemented and potentially indexed properties.
+        """
+        if not entities_from_extractor:
+            return []
             
-        logger.info(f"Found {len(found_entities)} matching entities in graph for {len(entity_ids)} provided unique IDs.")
-        return found_entities
+        logger.debug(f"Attempting to find {len(entities_from_extractor)} entities in graph by properties (name, type)...")
+        found_graph_entities = []
+        processed_extractor_entities = set() # Avoid searching for the same name/type combo multiple times
+
+        for entity in entities_from_extractor:
+            search_key = (entity.name, entity.type)
+            if not entity.name or not entity.type or search_key in processed_extractor_entities:
+                continue # Skip if missing key info or already searched
+                
+            processed_extractor_entities.add(search_key)
+            search_props = {"name": entity.name, "type": entity.type}
+            
+            try:
+                # Use the graph store's property search method
+                # Limit to 1 assuming name+type is reasonably unique, adjust if needed
+                results = self._graph_store.search_entities_by_properties(search_props, limit=1)
+                if results:
+                    # Use the entity found in the graph (it has the correct graph ID/metadata)
+                    found_graph_entities.append(results[0])
+                    logger.debug(f"Found graph entity {results[0].id} matching properties: {search_props}")
+                else:
+                    logger.debug(f"No graph entity found matching properties: {search_props}")
+            except NotImplementedError:
+                logger.error(f"Graph store {type(self._graph_store).__name__} does not support search_entities_by_properties.")
+                # Fallback or stop? For MVP, log error and continue.
+                break # Stop searching if method not implemented
+            except Exception as e:
+                logger.error(f"Error searching graph for properties {search_props}: {e}", exc_info=True)
+                # Continue trying other entities
+                
+        logger.info(f"Found {len(found_graph_entities)} graph entities matching properties of {len(processed_extractor_entities)} unique extracted entities.")
+        return found_graph_entities
         
     def _get_graph_context(self, entities: List[Entity]) -> Tuple[List[Entity], List[Relationship]]:
         """Fetches the 1-hop neighborhood for a list of seed entities."""
@@ -156,7 +173,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         """Processes a query using vector search and graph context retrieval."""
         logger.info(f"Received query: '{query_text}' with config: {config}")
         config = config or {}
-        k = config.get("k", 3) # Number of chunks from vector store
+        k = config.get("k", 3)
         include_graph_context = config.get("include_graph", True)
         
         final_entities: List[Entity] = []
@@ -180,20 +197,16 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                 extracted_entities = self._extract_entities_from_chunks(relevant_chunks)
                 
                 if extracted_entities:
-                    # b. Find these entities in the graph by ID
-                    entity_ids = [e.id for e in extracted_entities if e.id] # Ensure ID exists
-                    if not entity_ids:
-                         logger.warning("Extractor returned entities, but none had IDs.")
+                    # b. Find these entities in the graph using properties (name, type)
+                    seed_entities = self._find_entities_in_graph_by_properties(extracted_entities)
+                    
+                    if seed_entities:
+                        # c. Get neighborhood graph context for seed entities found in graph
+                        final_entities, final_relationships = self._get_graph_context(seed_entities)
+                        graph_context_tuple = (final_entities, final_relationships)
+                        logger.info(f"Retrieved graph context with {len(final_entities)} entities and {len(final_relationships)} relationships.")
                     else:
-                        seed_entities = self._find_entities_in_graph(entity_ids)
-                        
-                        if seed_entities:
-                            # c. Get neighborhood graph context for seed entities
-                            final_entities, final_relationships = self._get_graph_context(seed_entities)
-                            graph_context_tuple = (final_entities, final_relationships)
-                            logger.info(f"Retrieved graph context with {len(final_entities)} entities and {len(final_relationships)} relationships.")
-                        else:
-                            logger.info(f"No matching seed entities found in graph for IDs: {entity_ids}")
+                        logger.info(f"No matching seed entities found in graph using property search.")
                 else:
                      logger.info("No entities extracted from chunks for graph lookup.")
             else:

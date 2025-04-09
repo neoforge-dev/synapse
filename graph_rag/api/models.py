@@ -11,9 +11,10 @@ class IngestRequest(BaseModel):
 
 class IngestResponse(BaseModel):
     """Response model after accepting an ingestion request."""
-    message: str = "Ingestion task accepted."
-    document_id: str = Field(..., description="The final ID assigned to the ingested document.")
-    task_id: Optional[str] = Field(None, description="Optional ID for background processing task, if applicable.")
+    message: str = Field(..., description="Status message about the ingestion request.")
+    document_id: str = Field(..., description="The ID assigned to the ingested document.")
+    task_id: str = Field(..., description="Unique ID for tracking the ingestion task.")
+    status: str = Field("processing", description="Current status of the ingestion task.")
 
 # --- Query Models --- 
 

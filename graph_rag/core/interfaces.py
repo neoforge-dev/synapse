@@ -1,4 +1,4 @@
-from typing import Protocol, List, Dict, Any, Tuple, AsyncGenerator
+from typing import Protocol, List, Dict, Any, Tuple, AsyncGenerator, Optional
 from pydantic import BaseModel
 
 # --- Data Structures ---

@@ -2,6 +2,8 @@ import pytest
 import json
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock
+from pathlib import Path
+from httpx import RequestError, HTTPStatusError
 
 # Import the main Typer app and the specific command app
 from graph_rag.cli.main import app as main_cli_app
@@ -46,7 +48,12 @@ def test_ingest_content_success(mock_make_request: MagicMock):
 @patch('graph_rag.cli.commands.ingest.make_api_request')
 def test_ingest_file_success(mock_make_request: MagicMock, tmp_path):
     """Test successful ingestion using file input."""
-    mock_response_data = {"message": "Ingestion task accepted.", "document_id": "doc-cli-file"}
+    mock_response_data = {
+        "message": "Document ingestion started",
+        "document_id": "doc-cli-file",
+        "task_id": "task-123",
+        "status": "processing"
+    }
     mock_make_request.return_value = mock_response_data
     
     # Create a temporary file
@@ -62,10 +69,10 @@ def test_ingest_file_success(mock_make_request: MagicMock, tmp_path):
         ["ingest", "ingest", "--file", str(test_file), "--metadata", test_metadata, "--doc-id", test_doc_id]
     )
     
-    print(f"CLI Output:\n{result.stdout}")
     assert result.exit_code == 0
     assert "Ingestion request accepted by API" in result.stdout
     assert f"Document ID: {mock_response_data['document_id']}" in result.stdout
+    assert f"Task ID: {mock_response_data['task_id']}" in result.stdout
     
     # Verify make_api_request call
     mock_make_request.assert_called_once()
@@ -126,7 +133,6 @@ def test_ingest_invalid_metadata_json():
 @patch('graph_rag.cli.commands.ingest.make_api_request')
 def test_ingest_api_connection_error(mock_make_request: MagicMock):
     """Test CLI behavior when the API request fails (connection error)."""
-    from httpx import RequestError
     mock_make_request.side_effect = RequestError("Connection refused", request=MagicMock())
     
     result = runner.invoke(
@@ -143,8 +149,7 @@ def test_ingest_api_connection_error(mock_make_request: MagicMock):
 @patch('graph_rag.cli.commands.ingest.make_api_request')
 def test_ingest_api_http_error(mock_make_request: MagicMock):
     """Test CLI behavior when the API returns an HTTP error status."""
-    from httpx import HTTPStatusError, Response, Request
-    mock_response = Response(status_code=500, request=Request('POST', ''), text="Internal Server Error")
+    mock_response = MagicMock(status_code=500, text="Internal Server Error")
     mock_make_request.side_effect = HTTPStatusError("Server error", request=mock_response.request, response=mock_response)
     
     result = runner.invoke(
@@ -157,3 +162,122 @@ def test_ingest_api_http_error(mock_make_request: MagicMock):
     assert result.exit_code != 0
     assert "Error: API returned status 500" in result.stderr or \
            "Error: API returned status 500" in result.stdout 
+
+# --- Error Handling Tests ---
+
+@patch('graph_rag.cli.commands.ingest.make_api_request')
+def test_cli_network_error_handling(mock_make_request: MagicMock):
+    """Test CLI handling of network errors."""
+    mock_make_request.side_effect = RequestError("Connection refused")
+    
+    result = runner.invoke(
+        main_cli_app,
+        ["ingest", "ingest", "--content", "test content"]
+    )
+    
+    assert result.exit_code != 0
+    assert "Error: Failed to connect to the API" in result.stderr
+    assert "Connection refused" in result.stderr
+
+@patch('graph_rag.cli.commands.ingest.make_api_request')
+def test_cli_api_error_handling(mock_make_request: MagicMock):
+    """Test CLI handling of API errors."""
+    mock_make_request.side_effect = HTTPStatusError(
+        "Server error",
+        request=MagicMock(),
+        response=MagicMock(status_code=500, text="Internal Server Error")
+    )
+    
+    result = runner.invoke(
+        main_cli_app,
+        ["ingest", "ingest", "--content", "test content"]
+    )
+    
+    assert result.exit_code != 0
+    assert "Error: API returned status 500" in result.stderr
+    assert "Internal Server Error" in result.stderr
+
+# --- Edge Cases ---
+
+@patch('graph_rag.cli.commands.ingest.make_api_request')
+def test_cli_large_file_handling(mock_make_request: MagicMock, tmp_path):
+    """Test CLI handling of large files."""
+    # Create a large file (1MB)
+    large_content = "Test " * 200000
+    test_file = tmp_path / "large_file.txt"
+    test_file.write_text(large_content, encoding='utf-8')
+    
+    mock_response_data = {
+        "message": "Document ingestion started",
+        "document_id": "doc-large",
+        "task_id": "task-123",
+        "status": "processing"
+    }
+    mock_make_request.return_value = mock_response_data
+    
+    result = runner.invoke(
+        main_cli_app,
+        ["ingest", "ingest", "--file", str(test_file)]
+    )
+    
+    assert result.exit_code == 0
+    assert "Document ID: doc-large" in result.stdout
+    assert "Task ID: task-123" in result.stdout
+
+@patch('graph_rag.cli.commands.ingest.make_api_request')
+def test_cli_special_chars_handling(mock_make_request: MagicMock, tmp_path):
+    """Test CLI handling of files with special characters."""
+    special_content = "Test file with special chars: \n\t\r\b\f\\\"'"
+    test_file = tmp_path / "special.txt"
+    test_file.write_text(special_content, encoding='utf-8')
+    
+    mock_response_data = {
+        "message": "Document ingestion started",
+        "document_id": "doc-special",
+        "task_id": "task-123",
+        "status": "processing"
+    }
+    mock_make_request.return_value = mock_response_data
+    
+    result = runner.invoke(
+        main_cli_app,
+        ["ingest", "ingest", "--file", str(test_file)]
+    )
+    
+    assert result.exit_code == 0
+    assert "Document ID: doc-special" in result.stdout
+    assert "Task ID: task-123" in result.stdout
+
+# --- Metadata Validation ---
+
+@patch('graph_rag.cli.commands.ingest.make_api_request')
+def test_cli_invalid_metadata_handling(mock_make_request: MagicMock):
+    """Test CLI handling of invalid metadata JSON."""
+    invalid_metadata = "{invalid json}"
+    
+    result = runner.invoke(
+        main_cli_app,
+        ["ingest", "ingest", "--content", "test", "--metadata", invalid_metadata]
+    )
+    
+    assert result.exit_code != 0
+    assert "Error: Invalid JSON provided for metadata" in result.stderr
+
+@patch('graph_rag.cli.commands.ingest.make_api_request')
+def test_cli_empty_metadata_handling(mock_make_request: MagicMock):
+    """Test CLI handling of empty metadata."""
+    mock_response_data = {
+        "message": "Document ingestion started",
+        "document_id": "doc-empty-meta",
+        "task_id": "task-123",
+        "status": "processing"
+    }
+    mock_make_request.return_value = mock_response_data
+    
+    result = runner.invoke(
+        main_cli_app,
+        ["ingest", "ingest", "--content", "test", "--metadata", "{}"]
+    )
+    
+    assert result.exit_code == 0
+    assert "Document ID: doc-empty-meta" in result.stdout 

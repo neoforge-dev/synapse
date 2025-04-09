@@ -97,8 +97,8 @@ class SpacyEntityExtractor(EntityExtractor):
         # Lowercase, replace whitespace with underscore, remove common punctuation
         text = text.lower().strip()
         text = re.sub(r'\s+', '_', text)
-        text = re.sub(r'[.,!?;:'"()]$', '', text) # Remove trailing punctuation
-        text = re.sub(r'^['"(]', '', text) # Remove leading punctuation
+        text = re.sub(r'[.,!?;:\'"()]$', '', text) # Escaped single quote
+        text = re.sub(r'^["(]', '', text) # Simplified: Removed single quote from leading char set
         return text
         
     def extract(self, document: Document) -> ProcessedDocument:

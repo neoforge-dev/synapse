@@ -1,4 +1,6 @@
 from graph_rag.domain.models import Document, Chunk, Edge
+import pytest
+from graph_rag.infrastructure.repositories.graph_repository import GraphRepository
 
 @pytest.mark.asyncio
 async def test_delete_document(graph_repository: MemgraphRepository, sample_document):
@@ -113,3 +115,52 @@ async def test_update_document_no_properties(graph_repository: MemgraphRepositor
     # updated_at might or might not change depending on implementation, 
     # but verifying it exists is reasonable.
     assert updated_doc.updated_at is not None 
+
+@pytest.mark.asyncio
+async def test_connection(graph_repository):
+    """Test that we can connect to the database."""
+    # Try to execute a simple query
+    result = await graph_repository.execute_query("RETURN 1 as test")
+    assert result is not None
+    assert len(result) == 1
+    assert result[0]["test"] == 1
+
+@pytest.mark.asyncio
+async def test_create_and_retrieve_document(graph_repository):
+    """Test creating and retrieving a document."""
+    # Create a test document
+    doc_id = "test_doc_1"
+    doc_text = "This is a test document"
+    
+    # Create document
+    await graph_repository.create_document(doc_id, doc_text)
+    
+    # Retrieve document
+    result = await graph_repository.get_document(doc_id)
+    assert result is not None
+    assert result["document_id"] == doc_id
+    assert result["text"] == doc_text
+
+@pytest.mark.asyncio
+async def test_create_and_retrieve_chunk(graph_repository):
+    """Test creating and retrieving a chunk."""
+    # Create a test document first
+    doc_id = "test_doc_2"
+    doc_text = "This is another test document"
+    await graph_repository.create_document(doc_id, doc_text)
+    
+    # Create a test chunk
+    chunk_id = "test_chunk_1"
+    chunk_text = "This is a test chunk"
+    chunk_embedding = [0.1, 0.2, 0.3]
+    
+    # Create chunk
+    await graph_repository.create_chunk(chunk_id, chunk_text, chunk_embedding, doc_id)
+    
+    # Retrieve chunk
+    result = await graph_repository.get_chunk(chunk_id)
+    assert result is not None
+    assert result["chunk_id"] == chunk_id
+    assert result["text"] == chunk_text
+    assert result["embedding"] == chunk_embedding
+    assert result["document"]["document_id"] == doc_id 

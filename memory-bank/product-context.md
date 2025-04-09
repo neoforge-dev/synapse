@@ -1,13 +1,14 @@
 # Product Context: GraphRAG MCP
 
-## Value Prop
-- GraphRAG leverages relationships for better context-aware retrieval than traditional RAG.
-- Improves context capture, enhances querying, provides structured knowledge.
+## Value
+- GraphRAG improves RAG via relationship-based context
+- Better structured knowledge retrieval
 
-## Target Users (MVP)
-- Developers needing RAG; Researchers.
+## Users
+- Developers implementing RAG
+- Researchers needing structured knowledge
 
-## Interface UX Goals (API/CLI)
-- Simple integration / commands.
-- Clear contracts / arguments.
-- Reliable & Performant. 
+## Goals
+- Simple integration
+- Clear contracts
+- Reliable performance 

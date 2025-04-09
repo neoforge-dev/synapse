@@ -443,6 +443,68 @@ class MemgraphStore(GraphStore):
             logger.error(f"Failed to get neighbors for entity '{entity_id}': {e}", exc_info=True)
             raise
 
+    def search_entities_by_properties(self, properties: Dict[str, Any], limit: Optional[int] = None) -> List[Entity]:
+        """Searches for entities matching specific properties using Cypher.
+        
+        Assumes properties exist on the node and are indexed for performance.
+        Handles 'type' as a special case to match node labels.
+        """
+        if not properties:
+            logger.warning("Attempted to search entities with empty properties dictionary.")
+            return []
+
+        # Separate label (type) from other properties
+        entity_type = properties.get('type')
+        match_props = {k: v for k, v in properties.items() if k != 'type'}
+
+        # Build MATCH and WHERE clauses
+        label_match = f":{entity_type}" if entity_type else "" # Match specific label if provided
+        where_clauses = []
+        params = {}
+
+        # Add property checks to WHERE clause
+        # Use placeholders like $prop_key for security and correctness
+        for i, (key, value) in enumerate(match_props.items()):
+            # Sanitize key for parameter name (basic example)
+            param_key = f"prop_{key.replace('-', '_').replace('.', '_')}"
+            where_clauses.append(f"n.{key} = ${param_key}")
+            params[param_key] = value
+            
+        # Base MATCH clause
+        cypher = f"MATCH (n{label_match}) "
+        
+        # Add WHERE clause if properties were provided
+        if where_clauses:
+            cypher += "WHERE " + " AND ".join(where_clauses)
+            
+        # Add RETURN and LIMIT
+        cypher += " RETURN n"
+        if limit is not None and isinstance(limit, int) and limit > 0:
+            cypher += f" LIMIT {limit}" # Append limit directly as it's controlled
+            params['limit_val'] = limit # Can also use parameter, but direct append is common for LIMIT
+        else:
+            # Default limit to prevent accidental large queries?
+            # cypher += " LIMIT 100" 
+            pass 
+
+        logger.debug(f"Executing entity search query: {cypher} with params: {params}")
+        found_entities = []
+        try:
+            results = self._execute_query(cypher, params, read_only=True)
+            for row in results:
+                node = row[0]
+                if isinstance(node, mgclient.Node):
+                    found_entities.append(self._node_to_entity(node))
+                else:
+                    logger.warning(f"Search returned non-Node object: {row}")
+                    
+            logger.info(f"Found {len(found_entities)} entities matching properties: {properties}")
+            return found_entities
+
+        except Exception as e:
+            logger.error(f"Failed to search entities by properties {properties}: {e}", exc_info=True)
+            raise # Re-raise after logging
+
     # --- Placeholder for Other Query Methods --- 
     
     # def get_subgraph(self, center_entity_id: str, hops: int = 1) -> Tuple[List[Entity], List[Relationship]]:

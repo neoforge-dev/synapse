@@ -17,9 +17,13 @@ VENV_DIR ?= .venv
 PACKAGE_NAME = graph_rag # Keep as graph_rag for now until package is renamed
 CLI_COMMAND = graph-rag # Keep as graph-rag for now until CLI entry point is renamed
 TEST_MARKER_INTEGRATION = integration
-# Read config values - use the current PACKAGE_NAME
-API_HOST := $(shell $(PYTHON) -c "from $(PACKAGE_NAME).config import settings; print(settings.api_host)")
-API_PORT := $(shell $(PYTHON) -c "from $(PACKAGE_NAME).config import settings; print(settings.api_port)")
+
+# Use environment variables or defaults for API host/port in Makefile
+# Avoids issues with importing/running Python code during make execution
+API_HOST ?= 0.0.0.0
+API_PORT ?= 8000
+# API_HOST := $(shell $(PYTHON) -c "from $(PACKAGE_NAME).config import settings; print(settings.api_host)" 2>/dev/null || echo 0.0.0.0)
+# API_PORT := $(shell $(PYTHON) -c "from $(PACKAGE_NAME).config import settings; print(settings.api_port)" 2>/dev/null || echo 8000)
 
 # Phony targets (prevents conflicts with files of the same name)
 .PHONY: help install-dev lint format test test-memgraph test-all run-api run-memgraph stop-memgraph logs-memgraph clean
@@ -47,7 +51,9 @@ test-all: test test-memgraph ## Run all tests (unit + integration, requires Memg
 	@echo "INFO: All tests passed (assuming Memgraph was running for integration tests)."
 
 run-api: ## Run the FastAPI development server (uvicorn)
-	$(UV) run uvicorn $(PACKAGE_NAME).api.main:app --reload --host $(API_HOST) --port $(API_PORT)
+	@echo "INFO: Running API server on http://$(API_HOST):$(API_PORT)"
+	# Use the create_app factory and pass host/port directly to uvicorn
+	$(UV) run uvicorn $(PACKAGE_NAME).api.main:create_app --factory --host $(API_HOST) --port $(API_PORT) --reload
 
 run-memgraph: ## Start Memgraph service using Docker Compose (detached mode)
 	docker-compose up -d memgraph

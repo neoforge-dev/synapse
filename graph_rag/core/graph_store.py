@@ -48,6 +48,19 @@ class GraphStore(ABC):
         """
         pass
 
+    @abstractmethod
+    def search_entities_by_properties(self, properties: Dict[str, Any], limit: Optional[int] = None) -> List[Entity]:
+        """Searches for entities matching specific properties (e.g., name, type).
+        
+        Args:
+            properties: A dictionary of property keys and values to match.
+            limit: Optional maximum number of entities to return.
+            
+        Returns:
+            A list of matching Entity objects.
+        """
+        pass
+
 class MockGraphStore(GraphStore):
     """In-memory mock implementation of GraphStore for testing."""
 
@@ -59,7 +72,8 @@ class MockGraphStore(GraphStore):
             "add_relationship": [],
             "add_entities_and_relationships": [],
             "get_entity_by_id": [],
-            "get_neighbors": []
+            "get_neighbors": [],
+            "search_entities_by_properties": []
         }
         logger.info("MockGraphStore initialized.")
 
@@ -99,7 +113,8 @@ class MockGraphStore(GraphStore):
             "add_relationship": [], 
             "add_entities_and_relationships": [],
             "get_entity_by_id": [],
-            "get_neighbors": []
+            "get_neighbors": [],
+            "search_entities_by_properties": []
             }
         logger.info("MockGraphStore cleared.")
 
@@ -141,4 +156,34 @@ class MockGraphStore(GraphStore):
                 connecting_relationships.append(rel)
         
         logger.debug(f"MockGraphStore: Found {len(neighbor_entities)} neighbors and {len(connecting_relationships)} relationships for {entity_id}.")
-        return list(neighbor_entities.values()), connecting_relationships 
+        return list(neighbor_entities.values()), connecting_relationships
+
+    def search_entities_by_properties(self, properties: Dict[str, Any], limit: Optional[int] = None) -> List[Entity]:
+        logger.debug(f"MockGraphStore: Searching entities by properties: {properties}, limit: {limit}")
+        self.calls["search_entities_by_properties"].append((properties, limit))
+        
+        matches = []
+        for entity in self.entities.values():
+            is_match = True
+            # Check mandatory properties (like name, type)
+            for key, value in properties.items():
+                if key == 'type':
+                    if entity.type != value:
+                        is_match = False
+                        break
+                elif key == 'name':
+                     if entity.name != value:
+                        is_match = False
+                        break
+                # Check metadata properties
+                elif key not in entity.metadata or entity.metadata[key] != value:
+                    is_match = False
+                    break
+            
+            if is_match:
+                matches.append(entity)
+                if limit is not None and len(matches) >= limit:
+                    break
+                    
+        logger.debug(f"MockGraphStore: Found {len(matches)} entities matching properties.")
+        return matches 

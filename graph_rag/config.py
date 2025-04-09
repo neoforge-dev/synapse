@@ -33,17 +33,18 @@ class Settings(BaseSettings):
     memgraph_max_retries: int = Field(3, ge=0, description="Maximum connection/query retries for Memgraph.")
     memgraph_retry_delay: int = Field(2, ge=1, description="Delay in seconds between Memgraph retries.")
 
-    # --- Vector Store Settings (Example placeholder) --- 
-    vector_store_type: str = Field("mock", description="Type of vector store to use (e.g., 'qdrant', 'mock').")
-    vector_store_host: Optional[str] = Field(None, description="Hostname for the vector store (if applicable).")
-    vector_store_port: Optional[int] = Field(None, description="Port for the vector store (if applicable).")
+    # --- Vector Store Settings --- 
+    vector_store_type: str = Field("simple", description="Type of vector store to use ('simple', 'qdrant', 'mock'). Default: simple")
+    vector_store_embedding_model: str = Field("all-MiniLM-L6-v2", description="Sentence-transformer model for the vector store. Default: all-MiniLM-L6-v2")
+    # vector_store_host: Optional[str] = Field(None, description="Hostname for the vector store (if applicable).") # Example for Qdrant
+    # vector_store_port: Optional[int] = Field(None, description="Port for the vector store (if applicable).") # Example for Qdrant
     # vector_store_api_key: Optional[SecretStr] = Field(None, ...) 
     # vector_store_collection_name: str = Field("graph_rag_chunks", ...)
 
-    # --- NLP Model Settings (Example placeholder) --- 
-    entity_extractor_type: str = Field("mock", description="Type of entity extractor to use ('mock', 'spacy').")
+    # --- NLP Model Settings --- 
+    entity_extractor_type: str = Field("spacy", description="Type of entity extractor to use ('mock', 'spacy'). Default: spacy")
     entity_extractor_model: str = Field("en_core_web_sm", description="Identifier for the entity extraction model (e.g., spaCy model name). Default: en_core_web_sm")
-    embedding_model: str = Field("mock", description="Identifier for the text embedding model/service.")
+    # embedding_model: str = Field("mock", description="Identifier for the text embedding model/service.") # This might be redundant now
     # relationship_extractor_model: Optional[str] = Field(None, ...)
     
     # --- Document Processor Settings --- 

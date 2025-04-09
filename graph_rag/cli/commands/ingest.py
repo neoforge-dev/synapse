@@ -155,10 +155,8 @@ def ingest_document(
     # --- Output Result --- 
     print(f"Ingestion request accepted by API.")
     print(f"Document ID: {response_data.get('document_id', 'N/A')}")
-    if response_data.get('task_id'):
-        print(f"Task ID: {response_data['task_id']}")
-    # Pretty print the full response if needed
-    # print(json.dumps(response_data, indent=2))
+    print(f"Task ID: {response_data.get('task_id', 'N/A')}")
+    print(f"Status: {response_data.get('status', 'unknown')}")
 
 # Add other commands (e.g., query, status) later
 # query_app = typer.Typer(help="Commands for querying the GraphRAG system.")
