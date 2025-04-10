@@ -12,11 +12,9 @@ SEARCH_URL = f"{API_BASE_URL}/search/query"
 
 logger = logging.getLogger(__name__)
 
-app = typer.Typer(help="Commands for searching the graph.")
+# app = typer.Typer(help="Commands for searching the graph.")
 
-@app.command("query")
 def search_query(
-    ctx: typer.Context,
     query: str = typer.Argument(..., help="The search query string."),
     search_type: str = typer.Option("vector", "--type", "-t", help="Search type ('vector' or 'keyword')."),
     limit: int = typer.Option(10, "--limit", "-l", help="Maximum number of results to return."),

@@ -23,7 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Create Typer app for ingest commands
-app = typer.Typer(help="Commands for ingesting documents into the knowledge graph.")
+# app = typer.Typer(help="Commands for ingesting documents into the knowledge graph.")
 
 async def make_api_request(
     method: str,
@@ -115,8 +115,9 @@ async def process_and_store_document(
         typer.echo(f"Error processing document: {str(e)}", err=True)
         raise typer.Exit(1)
 
-@app.command()
+# @app.command() # Removed decorator
 def ingest(
+    # ctx: typer.Context, # Keep context removed if decorator is removed
     file_path: Path = typer.Argument(
         ...,
         exists=True,
@@ -132,6 +133,7 @@ def ingest(
     )
 ) -> None:
     """Ingest a document into the knowledge graph."""
+
     # Parse metadata if provided
     metadata_dict: Dict[str, Any] = {}
     if metadata:
@@ -143,10 +145,19 @@ def ingest(
             raise typer.Exit(1)
     
     # Initialize components
+    # Import settings here to ensure it loads correctly in CLI context
+    from graph_rag.config import Settings
+    try:
+        local_settings = Settings()
+    except Exception as e:
+        logger.error(f"Failed to load settings for ingest command: {e}", exc_info=True)
+        typer.echo(f"Error: Could not load settings - {e}", err=True)
+        raise typer.Exit(1)
+
     graph_repository = GraphRepository(
-        uri=f"bolt://{settings.memgraph_host}:{settings.memgraph_port}",
-        user=settings.memgraph_user,
-        password=settings.memgraph_password.get_secret_value() if settings.memgraph_password else None
+        uri=f"bolt://{local_settings.memgraph_host}:{local_settings.memgraph_port}",
+        user=local_settings.memgraph_user,
+        password=local_settings.memgraph_password.get_secret_value() if local_settings.memgraph_password else None
     )
     doc_processor = SimpleDocumentProcessor()
     entity_extractor = SpacyEntityExtractor()
@@ -160,5 +171,4 @@ def ingest(
         entity_extractor
     ))
 
-if __name__ == "__main__":
-    app() 
+# Removed if __name__ == "__main__" block 

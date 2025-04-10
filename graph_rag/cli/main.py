@@ -2,8 +2,11 @@ import typer
 import logging
 from typing import Optional
 
-# Import command modules
-from graph_rag.cli.commands import ingest, query # Add other command groups later
+# Import command functions directly
+from graph_rag.cli.commands.ingest import ingest
+from graph_rag.cli.commands.search import search_query
+from graph_rag.cli.commands.admin import check_health # Import admin command
+
 from graph_rag import __version__ # Assume version is defined in __init__.py
 from graph_rag.config import settings # Use settings for logging config
 
@@ -19,9 +22,10 @@ app = typer.Typer(
     no_args_is_help=True
 )
 
-# Add command groups (sub-applications)
-app.add_typer(ingest.app, name="ingest", help="Commands for ingesting data via the API.")
-app.add_typer(query.app, name="query", help="Commands for querying the GraphRAG system via the API.")
+# Register commands directly
+app.command("ingest")(ingest)
+app.command("search")(search_query)
+app.command("admin-health")(check_health) # Renamed for clarity
 
 # Version callback
 def version_callback(value: bool):
@@ -40,7 +44,7 @@ def main_callback(
     """
     Synapse Command Line Interface.
     
-    Use 'ingest' or 'query' commands.
+    Use 'ingest', 'search', or 'admin-health' commands.
     """
     # Can add global options or context setup here if needed
     # logger.debug(f"CLI Context: {ctx.invoked_subcommand}")

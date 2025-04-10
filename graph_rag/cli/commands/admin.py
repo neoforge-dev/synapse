@@ -11,11 +11,7 @@ HEALTH_URL = f"{API_BASE_URL}/health"
 
 logger = logging.getLogger(__name__)
 
-app = typer.Typer(help="Administrative commands.")
-
-@app.command("health")
 def check_health(
-    ctx: typer.Context,
     api_url: str = typer.Option(HEALTH_URL, help="URL of the health check API endpoint.")
 ):
     """Check the health status of the GraphRAG API."""

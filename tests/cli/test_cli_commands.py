@@ -93,7 +93,7 @@ def test_search_batch_success(mock_httpx_client):
     mock_context_manager.__exit__.return_value = None
     mock_httpx_client.return_value = mock_context_manager
 
-    result = runner.invoke(app, ["search", "query", "test query", "--type", "vector", "-l", "5"])
+    result = runner.invoke(app, ["search", "test query", "--type", "vector", "-l", "5"])
 
     assert result.exit_code == 0
     assert '"query": "test query"' in result.stdout # Check pretty printed JSON
@@ -125,7 +125,7 @@ def test_search_stream_success(mock_httpx_stream):
     mock_stream_context_manager.__exit__.return_value = None
     mock_httpx_stream.return_value = mock_stream_context_manager
 
-    result = runner.invoke(app, ["search", "query", "stream test", "--stream"])
+    result = runner.invoke(app, ["search", "stream test", "--stream"])
 
     assert result.exit_code == 0
     # Check exact JSON lines
@@ -155,7 +155,7 @@ def test_admin_health_success(mock_httpx_client):
     mock_context_manager.__exit__.return_value = None
     mock_httpx_client.return_value = mock_context_manager
 
-    result = runner.invoke(app, ["admin", "health"])
+    result = runner.invoke(app, ["admin-health"])
     
     assert result.exit_code == 0
     assert "API Status: HEALTHY" in result.stdout
@@ -176,7 +176,7 @@ def test_admin_health_unhealthy(mock_httpx_client):
     mock_context_manager.__exit__.return_value = None
     mock_httpx_client.return_value = mock_context_manager
 
-    result = runner.invoke(app, ["admin", "health"])
+    result = runner.invoke(app, ["admin-health"])
     
     assert result.exit_code != 0 # Should exit with error code
     assert "API Status: UNHEALTHY" in result.stdout
@@ -205,7 +205,7 @@ def test_admin_health_api_error(mock_httpx_client):
     mock_context_manager.__exit__.return_value = None
     mock_httpx_client.return_value = mock_context_manager
 
-    result = runner.invoke(app, ["admin", "health"])
+    result = runner.invoke(app, ["admin-health"])
 
     assert result.exit_code != 0
     assert "Error: API health check failed with status 503." in result.stdout # Adjusted message
