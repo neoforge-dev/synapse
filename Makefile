@@ -55,7 +55,8 @@ format: ## Run formatters (ruff format)
 	$(UV) run ruff format .
 
 test: ## Run unit tests (excluding integration tests)
-	$(UV) run pytest -v tests/ -m "not $(TEST_MARKER_INTEGRATION)"
+	@echo "Running unit tests..."
+	$(UV) run pytest -v tests/ -m "not integration" --tb=long -rA
 
 test-memgraph: ## Run Memgraph integration tests (requires Memgraph running)
 	@echo "INFO: Ensure Memgraph container is running via 'make run-memgraph' before executing this target."

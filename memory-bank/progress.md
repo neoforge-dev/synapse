@@ -1,15 +1,16 @@
-# Progress: GraphRAG MCP (Optimized)
+# Progress
 
-## What Works (Core Concepts)
-- Basic FastAPI structure.
-- Abstract `GraphStore` interface defined.
-- `MemgraphGraphRepository` implements `GraphStore`.
-- Core domain models (`Document`, `Chunk`, `Entity`, `Relationship`, `Node`).
-- Test framework (`pytest`, async support) in place.
+## Working
+- FastAPI structure setup
+- GraphStore interface defined, implemented by MemgraphRepository
+- Core domain models (Document, Chunk, Entity, Relationship, Node)
+- Test framework structure
 
-## What's Left / Blocked
-- **STABILITY:** Resolve **critical test failures** across all test suites (unit, integration, API, CLI). See `active-context.md` for detailed errors (mocking, dependencies, async, CLI, API, fixtures).
-- **Ingestion Pipeline:** Implement/test document processing -> entity extraction -> graph storage flow. Requires stable tests and dependencies.
-- **Query Engine:** Implement/test core RAG logic using graph context. Depends on stable ingestion & tests.
+## Blocked
+- **CRITICAL:** Test failures preventing progress (see active-context.md)
+- Async handling in repository and tests
 
-*(See `active-context.md` for detailed current focus, blocking issues, and immediate next steps.)* 
+## Next Development Phases
+1. Fix test failures, especially async mocking
+2. Implement ingestion pipeline
+3. Develop query engine with graph context 

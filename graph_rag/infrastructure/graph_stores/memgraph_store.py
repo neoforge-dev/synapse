@@ -109,11 +109,17 @@ class MemgraphGraphRepository(GraphStore):
             raise ConnectionError("Memgraph driver not initialized or not connected. Call connect() first.")
         return self._driver
 
+    async def get_driver(self) -> AsyncDriver:
+        """Ensures driver is initialized and connected."""
+        if not self._driver or not self._is_connected:
+            raise ConnectionError("Memgraph driver not initialized or not connected. Call connect() first.")
+        return self._driver
+
     async def _execute_write_query(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> None:
         """Executes a write query with retry logic and transaction support."""
         async def _task_to_retry():
-            driver = await self._get_driver # Await the driver first
-            async with driver.session() as session: # Use the awaited driver
+            driver = await self.get_driver()
+            async with driver.session() as session:
                 try:
                     await session.run(query, parameters or {})
                 except Neo4jError as e:
@@ -124,8 +130,8 @@ class MemgraphGraphRepository(GraphStore):
     async def _execute_read_query(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Executes a read query with retry logic and transaction support."""
         async def _task_to_retry():
-            driver = await self._get_driver # Await the driver first
-            async with driver.session() as session: # Use the awaited driver
+            driver = await self.get_driver()
+            async with driver.session() as session:
                 try:
                     result = await session.run(query, parameters or {})
                     # Ensure result processing happens within the retry block if needed

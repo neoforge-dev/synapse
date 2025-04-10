@@ -1,18 +1,20 @@
 import pytest
 from fastapi.testclient import TestClient
 from graph_rag.api.main import app
-from httpx import AsyncClient, Response
+from httpx import AsyncClient, Response, ASGITransport
 from fastapi import status
 from unittest.mock import AsyncMock
 
 @pytest.fixture
-def test_client():
-    return TestClient(app)
+async def test_client() -> AsyncClient:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        yield client
 
-def test_health_check(sync_test_client):
+@pytest.mark.asyncio
+async def test_health_check(test_client: AsyncClient):
     """Test the health check endpoint."""
-    response = sync_test_client.get("/health")
-    assert response.status_code == 200
+    response = await test_client.get("/health")
+    assert response.status_code == status.HTTP_200_OK
     assert response.json() == {"status": "ok"}
 
 @pytest.mark.asyncio

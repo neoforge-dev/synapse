@@ -5,6 +5,9 @@ import os
 import logging
 from typing import AsyncGenerator, Any, Optional, Generator
 import nltk # Add nltk import
+import spacy # Add spacy import
+import subprocess # Keep subprocess for spaCy download check
+import sys # Add sys import
 
 import asyncio
 from httpx import AsyncClient, ASGITransport # Import ASGITransport
@@ -37,6 +40,42 @@ def nltk_punkt_downloader():
         logger.info("NLTK 'punkt' resource not found. Downloading...")
         nltk.download('punkt', quiet=True)
         logger.info("NLTK 'punkt' resource downloaded.")
+
+# --- SpaCy Model Downloader Fixture ---
+
+@pytest.fixture(scope="session", autouse=True)
+def spacy_model_downloader():
+    """Downloads the spaCy 'en_core_web_sm' model once per session if not already present."""
+    model_name = "en_core_web_sm"
+    try:
+        spacy.load(model_name)
+        logger.info(f"spaCy model '{model_name}' already available.")
+    except OSError:
+        logger.info(f"spaCy model '{model_name}' not found. Downloading...")
+        # Use subprocess to run the download command directly with the current interpreter
+        try:
+            # Use sys.executable to ensure we use the same python as pytest
+            command = [sys.executable, "-m", "spacy", "download", model_name]
+            subprocess.run(command, check=True, capture_output=True, text=True)
+            logger.info(f"spaCy model '{model_name}' downloaded successfully.")
+            # Verify download by trying to load again
+            spacy.load(model_name)
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            logger.error(f"Failed to download spaCy model '{model_name}': {e}")
+            # Check if stderr is available and decode if bytes
+            stderr_msg = ""
+            if hasattr(e, 'stderr') and e.stderr:
+                if isinstance(e.stderr, bytes):
+                    try:
+                        stderr_msg = e.stderr.decode('utf-8')
+                    except UnicodeDecodeError:
+                        stderr_msg = str(e.stderr) # Fallback if decoding fails
+                else:
+                     stderr_msg = str(e.stderr)
+            pytest.fail(f"Failed to download required spaCy model '{model_name}'. Error: {e}. Stderr: {stderr_msg}")
+        except OSError as load_err:
+             logger.error(f"Failed to load spaCy model '{model_name}' even after download attempt: {load_err}")
+             pytest.fail(f"Failed to load required spaCy model '{model_name}' after download. Error: {load_err}")
 
 # --- Application Fixture ---
 

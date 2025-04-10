@@ -52,34 +52,40 @@ class GraphDebugger:
 
     async def capture_system_state(self) -> SystemState:
         """Capture current state of the graph database."""
-        with self.driver.session() as session:
+        async with self.driver.session() as session:
             # Get node counts by label
-            node_counts = session.run("""
+            result = await session.run("""
                 MATCH (n)
                 RETURN labels(n) as label, count(*) as count
-            """).data()
+            """)
+            node_counts = await result.data()
 
             # Get relationship counts by type
-            rel_counts = session.run("""
+            result = await session.run("""
                 MATCH ()-[r]->()
                 RETURN type(r) as type, count(*) as count
-            """).data()
+            """)
+            rel_counts = await result.data()
 
             # Get index information
-            indexes = session.run("SHOW INDEX INFO").data()
+            result = await session.run("SHOW INDEX INFO")
+            indexes = await result.data()
 
             # Get constraint information
-            constraints = session.run("SHOW CONSTRAINT INFO").data()
+            result = await session.run("SHOW CONSTRAINT INFO")
+            constraints = await result.data()
 
             # Get active queries
-            active_queries = session.run("SHOW TRANSACTIONS").data()
+            result = await session.run("SHOW TRANSACTIONS")
+            active_queries = await result.data()
 
             # Get performance metrics
-            performance = session.run("""
+            result = await session.run("""
                 CALL db.stats.retrieve("ALL")
                 YIELD section, map
                 RETURN section, map
-            """).data()
+            """)
+            performance = await result.data()
 
             return SystemState(
                 timestamp=datetime.utcnow(),
@@ -93,31 +99,34 @@ class GraphDebugger:
 
     async def analyze_query_performance(self, query: str) -> Dict[str, Any]:
         """Analyze performance of a specific query."""
-        with self.driver.session() as session:
-            result = session.run(f"PROFILE {query}")
+        async with self.driver.session() as session:
+            result = await session.run(f"PROFILE {query}")
+            profile = await result.consume()
             return {
-                "query": query,
-                "plan": result.consume().profile,
-                "stats": result.consume().stats
+                "query": f"PROFILE {query}",
+                "plan": profile.profile,
+                "stats": profile.counters
             }
 
     async def validate_graph_structure(self) -> Dict[str, Any]:
         """Validate the structure of the graph database."""
-        with self.driver.session() as session:
+        async with self.driver.session() as session:
             # Check for orphaned nodes
-            orphaned = session.run("""
+            result = await session.run("""
                 MATCH (n)
                 WHERE NOT (n)--()
                 RETURN labels(n) as label, count(*) as count
-            """).data()
+            """)
+            orphaned = await result.data()
 
             # Check for disconnected components
-            components = session.run("""
+            result = await session.run("""
                 CALL gds.wcc.stream('myGraph')
                 YIELD nodeId, componentId
                 RETURN componentId, count(*) as size
                 ORDER BY size DESC
-            """).data()
+            """)
+            components = await result.data()
 
             return {
                 "orphaned_nodes": orphaned,
@@ -126,14 +135,14 @@ class GraphDebugger:
 
     async def trace_transaction(self, transaction_id: str) -> Dict[str, Any]:
         """Trace a specific transaction's operations."""
-        with self.driver.session() as session:
-            result = session.run("""
+        async with self.driver.session() as session:
+            result = await session.run("""
                 SHOW TRANSACTION $txId
                 YIELD *
             """, txId=transaction_id)
-            return result.data()
+            return await result.data()
 
-    def create_debug_context(
+    async def create_debug_context(
         self,
         error_type: str,
         test_file: str,
@@ -141,12 +150,14 @@ class GraphDebugger:
         error_message: str
     ) -> DebugContext:
         """Create a new debugging context."""
+        system_state = await self.capture_system_state()
+        
         return DebugContext(
             error_type=error_type,
             test_file=test_file,
             test_function=test_function,
             error_message=error_message,
-            system_state=self.capture_system_state(),
+            system_state=system_state,
             hypotheses=[],
             verification_steps=[],
             resolution=None

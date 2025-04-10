@@ -1,29 +1,27 @@
-# System Patterns: GraphRAG MCP (Optimized)
+# System Patterns
 
-## Architecture
-- Clean Architecture: `domain`, `core`, `infra`, `api`, `cli`.
+## Architecture & Components
+- **Clean Architecture:** domain → core → infrastructure → API/CLI
+- **API:** FastAPI exposes GraphRAGEngine
+- **CLI:** Typer interface
+- **Core:** GraphRAGEngine orchestrates ingestion/retrieval
+- **Infrastructure:** GraphStore interface → MemgraphGraphRepository
 
-## Key Components
-- **API (`FastAPI`):** Exposes `GraphRAGEngine`.
-- **CLI (`Typer`):** Command-line interface.
-- **Core (`GraphRAGEngine`):** Orchestrates ingestion/retrieval.
-- **Infrastructure (`GraphStore`/`MemgraphGraphRepository`):** Interacts with Memgraph (`neo4j` driver).
-- **Domain (`Pydantic`):** Data models (`Node`, `Entity`, etc.), interfaces (`GraphStore`).
+## Patterns
+- Dependency Injection (FastAPI)
+- Repository Pattern (GraphStore)
+- Async I/O
+- Pydantic models/settings
 
-## Core Patterns
-- Dependency Injection (`FastAPI Depends`).
-- Repository Pattern (`GraphStore`).
-- Async I/O.
-- Settings Management (`Pydantic`).
+## Testing
+- pytest (unit, integration markers)
+- AsyncMock for async methods
+- Makefile targets: test, test-memgraph
 
-## Testing Patterns
-- Unit, Integration markers (`pytest`).
-- Fixtures, Mocking (`unittest.mock`, `pytest-mock`).
-- Config: `pytest.ini`, `Makefile` targets (`test`, `test-memgraph`).
-
-## Graph Storage (Memgraph via `MemgraphGraphRepository`)
-- **Writes:** `MERGE` (idempotency), timestamps, async, retries (`tenacity`).
-- **Queries:** Node/Rel operations via `GraphStore` interface (`add_node`, `get_node_by_id`, `add_relationship`, `get_neighbors`).
+## Graph Storage
+- Idempotent writes (MERGE)
+- Async operations, retries (tenacity)
+- Interface: add/get nodes/relationships, search, neighbors
 
 ## Search
 - (Planned: Memgraph MAGE for Keyword/Vector).

@@ -1,14 +1,14 @@
-# Project Brief: GraphRAG MCP (Optimized)
+# Project Brief
 
 ## Goal
-- Build GraphRAG MVP (Memgraph, Python, Clean Architecture).
+- GraphRAG MVP using Memgraph, Python, Clean Architecture
 
-## MVP Scope
-- **Ingestion:** Docs -> Entities/Rels -> Memgraph.
-- **Retrieval:** Use graph context for queries.
-- **Interfaces:** FastAPI API, Typer CLI.
+## Scope
+- Ingest: Documents → Entities/Relationships → Graph DB
+- Retrieve: Graph-enhanced context for queries
+- Interface: FastAPI + Typer CLI
 
-## Excluded (MVP)
-- Advanced graph features, UI, Auth.
+## Non-MVP
+- UI, Auth, Advanced graph features
 
 *(Refer to `tech-context.md` for tech stack)* 

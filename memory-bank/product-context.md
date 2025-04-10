@@ -1,11 +1,5 @@
-# Product Context: GraphRAG MCP (Optimized)
+# Product Context
 
-## Value
-- Improve RAG with graph context.
-
-## Target Users
-- RAG developers, Graph researchers.
-
-## Key UX/API Needs
-- Simple API/CLI.
-- Reliable data contracts (Pydantic models). 
+- Enhance RAG with graph context
+- Target: RAG developers, graph researchers
+- API/CLI with reliable Pydantic data contracts 
