@@ -21,6 +21,8 @@ class TestMemgraphGraphRepository:
     def mock_driver(self):
         """Creates a mock Neo4j driver."""
         driver = AsyncMock()
+        # Add a dummy uri attribute
+        driver.uri = "bolt://mock-memgraph:7687"
         session = AsyncMock()
         driver.session.return_value.__aenter__.return_value = session
         return driver

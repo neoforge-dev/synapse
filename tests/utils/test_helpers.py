@@ -2,11 +2,11 @@
 
 import asyncio
 from typing import Any, Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
-from neo4j import AsyncGraphDatabase
-from graph_rag.models import Document, Chunk, Entity, Relationship
+from graph_rag.domain.models import Document, Chunk, Entity, Node, Edge, Relationship
+from neo4j import AsyncDriver
 
 logger = logging.getLogger(__name__)
 
@@ -17,29 +17,29 @@ def create_test_document(
     content: str = "Test document content",
     metadata: Optional[Dict[str, Any]] = None
 ) -> Document:
-    """Creates a test document with optional metadata."""
+    """Creates a test document instance matching the Pydantic model."""
     if metadata is None:
-        metadata = {"source": "test", "created_at": datetime.utcnow().isoformat()}
+        metadata = {"source": "test"}
     return Document(
         id=doc_id,
         content=content,
-        metadata=metadata
+        metadata=metadata,
     )
 
 def create_test_chunk(
     chunk_id: str = "test_chunk_1",
-    text: str = "Test chunk text",
+    content: str = "Test chunk text",
     doc_id: str = "test_doc_1",
     embedding: Optional[List[float]] = None
 ) -> Chunk:
-    """Creates a test chunk with optional embedding."""
+    """Creates a test chunk instance matching the Pydantic model."""
     if embedding is None:
-        embedding = [0.1, 0.2, 0.3]  # Simple test embedding
+        embedding = [0.1, 0.2, 0.3]
     return Chunk(
         id=chunk_id,
-        text=text,
+        content=content,
         document_id=doc_id,
-        embedding=embedding
+        embedding=embedding,
     )
 
 def create_test_entity(
@@ -48,41 +48,44 @@ def create_test_entity(
     entity_type: str = "PERSON",
     metadata: Optional[Dict[str, Any]] = None
 ) -> Entity:
-    """Creates a test entity with optional metadata."""
-    if metadata is None:
-        metadata = {"confidence": 0.95}
+    """Creates a test entity instance matching the Pydantic model."""
+    props = {"name": name}
+    if metadata:
+        props.update(metadata)
     return Entity(
         id=entity_id,
-        name=name,
         type=entity_type,
-        metadata=metadata
+        properties=props
     )
 
 def create_test_relationship(
-    source: Entity,
-    target: Entity,
+    source: Node,
+    target: Node,
     rel_type: str = "RELATED_TO",
+    rel_id: str = "test_rel_1",
     metadata: Optional[Dict[str, Any]] = None
 ) -> Relationship:
-    """Creates a test relationship between two entities."""
-    if metadata is None:
-        metadata = {"confidence": 0.85}
+    """Creates a test relationship (Edge) instance matching the Pydantic model."""
+    props = {}
+    if metadata:
+        props.update(metadata)
     return Relationship(
-        source=source,
-        target=target,
+        id=rel_id,
+        source_id=source.id,
+        target_id=target.id,
         type=rel_type,
-        metadata=metadata
+        properties=props
     )
 
 # --- Graph Database Helpers ---
 
-async def clear_graph_db(driver: AsyncGraphDatabase.driver) -> None:
+async def clear_graph_db(driver: AsyncDriver) -> None:
     """Clears all nodes and relationships from the graph database."""
     async with driver.session() as session:
         await session.run("MATCH (n) DETACH DELETE n")
 
 async def verify_graph_state(
-    driver: AsyncGraphDatabase.driver,
+    driver: AsyncDriver,
     expected_nodes: int = 0,
     expected_relationships: int = 0
 ) -> None:
@@ -90,13 +93,13 @@ async def verify_graph_state(
     async with driver.session() as session:
         # Count nodes
         node_result = await session.run("MATCH (n) RETURN count(n) as count")
-        node_count = await node_result.single()
-        assert node_count["count"] == expected_nodes, f"Expected {expected_nodes} nodes, found {node_count['count']}"
+        record = await node_result.single()
+        assert record["count"] == expected_nodes, f"Expected {expected_nodes} nodes, found {record['count']}"
 
         # Count relationships
         rel_result = await session.run("MATCH ()-[r]->() RETURN count(r) as count")
-        rel_count = await rel_result.single()
-        assert rel_count["count"] == expected_relationships, f"Expected {expected_relationships} relationships, found {rel_count['count']}"
+        record = await rel_result.single()
+        assert record["count"] == expected_relationships, f"Expected {expected_relationships} relationships, found {record['count']}"
 
 # --- Async Test Helpers ---
 

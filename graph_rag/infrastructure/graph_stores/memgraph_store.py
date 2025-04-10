@@ -4,11 +4,18 @@ import logging
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timezone
 import asyncio
+import uuid
 
 from neo4j import AsyncGraphDatabase, AsyncDriver
 from neo4j.exceptions import Neo4jError, ServiceUnavailable, AuthError
 import neo4j.time # Import neo4j.time for type checking
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import (
+    AsyncRetrying,
+    stop_after_attempt,
+    wait_fixed,
+    retry_if_exception_type,
+    before_sleep_log
+)
 
 from graph_rag.core.graph_store import GraphStore
 from graph_rag.domain.models import Document, Chunk, Entity, Relationship, Node
@@ -16,46 +23,18 @@ from graph_rag.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Define retryable exceptions
-_RETRY_EXCEPTIONS = (Neo4jError, ServiceUnavailable, ConnectionError, AuthError)
+# Define exceptions to retry on
+_RETRY_EXCEPTIONS = (ConnectionError, ServiceUnavailable)
 
 def _convert_neo4j_temporal_types(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Converts neo4j.time objects in a dictionary to Python datetime."""
-    converted = {}
+    """Converts Neo4j temporal types to standard Python types."""
+    converted_data = {}
     for key, value in data.items():
         if isinstance(value, (neo4j.time.DateTime, neo4j.time.Date, neo4j.time.Time)):
-            try:
-                # Use to_native() for conversion
-                converted_value = value.to_native()
-                # Ensure timezone awareness for datetime objects if conversion results in naive
-                if isinstance(converted_value, datetime) and converted_value.tzinfo is None:
-                     # Attempt to use original timezone if available, otherwise assume UTC
-                     original_tz = getattr(value, 'tzinfo', None)
-                     if original_tz:
-                         # pytz might be needed for full Neo4j timezone compatibility
-                         # For simplicity here, we'll assume UTC if conversion is naive
-                         # Or handle specific known tz types if needed.
-                         # This part might need refinement depending on Neo4j timezone usage.
-                         # Defaulting to UTC if conversion yields naive datetime.
-                         converted_value = converted_value.replace(tzinfo=timezone.utc) 
-                     else:
-                         # If original had no tz and native is naive, it's likely Local[Date]Time
-                         pass # Keep as naive
-                converted[key] = converted_value
-            except Exception as e:
-                logger.warning(f"Could not convert neo4j temporal type for key '{key}': {e}. Keeping original.")
-                converted[key] = value # Keep original if conversion fails
-        elif isinstance(value, dict):
-            converted[key] = _convert_neo4j_temporal_types(value) # Recursively convert nested dicts
-        elif isinstance(value, list):
-             # Convert temporal types within lists if necessary (simple check)
-             converted[key] = [
-                 item.to_native() if isinstance(item, (neo4j.time.DateTime, neo4j.time.Date, neo4j.time.Time)) else item 
-                 for item in value
-             ]
+            converted_data[key] = value.to_native()
         else:
-            converted[key] = value
-    return converted
+            converted_data[key] = value
+    return converted_data
 
 class MemgraphGraphRepository(GraphStore):
     """Optimized Memgraph implementation of the GraphStore interface."""
@@ -65,21 +44,20 @@ class MemgraphGraphRepository(GraphStore):
         Initializes the repository with an optional Neo4j driver instance.
         If no driver is provided, one will be created using settings.
         """
-        self._driver = driver
-        self._retry_decorator = retry(
+        if driver:
+            self._driver = driver
+            self._is_connected = True # Assume connected if driver is provided
+        else:
+            # If no driver is provided, initialize later in connect()
+            self._driver = None
+            self._is_connected = False
+        self.retryer = AsyncRetrying(
             stop=stop_after_attempt(settings.MEMGRAPH_RETRY_ATTEMPTS),
-            wait=wait_exponential(
-                multiplier=settings.MEMGRAPH_RETRY_WAIT_SECONDS,
-                min=1,
-                max=10
-            ),
-            retry=retry_if_exception_type(_RETRY_EXCEPTIONS),
-            before_sleep=lambda retry_state: logger.warning(
-                f"Retrying operation due to {retry_state.outcome.exception()}, "
-                f"attempt {retry_state.attempt_number}..."
-            )
+            wait=wait_fixed(settings.MEMGRAPH_RETRY_WAIT_SECONDS),
+            retry=retry_if_exception_type((ConnectionError, ServiceUnavailable)),
+            before_sleep=before_sleep_log(logger, logging.WARNING, exc_info=True), # Log exceptions before retrying
+            reraise=True,
         )
-        self._is_connected = False
         logger.info("MemgraphGraphRepository initialized.")
 
     async def connect(self) -> None:
@@ -133,28 +111,29 @@ class MemgraphGraphRepository(GraphStore):
 
     async def _execute_write_query(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> None:
         """Executes a write query with retry logic and transaction support."""
-        @self._retry_decorator
-        async def _execute():
+        async def _task_to_retry():
             async with self._get_driver.session() as session:
                 try:
                     await session.run(query, parameters or {})
                 except Neo4jError as e:
                     logger.error(f"Write query failed: {e} | Query: {query} | Params: {parameters}")
                     raise
-        await _execute()
+        await self.retryer(_task_to_retry)
 
     async def _execute_read_query(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Executes a read query with retry logic and transaction support."""
-        @self._retry_decorator
-        async def _execute():
+        async def _task_to_retry():
             async with self._get_driver.session() as session:
                 try:
                     result = await session.run(query, parameters or {})
-                    return [record.data() async for record in result]
+                    # Ensure result processing happens within the retry block if needed
+                    # Convert records immediately
+                    data = [record.data() async for record in result]
+                    return data # Return processed data
                 except Neo4jError as e:
                     logger.error(f"Read query failed: {e} | Query: {query} | Params: {parameters}")
                     raise
-        return await _execute()
+        return await self.retryer(_task_to_retry)
 
     async def clear_all_data(self) -> None:
         """Deletes all nodes and relationships from the graph."""
@@ -165,7 +144,7 @@ class MemgraphGraphRepository(GraphStore):
     async def add_document(self, document: Document):
         """Adds a document node to the graph."""
         logger.debug(f"Adding document {document.id}")
-        # Use model_dump() for Pydantic models
+        # Use .model_dump() for Pydantic v2 models
         props = {k: v for k, v in document.model_dump().items() if k not in {"id", "chunks", "type", "properties"}}
         # Ensure basic properties exist, add default or raise if needed
         # 'content' and 'metadata' should be handled by model_dump() if they are fields
@@ -215,7 +194,7 @@ class MemgraphGraphRepository(GraphStore):
     async def add_chunk(self, chunk: Chunk):
         """Adds a chunk node and links it to its document."""
         logger.debug(f"Adding chunk {chunk.id} for document {chunk.document_id}")
-        # Use model_dump() for Pydantic models
+        # Use .model_dump() for Pydantic v2 models
         props = {k: v for k, v in chunk.model_dump().items() if k not in {"id", "document_id", "type", "properties"}}
         # Ensure basic properties exist
         # props["content"] = chunk.content # Use content as per model
@@ -480,14 +459,13 @@ class MemgraphGraphRepository(GraphStore):
         if not entities and not relationships:
             return
 
-        # Use model_dump() for entities
+        # Use .model_dump() for Pydantic v2 entities
         entity_params = [
             {
                 "id": e.id,
                 "type": e.type, # Pass type for label creation
-                # Entity model doesn't have properties field directly, get from model_dump if needed
-                # Or assume properties are handled by the base Node logic if inherited
-                "props": e.model_dump(exclude={'id', 'type', 'created_at', 'updated_at'}, exclude_none=True) 
+                # Entity model doesn't have properties field directly, get from .model_dump() if needed
+                "props": e.model_dump(exclude={'id', 'type', 'created_at', 'updated_at'}, exclude_none=True)
             }
             for e in entities
         ]
@@ -514,7 +492,7 @@ class MemgraphGraphRepository(GraphStore):
                     "source_id": r.source_id,
                     "target_id": r.target_id,
                     "type": r.type, # Pass type for relationship creation
-                    "props": r.properties.copy() if r.properties else {} 
+                    "props": r.properties.copy() if r.properties else {}
                 }
                 for r in relationships
             ]
@@ -621,74 +599,88 @@ class MemgraphGraphRepository(GraphStore):
         RETURN n, r, e
         """
         
-        results = await self._execute_read_query(query, {"id": entity_id})
-        
+        # Execute query but get raw records, not just data()
+        records = []
+        async def _task_to_retry():
+            async with self._get_driver.session() as session:
+                try:
+                    result = await session.run(query, {"id": entity_id})
+                    # Collect raw records
+                    nonlocal records
+                    records = [record async for record in result]
+                except Neo4jError as e:
+                    logger.error(f"Read query failed: {e} | Query: {query} | Params: {{'id': entity_id}}")
+                    raise
+        await self.retryer(_task_to_retry)
+
+        # Process raw records
         entities = []
         relationships = []
         processed_node_ids = set()
         processed_rel_ids = set()
         
-        for result in results:
-            # Process neighbor node
-            neighbor_node_data = result["n"]
-            neighbor_id = neighbor_node_data.get('id')
+        for record in records: # Iterate through neo4j.ResultRecord objects
+            # Process neighbor node (convert properties from node object)
+            neighbor_node_obj = record["n"] # neo4j.graph.Node
+            neighbor_id = neighbor_node_obj.get('id') # Access properties via get()
             if neighbor_id and neighbor_id not in processed_node_ids:
-                 converted_neighbor_props = _convert_neo4j_temporal_types(neighbor_node_data)
-                 neighbor_labels = await self._execute_read_query("MATCH (n {id:$id}) RETURN labels(n) as lbls", {"id": neighbor_id})
-                 neighbor_type = neighbor_labels[0]['lbls'][0] if neighbor_labels and neighbor_labels[0]['lbls'] else 'Node'
+                 neighbor_props = dict(neighbor_node_obj) # Convert all properties
+                 converted_neighbor_props = _convert_neo4j_temporal_types(neighbor_props)
+                 neighbor_labels = list(neighbor_node_obj.labels)
+                 neighbor_type = neighbor_labels[0] if neighbor_labels else 'Node'
                  # Pop base fields from props 
                  created_at = converted_neighbor_props.pop("created_at", None)
                  updated_at = converted_neighbor_props.pop("updated_at", None)
-                 # Reconstruct appropriate model type (Node or Entity etc.) based on label
-                 # For simplicity, use Node; ideally map labels to domain models
+                 # Remove internal id if present
+                 converted_neighbor_props.pop("id", None) 
+                 
                  neighbor_model = Node(
                      id=neighbor_id,
                      type=neighbor_type,
-                     properties=converted_neighbor_props, # Pass remaining as properties
+                     properties=converted_neighbor_props,
                      created_at=created_at,
                      updated_at=updated_at
                  )
-                 entities.append(neighbor_model) # Add Node or specific type like Entity
+                 entities.append(neighbor_model)
                  processed_node_ids.add(neighbor_id)
-            else:
-                 neighbor_model = next((ent for ent in entities if ent.id == neighbor_id), None)
                 
             # Process source node (only need its ID for relationship)
-            source_node_data = result["e"]
-            source_id = source_node_data.get('id')
+            source_node_obj = record["e"] # neo4j.graph.Node
+            source_id = source_node_obj.get('id')
 
-            # Process relationship
-            rel_data = result["r"] # This is a neo4j.graph.Relationship object
-            rel_id = rel_data.id # Get internal Neo4j ID
-            if rel_id not in processed_rel_ids and source_id and neighbor_id:
-                rel_props = dict(rel_data) # Convert properties to dict
+            # Process relationship (use neo4j.graph.Relationship object)
+            # --- DEBUG --- START ---
+            try:
+                print(f"[DEBUG] Type of record['r']: {type(record['r'])}")
+                print(f"[DEBUG] Repr of record['r']: {repr(record['r'])}")
+            except Exception as e:
+                print(f"[DEBUG] Error printing debug info for record['r']: {e}")
+            # --- DEBUG --- END ---
+            rel_obj = record["r"] # neo4j.graph.Relationship
+            # Use element_id for a unique internal ID if needed, or generate UUID
+            rel_internal_id = rel_obj.element_id 
+            if rel_internal_id not in processed_rel_ids and source_id and neighbor_id:
+                rel_props = dict(rel_obj) # Convert properties to dict
                 converted_rel_props = _convert_neo4j_temporal_types(rel_props)
                 created_at = converted_rel_props.pop("created_at", None)
                 updated_at = converted_rel_props.pop("updated_at", None)
-                rel_type = rel_data.type
+                rel_type = rel_obj.type
                 
-                # Determine actual source/target based on relationship direction relative to query
-                # The query MATCH (e)-[r]-(n) means r could be outgoing or incoming from e
-                actual_source_id = rel_data.start_node.element_id.split(':')[-1] # Get node ID
-                actual_target_id = rel_data.end_node.element_id.split(':')[-1]
-                
-                # We need to map Neo4j's internal element IDs back to our application IDs ('id' property)
-                # This part is tricky without getting node properties. Assuming e.id and n.id are correct.
-                # The query returns e (source anchor) and n (neighbor). Rel direction defines source/target.
-                # Let's assume the Relationship model uses OUR IDs (doc_id, chunk_id etc.)
-                # We need to fetch these IDs if not directly available. Simplification: use e.id and n.id
+                # Determine actual source/target based on relationship object nodes
+                actual_source_node_id = rel_obj.start_node.get('id')
+                actual_target_node_id = rel_obj.end_node.get('id')
                 
                 rel_model = Relationship(
-                    id=str(rel_id), # Use neo4j internal ID or generate one if needed
-                    source_id=source_id if rel_data.start_node.element_id == result["e"].element_id else neighbor_id,
-                    target_id=neighbor_id if rel_data.end_node.element_id == result["n"].element_id else source_id,
+                    id=str(uuid.uuid4()), # Generate app-level ID
+                    source_id=actual_source_node_id,
+                    target_id=actual_target_node_id,
                     type=rel_type,
                     properties=converted_rel_props,
                     created_at=created_at,
                     updated_at=updated_at
                 )
                 relationships.append(rel_model)
-                processed_rel_ids.add(rel_id)
+                processed_rel_ids.add(rel_internal_id)
             
         return entities, relationships
 
