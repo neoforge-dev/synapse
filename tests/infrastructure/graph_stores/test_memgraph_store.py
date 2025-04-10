@@ -11,7 +11,7 @@ from neo4j import AsyncGraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 
 from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
-from graph_rag.domain.models import Document, Chunk, Node, Relationship, Edge
+from graph_rag.domain.models import Document, Chunk, Node, Relationship, Edge, Entity
 from graph_rag.config import settings
 from graph_rag.services.embedding import EmbeddingService
 
@@ -158,6 +158,67 @@ async def test_entity_operations(memgraph_repo: MemgraphGraphRepository, clean_d
     assert retrieved_node.id == entity_id
     assert retrieved_node.type == "Person"
     assert retrieved_node.properties == {"name": "John Doe", "age": 30}
+
+@pytest.mark.integration
+async def test_entity_interface_operations(memgraph_repo: MemgraphGraphRepository, clean_db: None):
+    """Test GraphStore interface methods using Entity model."""
+    # 1. Add Entity using add_entity
+    entity1_id = str(uuid.uuid4())
+    entity1 = Entity(
+        id=entity1_id,
+        name="Alice Entity",
+        type="Person",
+        metadata={"skill": "Python", "city": "Testville"}
+    )
+    await memgraph_repo.add_entity(entity1)
+
+    # 2. Retrieve using get_entity_by_id
+    retrieved_entity1 = await memgraph_repo.get_entity_by_id(entity1_id)
+    assert retrieved_entity1 is not None
+    assert isinstance(retrieved_entity1, Entity)
+    assert retrieved_entity1.id == entity1_id
+    assert retrieved_entity1.name == "Alice Entity"
+    assert retrieved_entity1.type == "Person"
+    assert retrieved_entity1.metadata == {"skill": "Python", "city": "Testville"}
+
+    # 3. Add related entities and relationships
+    entity2_id = str(uuid.uuid4())
+    entity2 = Entity(
+        id=entity2_id,
+        name="Bob Entity",
+        type="Person",
+        metadata={"skill": "Java"}
+    )
+    await memgraph_repo.add_entity(entity2)
+
+    relationship1 = Relationship(
+        id=str(uuid.uuid4()),
+        source_id=entity1.id,
+        target_id=entity2.id,
+        type="FRIENDS_WITH",
+        properties={"since": "2022"}
+    )
+    await memgraph_repo.add_relationship(relationship1)
+
+    # 4. Call get_neighbors
+    neighbors, relationships = await memgraph_repo.get_neighbors(entity1_id)
+
+    # 5. Verify neighbors are Entity objects
+    assert len(neighbors) == 1
+    assert len(relationships) == 1
+
+    neighbor_entity = neighbors[0]
+    assert isinstance(neighbor_entity, Entity)
+    assert neighbor_entity.id == entity2_id
+    assert neighbor_entity.name == "Bob Entity"
+    assert neighbor_entity.type == "Person"
+    assert neighbor_entity.metadata == {"skill": "Java"}
+    
+    neighbor_rel = relationships[0]
+    assert isinstance(neighbor_rel, Relationship)
+    assert neighbor_rel.source_id == entity1_id
+    assert neighbor_rel.target_id == entity2_id
+    assert neighbor_rel.type == "FRIENDS_WITH"
 
 @pytest.mark.integration
 async def test_relationship_operations(memgraph_repo: MemgraphGraphRepository, clean_db: None):

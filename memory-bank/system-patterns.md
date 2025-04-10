@@ -1,34 +1,32 @@
-# System Patterns: GraphRAG MCP
+# System Patterns: GraphRAG MCP (Optimized)
 
 ## Architecture
-- Clean Architecture: `domain`, `core`, `infra`, `api`, `cli` layers.
+- Clean Architecture: `domain`, `core`, `infra`, `api`, `cli`.
 
-## Key Components & Responsibilities
-- **API (`FastAPI`):** Exposes `GraphRAGEngine` functionality.
-- **CLI (`Typer`):** Provides command-line interface (uses HTTP client).
-- **Core (`GraphRAGEngine`):** Orchestrates ingestion and retrieval.
-- **Infrastructure (`GraphRepository`):** Interacts with Memgraph (via `neo4j` driver).
-- **Domain (`Pydantic`):** Defines data models and core interfaces.
+## Key Components
+- **API (`FastAPI`):** Exposes `GraphRAGEngine`.
+- **CLI (`Typer`):** Command-line interface.
+- **Core (`GraphRAGEngine`):** Orchestrates ingestion/retrieval.
+- **Infrastructure (`GraphStore`/`MemgraphGraphRepository`):** Interacts with Memgraph (`neo4j` driver).
+- **Domain (`Pydantic`):** Data models (`Node`, `Entity`, etc.), interfaces (`GraphStore`).
 
 ## Core Patterns
 - Dependency Injection (`FastAPI Depends`).
-- Repository Pattern for data access.
-- Async I/O for non-blocking operations.
+- Repository Pattern (`GraphStore`).
+- Async I/O.
 - Settings Management (`Pydantic`).
 
 ## Testing Patterns
-- **Types:** Unit, Integration, E2E (marked via `pytest` markers).
-- **Data:** Centralized fixtures, generators.
-- **Utilities:** Common helpers, async support.
-- **Config:** `pytest.ini`, coverage goals.
+- Unit, Integration markers (`pytest`).
+- Fixtures, Mocking (`unittest.mock`, `pytest-mock`).
+- Config: `pytest.ini`, `Makefile` targets (`test`, `test-memgraph`).
 
-## Graph Storage (Memgraph)
-- **Writes:** `MERGE` (idempotency), timestamps, transactions, retries.
-- **Queries:** Entity/relationship traversal, property search, neighbor exploration.
-- **Performance:** Connection pooling, batch ops (planned), error handling.
+## Graph Storage (Memgraph via `MemgraphGraphRepository`)
+- **Writes:** `MERGE` (idempotency), timestamps, async, retries (`tenacity`).
+- **Queries:** Node/Rel operations via `GraphStore` interface (`add_node`, `get_node_by_id`, `add_relationship`, `get_neighbors`).
 
 ## Search
-- Memgraph MAGE (Keyword/Vector planned).
+- (Planned: Memgraph MAGE for Keyword/Vector).
 
 ## Debugging Protocols (Summary)
 - **Systematic Approach:** Analyze -> Investigate -> Hypothesize -> Fix -> Verify.

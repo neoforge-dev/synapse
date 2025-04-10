@@ -1,30 +1,27 @@
-# Technical Context
+# Technical Context (Optimized)
 
-## Core Technologies
+## Core Tech
 - **Language:** Python 3.13+
 - **API:** FastAPI
-- **Database:** Memgraph (+ MAGE)
-- **Graph Client:** `pymgclient`, `neo4j` driver (via `gqalchmey` for schema? Check `infra`)
-- **NLP/Embeddings:** `sentence-transformers`, `nltk` (check usage)
-- **Data Validation:** Pydantic (v2+)
-- **Testing:** `pytest`, `pytest-asyncio`, `pytest-cov`
+- **Database:** Memgraph (+ MAGE planned)
+- **Graph Client:** `neo4j` async driver
+- **NLP/Embeddings:** `spacy`, `nltk` (needs setup/download)
+- **Data Models:** Pydantic v2+
+- **Testing:** `pytest`, `pytest-asyncio`, `pytest-cov`, `unittest.mock`
 - **Build/Tasks:** `uv`, Makefile
 
-## Development Setup
-- Python venv managed via `uv`.
-- `Makefile` for common commands (`lint`, `test`, `run`, etc.).
+## Development
+- Venv via `uv`.
+- `Makefile` for commands (`install-dev`, `lint`, `format`, `test`, `test-memgraph`, `run-api`, etc).
+- NLP data download: `make download-nlp-data` (requires `nltk_data/tokenizers/punkt_tab`, `spacy download en_core_web_sm`).
 
-## Key Technical Constraints
-- Python 3.13+ features/compatibility.
-- Memgraph capabilities and query language.
-- Strict type safety (Pydantic models, FastAPI responses).
-- Async operations for I/O (database, potentially LLMs).
+## Constraints
+- Python 3.13+.
+- Memgraph Cypher.
+- Async I/O (DB).
+- Strict typing.
 
-## Configuration
-- Managed via Pydantic Settings (env var support).
+## Config
+- Pydantic Settings (`.env` file support).
 
-## Testing Strategy
-- `pytest` framework with async support.
-- Mocking for unit tests, integration tests use fixtures.
-
-*(Core/Dev dependencies managed in `pyproject.toml`)* 
+*(Dependencies: `pyproject.toml`)* 

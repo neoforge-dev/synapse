@@ -59,6 +59,19 @@ test: ## Run unit tests (excluding integration tests)
 
 test-memgraph: ## Run Memgraph integration tests (requires Memgraph running)
 	@echo "INFO: Ensure Memgraph container is running via 'make run-memgraph' before executing this target."
+	@echo "INFO: Waiting for Memgraph to be ready..."
+	@max_attempts=10; \
+	attempt=0; \
+	while ! nc -z localhost 7687 && [ $$attempt -lt $$max_attempts ]; do \
+	  echo "Attempt $$((attempt+1))/$$max_attempts: Memgraph not yet available, waiting 2 seconds..."; \
+	  sleep 2; \
+	  attempt=$$((attempt+1)); \
+	done; \
+	if [ $$attempt -eq $$max_attempts ]; then \
+	  echo "ERROR: Memgraph failed to start within $$((max_attempts * 2)) seconds."; \
+	  exit 1; \
+	fi
+	@echo "INFO: Memgraph is ready. Running tests..."
 	# Add --cov-fail-under=0 to prevent failure but still report coverage. Explicitly add cov flags.
 	RUN_MEMGRAPH_TESTS=true $(UV) run pytest -v tests/infrastructure/graph_stores/ -m "$(TEST_MARKER_INTEGRATION)" --cov=$(PACKAGE_NAME) --cov-report=term-missing --cov-fail-under=0
 

@@ -1,13 +1,14 @@
-# Project Brief: GraphRAG MCP
+# Project Brief: GraphRAG MCP (Optimized)
 
-## Core Goal
-- Build a GraphRAG Minimum Viable Product (MVP) using Memgraph and Python (see `tech-context.md`).
-- Apply Clean Architecture principles.
+## Goal
+- Build GraphRAG MVP (Memgraph, Python, Clean Architecture).
 
 ## MVP Scope
-- **Ingestion:** Process documents -> Extract entities/relationships -> Store in Memgraph.
+- **Ingestion:** Docs -> Entities/Rels -> Memgraph.
 - **Retrieval:** Use graph context for queries.
 - **Interfaces:** FastAPI API, Typer CLI.
 
 ## Excluded (MVP)
-- Advanced graph algorithms, dedicated UI, Authentication/Authorization. 
+- Advanced graph features, UI, Auth.
+
+*(Refer to `tech-context.md` for tech stack)* 

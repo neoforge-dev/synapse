@@ -112,7 +112,8 @@ class MemgraphGraphRepository(GraphStore):
     async def _execute_write_query(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> None:
         """Executes a write query with retry logic and transaction support."""
         async def _task_to_retry():
-            async with self._get_driver.session() as session:
+            driver = await self._get_driver # Await the driver first
+            async with driver.session() as session: # Use the awaited driver
                 try:
                     await session.run(query, parameters or {})
                 except Neo4jError as e:
@@ -123,7 +124,8 @@ class MemgraphGraphRepository(GraphStore):
     async def _execute_read_query(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Executes a read query with retry logic and transaction support."""
         async def _task_to_retry():
-            async with self._get_driver.session() as session:
+            driver = await self._get_driver # Await the driver first
+            async with driver.session() as session: # Use the awaited driver
                 try:
                     result = await session.run(query, parameters or {})
                     # Ensure result processing happens within the retry block if needed
@@ -561,16 +563,33 @@ class MemgraphGraphRepository(GraphStore):
     async def get_entity_by_id(self, entity_id: str) -> Optional[Entity]:
         """Retrieves a single entity by its unique ID with error handling."""
         try:
-            # Assuming Entity maps to nodes with label 'Entity' or use get_node_by_id
             node = await self.get_node_by_id(entity_id)
-            if node and isinstance(node, Entity): # Check if the returned node is actually an Entity
-                 return node
-            elif node: # If it's a Node but not specifically Entity, log warning or handle as needed
-                 logger.warning(f"Retrieved node {entity_id} is of type {node.type}, not Entity.")
-                 # Optionally return None or try to cast if appropriate
+            if node:
+                # Attempt to convert the retrieved Node to an Entity
+                try:
+                    # Ensure properties is a dict even if None initially
+                    node_properties = node.properties if node.properties else {}
+                    # Extract name, default to id. Use pop to remove from dict.
+                    name = node_properties.pop("name", node.id)
+                    # Remaining items in node_properties are metadata
+                    entity = Entity(
+                        id=node.id,
+                        name=name, 
+                        type=node.type, # Use the actual type retrieved from the node
+                        metadata=node_properties, # Pass remaining properties as metadata
+                        created_at=node.created_at,
+                        updated_at=node.updated_at
+                    )
+                    # Optional: Log successful conversion for clarity
+                    # logger.debug(f"Successfully converted Node {entity_id} to Entity.")
+                    return entity
+                except Exception as conversion_error:
+                     logger.error(f"Failed to convert retrieved Node {entity_id} to Entity: {conversion_error}", exc_info=True)
+                     return None # Return None if conversion fails
+            # If node is None initially
             return None
         except Exception as e:
-            logger.error(f"Failed to get entity {entity_id}: {e}")
+            logger.error(f"Failed to get entity {entity_id}: {e}", exc_info=True)
             raise
 
     async def get_neighbors(
@@ -614,8 +633,8 @@ class MemgraphGraphRepository(GraphStore):
         await self.retryer(_task_to_retry)
 
         # Process raw records
-        entities = []
-        relationships = []
+        entities: List[Entity] = []
+        relationships: List[Relationship] = []
         processed_node_ids = set()
         processed_rel_ids = set()
         
@@ -627,21 +646,30 @@ class MemgraphGraphRepository(GraphStore):
                  neighbor_props = dict(neighbor_node_obj) # Convert all properties
                  converted_neighbor_props = _convert_neo4j_temporal_types(neighbor_props)
                  neighbor_labels = list(neighbor_node_obj.labels)
-                 neighbor_type = neighbor_labels[0] if neighbor_labels else 'Node'
+                 # Determine type, prioritize non-generic labels if present
+                 neighbor_type = 'Entity' # Default if no specific label
+                 specific_labels = [l for l in neighbor_labels if not l.startswith('_') and l != 'Node']
+                 if specific_labels:
+                     neighbor_type = specific_labels[0]
+                 
                  # Pop base fields from props 
                  created_at = converted_neighbor_props.pop("created_at", None)
                  updated_at = converted_neighbor_props.pop("updated_at", None)
                  # Remove internal id if present
                  converted_neighbor_props.pop("id", None) 
+                 # Extract name if present, else use ID
+                 name = converted_neighbor_props.pop("name", neighbor_id) 
                  
-                 neighbor_model = Node(
+                 # Construct Entity object
+                 neighbor_entity = Entity(
                      id=neighbor_id,
+                     name=name, # Use extracted or default name
                      type=neighbor_type,
-                     properties=converted_neighbor_props,
+                     metadata=converted_neighbor_props, # Remaining items are metadata
                      created_at=created_at,
                      updated_at=updated_at
                  )
-                 entities.append(neighbor_model)
+                 entities.append(neighbor_entity) # Append Entity object
                  processed_node_ids.add(neighbor_id)
                 
             # Process source node (only need its ID for relationship)
@@ -690,34 +718,50 @@ class MemgraphGraphRepository(GraphStore):
         limit: Optional[int] = None
     ) -> List[Entity]:
         """Searches for entities matching specific properties."""
-        where_clauses = [f"n.{k} = ${k}" for k in properties.keys()]
+        where_clauses = [f"n.`{k}` = ${k}" for k in properties.keys()]
         query = f"""
         MATCH (n)
         WHERE {' AND '.join(where_clauses)}
-        RETURN n
+        RETURN properties(n) as props, labels(n) as labels
         """
         if limit:
             query += f" LIMIT {limit}"
             
-        results = await self._execute_read_query(query, properties)
-        # Process results similarly to get_node_by_id, converting temporals
+        # Use a copy for parameters to avoid modifying the input dict
+        params = properties.copy()
+        if limit:
+            params["limit"] = limit # Add limit to params if needed for query
+
+        results = await self._execute_read_query(query, params)
         entities_found = []
-        for result in results:
-             node_data = result["n"]
-             converted_data = _convert_neo4j_temporal_types(node_data)
+        for record in results: # Process each record
+             node_props = record["props"]
+             labels = record["labels"]
+             converted_data = _convert_neo4j_temporal_types(node_props)
              entity_id = converted_data.pop('id', None)
              if not entity_id: continue
-             # Determine type from labels if possible, default to Entity
-             # This part needs refinement if labels are stored/retrieved
-             node_type = 'Entity' # Default or determine from labels
+             
+             # Determine type, prioritize specific labels
+             entity_type = 'Entity' # Default
+             specific_labels = [l for l in labels if not l.startswith('_') and l != 'Node']
+             if specific_labels:
+                 entity_type = specific_labels[0]
+                 
              created_at = converted_data.pop("created_at", None)
              updated_at = converted_data.pop("updated_at", None)
+             # Extract name if present, else use ID
+             name = converted_data.pop("name", entity_id) 
+             
+             # Remaining properties go into metadata
+             metadata = converted_data
+             
              entities_found.append(Entity(
-                 id=entity_id, \
-                 type=node_type, \
-                 properties=converted_data,\
-                 created_at=created_at,\
-                 updated_at=updated_at\
+                 id=entity_id,
+                 name=name, # Use extracted or default name
+                 type=entity_type,
+                 metadata=metadata,
+                 created_at=created_at,
+                 updated_at=updated_at
                  ))
         return entities_found
 

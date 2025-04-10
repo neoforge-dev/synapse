@@ -1,12 +1,11 @@
-# Product Context: GraphRAG MCP
+# Product Context: GraphRAG MCP (Optimized)
 
-## Value Proposition
-- Improve RAG accuracy using graph relationships for complex queries.
+## Value
+- Improve RAG with graph context.
 
 ## Target Users
-- RAG developers
-- Graph researchers
+- RAG developers, Graph researchers.
 
-## Key Requirements
-- Simple API & CLI interfaces.
-- Clear, reliable data contracts. 
+## Key UX/API Needs
+- Simple API/CLI.
+- Reliable data contracts (Pydantic models). 
