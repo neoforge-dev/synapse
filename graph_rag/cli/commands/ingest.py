@@ -11,7 +11,7 @@ import httpx
 
 from graph_rag.config import settings
 from graph_rag.cli.config import cli_config
-from graph_rag.infrastructure.repositories.graph_repository import GraphRepository
+from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
 from graph_rag.core.document_processor import SimpleDocumentProcessor
 from graph_rag.core.entity_extractor import SpacyEntityExtractor
 
@@ -54,7 +54,7 @@ async def make_api_request(
 async def process_and_store_document(
     file_path: Path,
     metadata_dict: Dict[str, Any],
-    graph_repository: GraphRepository,
+    graph_repository: MemgraphRepository,
     doc_processor: SimpleDocumentProcessor,
     entity_extractor: SpacyEntityExtractor
 ) -> None:
@@ -154,10 +154,10 @@ def ingest(
         typer.echo(f"Error: Could not load settings - {e}", err=True)
         raise typer.Exit(1)
 
-    graph_repository = GraphRepository(
-        uri=f"bolt://{local_settings.memgraph_host}:{local_settings.memgraph_port}",
-        user=local_settings.memgraph_user,
-        password=local_settings.memgraph_password.get_secret_value() if local_settings.memgraph_password else None
+    graph_repository = MemgraphRepository(
+        uri=f"bolt://{local_settings.MEMGRAPH_HOST}:{local_settings.MEMGRAPH_PORT}",
+        user=local_settings.MEMGRAPH_USERNAME,
+        password=local_settings.MEMGRAPH_PASSWORD.get_secret_value() if local_settings.MEMGRAPH_PASSWORD else None
     )
     doc_processor = SimpleDocumentProcessor()
     entity_extractor = SpacyEntityExtractor()

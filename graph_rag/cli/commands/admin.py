@@ -28,13 +28,13 @@ def check_health(
             print(f"API Status: {status.upper()}")
             if response.status_code != 200 or status != "healthy":
                 print("Warning: API reported an unhealthy status.", file=sys.stderr)
-                raise typer.Exit(code=1)
+                raise SystemExit(1)
             print("API appears healthy.")
             
     except httpx.RequestError as exc:
         logger.error(f"API request failed: {exc.request.method} {exc.request.url} - {exc}")
         print(f"Error: Failed to connect to the API at {api_url}. Is it running?", file=sys.stderr)
-        raise typer.Exit(code=1)
+        raise SystemExit(1)
     except httpx.HTTPStatusError as exc:
         logger.error(f"API returned an error: {exc.response.status_code} - {exc.response.text}")
         detail = exc.response.text
@@ -44,10 +44,10 @@ def check_health(
         except json.JSONDecodeError:
             pass
         print(f"Error: API health check failed with status {exc.response.status_code}. Detail: {detail}", file=sys.stderr)
-        raise typer.Exit(code=1)
+        raise SystemExit(1)
     except Exception as e:
         logger.error(f"An unexpected error occurred during health check: {e}", exc_info=True)
         print(f"An unexpected error occurred: {e}", file=sys.stderr)
-        raise typer.Exit(code=1)
+        raise SystemExit(1)
 
 # Add other admin commands later (e.g., config show, db status) 
