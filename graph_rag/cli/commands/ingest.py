@@ -146,7 +146,7 @@ def ingest(
     
     # Initialize components
     # Import settings here to ensure it loads correctly in CLI context
-    from graph_rag.config import Settings
+    from graph_rag.config.settings import Settings
     try:
         local_settings = Settings()
     except Exception as e:
