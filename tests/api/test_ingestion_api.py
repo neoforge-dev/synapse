@@ -13,15 +13,6 @@ import asyncio
 # Mark all tests in this module as async
 pytestmark = pytest.mark.asyncio
 
-@pytest.fixture
-def mock_graph_repository():
-    """Fixture to mock the GraphRepository."""
-    # Update patch target if necessary (check where GraphRepository is used)
-    with patch("graph_rag.api.routers.ingestion.get_graph_repository") as mock_get_repo:
-        mock_instance = AsyncMock()
-        mock_get_repo.return_value = mock_instance
-        yield mock_instance
-
 # Fixture for mocking background tasks (adjust target path as needed)
 @pytest.fixture
 def mock_background_tasks():
@@ -29,48 +20,12 @@ def mock_background_tasks():
         yield mock_add_task
 
 # --- Test Cases ---
+# Basic success/generation tests are covered by tests/api/test_ingestion.py
+# Keep tests focusing on specific API model validation and background task scheduling
 
 @pytest.mark.asyncio
-async def test_ingest_document_success(test_client: AsyncClient, mock_graph_repository: AsyncMock, mock_background_tasks):
-    """Test successful ingestion of a document via the API using the shared test_client."""
-    payload = {
-        "content": "This is a test document about Alice and Bob.",
-        "metadata": {"source": "api-test", "category": "testing"},
-        "document_id": "test-doc-api-01"
-    }
-
-    # Use the test_client fixture provided by conftest.py
-    response = await test_client.post("/api/v1/ingestion/documents", json=payload)
-
-    assert response.status_code == status.HTTP_202_ACCEPTED
-    response_data = response.json()
-    assert response_data["message"] == "Document ingestion started"
-    assert response_data["document_id"] == "test-doc-api-01"
-    assert response_data["status"] == "processing"
-    assert "task_id" in response_data
-    mock_background_tasks.assert_called_once() # Verify background task was added
-
-@pytest.mark.asyncio
-async def test_ingest_document_generate_id(test_client: AsyncClient, mock_graph_repository: AsyncMock, mock_background_tasks):
-    """Test ingestion when document_id is not provided (should be generated)."""
-    payload = {
-        "content": "Another test document.",
-        "metadata": {"source": "api-test-genid"}
-    }
-
-    response = await test_client.post("/api/v1/ingestion/documents", json=payload)
-
-    assert response.status_code == status.HTTP_202_ACCEPTED
-    response_data = response.json()
-    assert response_data["message"] == "Document ingestion started"
-    assert response_data["status"] == "processing"
-    assert "task_id" in response_data
-    assert response_data["document_id"].startswith("doc-")
-    mock_background_tasks.assert_called_once()
-
-@pytest.mark.asyncio
-async def test_ingest_document_empty_content(test_client: AsyncClient, mock_graph_repository: AsyncMock):
-    """Test ingestion attempt with empty content string."""
+async def test_ingest_document_empty_content(test_client: AsyncClient):
+    """Test ingestion attempt with empty content string (should fail validation)."""
     payload = {
         "content": "", # Empty content
         "metadata": {"source": "api-test-empty"}
@@ -78,12 +33,15 @@ async def test_ingest_document_empty_content(test_client: AsyncClient, mock_grap
 
     response = await test_client.post("/api/v1/ingestion/documents", json=payload)
 
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    # We expect a 422 from FastAPI's validation
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     response_data = response.json()
     assert "detail" in response_data
+    # Check for Pydantic v2 string_too_short error type
+    assert any("content" in err.get("loc", []) and err.get("type") == "string_too_short" for err in response_data.get("detail", []))
 
 @pytest.mark.asyncio
-async def test_ingest_document_missing_content(test_client: AsyncClient, mock_graph_repository: AsyncMock):
+async def test_ingest_document_missing_content(test_client: AsyncClient):
     """Test ingestion request missing the required 'content' field."""
     payload = {
         "metadata": {"source": "api-test-missing"}
@@ -97,7 +55,7 @@ async def test_ingest_document_missing_content(test_client: AsyncClient, mock_gr
     assert any("content" in err.get("loc", []) and "missing" in err.get("type", "") for err in response_data.get("detail", []))
 
 @pytest.mark.asyncio
-async def test_ingest_document_invalid_metadata_type(test_client: AsyncClient): # Removed mock repo as it's not used
+async def test_ingest_document_invalid_metadata_type(test_client: AsyncClient):
     """Test ingestion with metadata that is not a dictionary."""
     payload = {
         "content": "Valid content.",
@@ -109,19 +67,18 @@ async def test_ingest_document_invalid_metadata_type(test_client: AsyncClient): 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     response_data = response.json()
     assert "detail" in response_data
-    assert any("metadata" in err.get("loc", []) and "dict_type" in err.get("type", "") for err in response_data.get("detail", []))
+    assert any("metadata" in err.get("loc", []) and ("dict_type" in err.get("type", "") or "is_instance_of" in err.get("type", "")) for err in response_data.get("detail", []))
 
 # --- Background Processing Tests ---
-# Note: Testing the *actual* execution requires more complex setup (e.g., running worker)
-# These tests verify the API endpoint schedules the task correctly.
 
 @pytest.fixture
 def mock_process_document_task(): # Separate mock for the task function itself
-    with patch("graph_rag.api.routers.ingestion.process_document_background") as mock_task_func:
+    # Patch the correct location where the background task function is defined
+    with patch("graph_rag.api.routers.ingestion.process_document_with_service") as mock_task_func:
         yield mock_task_func
 
 @pytest.mark.asyncio
-async def test_background_processing_success(test_client: AsyncClient, mock_background_tasks, mock_process_document_task):
+async def test_background_processing_success(test_client: AsyncClient, mock_background_tasks, mock_process_document_task, mock_ingestion_service: AsyncMock):
     """Test successful scheduling of background processing."""
     payload = {
         "content": "Test document for background processing.",
@@ -137,37 +94,25 @@ async def test_background_processing_success(test_client: AsyncClient, mock_back
 
     # Verify BackgroundTasks.add_task was called
     mock_background_tasks.assert_called_once()
-    # Verify the correct function was passed to add_task
     args, kwargs = mock_background_tasks.call_args
-    assert args[0] == mock_process_document_task # Check if the mocked task func was the target
-    # Optionally, check args passed to the background task function
+
+    # Verify the correct function was passed to add_task
+    # The first argument to add_task should be the task function itself
+    assert args[0] is mock_process_document_task
+
+    # Verify the arguments passed *to* the background task function
+    # These are passed as kwargs to add_task
     assert kwargs['document_id'] == response_data["document_id"]
     assert kwargs['content'] == payload["content"]
-
-# Background error handling is tricky to test directly here without executing the task.
-# We assume the API endpoint itself works; error logging happens within process_document_background.
-# @pytest.mark.asyncio
-# async def test_background_processing_error_handling(test_client: AsyncClient, mock_background_tasks, mock_process_document_task):
-#     """Test API response when background task might error (logging happens in task)."""
-#     mock_process_document_task.side_effect = Exception("Simulated background error")
-
-#     payload = {
-#         "content": "Test document with potential processing error.",
-#         "metadata": {"source": "test-error"}
-#     }
-
-#     response = await test_client.post("/api/v1/ingestion/documents", json=payload)
-
-#     # API should still return 202 as the error is in background
-#     assert response.status_code == status.HTTP_202_ACCEPTED
-#     mock_background_tasks.assert_called_once()
-#     # Verification of logging would happen if the task actually ran & raised.
+    assert kwargs['metadata'] == payload["metadata"]
+    # Ensure the mock ingestion service instance from the dependency override is passed
+    assert kwargs['ingestion_service'] is mock_ingestion_service
 
 # --- Edge Cases ---
 
 @pytest.mark.asyncio
-async def test_ingest_large_document(test_client: AsyncClient, mock_graph_repository: AsyncMock, mock_background_tasks):
-    """Test ingestion of a large document."""
+async def test_ingest_large_document(test_client: AsyncClient, mock_background_tasks):
+    """Test ingestion of a large document (API acceptance test)."""
     large_content = "Test " * 10000  # ~50KB document
     payload = {
         "content": large_content,
@@ -184,8 +129,8 @@ async def test_ingest_large_document(test_client: AsyncClient, mock_graph_reposi
     mock_background_tasks.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_ingest_document_with_special_chars(test_client: AsyncClient, mock_graph_repository: AsyncMock, mock_background_tasks):
-    """Test ingestion of document with special characters."""
+async def test_ingest_document_with_special_chars(test_client: AsyncClient, mock_background_tasks):
+    """Test ingestion of document with special characters (API acceptance test)."""
     special_content = "Test document with special chars: \n\t\r\b\f\\\"'"
     payload = {
         "content": special_content,
@@ -216,7 +161,7 @@ async def test_concurrent_ingestion(test_client: AsyncClient, mock_background_ta
 
     # Create multiple ingestion tasks
     tasks = [
-        ingest_doc(test_client, f"Document {i}") for i in range(5) # Pass test_client
+        ingest_doc(test_client, f"Document {i}") for i in range(5)
     ]
 
     # Run all tasks concurrently

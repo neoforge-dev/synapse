@@ -22,6 +22,11 @@ from graph_rag.core.document_processor import SimpleDocumentProcessor
 from graph_rag.core.entity_extractor import SpacyEntityExtractor
 from graph_rag.core.persistent_kg_builder import PersistentKnowledgeGraphBuilder
 from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
+# Import IngestionService for dependency getter type hint
+from graph_rag.services.ingestion import IngestionService
+
+# Add import for AsyncDriver
+from neo4j import AsyncDriver
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +36,15 @@ logger = logging.getLogger(__name__)
 # Dependencies here will retrieve components from the app state.
 
 # --- Dependency Getters --- 
+
+def get_neo4j_driver(request: Request) -> AsyncDriver:
+    """Provides the Neo4j AsyncDriver instance from app state."""
+    # This getter might primarily be useful for tests via overrides,
+    # as lifespan usually manages the driver directly.
+    if not hasattr(request.app.state, 'neo4j_driver') or request.app.state.neo4j_driver is None:
+        logger.error("Neo4j Driver not found in application state. Was lifespan startup successful?")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database driver not available.")
+    return request.app.state.neo4j_driver
 
 def get_settings(request: Request) -> Settings:
     # Retrieve settings if stored in app state, otherwise use global
@@ -79,17 +93,28 @@ def get_graph_rag_engine(request: Request) -> GraphRAGEngine:
 
 def get_graph_repository(request: Request) -> MemgraphRepository:
     """Provides the GraphRepository instance from app state."""
+    # Standardize on graph_repository
     if not hasattr(request.app.state, 'graph_repository') or request.app.state.graph_repository is None:
         logger.error("GraphRepository not found in application state.")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Graph repository is not available.")
     return request.app.state.graph_repository
 
-def get_graph_repo(request: Request) -> MemgraphRepository:
-    if not hasattr(request.app.state, 'graph_repo') or request.app.state.graph_repo is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Graph repository not initialized")
-    return request.app.state.graph_repo
+# Remove get_graph_repo as it's redundant
+# def get_graph_repo(request: Request) -> MemgraphRepository:
+#     if not hasattr(request.app.state, 'graph_repo') or request.app.state.graph_repo is None:
+#         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Graph repository not initialized")
+#     return request.app.state.graph_repo
+
+def get_ingestion_service(request: Request) -> IngestionService:
+    """Provides the IngestionService instance from app state."""
+    if not hasattr(request.app.state, 'ingestion_service') or request.app.state.ingestion_service is None:
+        logger.error("IngestionService not found in application state.")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Ingestion service is not available.")
+    return request.app.state.ingestion_service
 
 # --- Dependency Type Aliases for Routers --- 
+# Add alias for Neo4j Driver
+Neo4jDriverDep = Annotated[AsyncDriver, Depends(get_neo4j_driver)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 MemgraphStoreDep = Annotated[MemgraphStore, Depends(get_memgraph_store)]
 EmbeddingServiceDep = Annotated[EmbeddingService, Depends(get_embedding_service)]
@@ -97,7 +122,8 @@ DocumentProcessorDep = Annotated[DocumentProcessor, Depends(get_document_process
 EntityExtractorDep = Annotated[EntityExtractor, Depends(get_entity_extractor)]
 KnowledgeGraphBuilderDep = Annotated[KnowledgeGraphBuilder, Depends(get_kg_builder)]
 GraphRAGEngineDep = Annotated[GraphRAGEngine, Depends(get_graph_rag_engine)]
-GraphRepositoryDep = Annotated[MemgraphRepository, Depends(get_graph_repository)]
+GraphRepositoryDep = Annotated[MemgraphRepository, Depends(get_graph_repository)] # Use standardized getter
+IngestionServiceDep = Annotated[IngestionService, Depends(get_ingestion_service)] # Corrected type hint
 
 # VectorSearcher, KeywordSearcher, GraphSearcher are usually implemented by the store/repo
 # We inject the store and the engine uses it for searching.

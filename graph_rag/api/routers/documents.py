@@ -20,20 +20,17 @@ async def create_document(
     repo: GraphRepositoryDep
 ):
     """Create a new document node in the graph."""
-    doc_id = document_in.id or str(uuid.uuid4()) # Ensure ID exists
-    logger.info(f"Attempting to create document with proposed ID: {doc_id}")
-    document = Document(
-        id=doc_id,
-        content=document_in.content,
-        metadata=document_in.metadata
-    )
+    doc_id = str(uuid.uuid4())
     try:
-        created_doc_id = await repo.save_document(document)
-        logger.info(f"Successfully created document {created_doc_id}")
-        return schemas.CreateResponse(id=created_doc_id)
+        document_to_add = Document(
+            id=doc_id, 
+            content=document_in.content, 
+            metadata=document_in.metadata or {} # Ensure metadata is a dict
+        )
+        await repo.add_document(document_to_add)
+        return schemas.CreateResponse(id=doc_id)
     except Exception as e:
-        # Logger in repository already logged details
-        logger.error(f"API Error: Failed to save document (proposed ID: {doc_id}). Error: {e}")
+        logger.error(f"API Error: Failed to create document. Error: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to save document. Check logs for details."

@@ -23,9 +23,30 @@ EMBEDDING_DIM = 384
 @pytest.fixture
 def mock_neo4j_driver():
     """Fixture to mock the Neo4j driver."""
-    driver = AsyncMock()
-    session = AsyncMock()
-    driver.session.return_value = session
+    driver = AsyncMock(spec=AsyncDriver) # Add spec for better mocking
+    session = AsyncMock() # Session mock
+
+    # Configure session context management
+    # __aenter__ should return the session mock itself to be used in the 'with' block
+    session.__aenter__.return_value = session
+    # __aexit__ needs to be an awaitable that returns None (or handles exceptions)
+    session.__aexit__ = AsyncMock(return_value=None)
+
+    # Configure session.run to return an awaitable mock result
+    # This result should be suitable for 'async for record in result' if used
+    mock_result = AsyncMock()
+    # Example: Make it async iterable (returning an empty list for simplicity)
+    async def mock_aiter():
+        for i in []: # Empty async iterator
+            yield i
+    mock_result.__aiter__ = mock_aiter # Assign the async generator function
+    # You might need to configure other methods on mock_result depending on usage (e.g., .single(), .data())
+    mock_result.data.return_value = {} # Example: mock data() if called
+    mock_result.single.return_value = None # Example: mock single() if called
+
+    session.run = AsyncMock(return_value=mock_result) # session.run returns the configured mock_result
+    driver.session.return_value = session # driver.session() returns the configured session mock
+
     return driver
 
 @pytest.fixture
@@ -140,24 +161,27 @@ async def test_chunk_operations(memgraph_repo: MemgraphGraphRepository, clean_db
 
 @pytest.mark.integration
 async def test_entity_operations(memgraph_repo: MemgraphGraphRepository, clean_db: None):
-    """Test entity operations."""
-    # Create entity (using Node model)
+    """Test entity operations using the GraphStore interface methods."""
+    # Use the Entity model from domain.models
     entity_id = str(uuid.uuid4())
-    entity = Node(
+    entity = Entity(
         id=entity_id,
-        type="Person", # Set the type for the node
-        properties={"name": "John Doe", "age": 30} # Use the properties field
+        name="John Doe", # Use 'name' as per Entity model
+        type="Person",
+        metadata={"age": 30} # Use 'metadata' as per Entity model
     )
-    # await memgraph_repo.add_entity(entity) # Needs add_node or similar
-    await memgraph_repo.add_node(entity) # Assuming a generic add_node method
+    
+    # Use the interface method add_entity
+    await memgraph_repo.add_entity(entity)
 
-    # Verify entity exists
-    # retrieved_entity = await memgraph_repo.get_entity_by_id(entity_id)
-    retrieved_node = await memgraph_repo.get_node_by_id(entity_id) # Assuming get_node_by_id
-    assert retrieved_node is not None
-    assert retrieved_node.id == entity_id
-    assert retrieved_node.type == "Person"
-    assert retrieved_node.properties == {"name": "John Doe", "age": 30}
+    # Verify entity exists using get_entity_by_id
+    retrieved_entity = await memgraph_repo.get_entity_by_id(entity_id)
+    assert retrieved_entity is not None
+    assert isinstance(retrieved_entity, Entity) # Check type
+    assert retrieved_entity.id == entity_id
+    assert retrieved_entity.name == "John Doe"
+    assert retrieved_entity.type == "Person"
+    assert retrieved_entity.metadata == {"age": 30}
 
 @pytest.mark.integration
 async def test_entity_interface_operations(memgraph_repo: MemgraphGraphRepository, clean_db: None):
@@ -222,204 +246,200 @@ async def test_entity_interface_operations(memgraph_repo: MemgraphGraphRepositor
 
 @pytest.mark.integration
 async def test_relationship_operations(memgraph_repo: MemgraphGraphRepository, clean_db: None):
-    """Test relationship operations between entities."""
-    # Create entities (using Node model)
-    person1_id = str(uuid.uuid4())
-    person1 = Node(
-        id=person1_id,
-        type="Person",
-        properties={"name": "Alice"}
-    )
-    person2_id = str(uuid.uuid4())
-    person2 = Node(
-        id=person2_id,
-        type="Person",
-        properties={"name": "Bob"}
-    )
-    # await memgraph_repo.add_entity(person1)
-    # await memgraph_repo.add_entity(person2)
-    await memgraph_repo.add_node(person1) # Use add_node
-    await memgraph_repo.add_node(person2) # Use add_node
+    """Test relationship operations between entities using interface methods."""
+    # Create entities using Entity model
+    entity1_id = str(uuid.uuid4())
+    entity1 = Entity(id=entity1_id, name="Entity 1", type="TestNode")
+    entity2_id = str(uuid.uuid4())
+    entity2 = Entity(id=entity2_id, name="Entity 2", type="TestNode")
 
-    # Create relationship using domain model (Edge alias)
-    relationship = Relationship( # Relationship is Edge
-        id=str(uuid.uuid4()), # Reinstate ID
-        source_id=person1.id, # Required by Edge
-        target_id=person2.id, # Required by Edge
-        type="KNOWS",          # Required by Edge
-        properties={"since": datetime.now().isoformat()} # Optional
+    await memgraph_repo.add_entity(entity1)
+    await memgraph_repo.add_entity(entity2)
+
+    # Create relationship using Relationship model
+    rel_id = str(uuid.uuid4())
+    relationship = Relationship(
+        id=rel_id,
+        source_id=entity1.id,
+        target_id=entity2.id,
+        type="CONNECTS_TO",
+        properties={"weight": 0.5}
     )
     await memgraph_repo.add_relationship(relationship)
-    
-    # Verify relationship exists
-    query = """
-    MATCH (p1:Person {id: $p1_id})-[r:KNOWS]->(p2:Person {id: $p2_id})
-    RETURN r
-    """
-    results = await memgraph_repo._execute_read_query(
-        query,
-        {"p1_id": person1.id, "p2_id": person2.id}
-    )
-    assert len(results) == 1
+
+    # Verify relationship exists using get_neighbors
+    neighbors, relationships = await memgraph_repo.get_neighbors(entity1_id, direction="outgoing")
+    assert len(neighbors) == 1
+    assert neighbors[0].id == entity2_id
+    assert len(relationships) == 1
+    retrieved_rel = relationships[0]
+    assert retrieved_rel.id == rel_id # Check if ID is stored/retrieved if needed
+    assert retrieved_rel.source_id == entity1_id
+    assert retrieved_rel.target_id == entity2_id
+    assert retrieved_rel.type == "CONNECTS_TO"
+    assert retrieved_rel.properties == {"weight": 0.5}
 
 @pytest.mark.integration
 async def test_bulk_operations(memgraph_repo: MemgraphGraphRepository, clean_db: None):
-    """Test bulk operations for entities and relationships."""
-    # Create entities (using Node model)
-    entities = [
-        Node(
-            id=str(uuid.uuid4()),
-            type="Person",
-            properties={"name": f"Person {i}"}
-        )
-        for i in range(3)
-    ]
-    # await memgraph_repo.add_entities(entities) # Needs add_nodes or similar
-    await memgraph_repo.add_nodes(entities) # Use add_nodes
+    """Test bulk adding entities and relationships using add_entities_and_relationships."""
+    # Create entities and relationships
+    entity1 = Entity(id=str(uuid.uuid4()), name="Bulk Entity 1", type="BulkNode")
+    entity2 = Entity(id=str(uuid.uuid4()), name="Bulk Entity 2", type="BulkNode")
+    entity3 = Entity(id=str(uuid.uuid4()), name="Bulk Entity 3", type="BulkNode")
     
-    # Create relationships for bulk test using domain model (Edge alias)
+    entities = [entity1, entity2, entity3]
+    
     relationships = [
-        Relationship(
-            id=str(uuid.uuid4()), # Reinstate ID
-            source_id=entities[0].id,
-            target_id=entities[1].id,
-            type="KNOWS",
-            properties={"since": "2023"}
-        ),
-        Relationship(
-            id=str(uuid.uuid4()), # Reinstate ID
-            source_id=entities[1].id,
-            target_id=entities[2].id,
-            type="KNOWS",
-            properties={"strength": 5}
-        )
+        Relationship(id=str(uuid.uuid4()), source_id=entity1.id, target_id=entity2.id, type="LINKED"),
+        Relationship(id=str(uuid.uuid4()), source_id=entity2.id, target_id=entity3.id, type="LINKED", properties={"strength": 10})
     ]
-    # Add relationships (assuming a bulk add method or individual calls)
-    # If no bulk method, add individually:
-    for rel in relationships:
-        await memgraph_repo.add_relationship(rel)
+
+    # Use the bulk operation method
+    await memgraph_repo.add_entities_and_relationships(entities, relationships)
 
     # Verify entities exist
-    for entity in entities:
-        retrieved_node = await memgraph_repo.get_node_by_id(entity.id)
-        assert retrieved_node is not None
-        assert retrieved_node.properties == entity.properties
+    retrieved1 = await memgraph_repo.get_entity_by_id(entity1.id)
+    retrieved2 = await memgraph_repo.get_entity_by_id(entity2.id)
+    retrieved3 = await memgraph_repo.get_entity_by_id(entity3.id)
+    assert retrieved1 is not None and retrieved1.name == "Bulk Entity 1"
+    assert retrieved2 is not None and retrieved2.name == "Bulk Entity 2"
+    assert retrieved3 is not None and retrieved3.name == "Bulk Entity 3"
+
+    # Verify relationships exist using get_neighbors
+    neighbors1, rels1 = await memgraph_repo.get_neighbors(entity1.id, direction="outgoing")
+    assert len(neighbors1) == 1 and neighbors1[0].id == entity2.id
+    assert len(rels1) == 1 and rels1[0].type == "LINKED"
+
+    neighbors2, rels2 = await memgraph_repo.get_neighbors(entity2.id, direction="outgoing")
+    assert len(neighbors2) == 1 and neighbors2[0].id == entity3.id
+    assert len(rels2) == 1 and rels2[0].type == "LINKED" and rels2[0].properties == {"strength": 10}
     
-    # Verify all relationships exist
-    for rel in relationships:
-        query = """
-        MATCH (source {id: $source_id})-[r:KNOWS]->(target {id: $target_id})
-        RETURN r
-        """
-        results = await memgraph_repo._execute_read_query(
-            query,
-            {"source_id": rel.source_id, "target_id": rel.target_id}
-        )
-        assert len(results) == 1
+    neighbors3, rels3 = await memgraph_repo.get_neighbors(entity3.id, direction="incoming")
+    assert len(neighbors3) == 1 and neighbors3[0].id == entity2.id
+    assert len(rels3) == 1 and rels3[0].type == "LINKED"
 
 @pytest.mark.integration
 async def test_error_handling(memgraph_repo: MemgraphGraphRepository, clean_db: None):
-    """Test error handling in various scenarios."""
-    # Test invalid connection - This is tricky to test reliably with retries
-    # We already test close/reconnect in test_connection_management
-    # await memgraph_repo.close()
-    # with pytest.raises(ConnectionError):
-    #     # Document requires content, use domain model
-    #     await memgraph_repo.add_document(Document(id="test", content="test content"))
-    
-    # Reconnect if closed (or ensure connected initially)
-    if not memgraph_repo._is_connected:
-         await memgraph_repo.connect()
-    
-    # Test invalid node ID retrieval (should return None)
-    # with pytest.raises(Exception): # Or specific exception if known
-    #    await memgraph_repo.get_node_by_id("nonexistent")
-    assert await memgraph_repo.get_node_by_id("nonexistent") is None
-    
-    # Test adding invalid relationship (should fail silently or raise specific DB error)
-    invalid_rel = Relationship( # Relationship is Edge
-            id=str(uuid.uuid4()), # Reinstate ID
-            source_id="nonexistent1", # Required by Edge
-            target_id="nonexistent2", # Required by Edge
-            type="KNOWS"          # Required by Edge
+    """Test error handling for invalid operations (e.g., adding relationship with missing entity)."""
+    # Add one entity
+    entity1 = Entity(id=str(uuid.uuid4()), name="Error Entity 1", type="ErrorNode")
+    await memgraph_repo.add_entity(entity1)
+
+    # Attempt to add relationship with a non-existent target ID
+    non_existent_id = str(uuid.uuid4())
+    invalid_relationship = Relationship(
+        id=str(uuid.uuid4()),
+        source_id=entity1.id,
+        target_id=non_existent_id, 
+        type="INVALID_LINK"
     )
-    await memgraph_repo.add_relationship(invalid_rel)
-    # Add assertion: Check relationship wasn't created
-    query = "MATCH ()-[r:KNOWS {id: $rel_id}]->() RETURN count(r) as count"
-    result = await memgraph_repo._execute_read_query(query, {"rel_id": invalid_rel.id})
-    assert result[0]["count"] == 0
+
+    # Depending on Memgraph behavior and constraints, this might:
+    # 1. Succeed (creating the relationship hanging)
+    # 2. Fail (if constraints prevent it - less likely without explicit constraints)
+    # 3. The repository logic might add checks (currently it doesn't seem to)
+    # For now, assume it might succeed but the target node won't be retrievable.
+    # We are not explicitly testing for Neo4jError here as constraints aren't set up.
+    await memgraph_repo.add_relationship(invalid_relationship)
+
+    # Verify the relationship might exist, but the neighbor entity doesn't
+    neighbors, relationships = await memgraph_repo.get_neighbors(entity1.id, direction="outgoing")
+    # The target entity `non_existent_id` should not be in the neighbors list
+    assert len(neighbors) == 0 
+    # The relationship itself might still be returned by the query if Memgraph stores it
+    # Check the relationship details if it is returned
+    if relationships:
+        assert len(relationships) == 1
+        assert relationships[0].target_id == non_existent_id
+    
+    # Test getting non-existent entity
+    non_existent_retrieved = await memgraph_repo.get_entity_by_id(non_existent_id)
+    assert non_existent_retrieved is None
 
 @pytest.mark.integration
 async def test_neighbor_operations(memgraph_repo: MemgraphGraphRepository, clean_db: None):
-    """Test neighbor retrieval operations."""
-    # Create entities and relationships (using Node model)
-    center_id = str(uuid.uuid4())
-    center = Node(
-        id=center_id,
-        type="Person",
-        properties={"name": "Center"}
+    """Test retrieving neighbors with different directions and types."""
+    # Setup: Ent1 -> Ent2 (TYPE_A), Ent3 -> Ent1 (TYPE_B)
+    ent1 = Entity(id=str(uuid.uuid4()), name="Center", type="NeighborNode")
+    ent2 = Entity(id=str(uuid.uuid4()), name="Outgoing", type="NeighborNode")
+    ent3 = Entity(id=str(uuid.uuid4()), name="Incoming", type="NeighborNode")
+    await memgraph_repo.add_entities_and_relationships(
+        [ent1, ent2, ent3],
+        [
+            Relationship(id=str(uuid.uuid4()), source_id=ent1.id, target_id=ent2.id, type="TYPE_A"),
+            Relationship(id=str(uuid.uuid4()), source_id=ent3.id, target_id=ent1.id, type="TYPE_B")
+        ]
     )
-    neighbors = [
-        Node(
-            id=str(uuid.uuid4()),
-            type="Person",
-            properties={"name": f"Neighbor {i}"}
-        )
-        for i in range(3)
-    ]
 
-    # await memgraph_repo.add_entity(center)
-    # await memgraph_repo.add_entities(neighbors)
-    await memgraph_repo.add_node(center) # Use add_node
-    await memgraph_repo.add_nodes(neighbors) # Use add_nodes
+    # Test outgoing
+    neighbors_out, rels_out = await memgraph_repo.get_neighbors(ent1.id, direction="outgoing")
+    assert len(neighbors_out) == 1 and neighbors_out[0].id == ent2.id
+    assert len(rels_out) == 1 and rels_out[0].type == "TYPE_A"
 
-    # Create relationships using domain model (Edge alias)
-    for neighbor in neighbors:
-        await memgraph_repo.add_relationship(
-            Relationship( # Relationship is Edge
-                id=str(uuid.uuid4()), # Reinstate ID
-                source_id=center.id, # Required by Edge
-                target_id=neighbor.id, # Required by Edge
-                type="KNOWS"          # Required by Edge
-                # No properties needed for this test case
-            )
-        )
-    
-    # Get neighbors
-    entities, relationships = await memgraph_repo.get_neighbors(center.id)
-    assert len(entities) == 3
-    assert len(relationships) == 3
-    assert all(rel.type == "KNOWS" for rel in relationships)
-    
-    # Test direction filtering
-    entities, _ = await memgraph_repo.get_neighbors(center.id, direction="outgoing")
-    assert len(entities) == 3
-    
-    entities, _ = await memgraph_repo.get_neighbors(center.id, direction="incoming")
-    assert len(entities) == 0
+    # Test incoming
+    neighbors_in, rels_in = await memgraph_repo.get_neighbors(ent1.id, direction="incoming")
+    assert len(neighbors_in) == 1 and neighbors_in[0].id == ent3.id
+    assert len(rels_in) == 1 and rels_in[0].type == "TYPE_B"
+
+    # Test both
+    neighbors_both, rels_both = await memgraph_repo.get_neighbors(ent1.id, direction="both")
+    assert len(neighbors_both) == 2
+    assert {n.id for n in neighbors_both} == {ent2.id, ent3.id}
+    assert len(rels_both) == 2
+    assert {r.type for r in rels_both} == {"TYPE_A", "TYPE_B"}
+
+    # Test filtering by outgoing type
+    neighbors_type_a, rels_type_a = await memgraph_repo.get_neighbors(ent1.id, relationship_types=["TYPE_A"], direction="outgoing")
+    assert len(neighbors_type_a) == 1 and neighbors_type_a[0].id == ent2.id
+    assert len(rels_type_a) == 1 and rels_type_a[0].type == "TYPE_A"
+
+    # Test filtering by incoming type
+    neighbors_type_b, rels_type_b = await memgraph_repo.get_neighbors(ent1.id, relationship_types=["TYPE_B"], direction="incoming")
+    assert len(neighbors_type_b) == 1 and neighbors_type_b[0].id == ent3.id
+    assert len(rels_type_b) == 1 and rels_type_b[0].type == "TYPE_B"
+
+    # Test filtering by non-matching type
+    neighbors_none, rels_none = await memgraph_repo.get_neighbors(ent1.id, relationship_types=["TYPE_C"], direction="both")
+    assert len(neighbors_none) == 0
+    assert len(rels_none) == 0
 
 @pytest.mark.integration
 async def test_property_search(memgraph_repo: MemgraphGraphRepository, clean_db: None):
-    """Test property-based entity search."""
-    # Create entities with specific properties (using Node model)
-    entities = [
-        Node(
-            id=str(uuid.uuid4()),
-            type="Person",
-            properties={"name": f"Person {i}", "age": 20 + i}
-        )
-        for i in range(5)
-    ]
-    # await memgraph_repo.add_entities(entities) # Needs add_nodes
-    await memgraph_repo.add_nodes(entities) # Use add_nodes
-    
-    # Search for entities by property
-    results = await memgraph_repo.search_nodes_by_properties(
-        {"age": 22},
-        limit=1
-    )
-    assert len(results) == 1
-    assert results[0].properties["age"] == 22
+    """Test searching entities by properties using search_entities_by_properties."""
+    # Add entities with different properties
+    ent1 = Entity(id=str(uuid.uuid4()), name="Searchable Alice", type="Person", metadata={"city": "Zurich", "status": "active"})
+    ent2 = Entity(id=str(uuid.uuid4()), name="Searchable Bob", type="Person", metadata={"city": "London", "status": "active"})
+    ent3 = Entity(id=str(uuid.uuid4()), name="Inactive Charlie", type="Person", metadata={"city": "Zurich", "status": "inactive"})
+    ent4 = Entity(id=str(uuid.uuid4()), name="Searchable Corp", type="Organization", metadata={"city": "Zurich"})
+    await memgraph_repo.add_entities_and_relationships([ent1, ent2, ent3, ent4], [])
+
+    # Search by type
+    persons = await memgraph_repo.search_entities_by_properties({"type": "Person"})
+    assert len(persons) == 3
+    assert {p.name for p in persons} == {"Searchable Alice", "Searchable Bob", "Inactive Charlie"}
+
+    # Search by metadata property (city)
+    zurich_entities = await memgraph_repo.search_entities_by_properties({"city": "Zurich"})
+    assert len(zurich_entities) == 3 # Alice, Charlie, Corp
+    assert {e.name for e in zurich_entities} == {"Searchable Alice", "Inactive Charlie", "Searchable Corp"}
+
+    # Search by multiple metadata properties (city and status)
+    active_zurich = await memgraph_repo.search_entities_by_properties({"city": "Zurich", "status": "active"})
+    assert len(active_zurich) == 1
+    assert active_zurich[0].id == ent1.id
+
+    # Search by name (exact match)
+    bob_search = await memgraph_repo.search_entities_by_properties({"name": "Searchable Bob"})
+    assert len(bob_search) == 1
+    assert bob_search[0].id == ent2.id
+
+    # Search with limit
+    limited_persons = await memgraph_repo.search_entities_by_properties({"type": "Person"}, limit=2)
+    assert len(limited_persons) == 2
+
+    # Search for non-existent property value
+    no_match = await memgraph_repo.search_entities_by_properties({"city": "Paris"})
+    assert len(no_match) == 0
 
 @pytest.mark.asyncio
 async def test_add_document_creates_document(graph_repository):

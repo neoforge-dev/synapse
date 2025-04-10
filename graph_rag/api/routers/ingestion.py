@@ -4,47 +4,35 @@ from typing import Callable, Any
 from fastapi import APIRouter, Depends, HTTPException, Body, status, BackgroundTasks
 
 from graph_rag.api.models import IngestRequest, IngestResponse
-from graph_rag.models import Document # Import core model
+from graph_rag.domain.models import Document # Import core model
 from graph_rag.core.document_processor import DocumentProcessor
 from graph_rag.core.entity_extractor import EntityExtractor
 from graph_rag.core.knowledge_graph_builder import KnowledgeGraphBuilder
 from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
+from graph_rag.api.dependencies import get_ingestion_service
+from graph_rag.services.ingestion import IngestionService
 
 logger = logging.getLogger(__name__)
 
 # Define a factory function type for dependencies to allow different ways of providing them
 DependencyFactory = Callable[[], Any]
 
-async def process_document(
-    document: Document,
-    doc_processor: DocumentProcessor,
-    entity_extractor: EntityExtractor,
-    kg_builder: KnowledgeGraphBuilder,
-    graph_repository: MemgraphRepository
+async def process_document_with_service(
+    document_id: str,
+    content: str,
+    metadata: dict,
+    ingestion_service: IngestionService
 ):
-    """Background task to process a document."""
+    """Background task to process a document using the IngestionService."""
     try:
-        # First, store the document in the graph
-        await graph_repository.create_document(document.id, document.content, document.metadata)
-        logger.info(f"Document {document.id} stored in graph.")
-
-        # Process document
-        processed_doc_chunks = doc_processor.process(document)
-        logger.info(f"Document {document.id} processed into {len(processed_doc_chunks.chunks)} chunks.")
-
-        # Extract entities
-        processed_doc_entities = entity_extractor.extract(processed_doc_chunks)
-        logger.info(f"Extracted {len(processed_doc_entities.entities)} entities and {len(processed_doc_entities.relationships)} relationships.")
-
-        # Build knowledge graph
-        if processed_doc_entities.entities or processed_doc_entities.relationships:
-            kg_builder.build(processed_doc_entities)
-            logger.info(f"Knowledge graph updated for document {document.id}.")
-        else:
-            logger.info(f"No entities/relationships found for document {document.id}, skipping graph build.")
-
+        await ingestion_service.ingest_document(
+            content=content,
+            metadata=metadata,
+            generate_embeddings=True
+        )
+        logger.info(f"Document {document_id} processed successfully.")
     except Exception as e:
-        logger.error(f"Background processing failed for document {document.id}: {e}", exc_info=True)
+        logger.error(f"Background processing failed for document {document_id}: {e}", exc_info=True)
 
 def create_ingestion_router(
     doc_processor_dep: DependencyFactory,
@@ -66,10 +54,7 @@ def create_ingestion_router(
     async def ingest_document(
         background_tasks: BackgroundTasks,
         payload: IngestRequest = Body(...),
-        doc_processor: DocumentProcessor = Depends(doc_processor_dep),
-        entity_extractor: EntityExtractor = Depends(entity_extractor_dep),
-        kg_builder: KnowledgeGraphBuilder = Depends(kg_builder_dep),
-        graph_repository: MemgraphRepository = Depends(graph_repository_dep)
+        ingestion_service: IngestionService = Depends(get_ingestion_service)
     ):
         """Asynchronous endpoint to ingest a document."""
         
@@ -78,21 +63,15 @@ def create_ingestion_router(
         
         # Create document with explicit ID
         doc_id = payload.document_id or f"doc-{uuid.uuid4()}"
-        document = Document(
-            id=doc_id,
-            content=payload.content,
-            metadata=payload.metadata or {}
-        )
-        logger.debug(f"[Req ID: {request_id}] Created document object with id: {doc_id}")
+        logger.debug(f"[Req ID: {request_id}] Using document ID: {doc_id}")
         
         # Add background task
         background_tasks.add_task(
-            process_document,
-            document=document,
-            doc_processor=doc_processor,
-            entity_extractor=entity_extractor,
-            kg_builder=kg_builder,
-            graph_repository=graph_repository
+            process_document_with_service,
+            document_id=doc_id,
+            content=payload.content,
+            metadata=payload.metadata or {},
+            ingestion_service=ingestion_service
         )
         
         return IngestResponse(

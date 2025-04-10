@@ -8,6 +8,7 @@ import nltk # Add nltk import
 import spacy # Add spacy import
 import subprocess # Keep subprocess for spaCy download check
 import sys # Add sys import
+import time # Add time import for sleep
 
 import asyncio
 from httpx import AsyncClient, ASGITransport # Import ASGITransport
@@ -23,7 +24,12 @@ from neo4j.exceptions import ServiceUnavailable, Neo4jError
 from graph_rag.config import settings
 from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 from graph_rag.core.entity_extractor import EntityExtractor, MockEntityExtractor
-from graph_rag.api.dependencies import get_entity_extractor, get_graph_repository
+# Use standardized getter for graph repository
+from graph_rag.api.dependencies import (
+    get_entity_extractor, get_graph_repository, get_ingestion_service, 
+    get_graph_rag_engine, get_neo4j_driver, # Existing getters
+    get_document_processor, get_kg_builder # Corrected: get_document_processor
+)
 from graph_rag.api.main import create_app
 from graph_rag.core.debug_tools import GraphDebugger
 
@@ -47,6 +53,9 @@ def nltk_punkt_downloader():
 def spacy_model_downloader():
     """Downloads the spaCy 'en_core_web_sm' model once per session if not already present."""
     model_name = "en_core_web_sm"
+    max_load_attempts = 3
+    load_attempt_delay = 2 # seconds
+
     try:
         spacy.load(model_name)
         logger.info(f"spaCy model '{model_name}' already available.")
@@ -56,10 +65,25 @@ def spacy_model_downloader():
         try:
             # Use sys.executable to ensure we use the same python as pytest
             command = [sys.executable, "-m", "spacy", "download", model_name]
-            subprocess.run(command, check=True, capture_output=True, text=True)
-            logger.info(f"spaCy model '{model_name}' downloaded successfully.")
-            # Verify download by trying to load again
-            spacy.load(model_name)
+            process = subprocess.run(command, check=True, capture_output=True, text=True)
+            logger.info(f"spaCy model '{model_name}' download command executed. Output:\\n{process.stdout}")
+            # Add a small delay before attempting to load
+            time.sleep(load_attempt_delay) 
+
+            # Verify download by trying to load again, with retries
+            for attempt in range(max_load_attempts):
+                try:
+                    spacy.load(model_name)
+                    logger.info(f"spaCy model '{model_name}' loaded successfully after download (attempt {attempt+1}).")
+                    return # Success, exit fixture
+                except OSError as load_err:
+                    logger.warning(f"Attempt {attempt+1}/{max_load_attempts} to load spaCy model '{model_name}' failed after download: {load_err}")
+                    if attempt < max_load_attempts - 1:
+                        time.sleep(load_attempt_delay) # Wait before retrying
+                    else:
+                        # Raise the last error if all attempts fail
+                        raise load_err 
+                        
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
             logger.error(f"Failed to download spaCy model '{model_name}': {e}")
             # Check if stderr is available and decode if bytes
@@ -73,9 +97,9 @@ def spacy_model_downloader():
                 else:
                      stderr_msg = str(e.stderr)
             pytest.fail(f"Failed to download required spaCy model '{model_name}'. Error: {e}. Stderr: {stderr_msg}")
-        except OSError as load_err:
-             logger.error(f"Failed to load spaCy model '{model_name}' even after download attempt: {load_err}")
-             pytest.fail(f"Failed to load required spaCy model '{model_name}' after download. Error: {load_err}")
+        except OSError as final_load_err:
+             logger.error(f"Failed to load spaCy model '{model_name}' even after download and retries: {final_load_err}")
+             pytest.fail(f"Failed to load required spaCy model '{model_name}' after download and retries. Error: {final_load_err}")
 
 # --- Application Fixture ---
 
@@ -100,21 +124,90 @@ def mock_graph_repo() -> AsyncMock:
     return AsyncMock()
 
 @pytest.fixture(scope="session")
-async def test_client(app: FastAPI, mock_graph_repo: AsyncMock) -> AsyncGenerator[AsyncClient, None]:
-    """Provides an async test client for the FastAPI app with dependency overrides."""
-    # Store original overrides
+def mock_neo4j_driver() -> AsyncMock:
+    """Provides a reusable AsyncMock for the Neo4j Driver."""
+    mock_driver = AsyncMock(spec=AsyncDriver)
+    mock_driver.verify_connectivity.return_value = None # Mock successful connectivity check
+    return mock_driver
+
+@pytest.fixture(scope="session")
+def mock_ingestion_service() -> AsyncMock:
+    """Provides a reusable AsyncMock for the IngestionService."""
+    mock = AsyncMock()
+    mock.ingest_document.side_effect = lambda **kwargs: {"document_id": "test-id", "chunk_ids": ["chunk-1"]}
+    mock.ingest_document_background.return_value = ("doc_id_123", "task_id_456")
+    return mock
+
+@pytest.fixture(scope="session")
+def mock_graph_rag_engine() -> AsyncMock:
+    """Provides a reusable AsyncMock for the GraphRAGEngine."""
+    return AsyncMock()
+
+@pytest.fixture(scope="session")
+def mock_doc_processor() -> AsyncMock:
+    """Provides a reusable AsyncMock for the DocumentProcessor."""
+    return AsyncMock()
+
+@pytest.fixture(scope="session")
+def mock_kg_builder() -> AsyncMock:
+    """Provides a reusable AsyncMock for the KnowledgeGraphBuilder."""
+    return AsyncMock()
+
+@pytest.fixture(scope="session")
+def mock_vector_store() -> AsyncMock:
+    """Provides a reusable AsyncMock for the VectorStore."""
+    return AsyncMock()
+
+@pytest.fixture(scope="session")
+async def test_client(
+    app: FastAPI, 
+    mock_graph_repo: AsyncMock, 
+    mock_ingestion_service: AsyncMock, 
+    mock_graph_rag_engine: AsyncMock, 
+    mock_neo4j_driver: AsyncMock,
+    mock_vector_store: AsyncMock,
+    mock_doc_processor: AsyncMock,
+    mock_kg_builder: AsyncMock
+) -> AsyncGenerator[AsyncClient, None]:
+    """Provides an async test client with state setup and dependency overrides."""
     original_overrides = app.dependency_overrides.copy()
     
-    # Apply overrides for testing
+    # --- Pre-populate app state BEFORE lifespan runs --- 
+    app.state.settings = settings 
+    app.state.neo4j_driver = mock_neo4j_driver 
+    app.state.graph_repository = mock_graph_repo
+    app.state.vector_store = mock_vector_store
+    app.state.entity_extractor = get_mock_entity_extractor()
+    app.state.doc_processor = mock_doc_processor
+    app.state.kg_builder = mock_kg_builder
+    app.state.graph_rag_engine = mock_graph_rag_engine 
+    app.state.ingestion_service = mock_ingestion_service
+
+    # --- Apply dependency overrides for direct endpoint injection (Depends) --- 
     app.dependency_overrides[get_entity_extractor] = get_mock_entity_extractor
-    app.dependency_overrides[get_graph_repository] = lambda: mock_graph_repo # Override graph repo
-    
-    # Correctly initialize AsyncClient using ASGITransport
+    app.dependency_overrides[get_graph_repository] = lambda: mock_graph_repo
+    app.dependency_overrides[get_ingestion_service] = lambda: mock_ingestion_service
+    app.dependency_overrides[get_graph_rag_engine] = lambda: mock_graph_rag_engine
+    app.dependency_overrides[get_neo4j_driver] = lambda: mock_neo4j_driver
+    app.dependency_overrides[get_document_processor] = lambda: mock_doc_processor
+    app.dependency_overrides[get_kg_builder] = lambda: mock_kg_builder
+
+    # Lifespan runs when the client starts
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
         
-    # Restore original overrides after tests
+    # Restore original overrides
     app.dependency_overrides = original_overrides
+    # Clear state
+    if hasattr(app.state, 'settings'): del app.state.settings
+    if hasattr(app.state, 'neo4j_driver'): del app.state.neo4j_driver
+    if hasattr(app.state, 'graph_repository'): del app.state.graph_repository
+    if hasattr(app.state, 'vector_store'): del app.state.vector_store
+    if hasattr(app.state, 'entity_extractor'): del app.state.entity_extractor
+    if hasattr(app.state, 'doc_processor'): del app.state.doc_processor
+    if hasattr(app.state, 'kg_builder'): del app.state.kg_builder
+    if hasattr(app.state, 'graph_rag_engine'): del app.state.graph_rag_engine
+    if hasattr(app.state, 'ingestion_service'): del app.state.ingestion_service
 
 @pytest.fixture(scope="function")
 def sync_test_client(app: FastAPI) -> TestClient:

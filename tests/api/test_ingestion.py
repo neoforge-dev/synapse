@@ -1,20 +1,10 @@
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import AsyncMock
 from httpx import AsyncClient
 from fastapi import status
 
 from graph_rag.api.schemas import DocumentIngestRequest, IngestionResponse
 from graph_rag.domain.models import Document
-
-
-@pytest.fixture
-def mock_ingestion_service():
-    """Fixture to mock the IngestionService."""
-    with patch("graph_rag.api.routers.ingestion.get_ingestion_service") as mock_get_service:
-        mock_instance = AsyncMock()
-        mock_instance.ingest_document_background.return_value = ("doc_id_123", "task_id_456")
-        mock_get_service.return_value = mock_instance
-        yield mock_instance
 
 
 @pytest.mark.asyncio
@@ -34,6 +24,9 @@ async def test_ingest_document_endpoint(
         "metadata": ingest_data.metadata
     }
 
+    # Reset mock to clear any previous interactions
+    mock_ingestion_service.reset_mock()
+
     response = await test_client.post("/api/v1/ingestion/documents", json=request_payload)
 
     assert response.status_code == status.HTTP_202_ACCEPTED
@@ -45,20 +38,17 @@ async def test_ingest_document_endpoint(
 
 @pytest.mark.asyncio
 async def test_ingest_document_handles_endpoint_error(
-    test_client: AsyncClient,
-    mock_ingestion_service: AsyncMock
+    test_client: AsyncClient
 ):
     """Test that the ingestion endpoint properly handles immediate errors (e.g., during request validation or before queuing task)."""
-    with patch("graph_rag.api.routers.ingestion.get_ingestion_service", side_effect=Exception("Service unavailable")):
+    # Missing required content field should trigger a validation error
+    response = await test_client.post(
+        "/api/v1/ingestion/documents",
+        json={
+            "metadata": {}
+        }
+    )
 
-        response = await test_client.post(
-            "/api/v1/ingestion/documents",
-            json={
-                "content": "Test document content",
-                "metadata": {}
-            }
-        )
-
-    assert response.status_code >= 500
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     data = response.json()
     assert "detail" in data

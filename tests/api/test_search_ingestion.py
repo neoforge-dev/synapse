@@ -12,36 +12,6 @@ from graph_rag.api import dependencies as deps # To override engine dependency
 from graph_rag.api.main import app # Import app for dependency override
 
 # --- Mocks --- 
-# Create reusable mock engine fixture
-@pytest_asyncio.fixture
-def mock_graph_rag_engine():
-    mock_engine = AsyncMock() # Create an async mock object
-    
-    # Mock process_and_store_document 
-    mock_engine.process_and_store_document = AsyncMock(return_value=None) # Returns None
-    
-    # Mock stream_context to be an async generator
-    async def mock_stream_context(*args, **kwargs):
-        # Simulate returning a couple of results
-        query = kwargs.get('query', '')
-        limit = kwargs.get('limit', 2)
-        count = 0
-        if "find me" in query.lower():
-            for i in range(limit):
-                 if count >= limit: break
-                 yield SearchResultData(
-                     chunk=ChunkData(id=f"chunk_{i}", text=f"Found text {i}", document_id=f"doc_{i}", embedding=[]),
-                     score=0.9 - i*0.1,
-                     document=DocumentData(id=f"doc_{i}", content="", metadata={"src": "mock"})
-                 )
-                 count += 1
-        # Yield nothing for other queries
-
-    mock_engine.stream_context = mock_stream_context 
-    # No need to mock retrieve_context as it uses stream_context internally
-    
-    return mock_engine
-
 # Override the engine dependency for tests in this module
 @pytest_asyncio.fixture(autouse=True) # Apply automatically to all tests in module
 def override_engine_dependency(mock_graph_rag_engine):

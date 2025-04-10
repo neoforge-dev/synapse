@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional, List
 
 class IngestRequest(BaseModel):
     """Request model for ingesting a single document."""
-    content: str = Field(..., description="The text content of the document to ingest.")
+    content: str = Field(..., description="The text content of the document to ingest.", min_length=1)
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Metadata associated with the document.")
     document_id: Optional[str] = Field(None, description="Optional explicit ID for the document. If not provided, one may be generated.")
 
