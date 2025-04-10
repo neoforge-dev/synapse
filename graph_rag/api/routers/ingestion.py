@@ -61,6 +61,15 @@ def create_ingestion_router(
         request_id = str(uuid.uuid4()) # Unique ID for this ingestion operation
         logger.info(f"[Req ID: {request_id}] Received ingestion request.")
         
+        # --- Input Validation ---
+        if not payload.content or payload.content.isspace():
+            logger.warning(f"[Req ID: {request_id}] Ingestion request rejected: Content is empty or whitespace.")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail="Document content cannot be empty or whitespace."
+            )
+        # --- End Validation ---
+        
         # Create document with explicit ID
         doc_id = payload.document_id or f"doc-{uuid.uuid4()}"
         logger.debug(f"[Req ID: {request_id}] Using document ID: {doc_id}")
