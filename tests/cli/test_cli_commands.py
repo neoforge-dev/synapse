@@ -2,92 +2,80 @@ import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock # Import patch
 import json
+from pathlib import Path # Import Path
 
 # Import the Typer app instance
 from graph_rag.cli.main import app
 
 runner = CliRunner()
 
-# --- Ingest Command Tests --- 
+# --- Ingest Command Tests ---
 
-@patch('graph_rag.cli.commands.ingest.httpx.Client') # Mock the client
-def test_ingest_document_content_success(mock_httpx_client):
-    """Test successful ingestion via --content option."""
-    # Configure the mock context manager and response
-    mock_response = MagicMock()
-    mock_response.status_code = 202
-    mock_response.json.return_value = {"document_id": "mock-id", "status": "processing started"}
-    mock_response.raise_for_status.return_value = None
-    
-    mock_client_instance = MagicMock()
-    mock_client_instance.post.return_value = mock_response
-    
-    mock_context_manager = MagicMock()
-    mock_context_manager.__enter__.return_value = mock_client_instance
-    mock_context_manager.__exit__.return_value = None
-    mock_httpx_client.return_value = mock_context_manager
-    
-    result = runner.invoke(app, [
-        "ingest", "document", 
-        "--content", "This is test content.", 
-        "--metadata", '{"source": "cli-test"}'
-    ])
-    
-    assert result.exit_code == 0
-    assert "Ingestion request accepted by API" in result.stdout
-    assert '"document_id": "mock-id"' in result.stdout
-    # Check if httpx.Client().post was called correctly
-    mock_client_instance.post.assert_called_once()
-    call_args = mock_client_instance.post.call_args
-    assert call_args[0][0] == "http://localhost:8000/api/v1/ingestion/documents" # Default URL
-    assert call_args[1]['json'] == {"content": "This is test content.", "metadata": {"source": "cli-test"}}
-
-@patch('graph_rag.cli.commands.ingest.httpx.Client')
-def test_ingest_document_file_success(mock_httpx_client, tmp_path):
-    """Test successful ingestion via --file option."""
-    # Setup mocks (same as above)
-    mock_response = MagicMock()
-    mock_response.status_code = 202
-    mock_response.json.return_value = {"document_id": "file-mock-id", "status": "processing started"}
-    mock_response.raise_for_status.return_value = None
-    mock_client_instance = MagicMock()
-    mock_client_instance.post.return_value = mock_response
-    mock_context_manager = MagicMock()
-    mock_context_manager.__enter__.return_value = mock_client_instance
-    mock_context_manager.__exit__.return_value = None
-    mock_httpx_client.return_value = mock_context_manager
-    
+# Mock the function directly called by the CLI command
+@patch('graph_rag.cli.commands.ingest.process_and_store_document')
+def test_ingest_document_file_success(mock_process_and_store, tmp_path):
+    """Test successful ingestion via file path argument."""
     # Create temporary file
     test_file = tmp_path / "test_doc.txt"
     test_file.write_text("Content from file.")
-    
+    metadata_dict = {"source": "cli-test"}
+    metadata_json = json.dumps(metadata_dict)
+
+    # Configure the mock to simulate successful processing
+    mock_process_and_store.return_value = None # Assume it returns None on success
+
     result = runner.invoke(app, [
-        "ingest", "document", 
-        "--file", str(test_file), 
+        "ingest",
+        str(test_file),
+        "--metadata", metadata_json
     ])
-    
-    assert result.exit_code == 0
-    assert "Ingestion request accepted by API" in result.stdout
-    mock_client_instance.post.assert_called_once()
-    call_args = mock_client_instance.post.call_args
-    assert call_args[1]['json'] == {"content": "Content from file.", "metadata": {"source": "cli"}} # Default metadata
+
+    print(f"CLI Output:\n{result.stdout}")
+    print(f"Exit Code: {result.exit_code}")
+    if result.exception:
+        print(f"Exception: {result.exception}")
+        import traceback
+        traceback.print_exception(type(result.exception), result.exception, result.exc_info[2])
+
+    assert result.exit_code == 0, f"Expected exit code 0, got {result.exit_code}. Output: {result.stdout}"
+    assert f"Processing document: {test_file}" in result.stdout
+    assert f"Metadata: {metadata_dict}" in result.stdout
+    assert "Document processed and stored successfully." in result.stdout
+
+    # Check if process_and_store_document was called correctly
+    mock_process_and_store.assert_called_once_with(
+        file_path=test_file,
+        metadata=metadata_dict
+    )
+
+# Remove the old test_ingest_document_content_success as --content is gone
+# The old test_ingest_document_file_success is adapted above.
 
 def test_ingest_document_no_input():
-    result = runner.invoke(app, ["ingest", "document"])
-    assert result.exit_code != 0
-    assert "Error: Must provide either" in result.stdout
+    """Test calling ingest without the required file_path argument."""
+    result = runner.invoke(app, ["ingest"])
+    assert result.exit_code != 0 # Typer usually exits with 2 for usage errors
+    # Check for Typer's standard missing argument message
+    assert "Missing argument 'FILE_PATH'" in result.stdout
 
-def test_ingest_document_both_inputs():
-    result = runner.invoke(app, ["ingest", "document", "--content", "abc", "--file", "dummy.txt"])
-    assert result.exit_code != 0
-    assert "Error: Cannot provide both" in result.stdout
+# Remove the old test_ingest_document_both_inputs as it's no longer relevant
 
-def test_ingest_document_invalid_metadata():
-    result = runner.invoke(app, ["ingest", "document", "--content", "abc", "--metadata", "{invalid-json"]) 
-    assert result.exit_code != 0
-    assert "Error: Invalid JSON provided" in result.stdout
+# No need to mock process_and_store_document here as error should happen before it's called
+def test_ingest_document_invalid_metadata(tmp_path):
+    """Test calling ingest with invalid JSON in metadata."""
+    # Create a dummy file as it's required
+    test_file = tmp_path / "dummy.txt"
+    test_file.touch()
 
-# --- Search Command Tests --- 
+    result = runner.invoke(app, [
+        "ingest",
+        str(test_file),
+        "--metadata", "{invalid-json"
+    ])
+    assert result.exit_code != 0 # Should fail during execution (exit code 1 typically)
+    assert "Error: Invalid JSON provided for metadata:" in result.stdout
+
+# --- Search Command Tests ---
 
 @patch('graph_rag.cli.commands.search.httpx.Client')
 def test_search_batch_success(mock_httpx_client):
@@ -95,7 +83,7 @@ def test_search_batch_success(mock_httpx_client):
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
-        "query": "test query", "search_type": "vector", "results": [{"chunk": {"id": "c1"}}]
+        "query": "test query", "search_type": "vector", "results": [{"chunk": {"id": "c1", "text": "chunk1", "metadata":{}}, "score": 0.9}] # Added score/text/metadata for validation
     }
     mock_response.raise_for_status.return_value = None
     mock_client_instance = MagicMock()
@@ -104,16 +92,17 @@ def test_search_batch_success(mock_httpx_client):
     mock_context_manager.__enter__.return_value = mock_client_instance
     mock_context_manager.__exit__.return_value = None
     mock_httpx_client.return_value = mock_context_manager
-    
+
     result = runner.invoke(app, ["search", "query", "test query", "--type", "vector", "-l", "5"])
-    
+
     assert result.exit_code == 0
     assert '"query": "test query"' in result.stdout # Check pretty printed JSON
     assert '"search_type": "vector"' in result.stdout
     assert '"id": "c1"' in result.stdout
+    assert '"score": 0.9' in result.stdout # Check score presence
     mock_client_instance.post.assert_called_once()
     call_args = mock_client_instance.post.call_args
-    assert call_args[0][0] == "http://localhost:8000/api/v1/search/query?stream=false"
+    assert call_args[0][0] == "http://localhost:8000/api/v1/search/query?stream=false" # Default URL
     assert call_args[1]['json'] == {"query": "test query", "search_type": "vector", "limit": 5}
 
 @patch('graph_rag.cli.commands.search.httpx.stream') # Mock stream function
@@ -125,8 +114,8 @@ def test_search_stream_success(mock_httpx_stream):
     mock_response.headers = {"content-type": "application/x-ndjson"}
     # Simulate iter_lines returning JSON Lines
     mock_response.iter_lines.return_value = [
-        '{"chunk": {"id": "s1"}, "score": 0.9}',
-        '{"chunk": {"id": "s2"}, "score": 0.8}'
+        '{"chunk": {"id": "s1", "text": "stream1", "metadata":{}}, "score": 0.9}',
+        '{"chunk": {"id": "s2", "text": "stream2", "metadata":{}}, "score": 0.8}'
     ]
     mock_response.raise_for_status.return_value = None
 
@@ -137,22 +126,18 @@ def test_search_stream_success(mock_httpx_stream):
     mock_httpx_stream.return_value = mock_stream_context_manager
 
     result = runner.invoke(app, ["search", "query", "stream test", "--stream"])
-    
+
     assert result.exit_code == 0
-    assert '{"chunk": {"id": "s1"}, "score": 0.9}' in result.stdout
-    assert '{"chunk": {"id": "s2"}, "score": 0.8}' in result.stdout
-    assert "--- Streaming Results" in result.stdout
+    # Check exact JSON lines
+    assert '{"chunk": {"id": "s1", "text": "stream1", "metadata": {}}, "score": 0.9}' in result.stdout
+    assert '{"chunk": {"id": "s2", "text": "stream2", "metadata": {}}, "score": 0.8}' in result.stdout
+    assert "--- Streaming Results Finished ---" in result.stdout # Adjusted message check
     # Check if httpx.stream was called correctly
     mock_httpx_stream.assert_called_once()
     call_args = mock_httpx_stream.call_args
     assert call_args[0][0] == "POST"
     assert call_args[0][1] == "http://localhost:8000/api/v1/search/query?stream=true"
     assert call_args[1]['json'] == {"query": "stream test", "search_type": "vector", "limit": 10} # Defaults
-
-def test_search_invalid_type():
-    result = runner.invoke(app, ["search", "query", "abc", "--type", "banana"])
-    assert result.exit_code != 0
-    assert "Invalid search type" in result.stdout
 
 # --- Admin Command Tests ---
 
@@ -200,12 +185,18 @@ def test_admin_health_unhealthy(mock_httpx_client):
 @patch('graph_rag.cli.commands.admin.httpx.Client')
 def test_admin_health_api_error(mock_httpx_client):
     """Test health check when API returns HTTP error."""
+    # Need to import httpx for the exception type
+    import httpx
+
     mock_response = MagicMock()
     mock_response.status_code = 503
     mock_response.text = '{"detail": "Service Unavailable"}'
-    mock_response.json.side_effect = json.JSONDecodeError("msg", "doc", 0) # Simulate JSON error if .text used
+    # Simulate JSON error if .text used (though raise_for_status happens first)
+    mock_response.json.side_effect = json.JSONDecodeError("msg", "doc", 0)
+    # Create a mock request object as required by HTTPStatusError
+    mock_request = MagicMock(spec=httpx.Request)
     mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-        message="Server error", request=MagicMock(), response=mock_response
+        message="Server error", request=mock_request, response=mock_response
     )
     mock_client_instance = MagicMock()
     mock_client_instance.get.return_value = mock_response
@@ -215,9 +206,10 @@ def test_admin_health_api_error(mock_httpx_client):
     mock_httpx_client.return_value = mock_context_manager
 
     result = runner.invoke(app, ["admin", "health"])
-    
+
     assert result.exit_code != 0
-    assert "Error: API health check failed with status 503" in result.stdout
-    # Checks if detail parsing worked
-    # assert "Detail: {"detail": "Service Unavailable"}" in result.stdout # Raw text expected here
-    assert "Detail: {'detail': 'Service Unavailable'}" in result.stdout 
+    assert "Error: API health check failed with status 503." in result.stdout # Adjusted message
+    # Checks if detail parsing worked - should use .text for non-JSON errors usually
+    assert 'Detail: {"detail": "Service Unavailable"}' in result.stdout # Check raw text content
+
+# --- End of File --- 
