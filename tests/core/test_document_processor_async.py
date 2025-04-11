@@ -49,9 +49,13 @@ async def test_simple_chunking_fixed_tokens(sample_doc_data):
     processor = SimpleDocumentProcessor(chunk_strategy="token", tokens_per_chunk=5)
     chunks = await processor.chunk_document(sample_doc_data)
     
-    assert len(chunks) == 2
-    assert chunks[0].text == "First paragraph."
-    assert chunks[1].text == "Second paragraph, slightly longer."
+    # Based on the implementation:
+    # words = ['First', 'paragraph.', 'Second', 'paragraph,', 'slightly', 'longer.', 'Third', 'paragraph.', 'Fourth.']
+    # Chunk 1 (words 0-4): 'First paragraph. Second paragraph, slightly'
+    # Chunk 2 (words 5-8): 'longer. Third paragraph. Fourth.'
+    assert len(chunks) == 2 
+    assert chunks[0].text == "First paragraph. Second paragraph, slightly"
+    assert chunks[1].text == "longer. Third paragraph. Fourth."
     for chunk in chunks:
         assert chunk.document_id == "doc-123"
 

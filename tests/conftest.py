@@ -160,7 +160,7 @@ def mock_vector_store() -> AsyncMock:
     """Provides a reusable AsyncMock for the VectorStore."""
     return AsyncMock()
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def test_client(
     app: FastAPI, 
     mock_graph_repo: AsyncMock, 
@@ -172,9 +172,26 @@ async def test_client(
     mock_kg_builder: AsyncMock
 ) -> AsyncGenerator[AsyncClient, None]:
     """Provides an async test client with state setup and dependency overrides."""
+    # Reset mocks for function scope if necessary
+    # (AsyncMock typically resets automatically, but be mindful of side effects)
+    mock_graph_repo.reset_mock()
+    mock_ingestion_service.reset_mock()
+    mock_graph_rag_engine.reset_mock()
+    mock_neo4j_driver.reset_mock()
+    mock_vector_store.reset_mock()
+    mock_doc_processor.reset_mock()
+    mock_kg_builder.reset_mock()
+    
+    # Re-apply side effects if they are needed consistently across tests
+    # (Example - adjust as needed for actual mock requirements)
+    mock_ingestion_service.ingest_document.side_effect = lambda **kwargs: {"document_id": "test-id", "chunk_ids": ["chunk-1"]}
+    mock_ingestion_service.ingest_document_background.return_value = ("doc_id_123", "task_id_456")
+    mock_neo4j_driver.verify_connectivity.return_value = None
+
     original_overrides = app.dependency_overrides.copy()
     
     # --- Pre-populate app state BEFORE lifespan runs --- 
+    # (Consider if state needs reset per function or if session state is okay)
     app.state.settings = get_settings() 
     app.state.neo4j_driver = mock_neo4j_driver 
     app.state.graph_repository = mock_graph_repo
@@ -199,16 +216,11 @@ async def test_client(
         
     # Restore original overrides
     app.dependency_overrides = original_overrides
-    # Clear state
+    # Clear state if necessary for function scope
+    # (Potentially redundant if lifespan handles teardown correctly)
     if hasattr(app.state, 'settings'): del app.state.settings
     if hasattr(app.state, 'neo4j_driver'): del app.state.neo4j_driver
-    if hasattr(app.state, 'graph_repository'): del app.state.graph_repository
-    if hasattr(app.state, 'vector_store'): del app.state.vector_store
-    if hasattr(app.state, 'entity_extractor'): del app.state.entity_extractor
-    if hasattr(app.state, 'doc_processor'): del app.state.doc_processor
-    if hasattr(app.state, 'kg_builder'): del app.state.kg_builder
-    if hasattr(app.state, 'graph_rag_engine'): del app.state.graph_rag_engine
-    if hasattr(app.state, 'ingestion_service'): del app.state.ingestion_service
+    # ... clear other state ...
 
 @pytest.fixture(scope="function")
 def sync_test_client(app: FastAPI) -> TestClient:
@@ -228,13 +240,6 @@ def setup_test_environment():
     os.environ["MEMGRAPH_RETRY_WAIT_SECONDS"] = "1"
     os.environ["MEMGRAPH_MAX_POOL_SIZE"] = "10"
     os.environ["MEMGRAPH_CONNECTION_TIMEOUT"] = "5"
-
-@pytest.fixture(scope="session")
-def event_loop() -> Generator:
-    """Create an instance of the default event loop for each test case."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 @pytest.fixture(scope="session")
 async def memgraph_connection() -> AsyncGenerator[AsyncGraphDatabase.driver, None]:

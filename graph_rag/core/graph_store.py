@@ -67,36 +67,35 @@ class MockGraphStore(GraphStore):
     def __init__(self):
         self.entities: Dict[str, Entity] = {}
         self.relationships: List[Relationship] = []
-        self.calls: Dict[str, List[Any]] = {
-            "add_entity": [],
-            "add_relationship": [],
-            "add_entities_and_relationships": [],
-            "get_entity_by_id": [],
-            "get_neighbors": [],
-            "search_entities_by_properties": []
-        }
+        self.nodes: Dict[str, Dict] = {} # Generic node storage
+        self.edges: List[Dict] = [] # Generic edge storage
         logger.info("MockGraphStore initialized.")
 
     def add_entity(self, entity: Entity):
-        logger.debug(f"MockGraphStore: Adding entity {entity.id} ({entity.name})")
+        # Safely access name from properties for logging
+        entity_name = entity.properties.get('name', '[name missing]')
+        logger.debug(f"MockGraphStore: Adding entity {entity.id} ({entity_name})")
         self.entities[entity.id] = entity
-        self.calls["add_entity"].append(entity)
+        # Also add to generic nodes
+        self.nodes[entity.id] = {
+            "id": entity.id, 
+            "label": entity.type, # Assuming type maps to label
+            "properties": entity.properties
+        }
 
     def add_relationship(self, relationship: Relationship):
-        logger.debug(f"MockGraphStore: Adding relationship {relationship.source.id} -> {relationship.target.id} ({relationship.type})")
-        # Basic check if entities exist (in a real store, this might be handled by constraints)
-        if relationship.source.id not in self.entities:
-            logger.warning(f"Source entity {relationship.source.id} not found for relationship.")
-            # Decide on behavior: raise error or just log?
-        if relationship.target.id not in self.entities:
-            logger.warning(f"Target entity {relationship.target.id} not found for relationship.")
-            
+        logger.debug(f"MockGraphStore: Adding relationship {relationship.type} from {relationship.source_id} to {relationship.target_id}")
         self.relationships.append(relationship)
-        self.calls["add_relationship"].append(relationship)
+        # Also add to generic edges
+        self.edges.append({
+            "source": relationship.source_id,
+            "target": relationship.target_id,
+            "type": relationship.type,
+            "properties": relationship.properties
+        })
 
     def add_entities_and_relationships(self, entities: List[Entity], relationships: List[Relationship]):
         logger.info(f"MockGraphStore: Bulk adding {len(entities)} entities and {len(relationships)} relationships.")
-        self.calls["add_entities_and_relationships"].append((entities, relationships))
         for entity in entities:
             self.add_entity(entity)
         for relationship in relationships:
@@ -108,26 +107,18 @@ class MockGraphStore(GraphStore):
         """Clears the mock store for test isolation."""
         self.entities = {}
         self.relationships = []
-        self.calls = {
-            "add_entity": [], 
-            "add_relationship": [], 
-            "add_entities_and_relationships": [],
-            "get_entity_by_id": [],
-            "get_neighbors": [],
-            "search_entities_by_properties": []
-            }
+        self.nodes = {}
+        self.edges = []
         logger.info("MockGraphStore cleared.")
 
     # --- Mock Query Implementations --- 
 
     def get_entity_by_id(self, entity_id: str) -> Optional[Entity]:
         logger.debug(f"MockGraphStore: Getting entity by id: {entity_id}")
-        self.calls["get_entity_by_id"].append(entity_id)
         return self.entities.get(entity_id)
         
     def get_neighbors(self, entity_id: str, relationship_types: Optional[List[str]] = None, direction: str = "both") -> Tuple[List[Entity], List[Relationship]]:
         logger.debug(f"MockGraphStore: Getting neighbors for {entity_id} (types: {relationship_types}, direction: {direction})")
-        self.calls["get_neighbors"].append((entity_id, relationship_types, direction))
         
         neighbor_entities: Dict[str, Entity] = {}
         connecting_relationships: List[Relationship] = []
@@ -160,7 +151,6 @@ class MockGraphStore(GraphStore):
 
     def search_entities_by_properties(self, properties: Dict[str, Any], limit: Optional[int] = None) -> List[Entity]:
         logger.debug(f"MockGraphStore: Searching entities by properties: {properties}, limit: {limit}")
-        self.calls["search_entities_by_properties"].append((properties, limit))
         
         matches = []
         for entity in self.entities.values():
@@ -187,3 +177,26 @@ class MockGraphStore(GraphStore):
                     
         logger.debug(f"MockGraphStore: Found {len(matches)} entities matching properties.")
         return matches 
+
+    # Implement other methods as needed for tests, returning mock data
+    async def get_neighbors(self, node_id: str, relationship_type: Optional[str] = None, direction: str = "out") -> List[Dict]:
+        # Simplified mock implementation
+        neighbors = []
+        if direction in ["out", "both"]:
+            for edge in self.edges:
+                if edge["source"] == node_id and (not relationship_type or edge["type"] == relationship_type):
+                    target_node = self.nodes.get(edge["target"])
+                    if target_node:
+                        neighbors.append(target_node) # Return the node dict
+        if direction in ["in", "both"]:
+            for edge in self.edges:
+                 if edge["target"] == node_id and (not relationship_type or edge["type"] == relationship_type):
+                    source_node = self.nodes.get(edge["source"])
+                    if source_node:
+                        neighbors.append(source_node)
+        logger.debug(f"MockGraphStore: Found {len(neighbors)} neighbors for {node_id}")
+        return neighbors
+
+    async def close(self) -> None:
+        logger.info("MockGraphStore: close() called.")
+        pass # No-op for mock 

@@ -33,15 +33,27 @@ class MockVectorStore(VectorStore):
     """In-memory mock implementation of VectorStore for testing."""
     
     def __init__(self):
-        # Store chunks by ID, assuming they might have embeddings already
-        self.chunks: Dict[str, Chunk] = {}
-        self.calls: Dict[str, List[Any]] = {
-            "add_chunks": [],
-            "search": []
-        }
+        self.chunks: List[Chunk] = []
         logger.info("MockVectorStore initialized.")
 
     def add_chunks(self, chunks: List[Chunk]):
+        self.chunks.extend(chunks)
+        logger.debug(f"MockVectorStore: Added {len(chunks)} chunks.")
+
+    async def search(self, query: str, top_k: int = 5) -> List[Tuple[Chunk, float]]:
+        # Simple keyword matching for mock search
+        results = []
+        for chunk in self.chunks:
+            # Use content attribute instead of text
+            if query.lower() in chunk.content.lower(): 
+                # Assign a mock score (e.g., 1.0 for match, decay could be added)
+                results.append((chunk, 1.0)) 
+        
+        # Sort by score (descending) and return top_k
+        # Since score is mock, just take the first top_k found
+        return results[:top_k]
+
+    async def get_all_chunks(self) -> List[Chunk]:
         logger.info(f"MockVectorStore: Adding {len(chunks)} chunks.")
         self.calls["add_chunks"].append(chunks)
         for chunk in chunks:

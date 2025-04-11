@@ -3,6 +3,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Dict
 import uuid # Added for ID generation
+import re # Added import
 
 from graph_rag.models import Chunk, Entity, Relationship, ProcessedDocument, Document
 
