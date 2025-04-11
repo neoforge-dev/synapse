@@ -3,7 +3,7 @@ import os
 from pydantic_settings import SettingsConfigDict
 
 # Adjust import path based on your project structure
-from graph_rag.config.settings import Settings, SettingsConfigDict
+from graph_rag.config.settings import Settings
 
 # Define the path to a temporary test .env file relative to this test file
 TEST_ENV_FILE_PATH = os.path.join(os.path.dirname(__file__), '.env.test')
@@ -31,7 +31,6 @@ def create_test_env_file():
 @pytest.fixture(scope="module")
 def settings_with_test_env(tmp_path_factory):
     """Fixture to create a temporary .env file and load settings from it."""
-    # ... (env file creation remains the same)
     env_path = tmp_path_factory.mktemp("config_test") / ".env.test"
     env_content = """
     APP_NAME="TestGraphRAG"
@@ -44,18 +43,14 @@ def settings_with_test_env(tmp_path_factory):
     """
     env_path.write_text(env_content)
 
-    # Force Pydantic to load from this specific file
-    original_config = Settings.model_config
-    Settings.model_config = SettingsConfigDict(
-        env_file=str(env_path), env_file_encoding='utf-8', extra='ignore'
-    )
-    settings = Settings()
-    Settings.model_config = original_config # Restore
+    # Instantiate Settings directly pointing to the test env file
+    settings = Settings(_env_file=str(env_path), _env_file_encoding='utf-8')
     return settings
 
 def test_settings_load_defaults():
     """Test loading settings without any .env file (using defaults)."""
-    # Temporarily override config to ensure no .env is loaded
+    # Assumes no .env file exists in the default location or parent dirs
+    # Or, explicitly point to a non-existent file:
     original_config = Settings.model_config
     Settings.model_config = SettingsConfigDict(
         env_file='.env.nonexistent', env_file_encoding='utf-8', extra='ignore'
@@ -63,24 +58,28 @@ def test_settings_load_defaults():
     settings = Settings()
     Settings.model_config = original_config # Restore
 
-    assert settings.APP_NAME == "graph-rag-mcp" # Corrected expected default
+    assert settings.APP_NAME == "GraphRAG MCP"
     assert settings.DEBUG is False
     assert settings.MEMGRAPH_HOST == "localhost"
     assert settings.MEMGRAPH_PORT == 7687
     assert settings.get_memgraph_uri() == "bolt://localhost:7687"
+    assert settings.EMBEDDING_MODEL_NAME == "all-MiniLM-L6-v2"
+    assert settings.VECTOR_SEARCH_SIMILARITY_THRESHOLD == 0.7
 
 def test_settings_load_from_env_file(settings_with_test_env):
     """Test loading settings from the temporary .env.test file."""
     settings = settings_with_test_env
-
+    
     assert settings.APP_NAME == "TestGraphRAG"
     assert settings.DEBUG is True
     assert settings.MEMGRAPH_HOST == "testhost"
     assert settings.MEMGRAPH_PORT == 1234
     assert settings.get_memgraph_uri() == "bolt://testhost:1234" # Check constructed URI
-    assert settings.MEMGRAPH_USERNAME == "testuser"
-    assert settings.MEMGRAPH_PASSWORD is None # Password was commented out
-    assert settings.VECTOR_STORE_TYPE == "chroma"
+    assert settings.EMBEDDING_MODEL_NAME == "test-model"
+    assert settings.VECTOR_SEARCH_SIMILARITY_THRESHOLD == 0.9
+    
+    # Check that extra variables are ignored
+    assert not hasattr(settings, "EXTRA_VAR")
 
 def test_settings_memgraph_uri_override():
     """Test that MEMGRAPH_URI overrides host/port if provided."""
