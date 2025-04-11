@@ -113,6 +113,13 @@ class IngestionService:
                 if not hasattr(chunk, 'embedding'):
                      chunk.embedding = None
                      
+                # --- Add debug print here ---
+                print(f"DEBUG: Before save_chunk - Chunk ID: {chunk.id}, Embedding is None: {chunk.embedding is None}")
+                if chunk.embedding is not None:
+                    # Limit printing large embeddings
+                    embedding_preview = str(chunk.embedding[:5]) + ('...' if len(chunk.embedding) > 5 else '') 
+                    print(f"DEBUG: Embedding value preview: {embedding_preview}")
+                     
                 chunk_id = await self.graph_repo.save_chunk(chunk)
                 chunk_ids.append(chunk_id)
                 

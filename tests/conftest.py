@@ -309,6 +309,11 @@ def sample_chunk() -> dict[str, Any]:
         "embedding": [0.1, 0.2, 0.3]
     }
 
+@pytest.fixture
+def sample_text() -> str:
+    """Provides a simple sample text for testing."""
+    return "Alice lives in Wonderland. Bob works at OpenAI."
+
 # --- Debugging Fixtures ---
 
 @pytest.fixture(scope="function")

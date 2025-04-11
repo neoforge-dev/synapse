@@ -1,16 +1,16 @@
 # Progress
 
-## Working
-- FastAPI structure setup
-- GraphStore interface defined, implemented by MemgraphRepository
-- Core domain models (Document, Chunk, Entity, Relationship, Node)
-- Test framework structure
+## Completed
+- FastAPI app structure.
+- `GraphStore` interface defined & `MemgraphGraphRepository` implemented.
+- Core domain models created (`Document`, `Chunk`, `Node`, etc.).
+- Test framework (`pytest`, async support) configured.
+- `pymgclient` integrated & core tests passing (SSL test skipped).
 
-## Blocked
-- **CRITICAL:** Test failures preventing progress (see active-context.md)
-- Async handling in repository and tests
+## Blocked By
+- Integration test failures (API/CLI, NLP, `GraphStore`). See `active-context.md`.
 
-## Next Development Phases
-1. Fix test failures, especially async mocking
-2. Implement ingestion pipeline
-3. Develop query engine with graph context 
+## Next Steps
+1. Fix integration tests.
+2. Implement Ingestion Pipeline.
+3. Implement Query Engine. 

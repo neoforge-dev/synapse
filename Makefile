@@ -37,7 +37,7 @@ help: ## Display this help screen
 
 # Renamed target to make intent clear
 install-deps: ## Install Python dependencies for development using uv
-	$(UV) pip install --system -e .[dev]
+	$(UV) pip install -e .[dev]
 
 download-nlp-data: install-deps ## Download necessary NLTK and spaCy data models (Requires dependencies installed)
 	@echo "INFO: Downloading NLTK 'punkt'..."

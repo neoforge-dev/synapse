@@ -1,21 +1,22 @@
 # Technical Stack
 
 ## Core
-- Python 3.13+
-- FastAPI, Typer CLI
-- Memgraph DB + neo4j async driver
-- NLP: spacy, nltk
-- Pydantic v2+ models
-- pytest + async support
+- Python 3.12+
+- FastAPI & Typer (API/CLI)
+- Memgraph DB (+ `pymgclient` driver)
+- NLP: `spacy`, `nltk`
+- Pydantic v2+ (Models, Settings)
+- `pytest` (+ `pytest-asyncio`, `unittest.mock`)
 
-## Development
-- uv for venv/package management
-- Makefile commands (install-dev, test, test-memgraph)
-- NLP setup: `make download-nlp-data`
+## Development Env
+- `uv` (Package/Venv Management)
+- `Makefile` (install-dev, test, test-memgraph, download-nlp-data)
+- Docker (Memgraph instance)
 
-## Requirements
-- Async I/O for DB operations
-- Strict typing
-- Environment config via Pydantic Settings
+## Key Requirements
+- Async I/O (DB, API)
+- Strict Typing
+- Env Var Config (Pydantic Settings)
+- Running Memgraph (Ports: 7687, 7444, 3000)
 
 *(Dependencies: `pyproject.toml`)* 

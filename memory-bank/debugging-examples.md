@@ -1,157 +1,63 @@
 # Debugging Examples: GraphRAG MCP
 
-## Example 1: Document Ingestion Error
+## Debugging Pattern Summary
+1.  **Observe:** Identify symptom (e.g., test failure, error log).
+2.  **Gather Info:** Check inputs, outputs, state (logs, DB queries, state capture).
+3.  **Hypothesize:** Formulate potential causes based on info and system knowledge.
+4.  **Verify:** Test hypotheses using targeted checks (specific queries, code inspection, debuggers).
+5.  **Resolve:** Implement the fix based on verified cause.
+6.  **Document:** Update memory bank if needed.
 
-### Error Context
-- Test: `test_ingest_command.py`
-- Error Type: State Transition Error
-- Symptom: Document nodes created but relationships missing
+---
 
-### Applying First Principles
+## Example 1: Ingestion - Missing Relationships
 
-#### 1. Information Gathering
-```python
-# State Capture
-MATCH (d:Document) RETURN d;
-MATCH (d:Document)-[r]->() RETURN d, r;
+- **Symptom:** Document nodes exist, but `CONTAINS` relationships to chunks are missing after ingestion.
+- **Potential Causes:**
+    - Transaction commits before relationship creation.
+    - Entity/Chunk ID mismatch during linking.
+    - Graph constraint violation.
+    - Error in `GraphStore.create_relationship` implementation.
+- **Verification:**
+    - `MATCH (d:Document)-[r:CONTAINS]->(c:Chunk) RETURN d,r,c;` (Check if *any* exist).
+    - Check transaction logs/order of operations in `IngestionService`.
+    - Inspect IDs passed to `graph_repo.create_relationship`.
+    - Review `MemgraphGraphRepository.add_relationship` logic.
+- **Resolution Type:** Fix transaction scope, relationship creation logic, or ID handling.
 
-# Input Validation
-- Document content: Valid
-- Entity extraction: Successful
-- Graph write transaction: Committed
-```
+---
 
-#### 2. Hypothesis Formation
-1. **Transaction Scope**
-   - Hypothesis: Transaction commits before relationship creation
-   - Verification: Check transaction logs
-   - Impact: High (data integrity)
+## Example 2: Query - Incorrect Context
 
-2. **Entity Mapping**
-   - Hypothesis: Entity IDs mismatch between extraction and storage
-   - Verification: Compare extracted vs stored entities
-   - Impact: Medium (data consistency)
+- **Symptom:** Query returns irrelevant or incomplete context chunks.
+- **Potential Causes:**
+    - Incorrect graph traversal path in query engine.
+    - Flawed context assembly logic (ordering, filtering).
+    - Poor vector search results (embedding quality, search query).
+    - Query preprocessing alters meaning.
+- **Verification:**
+    - `EXPLAIN` graph query used for context retrieval.
+    - Log/Inspect intermediate results (vector search hits, graph neighbors).
+    - Compare raw vs. processed query text.
+    - Analyze `QueryEngine` context assembly steps.
+- **Resolution Type:** Optimize graph query, fix context assembly, improve embedding/search strategy.
 
-3. **Graph Constraints**
-   - Hypothesis: Missing constraint prevents relationship creation
-   - Verification: Check schema constraints
-   - Impact: Low (configuration)
+---
 
-#### 3. Verification
-```python
-# Transaction Log Analysis
-MATCH (n) RETURN n ORDER BY n.created_at;
+## Example 3: E2E - Slow Performance
 
-# Entity Comparison
-MATCH (e:Entity) RETURN e;
-MATCH (d:Document)-[r:HAS_ENTITY]->(e:Entity) RETURN d, r, e;
-```
+- **Symptom:** API endpoints or CLI commands respond slowly during integration tests.
+- **Potential Causes:**
+    - Missing/inefficient database indexes.
+    - Large graph size impacting traversal.
+    - Complex/unoptimized Cypher queries.
+    - Bottleneck in API logic (e.g., synchronous operations).
+- **Verification:**
+    - `PROFILE` slow queries in Memgraph.
+    - `SHOW INDEX INFO;`
+    - Check node/relationship counts (`MATCH (n) RETURN count(n);`).
+    - Profile Python code execution (e.g., using `cProfile`).
+- **Resolution Type:** Add DB indexes, optimize queries, refactor slow code sections.
 
-#### 4. Resolution
-- Implement transaction scope validation
-- Add relationship creation verification
-- Update graph constraints if needed
-- Document fix in memory bank
-
-## Example 2: Query Pipeline Error
-
-### Error Context
-- Test: `test_query_pipeline.py`
-- Error Type: Integration Error
-- Symptom: Query returns incorrect context
-
-### Applying First Principles
-
-#### 1. Information Gathering
-```python
-# State Capture
-MATCH (q:Query) RETURN q;
-MATCH (q:Query)-[r:RETRIEVED_FROM]->(d:Document) RETURN q, r, d;
-
-# Input Validation
-- Query text: Valid
-- Graph traversal: Executed
-- Context assembly: Completed
-```
-
-#### 2. Hypothesis Formation
-1. **Graph Traversal**
-   - Hypothesis: Incorrect path selection in graph query
-   - Verification: Analyze query execution plan
-   - Impact: High (result accuracy)
-
-2. **Context Assembly**
-   - Hypothesis: Document ordering incorrect
-   - Verification: Check context assembly logic
-   - Impact: Medium (result quality)
-
-3. **Query Processing**
-   - Hypothesis: Query preprocessing alters intent
-   - Verification: Compare raw vs processed query
-   - Impact: Low (user experience)
-
-#### 3. Verification
-```python
-# Query Analysis
-EXPLAIN MATCH (q:Query)-[r:RETRIEVED_FROM]->(d:Document) RETURN q, r, d;
-
-# Context Validation
-MATCH (q:Query) RETURN q.context;
-```
-
-#### 4. Resolution
-- Optimize graph traversal
-- Fix context assembly logic
-- Improve query preprocessing
-- Document solution in memory bank
-
-## Example 3: E2E Integration Error
-
-### Error Context
-- Test: `test_e2e.py`
-- Error Type: Performance Error
-- Symptom: Slow response times
-
-### Applying First Principles
-
-#### 1. Information Gathering
-```python
-# Performance Metrics
-PROFILE MATCH (n) RETURN n;
-SHOW INDEX INFO;
-
-# System State
-MATCH (n) RETURN count(n);
-MATCH ()-[r]->() RETURN count(r);
-```
-
-#### 2. Hypothesis Formation
-1. **Index Usage**
-   - Hypothesis: Missing or incorrect indexes
-   - Verification: Analyze query plans
-   - Impact: High (performance)
-
-2. **Graph Size**
-   - Hypothesis: Large graph affecting traversal
-   - Verification: Check node/relationship counts
-   - Impact: Medium (scalability)
-
-3. **Query Complexity**
-   - Hypothesis: Complex queries causing slowdown
-   - Verification: Profile query execution
-   - Impact: Low (optimization)
-
-#### 3. Verification
-```python
-# Performance Analysis
-PROFILE MATCH (n) WHERE n.property = value RETURN n;
-
-# Index Validation
-SHOW INDEX INFO;
-```
-
-#### 4. Resolution
-- Add appropriate indexes
-- Optimize graph structure
-- Simplify complex queries
-- Document optimizations in memory bank 
+---
+*(Refer to `core/debug_tools.py` for specific tooling)* 

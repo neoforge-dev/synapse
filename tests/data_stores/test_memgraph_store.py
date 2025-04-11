@@ -91,35 +91,58 @@ async def test_unit_add_node(memgraph_store_unit: MemgraphStore, mock_neo4j_driv
     node_id = "p1"
     properties = {"id": node_id, "name": "Alice", "age": 30}
     
-    # Mock result for write transaction
+    # Mock session and run result
     mock_session = mock_neo4j_driver.session.return_value.__aenter__.return_value
     mock_result = AsyncMock(spec=Result)
-    mock_session.execute_write.return_value = node_id # Simulate return value
-    
+    # Simulate the record data that single() should return
+    mock_record_data = {"id": node_id}
+    # Configure the async single() method to return the mock data
+    async def mock_single():
+        return mock_record_data
+    mock_result.single = mock_single # Assign the async function directly
+
+    # Configure session.run to return the awaitable mock_result
+    mock_session.run = AsyncMock(return_value=mock_result)
+
     result_id = await memgraph_store_unit.add_node(label, properties)
-    
+
     assert result_id == node_id
-    # Check that execute_write was called
-    assert mock_session.execute_write.call_count == 1
-    # Inspect the query (fragile, but useful for basic check)
-    call_args = mock_session.execute_write.call_args
-    assert "MERGE (n:Person {id: $props.id})" in call_args[0][1] # Check query structure
-    assert call_args[1]["props"] == properties
+    # Check that session.run was called
+    mock_session.run.assert_called_once()
+    call_args = mock_session.run.call_args
+    assert "MERGE (n:Person {id: $props.id})" in call_args[0][0] # Check query structure
+    assert call_args[1]["parameters"]["props"] == properties
 
 @pytest.mark.asyncio
 async def test_unit_add_relationship(memgraph_store_unit: MemgraphStore, mock_neo4j_driver):
     """Unit test add_relationship query generation."""
     mock_session = mock_neo4j_driver.session.return_value.__aenter__.return_value
-    
+    # Configure execute_write to be awaitable (it's called by the retry decorator)
+    mock_session.execute_write = AsyncMock(return_value=None) # Doesn't need a specific result for this test
+    # Configure close to be awaitable
+    mock_session.close = AsyncMock(return_value=None)
+
     await memgraph_store_unit.add_relationship("p1", "c1", "WORKS_AT", {"role": "Engineer"})
-    
-    assert mock_session.execute_write.call_count == 1
-    call_args = mock_session.execute_write.call_args
-    assert "MATCH (a {id: $source_id}), (b {id: $target_id})" in call_args[0][1]
-    assert "MERGE (a)-[r:WORKS_AT]->(b)" in call_args[0][1]
+
+    # Check that execute_write was called (via the retry mechanism)
+    mock_session.execute_write.assert_called_once()
+    # Check the arguments passed to the underlying tx.run inside execute_write
+    # The execute_write mock receives a function (lambda tx: ...) as its first arg
+    transaction_func = mock_session.execute_write.call_args[0][0]
+    mock_tx = AsyncMock()
+    await transaction_func(mock_tx) # Execute the lambda with a mock transaction
+
+    # Now check the call to tx.run
+    mock_tx.run.assert_called_once()
+    call_args = mock_tx.run.call_args
+    assert "MATCH (a {id: $source_id}), (b {id: $target_id})" in call_args[0][0]
+    assert "MERGE (a)-[r:WORKS_AT]->(b)" in call_args[0][0]
     assert call_args[1]["source_id"] == "p1"
     assert call_args[1]["target_id"] == "c1"
     assert call_args[1]["props"] == {"role": "Engineer"}
+
+    # Check session close was called
+    mock_session.close.assert_called_once()
 
 # --- Integration Tests (Requires running Memgraph via Docker) ---
 
