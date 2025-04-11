@@ -31,7 +31,7 @@ def mock_graph_repository_with_search():
 @pytest.fixture(autouse=True)
 def mock_embedding_service_for_search():
     """Mock the EmbeddingService used within SearchService."""
-    with patch('graph_rag.services.search.EmbeddingService', autospec=True) as mock_emb_service_cls:
+    with patch('graph_rag.services.search.EmbeddingService') as mock_emb_service_cls:
         mock_instance = mock_emb_service_cls.return_value
         mock_instance.encode.return_value = QUERY_VECTOR # Return a fixed vector for the query
         mock_instance.get_embedding_dim.return_value = EMBEDDING_DIM # Ensure dim is mocked

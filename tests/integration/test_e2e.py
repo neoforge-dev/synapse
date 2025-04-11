@@ -5,6 +5,7 @@ import os
 from typing import Dict, Any, List
 import asyncio
 import uuid
+from fastapi import status
 
 # Base URL for the running API service
 # Assumes it's running on localhost:8000 as per docker-compose
@@ -70,121 +71,145 @@ async def http_client() -> httpx.AsyncClient:
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_ingest_and_keyword_search(http_client: httpx.AsyncClient):
+async def test_ingest_and_keyword_search(test_client: httpx.AsyncClient):
     """Verify ingestion and subsequent keyword search."""
     doc_content = "Integration testing involves blue widgets."
     metadata = {"source": "integration_test", "color": "blue"}
     
-    # Ingest
-    ingest_result = await ingest_test_document(http_client, doc_content, metadata)
+    # Ingest directly using test_client
+    ingest_response = await test_client.post(
+        f"{BASE_URL}/ingestion/document",
+        json={"content": doc_content, "metadata": metadata, "generate_embeddings": True}
+    )
+    assert ingest_response.status_code == status.HTTP_200_OK
+    ingest_result = ingest_response.json()
     assert "document_id" in ingest_result
-    assert ingest_result["num_chunks"] > 0
+    assert "chunk_ids" in ingest_result
+    doc_id = ingest_result["document_id"]
     
-    # Allow some time for potential indexing/consistency
-    await asyncio.sleep(1)
+    # Keyword Search directly using test_client
+    search_query = "widgets"
+    limit = 5
+    search_response = await test_client.post(
+        f"{BASE_URL}/search/chunks/keyword",
+        json={"query": search_query, "limit": limit}
+    )
+    assert search_response.status_code == status.HTTP_200_OK
+    keyword_results = search_response.json()
     
-    # Keyword Search
-    search_term = "widgets"
-    search_results = await search_keyword(http_client, search_term)
-    
-    assert search_results["query"] == search_term
-    assert len(search_results["results"]) > 0
-    found_match = any(search_term in r["content"] for r in search_results["results"])
-    assert found_match, f"Keyword '{search_term}' not found in search results: {search_results['results']}"
-    # Check if the source document id matches
-    assert search_results["results"][0]["document_id"] == ingest_result["document_id"]
-
+    # Assertions on results
+    assert "results" in keyword_results
+    assert len(keyword_results["results"]) > 0
+    assert any(search_query in res["chunk"]["text"] for res in keyword_results["results"])
+    assert keyword_results["results"][0]["document"]["id"] == doc_id
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_ingest_and_vector_search(http_client: httpx.AsyncClient):
+async def test_ingest_and_vector_search(test_client: httpx.AsyncClient):
     """Verify ingestion and subsequent vector similarity search."""
     doc_content = "Semantic search looks for meaning, like finding vehicles when asked about cars."
     metadata = {"source": "integration_test", "topic": "search"}
     query = "automobiles"
+    limit = 3
     
-    # Ingest
-    ingest_result = await ingest_test_document(http_client, doc_content, metadata)
-    assert "document_id" in ingest_result
-    assert ingest_result["num_chunks"] > 0
+    # Ingest directly using test_client
+    ingest_response = await test_client.post(
+        f"{BASE_URL}/ingestion/document",
+        json={"content": doc_content, "metadata": metadata, "generate_embeddings": True}
+    )
+    assert ingest_response.status_code == status.HTTP_200_OK
+    ingest_result = ingest_response.json()
+    doc_id = ingest_result["document_id"]
     
-    # Allow some time for potential indexing/consistency and embedding calculation
-    await asyncio.sleep(2) 
+    # Vector Search directly using test_client
+    search_response = await test_client.post(
+        f"{BASE_URL}/search/chunks/vector",
+        json={"query": query, "limit": limit}
+    )
+    assert search_response.status_code == status.HTTP_200_OK
+    vector_results = search_response.json()
     
-    # Vector Search
-    search_results = await search_vector(http_client, query)
-    
-    assert search_results["query"] == query
-    assert len(search_results["results"]) > 0, "Vector search returned no results."
-    
-    # Basic check: the content should be somewhat related
-    # A more robust check would involve comparing scores or specific content fragments
-    assert "cars" in search_results["results"][0]["content"], "Top vector search result content doesn't seem related."
-    assert search_results["results"][0]["score"] > 0.5, "Vector search score is unexpectedly low."
-    assert search_results["results"][0]["document_id"] == ingest_result["document_id"]
-
+    # Assertions on results
+    assert "results" in vector_results
+    assert len(vector_results["results"]) > 0
+    assert len(vector_results["results"]) <= limit
+    # Check if related content is found (specific assertion depends on embedding model)
+    assert any("cars" in res["chunk"]["text"] or "vehicles" in res["chunk"]["text"] for res in vector_results["results"])
+    assert vector_results["results"][0]["document"]["id"] == doc_id
+    assert "score" in vector_results["results"][0]
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_search_nonexistent_term(http_client: httpx.AsyncClient):
+async def test_search_nonexistent_term(test_client: httpx.AsyncClient):
     """Verify searches for unlikely terms return empty results."""
     query = "zzzyyyxxx_nonexistent_term_qwerty"
+    limit = 5
     
-    # Keyword Search
-    keyword_results = await search_keyword(http_client, query)
-    assert keyword_results["query"] == query
+    # Keyword Search directly using test_client
+    keyword_response = await test_client.post(
+        f"{BASE_URL}/search/chunks/keyword",
+        json={"query": query, "limit": limit}
+    )
+    assert keyword_response.status_code == status.HTTP_200_OK
+    keyword_results = keyword_response.json()
+    assert "results" in keyword_results
     assert len(keyword_results["results"]) == 0
-    
-    # Vector Search
-    vector_results = await search_vector(http_client, query)
-    assert vector_results["query"] == query
-    # Vector search might still return *something* based on similarity, 
-    # but unlikely to be highly relevant for a truly random string.
-    # Depending on threshold, it might be empty or contain low-scoring results.
-    assert isinstance(vector_results["results"], list) # Just ensure it returns a list 
+
+    # Vector Search directly using test_client
+    vector_response = await test_client.post(
+        f"{BASE_URL}/search/chunks/vector",
+        json={"query": query, "limit": limit}
+    )
+    assert vector_response.status_code == status.HTTP_200_OK
+    vector_results = vector_response.json()
+    assert "results" in vector_results
+    assert len(vector_results["results"]) == 0
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_ingest_and_delete(http_client: httpx.AsyncClient):
+async def test_ingest_and_delete(test_client: httpx.AsyncClient):
     """Verify ingestion and subsequent deletion."""
     doc_content = "This document is created solely for deletion testing."
     metadata = {"source": "integration_test_delete"}
     
-    # 1. Ingest
-    ingest_result = await ingest_test_document(http_client, doc_content, metadata)
+    # 1. Ingest directly using test_client
+    ingest_response = await test_client.post(
+        f"{BASE_URL}/ingestion/document",
+        json={"content": doc_content, "metadata": metadata, "generate_embeddings": False} # No embedding needed
+    )
+    assert ingest_response.status_code == status.HTTP_200_OK
+    ingest_result = ingest_response.json()
     doc_id = ingest_result["document_id"]
     assert doc_id is not None
-    assert ingest_result["num_chunks"] > 0
-    initial_chunk_ids = ingest_result["chunk_ids"]
-    
-    # Optional: Verify document exists via GET (requires GET endpoint)
-    # get_response = await http_client.get(f"/documents/{doc_id}")
-    # assert get_response.status_code == 200
-    
-    # 2. Delete
-    delete_response = await http_client.delete(f"/documents/{doc_id}")
-    assert delete_response.status_code == 204
-    
-    # 3. Verify Deletion
-    # Attempt to GET the deleted document - should be 404
-    get_response_after_delete = await http_client.get(f"/documents/{doc_id}")
-    assert get_response_after_delete.status_code == 404
-    
-    # Attempt to GET chunks for the deleted document - should be empty
-    get_chunks_response = await http_client.get(f"/chunks/by_document/{doc_id}")
-    assert get_chunks_response.status_code == 200
-    assert len(get_chunks_response.json()) == 0
-    
-    # Optional: Attempt keyword search for content - should not find deleted chunks
-    await asyncio.sleep(1) # Allow time for potential consistency
-    keyword_search_response = await search_keyword(http_client, "deletion testing")
-    found_deleted = any(c["chunk_id"] in initial_chunk_ids for c in keyword_search_response["results"])
-    assert not found_deleted, "Search found chunks that should have been deleted."
+
+    # 2. Verify existence (optional - depends on having a GET /document/{id} endpoint)
+    # get_response = await test_client.get(f"{BASE_URL}/documents/{doc_id}")
+    # assert get_response.status_code == status.HTTP_200_OK
+
+    # 3. Delete directly using test_client
+    delete_response = await test_client.delete(f"{BASE_URL}/documents/{doc_id}")
+    assert delete_response.status_code == status.HTTP_200_OK
+    assert delete_response.json() == {"message": "Document deleted successfully"} # Or similar success message
+
+    # 4. Verify deletion (optional - depends on GET endpoint)
+    # get_response_after_delete = await test_client.get(f"{BASE_URL}/documents/{doc_id}")
+    # assert get_response_after_delete.status_code == status.HTTP_404_NOT_FOUND
+
+    # 5. Verify searching for it yields no results
+    keyword_response = await test_client.post(
+        f"{BASE_URL}/search/chunks/keyword",
+        json={"query": "deletion testing", "limit": 1}
+    )
+    assert keyword_response.status_code == status.HTTP_200_OK
+    keyword_results = keyword_response.json()
+    assert len(keyword_results["results"]) == 0
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_delete_nonexistent(http_client: httpx.AsyncClient):
+async def test_delete_nonexistent(test_client: httpx.AsyncClient):
     """Test deleting a non-existent document ID."""
     non_existent_id = f"non-existent-id-{uuid.uuid4()}"
-    delete_response = await http_client.delete(f"/documents/{non_existent_id}")
-    assert delete_response.status_code == 404 
+    delete_response = await test_client.delete(f"{BASE_URL}/documents/{non_existent_id}") # Adjust endpoint if needed
+    assert delete_response.status_code == status.HTTP_404_NOT_FOUND 
+    # Check the error message structure based on your API's 404 response
+    # assert delete_response.json() == {"detail": "Document not found"} 

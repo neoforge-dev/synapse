@@ -50,7 +50,7 @@ class MemgraphStore(GraphStore, VectorSearcher, KeywordSearcher): # Implement se
         )
         # Configure retry decorator using settings
         self._retry_decorator = retry(
-            stop=stop_after_attempt(self._settings.MEMGRAPH_RETRY_ATTEMPTS),
+            stop=stop_after_attempt(self._settings.MEMGRAPH_MAX_RETRIES),
             wait=wait_exponential(multiplier=self._settings.MEMGRAPH_RETRY_WAIT_SECONDS, min=1, max=10), # Example exponential backoff
             retry=retry_if_exception_type(_RETRY_EXCEPTIONS),
             before_sleep=lambda retry_state: logger.warning(

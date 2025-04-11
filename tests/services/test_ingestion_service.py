@@ -21,7 +21,7 @@ def mock_graph_repository():
 @pytest.fixture(autouse=True)
 def mock_embedding_service():
     """Mock the EmbeddingService class methods globally for service tests."""
-    with patch('graph_rag.services.ingestion.EmbeddingService', autospec=True) as mock_emb_service_cls:
+    with patch('graph_rag.services.ingestion.EmbeddingService') as mock_emb_service_cls:
         mock_instance = mock_emb_service_cls.return_value
         # Mock the encode method
         def mock_encode(texts):

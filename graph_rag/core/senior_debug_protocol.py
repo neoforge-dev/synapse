@@ -6,7 +6,10 @@ import logging
 from pathlib import Path
 import inspect
 import traceback
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+import sys # Import sys
+import os # Import os
+import importlib.util
 
 logger = logging.getLogger(__name__)
 
@@ -16,17 +19,19 @@ class TestFailure(BaseModel):
     error_message: str
     test_file: str
     test_function: str
-    line_number: int
-    expected_behavior: str
-    actual_behavior: str
+    test_parameters: Optional[Dict[str, Any]] = None # Parameters used in the test
     test_code: str
-    timestamp: datetime
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    traceback_str: Optional[str] = None # Store traceback as string
+    expected_behavior: Optional[str] = None # Added field
+    actual_behavior: Optional[str] = None   # Added field
+    # traceback: Optional[Any] = None # Store raw traceback object
 
 class Investigation(BaseModel):
     """Represents a debugging investigation."""
     test_failure: TestFailure
     related_failures: List[TestFailure]
-    execution_path: List[str]
+    execution_path: List[Dict[str, Any]]
     implementation_gaps: List[str]
     hypotheses: List[Dict[str, Any]]
     verification_steps: List[Dict[str, Any]]
@@ -41,43 +46,71 @@ class SeniorDebugProtocol:
         self.investigation = None
 
     def observe_failure(self, error: Exception) -> TestFailure:
-        """Observe test failure without judgment."""
-        tb = traceback.extract_tb(error.__traceback__)
-        test_frame = next((frame for frame in tb if frame.filename.endswith(self.test_file)), None)
+        """Observe a test failure and capture context."""
+        exc_type, exc_value, exc_tb = sys.exc_info() # Get exception info
+        # frame = inspect.currentframe().f_back # Get the caller frame (the test function)
+        # test_function_name = frame.f_code.co_name
+        # test_file = inspect.getfile(frame)
+        test_function_name = self.test_function # Use name from instance
+        test_file = self.test_file # Use file from instance
         
-        if test_frame:
-            line_number = test_frame.lineno
-            test_code = test_frame.line
-        else:
-            line_number = 0
-            test_code = ""
+        # Capture test code snippet (adjust lines before/after as needed)
+        try:
+            # Need the frame where the error actually happened, not the caller of observe_failure
+            # This part is tricky without direct traceback access or runner integration
+            # Let's try to get it from the traceback if available
+            if exc_tb:
+                frame = exc_tb.tb_frame
+                lines, lineno = inspect.getsourcelines(frame)
+                start = max(0, frame.f_lineno - 1 - 2) # Use frame lineno (1-based)
+                end = min(len(lines), frame.f_lineno - 1 + 3)
+                test_code = "".join(lines[start:end])
+            else:
+                 test_code = "Could not retrieve test source code (no traceback frame)."
+        except Exception as e:
+            logger.warning(f"Error retrieving source code: {e}")
+            test_code = "Could not retrieve test source code."
+            
+        # Capture traceback as string
+        tb_str = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
 
-        return TestFailure(
+        failure_data = TestFailure(
             error_message=str(error),
-            test_file=self.test_file,
-            test_function=self.test_function,
-            line_number=line_number,
-            expected_behavior="",  # To be filled by analyze_test_case
-            actual_behavior="",    # To be filled by analyze_test_case
+            test_file=test_file, # Use relative path from instance
+            test_function=test_function_name,
             test_code=test_code,
-            timestamp=datetime.utcnow()
+            traceback_str=tb_str, # Store string traceback
+            # traceback=exc_tb, # Store raw traceback object
+            # TODO: Capture test parameters if possible (might require pytest hooks or fixture inspection)
         )
+        # We should store failures per test case, perhaps in a dict keyed by test name
+        # self.failures.append(failure_data)
+        logger.info(f"Observed failure in {test_function_name}: {error}")
+        return failure_data
 
     def analyze_test_case(self, failure: TestFailure) -> TestFailure:
         """Analyze what the test is verifying and expected behavior."""
         # Get the test function's source code
-        test_module = inspect.getmodule(inspect.currentframe())
-        test_func = getattr(test_module, self.test_function)
-        test_doc = inspect.getdoc(test_func) or ""
+        try:
+            # Attempt to load the module from the file path in the failure object
+            spec = importlib.util.spec_from_file_location("test_module_to_analyze", failure.test_file)
+            test_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(test_module)
+            test_func = getattr(test_module, failure.test_function)
+            test_doc = inspect.getdoc(test_func) or ""
+        except (FileNotFoundError, AttributeError, ImportError) as e:
+             logger.warning(f"Could not load test function {failure.test_function} from {failure.test_file}: {e}")
+             test_doc = ""
         
         # Extract expected behavior from docstring
         expected_behavior = test_doc.split("\n")[0] if test_doc else "Behavior not documented"
         
-        # Update failure with analysis
-        failure.expected_behavior = expected_behavior
+        # Update failure with analysis (assuming these fields exist or are added to TestFailure model)
+        failure.expected_behavior = expected_behavior 
         failure.actual_behavior = f"Failed with: {failure.error_message}"
-        
-        return failure
+        logger.debug(f"Analyzed test {failure.test_function}: Expected: '{expected_behavior}'")
+
+        return failure # Return modified failure object
 
     def question_assumptions(self, failure: TestFailure) -> List[str]:
         """Question assumptions about the test and implementation."""
@@ -98,15 +131,31 @@ class SeniorDebugProtocol:
         # For now, return empty list as this requires test runner integration
         return []
 
-    def trace_execution_path(self, failure: TestFailure) -> List[str]:
-        """Trace the execution path from test to implementation."""
+    def trace_execution_path(self, failure: TestFailure) -> List[Dict[str, Any]]:
+        """Trace the execution path leading to the failure using stored traceback string."""
+        if not failure.traceback_str:
+            return [{"error": "No traceback available."}]
+        
+        # Parse the traceback string (simple parsing, might need refinement)
         path = []
-        tb = traceback.extract_tb(failure.__traceback__)
-        
-        for frame in tb:
-            if frame.filename.endswith('.py'):  # Only include Python files
-                path.append(f"{frame.filename}:{frame.lineno} - {frame.name}")
-        
+        lines = failure.traceback_str.strip().split('\n')
+        # Heuristic: traceback lines often start with "  File ..."
+        for line in lines:
+            line = line.strip()
+            if line.startswith("File"): 
+                parts = line.split(",")
+                file_path = parts[0].replace('File "', '').replace('"', '').strip()
+                line_no = parts[1].replace('line ', '').strip() if len(parts) > 1 else 'N/A'
+                func_name = parts[2].replace('in ', '').strip() if len(parts) > 2 else 'N/A'
+                path.append({
+                    "file": file_path,
+                    "line": line_no,
+                    "function": func_name
+                })
+            elif not line.startswith(("Traceback", "During handling")):
+                 # Append code snippet lines associated with the frame
+                 if path: # Ensure we have a frame to associate with
+                     path[-1]["code"] = path[-1].get("code", "") + line + "\n"
         return path
 
     def identify_implementation_gaps(self, execution_path: List[str]) -> List[str]:
@@ -202,7 +251,7 @@ class SeniorDebugProtocol:
     def save_investigation(self, investigation: Investigation, path: Path) -> None:
         """Save the investigation to a file."""
         with open(path, 'w') as f:
-            f.write(investigation.json(indent=2))
+            f.write(investigation.model_dump_json(indent=2))
 
     def load_investigation(self, path: Path) -> Investigation:
         """Load an investigation from a file."""

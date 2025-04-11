@@ -2,6 +2,42 @@
 
 from typing import Dict, List, Any
 from datetime import datetime
+import uuid
+import numpy as np
+from graph_rag.core.interfaces import DocumentData, ChunkData
+
+# Embedding dimension constant (adjust as needed)
+EMBEDDING_DIM = 384
+
+def create_test_document_data(**kwargs) -> DocumentData:
+    """Helper to create DocumentData for tests."""
+    defaults = {
+        "id": str(uuid.uuid4()),
+        "content": "This is a test document.",
+        "metadata": {"source": "test", "created_at": datetime.utcnow().isoformat()}
+    }
+    defaults.update(kwargs)
+    return DocumentData(**defaults)
+
+def create_test_chunk_data(**kwargs) -> ChunkData:
+    """Helper to create ChunkData for tests."""
+    defaults = {
+        "id": str(uuid.uuid4()),
+        "document_id": kwargs.get("document_id", str(uuid.uuid4())), # Ensure document_id exists
+        "text": "This is a test chunk.",
+        "metadata": {"source_document": "test_doc", "created_at": datetime.utcnow().isoformat()},
+        "embedding": np.random.rand(EMBEDDING_DIM).tolist()
+    }
+    # Ensure embedding matches expectation if provided
+    if 'embedding' in kwargs:
+        defaults['embedding'] = kwargs['embedding']
+    
+    defaults.update(kwargs)
+    # Ensure embedding is always set, even if not provided in kwargs
+    if 'embedding' not in defaults or defaults['embedding'] is None:
+        defaults['embedding'] = np.random.rand(EMBEDDING_DIM).tolist()
+        
+    return ChunkData(**defaults)
 
 # --- Sample Documents ---
 
@@ -106,4 +142,42 @@ SAMPLE_QUERIES: List[Dict[str, Any]] = [
         "expected_entities": ["New York"],
         "expected_relationships": ["BASED_IN"]
     }
-] 
+]
+
+# Document data examples
+def get_sample_document_data(doc_id: str = "doc-1") -> DocumentData:
+    return DocumentData(
+        id=doc_id,
+        content="Alice lives in Wonderland. Bob works at Acme Corp.",
+        metadata={"source": "fiction", "year": 1865}
+    )
+
+def get_another_sample_document_data(doc_id: str = "doc-2") -> DocumentData:
+    return DocumentData(
+        id=doc_id,
+        content="Quantum physics is fascinating. Graphs are useful.",
+        metadata={"source": "science", "category": "physics"}
+    )
+
+# Chunk data examples
+def get_sample_chunk_data(chunk_id: str = "chunk-1a", doc_id: str = "doc-1", embedding=None) -> ChunkData:
+    if embedding is None:
+        embedding = np.random.rand(EMBEDDING_DIM).tolist()
+    return ChunkData(
+        id=chunk_id,
+        document_id=doc_id,
+        text="Alice lives in Wonderland.",
+        metadata={"sentence_num": 1},
+        embedding=embedding
+    )
+
+def get_another_sample_chunk_data(chunk_id: str = "chunk-1b", doc_id: str = "doc-1", embedding=None) -> ChunkData:
+    if embedding is None:
+        embedding = np.random.rand(EMBEDDING_DIM).tolist()
+    return ChunkData(
+        id=chunk_id,
+        document_id=doc_id,
+        text="Bob works at Acme Corp.",
+        metadata={"sentence_num": 2},
+        embedding=embedding
+    ) 

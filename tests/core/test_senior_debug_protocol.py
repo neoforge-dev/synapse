@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 import inspect
 from typing import Dict, Any
+import os
 
 from graph_rag.core.senior_debug_protocol import (
     SeniorDebugProtocol,
@@ -13,11 +14,16 @@ from graph_rag.core.senior_debug_protocol import (
 )
 
 @pytest.fixture
-def debug_protocol():
-    """Fixture for SeniorDebugProtocol instance."""
+def debug_protocol(request):
+    """Fixture for SeniorDebugProtocol instance, aware of the current test."""
+    test_function_name = request.node.name
+    # Get the path object from the request node
+    test_file_path = request.node.fspath 
+    # Make path relative to CWD (usually project root when running pytest)
+    relative_test_file = os.path.relpath(str(test_file_path), os.getcwd())
     return SeniorDebugProtocol(
-        test_file="test_senior_debug_protocol.py",
-        test_function="test_observe_failure"
+        test_file=relative_test_file,
+        test_function=test_function_name
     )
 
 @pytest.fixture
@@ -34,7 +40,7 @@ def test_observe_failure(debug_protocol: SeniorDebugProtocol, sample_error):
     
     assert isinstance(failure, TestFailure)
     assert failure.error_message == "Test error message"
-    assert failure.test_file == "test_senior_debug_protocol.py"
+    assert failure.test_file == "tests/core/test_senior_debug_protocol.py"
     assert failure.test_function == "test_observe_failure"
     assert failure.timestamp <= datetime.utcnow()
 
@@ -58,11 +64,19 @@ def test_question_assumptions(debug_protocol: SeniorDebugProtocol, sample_error)
 def test_trace_execution_path(debug_protocol: SeniorDebugProtocol, sample_error):
     """Test tracing execution path."""
     failure = debug_protocol.observe_failure(sample_error)
+    # Manually add a mock traceback string for the test
+    failure.traceback_str = """Traceback (most recent call last):
+  File "/path/to/test_senior_debug_protocol.py", line 61, in test_trace_execution_path
+    raise sample_error
+ValueError: Test error message"""
     path = debug_protocol.trace_execution_path(failure)
-    
+
     assert isinstance(path, list)
-    assert all(isinstance(step, str) for step in path)
-    assert any("test_senior_debug_protocol.py" in step for step in path)
+    # Check the structure of the parsed path
+    assert len(path) > 0
+    assert all(isinstance(step, dict) for step in path)
+    assert all("file" in step and "line" in step and "function" in step for step in path)
+    assert any("test_senior_debug_protocol.py" in step["file"] for step in path)
 
 def test_identify_implementation_gaps(debug_protocol: SeniorDebugProtocol):
     """Test identifying implementation gaps."""
@@ -78,20 +92,31 @@ def test_identify_implementation_gaps(debug_protocol: SeniorDebugProtocol):
 def test_create_investigation(debug_protocol: SeniorDebugProtocol, sample_error):
     """Test creating a complete investigation."""
     failure = debug_protocol.observe_failure(sample_error)
+    # Manually add a mock traceback string for the test
+    failure.traceback_str = """Traceback (most recent call last):
+  File "/path/to/test_senior_debug_protocol.py", line 81, in test_create_investigation
+    raise sample_error
+ValueError: Test error message"""
     investigation = debug_protocol.create_investigation(failure)
-    
+
     assert isinstance(investigation, Investigation)
     assert investigation.test_failure == failure
     assert isinstance(investigation.related_failures, list)
     assert isinstance(investigation.execution_path, list)
+    assert len(investigation.execution_path) > 0 # Make sure path was parsed
     assert isinstance(investigation.implementation_gaps, list)
 
 def test_generate_hypotheses(debug_protocol: SeniorDebugProtocol, sample_error):
     """Test generating hypotheses."""
     failure = debug_protocol.observe_failure(sample_error)
+    # Manually add a mock traceback string for the test
+    failure.traceback_str = """Traceback (most recent call last):
+  File "/path/to/test_senior_debug_protocol.py", line 92, in test_generate_hypotheses
+    raise sample_error
+ValueError: Test error message"""
     investigation = debug_protocol.create_investigation(failure)
     hypotheses = debug_protocol.generate_hypotheses(investigation)
-    
+
     assert isinstance(hypotheses, list)
     assert len(hypotheses) > 0
     assert all("type" in h for h in hypotheses)

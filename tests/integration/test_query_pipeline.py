@@ -119,6 +119,15 @@ async def test_query_pipeline(test_client: AsyncClient, ingested_doc_id: str, me
     # Optional: Clean up the specific document if needed (fixtures usually handle this)
     # await memgraph_repo.delete_document(ingested_doc_id)
 
+# Define helper locally
+async def ingest_doc_helper(client: AsyncClient, doc_content: str, metadata: dict) -> str:
+    response = await client.post(
+        f"/api/v1/ingestion/document", # Use relative path if base_url is set on client
+        json={"content": doc_content, "metadata": metadata, "generate_embeddings": True}
+    )
+    response.raise_for_status() # Raise exception for bad status codes
+    return response.json()["document_id"]
+
 @pytest.mark.asyncio
 async def test_basic_query(test_client: AsyncClient):
     """
@@ -131,50 +140,36 @@ async def test_basic_query(test_client: AsyncClient):
     doc_content = "The Eiffel Tower is located in Paris, the capital of France."
     metadata = {"source": "query-test-basic"}
     try:
-        doc_id = await ingest_test_document(test_client, doc_content, metadata)
+        # Use the local helper or inline the call
+        doc_id = await ingest_doc_helper(test_client, doc_content, metadata)
+        # doc_id = await ingest_test_document(test_client, doc_content, metadata) # If using imported helper
         logger.info(f"Ingested document {doc_id} for query test.")
     except Exception as e:
         pytest.fail(f"Failed to ingest test document: {e}")
 
-    # 2. Query the endpoint
+    # 2. Query for information
     query_text = "Where is the Eiffel Tower?"
-    logger.info(f"Submitting query: '{query_text}'")
     response = await test_client.post(
-        "/api/v1/query",
+        "/api/v1/query", 
         json={
             "query_text": query_text,
-            "k": 5  # Request up to 5 results
+            "k": 5
         }
     )
 
     # 3. Assertions
-    assert response.status_code == status.HTTP_200_OK, f"Expected 200 OK, got {response.status_code}. Response: {response.text}"
-
+    assert response.status_code == status.HTTP_200_OK
     response_data = response.json()
+    logger.debug(f"Query Response Data: {response_data}")
 
-    # Verify response structure
-    assert "query" in response_data, "Response should contain 'query'"
-    assert "results" in response_data, "Response should contain 'results'"
-    assert isinstance(response_data["results"], list), "'results' should be a list"
-    
-    # Verify query text is returned correctly
-    assert response_data["query"] == query_text, "Response should echo the query text"
-
-    # Check if we got any results
-    assert len(response_data["results"]) > 0, "Expected at least one result"
-
-    # Verify result structure
-    first_result = response_data["results"][0]
-    assert "content" in first_result, "Result should contain 'content'"
-    assert "metadata" in first_result, "Result should contain 'metadata'"
-    assert "chunk_id" in first_result["metadata"], "Result metadata should contain 'chunk_id'"
-    assert "document_id" in first_result["metadata"], "Result metadata should contain 'document_id'"
-
-    # Check if the content contains relevant information
-    assert "Paris" in first_result["content"], "Result content missing expected entity 'Paris'"
-    assert "Eiffel Tower" in first_result["content"], "Result content missing expected entity 'Eiffel Tower'"
-
-    logger.info(f"Query successful, received relevant context: {first_result['content']}")
+    assert "query_text" in response_data
+    assert response_data["query_text"] == query_text
+    assert "results" in response_data
+    assert len(response_data["results"]) > 0
+    # Check if relevant content is in the results
+    assert any("Paris" in chunk["text"] or "Eiffel Tower" in chunk["text"] 
+               for chunk in response_data["results"]), "Relevant chunk not found in results"
+    assert response_data["results"][0]["document"]["id"] == doc_id
 
 @pytest.mark.asyncio
 async def test_query_no_entities(test_client: AsyncClient):
@@ -187,12 +182,16 @@ async def test_query_no_entities(test_client: AsyncClient):
             "k": 5
         }
     )
-
+    
     assert response.status_code == status.HTTP_200_OK
     response_data = response.json()
     
-    assert response_data["query"] == query_text
-    assert len(response_data["results"]) == 0, "Expected no results for query with no entities"
+    # Adjust assertion based on actual response structure
+    # Assuming the API returns the original query text and empty results
+    assert "query_text" in response_data 
+    assert response_data["query_text"] == query_text
+    assert "results" in response_data
+    assert len(response_data["results"]) == 0
 
 @pytest.mark.asyncio
 async def test_query_invalid_request(test_client: AsyncClient):

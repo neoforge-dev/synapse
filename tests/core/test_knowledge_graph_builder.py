@@ -164,7 +164,9 @@ def test_builder_adds_entities_and_relationships(mock_graph_store, processed_doc
     assert "ent-bob" in mock_graph_store.entities
     assert "ent-graphrag" in mock_graph_store.entities
     assert len(mock_graph_store.relationships) == 1
-    assert mock_graph_store.relationships[0].type == "KNOWS"
+    # Check the type of the single relationship stored in the dictionary's values
+    stored_relationship = list(mock_graph_store.relationships.values())[0]
+    assert stored_relationship.type == "KNOWS"
 
 def test_builder_no_data_does_nothing(mock_graph_store, processed_doc_no_data):
     """Test that the builder does not call the store if there's no data."""

@@ -168,17 +168,11 @@ async def test_process_and_store_document_flow(
     rag_engine: SimpleGraphRAGEngine, # Use the fixture providing the engine instance
     mock_graph_store: MockGraphStore, # Get the concrete mock store to spy on calls
     mock_vector_store: MockVectorStore, # Get the concrete mock store to spy on calls
-    sample_document_data: DocumentData,
-    # We don't need the other AsyncMocks directly in this test
-    # They are used internally by the engine (or potentially not, for SimpleGraphRAGEngine)
+    sample_document: Document,
+    mock_entity_extractor: MockEntityExtractor,
 ):
-    """Test the high-level document processing and storage flow."""
-    # Spy on the methods of the concrete mocks
-    # Note: SimpleGraphRAGEngine uses its own SimpleDocumentProcessor internally,
-    # so we can't easily mock that part without more complex patching or DI.
-    # We can mock the entity extractor it was initialized with.
-    # Let's make the concrete mock_entity_extractor available via fixture
-    # to assert calls against it, if needed.
+    """Tests the overall flow of processing and storing a document."""
+    # Arrange
     
     # Act
     # await rag_engine.process_and_store_document(
