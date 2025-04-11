@@ -12,13 +12,15 @@ from neo4j.exceptions import ServiceUnavailable
 
 from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 from graph_rag.domain.models import Document, Chunk, Node, Relationship, Edge, Entity
-from graph_rag.config import settings
+from graph_rag.config import get_settings
 from graph_rag.services.embedding import EmbeddingService
 
 pytestmark = pytest.mark.asyncio
 
 # Mock Embedding dimensions
 EMBEDDING_DIM = 384
+
+settings = get_settings() # Get settings instance
 
 @pytest.fixture
 def mock_neo4j_driver():

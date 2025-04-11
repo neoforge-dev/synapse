@@ -1,4 +1,6 @@
-# This file makes the 'config' directory a Python package.
-from .settings import settings
+"""Configuration settings for the Graph RAG application."""
 
-__all__ = ['settings'] 
+# Import directly from the settings module
+from .settings import Settings, get_settings
+
+__all__ = ["Settings", "get_settings"] 

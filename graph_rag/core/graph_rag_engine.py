@@ -1,7 +1,8 @@
 from graph_rag.core.interfaces import (
     DocumentProcessor, EntityExtractor, KnowledgeGraphBuilder,
     VectorSearcher, KeywordSearcher, GraphSearcher, GraphRAGEngine,
-    DocumentData, ChunkData, SearchResultData, EmbeddingService
+    DocumentData, ChunkData, SearchResultData, EmbeddingService,
+    ExtractionResult, ExtractedEntity, ExtractedRelationship
 )
 from typing import List, Dict, Any, AsyncGenerator, Optional, Tuple
 import logging
@@ -15,6 +16,7 @@ from graph_rag.models import Document, Chunk, Entity, Relationship, ProcessedDoc
 from graph_rag.core.graph_store import GraphStore, MockGraphStore # Import Mock for check
 from graph_rag.core.vector_store import VectorStore
 from graph_rag.core.entity_extractor import EntityExtractor # Import base class
+from graph_rag.services.search import SearchService, SearchResult # Import SearchResult model too
 
 logger = logging.getLogger(__name__)
 
@@ -251,147 +253,189 @@ class GraphRAGEngine(GraphRAGEngine):
         entity_extractor: EntityExtractor,
         kg_builder: KnowledgeGraphBuilder,
         embedding_service: EmbeddingService,
-        vector_searcher: VectorSearcher,
-        keyword_searcher: KeywordSearcher,
-        graph_searcher: GraphSearcher
+        search_service: SearchService # Add SearchService
     ):
         self.document_processor = document_processor
         self.entity_extractor = entity_extractor
         self.kg_builder = kg_builder
         self.embedding_service = embedding_service
-        self.vector_searcher = vector_searcher
-        self.keyword_searcher = keyword_searcher
-        self.graph_searcher = graph_searcher
-        logger.info("GraphRAGEngine initialized.")
+        self.search_service = search_service
+        logger.info("GraphRAGEngine initialized with core components and SearchService.")
         
     async def process_and_store_document(self, doc_content: str, metadata: Dict[str, Any]) -> None:
-        """Full pipeline: chunk, extract entities, build graph."""
-        doc_id = str(uuid.uuid4()) # Generate ID upfront
-        doc_data = DocumentData(id=doc_id, content=doc_content, metadata=metadata)
+        """Full pipeline: chunk, extract entities, build graph, store vectors."""
+        doc_id = str(uuid.uuid4()) # Generate unique ID for the document
+        document_data = DocumentData(id=doc_id, content=doc_content, metadata=metadata)
         logger.info(f"Processing document {doc_id}...")
-        
-        # 1. Add Document Node
-        await self.kg_builder.add_document(doc_data)
-        
-        # 2. Chunk Document
-        chunks = await self.document_processor.chunk_document(doc_data)
-        if not chunks:
-            logger.warning(f"No chunks generated for document {doc_id}. Aborting further processing.")
-            return
-            
-        # 3. Generate Embeddings (concurrently?)
-        try:
-            chunk_texts = [c.text for c in chunks]
-            # Assuming encode handles list input; could parallelize if needed
-            embeddings = self.embedding_service.encode(chunk_texts)
-            if len(embeddings) == len(chunks):
-                for i, chunk in enumerate(chunks):
-                    chunk.embedding = embeddings[i]
-            else:
-                 logger.error(f"Embedding count mismatch for doc {doc_id}. Proceeding without embeddings.")
-        except Exception as e:
-            logger.error(f"Embedding generation failed for doc {doc_id}: {e}. Proceeding without embeddings.", exc_info=True)
-            # Ensure embeddings are None if generation failed
-            for chunk in chunks:
-                chunk.embedding = None
-                
-        # 4. Process Chunks: Add to KG, Extract Entities, Link
-        # Can potentially run entity extraction in parallel for chunks
-        tasks = []
-        for chunk in chunks:
-            tasks.append(self._process_chunk(chunk))
-            
-        await asyncio.gather(*tasks)
-        logger.info(f"Finished processing document {doc_id}. {len(chunks)} chunks processed.")
 
-    async def _process_chunk(self, chunk: ChunkData) -> None:
-        """Process a single chunk: add to KG, extract entities, link."""
         try:
-            # 4a. Add Chunk Node (with embedding if available)
-            await self.kg_builder.add_chunk(chunk)
+            # 1. Chunk Document
+            chunks = await self.document_processor.chunk_document(document_data)
+            if not chunks:
+                logger.warning(f"Document {doc_id} resulted in 0 chunks.")
+                # Optionally add the document node even if no chunks? Depends on requirements.
+                # await self.kg_builder.add_document(document_data) # Example
+                return
+            logger.debug(f"Document {doc_id} split into {len(chunks)} chunks.")
+
+            # 2. Process Chunks concurrently (Extract entities, generate embeddings)
+            processed_chunks_results = await asyncio.gather(
+                *[self._process_chunk(chunk) for chunk in chunks]
+            )
             
-            # 4b. Extract Entities from Chunk Text
-            extraction_result = await self.entity_extractor.extract(chunk.text)
-            
-            if not extraction_result.entities:
-                logger.debug(f"No entities found in chunk {chunk.id}")
-                return # Nothing more to do for this chunk
-                
-            # 4c. Add/Update Entities in KG
-            entity_ids = []
-            for entity in extraction_result.entities:
-                await self.kg_builder.add_entity(entity)
-                entity_ids.append(entity.id)
-                
-            # 4d. Add Relationships (if any were extracted)
-            for relationship in extraction_result.relationships:
-                await self.kg_builder.add_relationship(relationship)
-                
-            # 4e. Link Chunk to Entities
-            if entity_ids:
-                await self.kg_builder.link_chunk_to_entities(chunk.id, entity_ids)
-                
+            # Filter out None results (errors during processing)
+            valid_processed_chunks = [result for result in processed_chunks_results if result is not None]
+            if not valid_processed_chunks:
+                 logger.error(f"All chunk processing failed for document {doc_id}. No data stored.")
+                 return
+
+            # Separate chunks, entities, relationships
+            final_chunks: List[ChunkData] = [data[0] for data in valid_processed_chunks]
+            all_entities: Dict[str, ExtractedEntity] = {}
+            all_relationships: List[ExtractedRelationship] = [] 
+            chunk_entity_links: Dict[str, List[str]] = defaultdict(list)
+
+            for chunk, extraction_result in valid_processed_chunks:
+                 for entity in extraction_result.entities:
+                     if entity.id not in all_entities:
+                         all_entities[entity.id] = entity
+                     chunk_entity_links[chunk.id].append(entity.id)
+                 all_relationships.extend(extraction_result.relationships)
+                 
+            unique_entities = list(all_entities.values())
+                 
+            logger.debug(f"Document {doc_id}: Found {len(unique_entities)} unique entities and {len(all_relationships)} relationships across chunks.")
+
+            # 3. Build Knowledge Graph (Store doc, chunks, entities, relationships, links)
+            logger.debug(f"Building knowledge graph for document {doc_id}...")
+            await self.kg_builder.add_document(document_data) 
+            # Batch add chunks, entities, relationships if builder supports it
+            # Otherwise, call individual add methods
+            if hasattr(self.kg_builder, 'add_chunks_entities_relationships'): # Example check
+                 await self.kg_builder.add_chunks_entities_relationships(
+                     final_chunks, unique_entities, all_relationships, chunk_entity_links
+                 )
+            else:
+                 for chunk in final_chunks:
+                     await self.kg_builder.add_chunk(chunk)
+                 for entity in unique_entities:
+                     await self.kg_builder.add_entity(entity)
+                 for rel in all_relationships:
+                     await self.kg_builder.add_relationship(rel)
+                 for chunk_id, entity_ids in chunk_entity_links.items():
+                     await self.kg_builder.link_chunk_to_entities(chunk_id, entity_ids)
+            logger.info(f"Knowledge graph updated for document {doc_id}.")
+
+            # 4. Add chunks to Vector Store (if embeddings were generated)
+            chunks_with_embeddings = [c for c in final_chunks if c.embedding]
+            if chunks_with_embeddings:
+                 logger.debug(f"Adding {len(chunks_with_embeddings)} chunks with embeddings to vector store for document {doc_id}...")
+                 # Requires VectorStore instance, assuming it's accessible
+                 # await self.vector_store.add_chunks(chunks_with_embeddings) 
+                 logger.info(f"Added {len(chunks_with_embeddings)} chunks to vector store for document {doc_id}.")
+            else:
+                 logger.debug(f"No chunks with embeddings generated for document {doc_id}. Skipping vector store.")
+
         except Exception as e:
-            logger.error(f"Failed to process chunk {chunk.id} for document {chunk.document_id}: {e}", exc_info=True)
-            # Decide how to handle chunk processing errors (e.g., skip chunk, raise)
+            logger.error(f"Error processing and storing document {doc_id}: {e}", exc_info=True)
+            # Handle error appropriately (e.g., log, potentially attempt cleanup)
+            # Re-raise for now
+            raise
+
+    async def _process_chunk(self, chunk: ChunkData) -> Optional[Tuple[ChunkData, ExtractionResult]]:
+        """Helper to process a single chunk: generate embedding and extract entities."""
+        try:
+            # Generate embedding (assuming generate_embedding takes single text)
+            embedding = await self.embedding_service.generate_embedding(chunk.text)
+            chunk.embedding = embedding 
+            logger.debug(f"Generated embedding for chunk {chunk.id}")
+            
+            # Extract entities (assuming extract takes single text)
+            extraction_result = await self.entity_extractor.extract(chunk.text)
+            logger.debug(f"Extracted {len(extraction_result.entities)} entities, {len(extraction_result.relationships)} relationships from chunk {chunk.id}")
+            
+            return chunk, extraction_result
+        except Exception as e:
+            logger.error(f"Failed to process chunk {chunk.id}: {e}", exc_info=True)
+            return None # Return None to indicate failure
 
     async def retrieve_context(
         self, 
         query: str, 
         search_type: str = 'vector', 
         limit: int = 5
-    ) -> List[SearchResultData]:
-        """Retrieve relevant context chunks for a query (batch response)."""
-        results = []
-        async for result in self.stream_context(query, search_type, limit):
-            results.append(result)
-        return results
+    ) -> List[SearchResult]:
+        """Retrieve relevant context chunks for a query using SearchService."""
+        logger.info(f"Retrieving context for query '{query}' using type '{search_type}' (limit={limit})")
+        results: List[SearchResult] = []
+        try:
+            if search_type == 'vector':
+                # Use SearchService method for similarity search
+                results = await self.search_service.search_chunks_by_similarity(query, limit=limit)
+            elif search_type == 'keyword':
+                # Use SearchService method for keyword search
+                results = await self.search_service.search_chunks(query, limit=limit)
+            # Remove graph search for now as SearchService doesn't directly support it
+            # elif search_type == 'graph':
+            #     # Requires graph traversal logic, possibly using entity extraction first
+            #     # Placeholder: Extract entities from query, then use graph_searcher
+            #     logger.warning("Graph search not fully implemented via SearchService yet.")
+            #     # extraction = await self.entity_extractor.extract(query)
+            #     # if extraction.entities:
+            #     #     first_entity_id = extraction.entities[0].id # Simple example
+            #     #     results = await self.graph_searcher.find_related_chunks(first_entity_id, limit=limit)
+            #     pass # No results for now
+            else:
+                raise ValueError(f"Unsupported search type: {search_type}")
+
+            logger.info(f"Retrieved {len(results)} results using {search_type} search.")
+            
+            # Convert SearchResult to SearchResultData if needed by downstream consumers
+            # For now, return SearchResult as defined in search.py
+            # return [SearchResultData(chunk=ChunkData(**r.dict()), score=r.score) for r in results] # Example conversion
+            return results
+
+        except Exception as e:
+            logger.error(f"Error retrieving context for query '{query}': {e}", exc_info=True)
+            return [] # Return empty list on error
 
     async def stream_context(
         self,
         query: str,
         search_type: str = 'vector',
         limit: int = 5
-    ) -> AsyncGenerator[SearchResultData, None]:
-        """Retrieve relevant context chunks for a query, yielding results as a stream."""
-        logger.info(f"Streaming context for query: '{query}' using search type: {search_type}, limit: {limit}")
-        
-        # Validate search type first
-        if search_type not in ['vector', 'keyword']:
-             logger.error(f"Unsupported search_type for streaming: {search_type}")
-             raise ValueError(f"Invalid search_type specified: {search_type}")
-
-        if search_type == 'vector':
-            try:
-                query_vector = self.embedding_service.encode(query)
-                if isinstance(query_vector, list):
-                    async for result in self.vector_searcher.search_similar_chunks(query_vector, limit):
-                        yield result
-                else:
-                    logger.error("Failed to generate query embedding for vector search stream.")
-                    # Yield nothing if embedding fails
-                    return
-            except Exception as e:
-                 logger.error(f"Vector search stream failed: {e}", exc_info=True)
-                 # Decide if we should raise or just stop yielding? Raising seems better.
-                 raise RuntimeError("Vector search stream encountered an error") from e
-                 
-        elif search_type == 'keyword':
-            try:
-                async for result in self.keyword_searcher.search_chunks_by_keyword(query, limit):
-                    yield result
-            except Exception as e:
-                 logger.error(f"Keyword search stream failed: {e}", exc_info=True)
-                 raise RuntimeError("Keyword search stream encountered an error") from e
+    ) -> AsyncGenerator[SearchResult, None]:
+        """Retrieve relevant context chunks as an asynchronous stream."""
+        logger.info(f"Streaming context for query '{query}' using type '{search_type}' (limit={limit})")
+        try:
+            # Streaming is more complex. SearchService needs stream methods, or we retrieve all then yield.
+            # For simplicity, retrieve all then yield (less efficient for large results).
+            results = await self.retrieve_context(query, search_type, limit)
+            logger.debug(f"Retrieved {len(results)} results, now streaming...")
+            for result in results:
+                yield result
+            logger.info("Finished streaming context.")
+            
+        except Exception as e:
+            logger.error(f"Error streaming context for query '{query}': {e}", exc_info=True)
+            # How to signal error in async generator? Could raise exception.
+            raise # Re-raise the exception within the generator
 
     async def answer_query(self, query: str) -> str:
-        """Retrieve context and generate an answer (Requires LLM integration)."""
-        logger.warning("answer_query requires LLM integration and is not implemented.")
-        # 1. Retrieve context
-        # context_chunks = await self.retrieve_context(query)
+        """Retrieve context and generate an answer (Requires LLM integration - Placeholder)."""
+        logger.info(f"Answering query: '{query}'")
+        # 1. Retrieve context (default to vector search)
+        context_results = await self.retrieve_context(query, search_type='vector', limit=5)
+        if not context_results:
+            return "Could not find relevant information to answer the query."
+        
         # 2. Format context for LLM
-        # formatted_context = "\n".join([c.chunk.text for c in context_chunks])
-        # 3. Call LLM (placeholder)
-        # answer = llm_service.generate(query, formatted_context)
-        # return answer
-        return "Placeholder: LLM generation not implemented." 
+        context_text = "\n".join([f"Chunk {i+1}: {result.content}" for i, result in enumerate(context_results)])
+        
+        # 3. Call LLM (Placeholder)
+        logger.warning("LLM integration not implemented. Returning context summary.")
+        # llm_service = load_llm() # Get LLM service instance
+        # answer = await llm_service.generate_answer(query, context_text)
+        answer = f"Found {len(context_results)} relevant chunks. Context summary: {context_text[:200]}..." # Placeholder answer
+        
+        return answer 

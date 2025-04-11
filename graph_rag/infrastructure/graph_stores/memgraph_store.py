@@ -5,6 +5,9 @@ from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timezone
 import asyncio
 import uuid
+import pytest
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 from neo4j import AsyncGraphDatabase, AsyncDriver
 from neo4j.exceptions import Neo4jError, ServiceUnavailable, AuthError
@@ -14,17 +17,29 @@ from tenacity import (
     stop_after_attempt,
     wait_fixed,
     retry_if_exception_type,
-    before_sleep_log
+    before_sleep_log,
+    retry
 )
 
 from graph_rag.core.graph_store import GraphStore
 from graph_rag.domain.models import Document, Chunk, Entity, Relationship, Node
-from graph_rag.config import settings
+from graph_rag.config import get_settings
 
+import mgclient
+# Import specific exceptions if needed, or catch the base mgclient.Error
+# from mgclient import OperationalError, DatabaseError # Example
+
+from unittest.mock import AsyncMock, MagicMock, patch # Ensure patch is imported
+
+# Initialize settings
+settings = get_settings()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Define exceptions to retry on
-_RETRY_EXCEPTIONS = (ConnectionError, ServiceUnavailable)
+# Define exceptions to retry on using available mgclient errors
+_RETRY_EXCEPTIONS = (mgclient.Error, ConnectionRefusedError, ConnectionError)
 
 def _convert_neo4j_temporal_types(data: Dict[str, Any]) -> Dict[str, Any]:
     """Converts Neo4j temporal types to standard Python types."""
@@ -36,118 +51,90 @@ def _convert_neo4j_temporal_types(data: Dict[str, Any]) -> Dict[str, Any]:
             converted_data[key] = value
     return converted_data
 
+class MemgraphConnectionConfig:
+    """Configuration specific to Memgraph connection (extracted from global settings)."""
+    def __init__(self, settings_obj):
+        # Use the passed settings object
+        self.host = settings_obj.MEMGRAPH_HOST
+        self.port = settings_obj.MEMGRAPH_PORT
+        self.user = settings_obj.MEMGRAPH_USERNAME
+        self.password = settings_obj.MEMGRAPH_PASSWORD.get_secret_value() if settings_obj.MEMGRAPH_PASSWORD else None
+        self.use_ssl = settings_obj.MEMGRAPH_USE_SSL # Assuming this setting exists
+        self.max_retries = settings_obj.MEMGRAPH_MAX_RETRIES
+        self.retry_delay = settings_obj.MEMGRAPH_RETRY_WAIT_SECONDS
+
 class MemgraphGraphRepository(GraphStore):
     """Optimized Memgraph implementation of the GraphStore interface."""
 
-    def __init__(self, driver: Optional[AsyncDriver] = None):
-        """
-        Initializes the repository with an optional Neo4j driver instance.
-        If no driver is provided, one will be created using settings.
-        """
-        if driver:
-            self._driver = driver
-            self._is_connected = True # Assume connected if driver is provided
+    def __init__(self, config: Optional[MemgraphConnectionConfig] = None):
+        """Initializes the repository, establishing connection parameters."""
+        if config is None:
+            self.config = MemgraphConnectionConfig(settings) # Use global settings if no config provided
         else:
-            # If no driver is provided, initialize later in connect()
-            self._driver = None
-            self._is_connected = False
-        self.retryer = AsyncRetrying(
-            stop=stop_after_attempt(settings.MEMGRAPH_RETRY_ATTEMPTS),
-            wait=wait_fixed(settings.MEMGRAPH_RETRY_WAIT_SECONDS),
-            retry=retry_if_exception_type((ConnectionError, ServiceUnavailable)),
-            before_sleep=before_sleep_log(logger, logging.WARNING, exc_info=True), # Log exceptions before retrying
-            reraise=True,
-        )
-        logger.info("MemgraphGraphRepository initialized.")
+            self.config = config
+        
+        # mgclient uses synchronous connect, connection pooling is handled internally or needs manual management
+        # We don't store a persistent driver/connection object here in this sync implementation
+        logger.info(f"MemgraphGraphRepository initialized for {self.config.host}:{self.config.port}")
 
-    async def connect(self) -> None:
-        """Establishes connection to Memgraph if no driver is provided."""
-        if self._driver is not None and self._is_connected:
-            return
-
-        uri = settings.get_memgraph_uri()
-        auth = (
-            (settings.MEMGRAPH_USERNAME, settings.MEMGRAPH_PASSWORD)
-            if settings.MEMGRAPH_USERNAME and settings.MEMGRAPH_PASSWORD
-            else None
-        )
-
+    @retry(stop=stop_after_attempt(settings.MEMGRAPH_MAX_RETRIES), 
+           wait=wait_fixed(settings.MEMGRAPH_RETRY_WAIT_SECONDS),
+           retry=retry_if_exception_type(_RETRY_EXCEPTIONS),
+           reraise=True)
+    def _get_connection(self) -> mgclient.Connection:
+        """Establishes and returns a new synchronous connection to Memgraph."""
         try:
-            self._driver = AsyncGraphDatabase.driver(
-                uri,
-                auth=auth,
-                max_connection_pool_size=settings.MEMGRAPH_MAX_POOL_SIZE,
-                connection_timeout=settings.MEMGRAPH_CONNECTION_TIMEOUT
+            logger.debug(f"Attempting to connect to Memgraph at {self.config.host}:{self.config.port}...")
+            conn = mgclient.Connection(
+                host=self.config.host,
+                port=self.config.port,
+                username=self.config.user,
+                password=self.config.password,
+                # Add sslmode if needed based on self.config.use_ssl
+                # sslmode=mgclient.SSLMODE_REQUIRE if self.config.use_ssl else mgclient.SSLMODE_DISABLE 
             )
-            await self._driver.verify_connectivity()
-            self._is_connected = True
-            logger.info(f"Connected to Memgraph at {uri}")
-        except AuthError as e:
-            logger.error(f"Authentication failed for Memgraph: {e}")
-            raise
+            logger.debug("Connection successful.")
+            return conn
+        except mgclient.Error as e:
+            logger.error(f"Failed to connect to Memgraph: {e}", exc_info=True)
+            raise # Re-raise to allow tenacity to handle retries
         except Exception as e:
-            logger.error(f"Failed to connect to Memgraph: {e}")
-            self._is_connected = False
+             logger.error(f"An unexpected error occurred during connection: {e}", exc_info=True)
+             raise
+
+    async def execute_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """Executes a Cypher query and returns results.
+           Note: This needs to be async to conform to the interface, but mgclient is sync.
+           We'll run the sync DB operations in a thread pool executor.
+        """
+        loop = asyncio.get_running_loop()
+        conn = None
+        try:
+            # Run sync DB operations in a thread pool
+            conn = await loop.run_in_executor(None, self._get_connection)
+            cursor = conn.cursor()
+            logger.debug(f"Executing query: {query} with params: {params}")
+            await loop.run_in_executor(None, cursor.execute, query, params or {})
+            results = await loop.run_in_executor(None, cursor.fetchall)
+            # Convert results (tuples) to dictionaries
+            column_names = [desc[0] for desc in cursor.description]
+            dict_results = [dict(zip(column_names, row)) for row in results]
+            await loop.run_in_executor(None, conn.commit) # Commit changes
+            logger.debug(f"Query executed successfully, {len(dict_results)} results fetched.")
+            return dict_results
+        except mgclient.Error as e:
+            logger.error(f"Error executing query: {query} | Params: {params} | Error: {e}", exc_info=True)
+            if conn:
+                await loop.run_in_executor(None, conn.rollback) # Rollback on error
+            raise # Re-raise the original Memgraph error
+        except Exception as e:
+            logger.error(f"Unexpected error during query execution: {e}", exc_info=True)
+            if conn:
+                 await loop.run_in_executor(None, conn.rollback)
             raise
-
-    async def close(self) -> None:
-        """Closes the connection driver."""
-        if self._driver:
-            try:
-                await self._driver.close()
-                self._driver = None
-                self._is_connected = False
-                logger.info("Memgraph driver closed.")
-            except Exception as e:
-                logger.error(f"Error closing Memgraph driver: {e}")
-                raise
-
-    @property
-    def _get_driver(self) -> AsyncDriver:
-        """Ensures driver is initialized and connected."""
-        if not self._driver or not self._is_connected:
-            raise ConnectionError("Memgraph driver not initialized or not connected. Call connect() first.")
-        return self._driver
-
-    async def get_driver(self) -> AsyncDriver:
-        """Ensures driver is initialized and connected."""
-        if not self._driver or not self._is_connected:
-            raise ConnectionError("Memgraph driver not initialized or not connected. Call connect() first.")
-        return self._driver
-
-    async def _execute_write_query(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> None:
-        """Executes a write query with retry logic and transaction support."""
-        async def _task_to_retry():
-            driver = await self.get_driver()
-            async with driver.session() as session:
-                try:
-                    await session.run(query, parameters or {})
-                except Neo4jError as e:
-                    logger.error(f"Write query failed: {e} | Query: {query} | Params: {parameters}")
-                    raise
-        await self.retryer(_task_to_retry)
-
-    async def _execute_read_query(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-        """Executes a read query with retry logic and transaction support."""
-        async def _task_to_retry():
-            driver = await self.get_driver()
-            async with driver.session() as session:
-                try:
-                    result = await session.run(query, parameters or {})
-                    # Ensure result processing happens within the retry block if needed
-                    # Convert records immediately
-                    data = [record.data() async for record in result]
-                    return data # Return processed data
-                except Neo4jError as e:
-                    logger.error(f"Read query failed: {e} | Query: {query} | Params: {parameters}")
-                    raise
-        return await self.retryer(_task_to_retry)
-
-    async def clear_all_data(self) -> None:
-        """Deletes all nodes and relationships from the graph."""
-        logger.warning("Clearing all data from Memgraph database!")
-        await self._execute_write_query("MATCH (n) DETACH DELETE n")
-        logger.info("Cleared all data from Memgraph database.")
+        finally:
+            if conn:
+                await loop.run_in_executor(None, conn.close)
 
     async def add_document(self, document: Document):
         """Adds a document node to the graph."""
@@ -180,7 +167,7 @@ class MemgraphGraphRepository(GraphStore):
             "updated_at": props["updated_at"]
         }
         try:
-            await self._execute_write_query(query, params)
+            await self.execute_query(query, params)
             logger.info(f"Successfully added/updated document {document.id}")
         except Exception as e:
             logger.error(f"Failed to add document {document.id}: {e}", exc_info=True)
@@ -189,7 +176,7 @@ class MemgraphGraphRepository(GraphStore):
     async def get_document_by_id(self, doc_id: str) -> Optional[Document]:
         """Retrieves a Document node by ID."""
         query = "MATCH (d:Document {id: $id}) RETURN properties(d) as props"
-        results = await self._execute_read_query(query, {"id": doc_id})
+        results = await self.execute_query(query, {"id": doc_id})
         if results:
             node_data = results[0]["props"]
             converted_data = _convert_neo4j_temporal_types(node_data)
@@ -232,7 +219,7 @@ class MemgraphGraphRepository(GraphStore):
             "updated_at": props["updated_at"]
         }
         try:
-            await self._execute_write_query(query, params)
+            await self.execute_query(query, params)
             logger.info(f"Successfully added/updated chunk {chunk.id} linked to doc {chunk.document_id}")
         except Exception as e:
             logger.error(f"Failed to add chunk {chunk.id}: {e}", exc_info=True)
@@ -268,7 +255,7 @@ class MemgraphGraphRepository(GraphStore):
             "updated_at": updated_at  # Pass explicitly for ON MATCH
             }
         try:
-            await self._execute_write_query(query, params)
+            await self.execute_query(query, params)
             logger.info(f"Successfully added/updated node {node.id} with type {node.type}")
         except Exception as e:
             logger.error(f"Failed to add node {node.id}: {e}", exc_info=True)
@@ -317,7 +304,7 @@ class MemgraphGraphRepository(GraphStore):
         """
         params = {"nodes": nodes_data}
         try:
-            await self._execute_write_query(query, params)
+            await self.execute_query(query, params)
             logger.info(f"Successfully added/updated {len(nodes)} nodes with type {first_node_type}.")
         except Exception as e:
             logger.error(f"Failed to bulk add nodes: {e}", exc_info=True)
@@ -329,7 +316,7 @@ class MemgraphGraphRepository(GraphStore):
         query = "MATCH (n {id: $id}) RETURN properties(n) as props, labels(n) as labels"
         params = {"id": node_id}
         try:
-            result = await self._execute_read_query(query, params)
+            result = await self.execute_query(query, params)
             if not result:
                 return None
             
@@ -392,7 +379,7 @@ class MemgraphGraphRepository(GraphStore):
         
         nodes = []
         try:
-            results = await self._execute_read_query(query, params)
+            results = await self.execute_query(query, params)
             for record in results:
                 node_props = record["props"]
                 labels = record["labels"]
@@ -443,7 +430,7 @@ class MemgraphGraphRepository(GraphStore):
             ON CREATE SET r += $props, r.created_at = $created_at
             ON MATCH SET r += $props, r.updated_at = $updated_at
             """
-            await self._execute_write_query(
+            await self.execute_query(
                 query,
                 {
                     "source_id": relationship.source_id, # Use source_id from Edge model
@@ -538,7 +525,7 @@ class MemgraphGraphRepository(GraphStore):
                  rel_query_part = "" # Skip bulk rel part
                  # Handle entities first if they exist
                  if entity_query_part:
-                      await self._execute_write_query(entity_query_part.replace("WITH collect(n) as nodes_processed, $relationships as rels", ""), {"entities": entity_params})
+                      await self.execute_query(entity_query_part.replace("WITH collect(n) as nodes_processed, $relationships as rels", ""), {"entities": entity_params})
                  # Add relationships individually
                  for rel in relationships:
                      await self.add_relationship(rel)
@@ -557,7 +544,7 @@ class MemgraphGraphRepository(GraphStore):
             query = entity_query_part.replace(", $relationships as rels","") # Remove rels if no relationships
 
         if query: # Only execute if query is not empty (not handled individually)
-            await self._execute_write_query(
+            await self.execute_query(
                 query,
                 {
                     "entities": entity_params,
@@ -627,16 +614,17 @@ class MemgraphGraphRepository(GraphStore):
         # Execute query but get raw records, not just data()
         records = []
         async def _task_to_retry():
-            async with self._get_driver.session() as session:
-                try:
-                    result = await session.run(query, {"id": entity_id})
-                    # Collect raw records
-                    nonlocal records
-                    records = [record async for record in result]
-                except Neo4jError as e:
-                    logger.error(f"Read query failed: {e} | Query: {query} | Params: {{'id': entity_id}}")
-                    raise
-        await self.retryer(_task_to_retry)
+            conn = await self._get_connection()
+            cursor = conn.cursor()
+            try:
+                await cursor.execute(query, {"id": entity_id})
+                # Collect raw records
+                nonlocal records
+                records = [record async for record in cursor]
+            except mgclient.Error as e:
+                logger.error(f"Read query failed: {e} | Query: {query} | Params: {{'id': entity_id}}")
+                raise
+        await self.execute_query(query, {"id": entity_id})
 
         # Process raw records
         entities: List[Entity] = []
@@ -738,7 +726,7 @@ class MemgraphGraphRepository(GraphStore):
         if limit:
             params["limit"] = limit # Add limit to params if needed for query
 
-        results = await self._execute_read_query(query, params)
+        results = await self.execute_query(query, params)
         entities_found = []
         for record in results: # Process each record
              node_props = record["props"]
@@ -779,12 +767,12 @@ class MemgraphGraphRepository(GraphStore):
 
     async def __aenter__(self):
         """Context manager entry."""
-        await self.connect()
+        await self.execute_query("RETURN 1")
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
-        await self.close()
+        pass
 
 def escape_cypher_string(value: str) -> str:
     """Escapes characters in a string for safe use in Cypher labels/types."""

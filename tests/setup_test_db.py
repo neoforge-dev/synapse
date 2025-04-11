@@ -1,9 +1,11 @@
 import asyncio
 import logging
-from graph_rag.config import settings
+from graph_rag.config import get_settings
 from graph_rag.infrastructure.repositories.graph_repository import GraphRepository
 
 logger = logging.getLogger(__name__)
+
+settings = get_settings() # Get settings instance
 
 async def setup_test_database():
     """Set up test database with clean state."""

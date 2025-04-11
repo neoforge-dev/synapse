@@ -2,15 +2,17 @@ from sentence_transformers import SentenceTransformer
 from typing import List, Union, Protocol
 import logging
 
-from graph_rag.config.settings import settings # Updated import
+# Change import to use the factory
+from graph_rag.config import get_settings
 from graph_rag.core.interfaces import EmbeddingService # Import the protocol
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class EmbeddingService(Protocol):
-    """Protocol for embedding services."""
+# Instantiate settings using the factory
+settings = get_settings()
+
 class SentenceTransformerEmbeddingService(EmbeddingService): # Implement the protocol
     """Service to handle text embedding generation using Sentence Transformers."""
     _model: SentenceTransformer

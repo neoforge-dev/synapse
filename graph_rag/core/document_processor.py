@@ -9,18 +9,8 @@ from graph_rag.models import Document, Chunk
 
 try:
     import nltk
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    print("NLTK 'punkt' resource not found. Downloading...")
-    try:
-        nltk.download('punkt', quiet=True)
-        print("'punkt' downloaded successfully.")
-    except Exception as e:
-        print(f"Error downloading 'punkt': {e}. Please install it manually.")
-        # Consider raising an error or exiting if 'punkt' is critical
 except ImportError:
     nltk = None # Handle case where nltk is not installed
-    print("Warning: 'nltk' library not found. Sentence splitting will not work.")
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +26,33 @@ class ChunkSplitter(ABC):
 
 class SentenceSplitter(ChunkSplitter):
     """Splits a document into chunks based on sentences using NLTK."""
+    
+    def __init__(self):
+        """Initializes the splitter and ensures NLTK data is available."""
+        self._ensure_nltk_punkt()
+        
+    def _ensure_nltk_punkt(self):
+        """Checks for NLTK and the 'punkt' tokenizer, downloading if necessary."""
+        if not nltk:
+            logger.warning("'nltk' library not found. Sentence splitting will not work.")
+            return # Cannot proceed without nltk
+        
+        try:
+            nltk.data.find('tokenizers/punkt')
+            logger.debug("NLTK 'punkt' tokenizer found.")
+        except LookupError:
+            logger.info("NLTK 'punkt' resource not found. Attempting download...")
+            try:
+                nltk.download('punkt', quiet=True)
+                logger.info("NLTK 'punkt' downloaded successfully.")
+            except Exception as e:
+                logger.error(f"Error downloading NLTK 'punkt': {e}. Sentence splitting may fail.", exc_info=True)
+                # Consider raising a more specific error if punkt is absolutely essential
 
     def split(self, document: Document) -> List[Chunk]:
         """Splits the document content into sentences."""
         if not nltk:
             logger.error("NLTK is not available. Cannot perform sentence splitting.")
-            # Or raise an exception, depending on desired behavior
             return [] 
         
         if not document.content or not document.content.strip():
@@ -134,22 +145,3 @@ class SimpleDocumentProcessor(DocumentProcessor):
         
         logger.debug(f"Generated {len(chunks)} chunks for document {doc.id}")
         return chunks 
-
-class DocumentProcessor:
-    """Processes documents by applying a chunking strategy."""
-
-    def __init__(self, splitter: ChunkSplitter):
-        """Initializes the processor with a specific chunk splitter."""
-        if not isinstance(splitter, ChunkSplitter):
-             raise TypeError("splitter must be an instance of ChunkSplitter")
-        self._splitter = splitter
-        logger.info(f"DocumentProcessor initialized with splitter: {type(splitter).__name__}")
-
-    def process(self, document: Document) -> Document:
-        """Processes a single document, adding chunks to it."""
-        logger.info(f"Processing document {document.id}...")
-        chunks = self._splitter.split(document)
-        # Modify the document in-place as per the test structure
-        document.chunks = chunks 
-        logger.info(f"Finished processing document {document.id}, created {len(chunks)} chunks.")
-        return document 

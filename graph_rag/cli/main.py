@@ -1,6 +1,9 @@
 import typer
 import logging
 from typing import Optional
+from rich.logging import RichHandler
+from graph_rag.cli.commands import admin, ingest, search, query # Assuming these are submodules/files
+from graph_rag.config import get_settings # Import factory
 
 # Import command functions directly
 from graph_rag.cli.commands.ingest import ingest
@@ -8,7 +11,8 @@ from graph_rag.cli.commands.search import search_query
 from graph_rag.cli.commands.admin import check_health # Import admin command
 
 from graph_rag import __version__ # Assume version is defined in __init__.py
-from graph_rag.config import settings # Use settings for logging config
+
+settings = get_settings() # Get settings instance
 
 # Configure root logger for CLI based on settings
 logging.basicConfig(level=settings.api_log_level.upper(), format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

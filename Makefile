@@ -30,7 +30,7 @@ API_PORT ?= 8000
 # API_PORT := $(shell $(PYTHON) -c "from $(PACKAGE_NAME).config import settings; print(settings.api_port)" 2>/dev/null || echo 8000)
 
 # Phony targets (prevents conflicts with files of the same name)
-.PHONY: help install-dev download-nlp-data lint format test test-memgraph test-all run-api run-memgraph stop-memgraph logs-memgraph clean
+.PHONY: help install-dev download-nlp-data lint format test test-memgraph test-all run-api run-memgraph stop-memgraph logs-memgraph clean test-integration
 
 help: ## Display this help screen
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -75,6 +75,11 @@ test-memgraph: ## Run Memgraph integration tests (requires Memgraph running)
 	@echo "INFO: Memgraph is ready. Running tests..."
 	# Add --cov-fail-under=0 to prevent failure but still report coverage. Explicitly add cov flags.
 	RUN_MEMGRAPH_TESTS=true $(UV) run pytest -v tests/infrastructure/graph_stores/ -m "$(TEST_MARKER_INTEGRATION)" --cov=$(PACKAGE_NAME) --cov-report=term-missing --cov-fail-under=0
+
+test-integration:
+	@echo "Running integration tests..."
+	# Set the env var to allow memgraph_connection fixture to run
+	RUNNING_INTEGRATION_TESTS=true pytest -m integration -vv
 
 test-all: test test-memgraph ## Run all tests (unit + integration, requires Memgraph running)
 	@echo "INFO: All tests passed (assuming Memgraph was running for integration tests)."

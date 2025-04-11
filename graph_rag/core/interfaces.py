@@ -53,6 +53,13 @@ class EntityExtractor(Protocol):
         """Extracts entities and relationships from a given text block."""
         ...
 
+class KnowledgeExtractor(Protocol):
+    """Interface for extracting knowledge from text."""
+    
+    async def extract(self, text: str) -> ExtractionResult:
+        """Extracts entities and relationships from a given text block."""
+        ...
+
 class KnowledgeGraphBuilder(Protocol):
     """Interface for building and updating the knowledge graph."""
     
@@ -94,12 +101,88 @@ class KeywordSearcher(Protocol):
     """Interface for keyword-based search."""
     async def search_chunks_by_keyword(self, query: str, limit: int = 10) -> List[SearchResultData]:
         ...
+
+class VectorStore(Protocol):
+    """Interface defining operations for interacting with a vector store."""
+    
+    async def add_chunks(self, chunks: List['ChunkData']) -> None:
+        """Adds or updates chunk data and their embeddings."""
+        ...
         
+    async def search_similar_chunks(self, query_vector: List[float], limit: int = 10, threshold: Optional[float] = None) -> List['SearchResultData']:
+        """Searches for chunks with embeddings similar to the query vector."""
+        ...
+        
+    async def get_chunk_by_id(self, chunk_id: str) -> Optional['ChunkData']:
+        """Retrieves a chunk by its ID (optional method)."""
+        ...
+        
+    async def delete_chunks(self, chunk_ids: List[str]) -> None:
+        """Deletes chunks by their IDs (optional method)."""
+        ...
+
+    async def delete_store(self) -> None:
+        """Deletes the entire vector store collection (optional method)."""
+        ...
+
 class GraphSearcher(Protocol):
     """Interface for graph traversal based search/retrieval."""
     async def find_related_chunks(self, entity_id: str, limit: int = 10) -> List[SearchResultData]:
         # Example: Find chunks mentioning a specific entity
         ...
+
+class GraphRepository(Protocol):
+    """Interface defining operations for interacting with the graph store."""
+    
+    async def execute_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """Executes a raw Cypher query and returns results."""
+        ...
+
+    async def add_document(self, document: 'Document') -> None:
+        """Adds or updates a document node."""
+        ...
+        
+    async def get_document_by_id(self, document_id: str) -> Optional['Document']:
+        """Retrieves a document by its ID."""
+        ...
+        
+    async def add_chunk(self, chunk: 'Chunk') -> None:
+        """Adds or updates a chunk node and links it to its document."""
+        ...
+
+    async def add_chunks(self, chunks: List['Chunk']) -> None:
+        """Adds or updates multiple chunk nodes."""
+        ...
+        
+    async def get_chunk_by_id(self, chunk_id: str) -> Optional['Chunk']:
+        """Retrieves a chunk by its ID."""
+        ...
+        
+    async def add_entity(self, entity: 'Entity') -> None:
+        """Adds or updates an entity node."""
+        ...
+        
+    async def add_relationship(self, relationship: 'Relationship') -> None:
+        """Adds or updates a relationship edge between nodes."""
+        ...
+        
+    async def get_neighbors(self, node_id: str, relationship_type: Optional[str] = None, direction: str = "out") -> List[Dict]:
+        """Retrieves neighbor nodes for a given node."""
+        ...
+        
+    async def update_node_properties(self, node_id: str, properties: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Updates properties of an existing node."""
+        ...
+        
+    async def delete_document(self, document_id: str) -> bool:
+        """Deletes a document and its associated chunks/relationships."""
+        ...
+
+    async def close(self) -> None:
+        """Closes any open connections or resources."""
+        ...
+
+    # Add other necessary graph operations as needed...
 
 class GraphRAGEngine(Protocol):
     """Orchestrates the GraphRAG process."""
@@ -114,4 +197,8 @@ class GraphRAGEngine(Protocol):
         
     async def answer_query(self, query: str) -> str:
         """Retrieve context and generate an answer (Requires LLM integration - Placeholder)."""
-        ... 
+        ...
+
+# Forward references need types defined or imported if not using strings
+# from graph_rag.models import Document, Chunk, Entity, Relationship 
+# This might cause circular imports, using string hints is safer here. 

@@ -19,7 +19,10 @@ from graph_rag.core.entity_extractor import SpacyEntityExtractor
 from graph_rag.domain.models import Document 
 # Correct import for the CLI Typer app
 from graph_rag.cli.main import app as cli_app # Assuming the Typer app is named 'app' in main.py
-from graph_rag.config import settings # Needed for potential overrides
+from graph_rag.config import get_settings # Import factory
+from unittest.mock import patch
+
+settings = get_settings() # Get settings instance
 
 logger = logging.getLogger(__name__)
 

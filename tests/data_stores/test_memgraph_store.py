@@ -4,15 +4,20 @@ import asyncio
 import uuid
 import os
 from typing import List, Dict, Any
+from datetime import datetime
 
 # Import driver classes for mocking
 from neo4j import AsyncGraphDatabase, AsyncDriver, AsyncSession, Result, Record
 from neo4j.exceptions import ServiceUnavailable, SessionExpired
 
 from graph_rag.data_stores.memgraph_store import MemgraphStore
-from graph_rag.config.settings import settings
+from graph_rag.config import get_settings
 from gqlalchemy import Memgraph
 from graph_rag.data_stores.memgraph_store import MemgraphStoreError
+from graph_rag.domain.models import Document, Chunk
+
+# Instantiate settings
+settings = get_settings()
 
 # --- Unit Tests (Mocking Neo4j Driver) ---
 
@@ -168,3 +173,102 @@ async def test_integration_add_relationship(memgraph_store_integration: Memgraph
     assert result == [True]
 
 # TODO: Add integration tests for query_subgraph, detect_communities, schema constraints, transactions, error handling/retries. 
+
+@pytest.fixture
+def mock_mgclient():
+    """Mocks the mgclient connection and cursor."""
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+    with patch('mgclient.connect', return_value=mock_conn) as mock_connect:
+        yield mock_connect, mock_conn, mock_cursor
+
+@pytest.fixture
+def memgraph_store(mock_mgclient):
+    """Provides a MemgraphStore instance with mocked mgclient."""
+    # Pass dummy config values since mgclient is mocked
+    return MemgraphStore(
+        host="mockhost", 
+        port=1234, 
+        user="mockuser", 
+        password="mockpass"
+    )
+
+@pytest.mark.asyncio
+async def test_add_document_success(memgraph_store, mock_mgclient):
+    """Test successful document addition."""
+    mock_connect, mock_conn, mock_cursor = mock_mgclient
+    doc = Document(id="doc1", content="Test", metadata={})
+    
+    await memgraph_store.add_document(doc)
+    
+    # Assert connect was called
+    # mock_connect.assert_called_once_with(host="mockhost", port=1234, user="mockuser", password="mockpass")
+    # Assert execute was called with correct query parts
+    assert mock_cursor.execute.call_count == 1
+    args, kwargs = mock_cursor.execute.call_args
+    assert "MERGE (d:Document {id: $id})" in args[0]
+    assert args[1]["id"] == "doc1"
+    # Assert commit was called
+    mock_conn.commit.assert_called_once()
+    mock_conn.close.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_add_chunk_success(memgraph_store, mock_mgclient):
+    mock_connect, mock_conn, mock_cursor = mock_mgclient
+    chunk = Chunk(id="chunk1", document_id="doc1", content="Chunk text", embedding=[0.1])
+
+    await memgraph_store.add_chunk(chunk)
+
+    assert mock_cursor.execute.call_count == 1
+    args, kwargs = mock_cursor.execute.call_args
+    assert "MATCH (d:Document {id: $doc_id})" in args[0]
+    assert "MERGE (c:Chunk {id: $chunk_id})" in args[0]
+    assert "MERGE (d)-[:CONTAINS]->(c)" in args[0]
+    assert args[1]["chunk_id"] == "chunk1"
+    assert args[1]["doc_id"] == "doc1"
+    mock_conn.commit.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_get_document_by_id_found(memgraph_store, mock_mgclient):
+    mock_connect, mock_conn, mock_cursor = mock_mgclient
+    mock_cursor.fetchall.return_value = [("doc1", "Content", {"key": "value"}, datetime.now(), datetime.now())]
+    # Mock description for column names
+    mock_cursor.description = [("id",), ("content",), ("metadata",), ("created_at",), ("updated_at",)]
+
+    doc = await memgraph_store.get_document_by_id("doc1")
+
+    assert doc is not None
+    assert doc.id == "doc1"
+    assert doc.content == "Content"
+    assert doc.metadata == {"key": "value"}
+    assert mock_cursor.execute.call_count == 1
+    args, kwargs = mock_cursor.execute.call_args
+    assert "MATCH (d:Document {id: $id})" in args[0]
+
+@pytest.mark.asyncio
+async def test_get_document_by_id_not_found(memgraph_store, mock_mgclient):
+    mock_connect, mock_conn, mock_cursor = mock_mgclient
+    mock_cursor.fetchall.return_value = [] # Simulate not found
+    mock_cursor.description = [("id",), ("content",), ("metadata",), ("created_at",), ("updated_at",)]
+
+    doc = await memgraph_store.get_document_by_id("doc_nonexistent")
+
+    assert doc is None
+
+@pytest.mark.asyncio
+async def test_add_document_connection_error(memgraph_store, mock_mgclient):
+    mock_connect, mock_conn, mock_cursor = mock_mgclient
+    # Simulate connection error
+    mock_connect.side_effect = mgclient.Error("Connection failed")
+    doc = Document(id="doc_err", content="Error test", metadata={})
+
+    with pytest.raises(mgclient.Error):
+        await memgraph_store.add_document(doc)
+    
+    # Assert connection was attempted
+    # mock_connect.assert_called_once()
+    # Assert execute, commit, close were NOT called
+    mock_cursor.execute.assert_not_called()
+    mock_conn.commit.assert_not_called()
+    mock_conn.close.assert_not_called() # Connection wasn't successfully opened to be closed 

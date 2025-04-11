@@ -2,8 +2,14 @@
 from typing import Optional
 from pathlib import Path
 import os
+import typer
+import httpx
+import logging
+from graph_rag.config import get_settings
 
-from graph_rag.config import settings
+settings = get_settings()
+
+logger = logging.getLogger(__name__)
 
 class CLIConfig:
     """Configuration for CLI commands."""

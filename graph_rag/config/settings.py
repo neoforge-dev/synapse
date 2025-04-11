@@ -29,8 +29,9 @@ class Settings(BaseSettings):
     MEMGRAPH_PASSWORD: SecretStr = SecretStr("")
     MEMGRAPH_MAX_POOL_SIZE: int = 50
     MEMGRAPH_CONNECTION_TIMEOUT: float = 10.0 # seconds
-    MEMGRAPH_RETRY_ATTEMPTS: int = 3
+    MEMGRAPH_MAX_RETRIES: int = 3
     MEMGRAPH_RETRY_WAIT_SECONDS: float = 1.0
+    MEMGRAPH_USE_SSL: bool = False
 
     # Embedding settings
     EMBEDDING_MODEL: str = "text-embedding-ada-002"
@@ -54,5 +55,19 @@ class Settings(BaseSettings):
         # Construct default bolt URI (add +ssc for encrypted connections if needed)
         return f"bolt://{self.MEMGRAPH_HOST}:{self.MEMGRAPH_PORT}"
 
-# Singleton instance to be imported
-settings = Settings() 
+# Define the factory function here
+def get_settings() -> Settings:
+    """Loads and returns the application settings."""
+    try:
+        # This will load from .env and environment variables based on model_config
+        loaded_settings = Settings()
+        # Optional: Add logging here if desired
+        # logger.info("Application settings loaded successfully.")
+        return loaded_settings
+    except Exception as e:
+        # import logging here if needed, or ensure logger is available
+        # logger = logging.getLogger(__name__)
+        # logger.error(f"CRITICAL: Failed to load application settings: {e}", exc_info=True)
+        # For now, re-raise to make the failure explicit during startup/use
+        print(f"CRITICAL ERROR: Failed to load application settings: {e}") # Simple print for now
+        raise RuntimeError(f"Failed to initialize application settings: {e}") from e 

@@ -21,17 +21,18 @@ from neo4j import AsyncGraphDatabase, AsyncDriver
 from neo4j.exceptions import ServiceUnavailable, Neo4jError
 # from tenacity import retry, stop_after_delay, wait_fixed, retry_if_exception_type # Removed
 
-from graph_rag.config import settings
+from graph_rag.config import get_settings
 from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 from graph_rag.core.entity_extractor import EntityExtractor, MockEntityExtractor
 # Use standardized getter for graph repository
 from graph_rag.api.dependencies import (
     get_entity_extractor, get_graph_repository, get_ingestion_service, 
-    get_graph_rag_engine, get_neo4j_driver, # Existing getters
+    get_graph_rag_engine, # get_neo4j_driver, # Removed Neo4j driver getter
     get_document_processor, get_kg_builder # Corrected: get_document_processor
 )
 from graph_rag.api.main import create_app
 from graph_rag.core.debug_tools import GraphDebugger
+import mgclient # Add correct import
 
 logger = logging.getLogger(__name__)
 
@@ -173,7 +174,7 @@ async def test_client(
     original_overrides = app.dependency_overrides.copy()
     
     # --- Pre-populate app state BEFORE lifespan runs --- 
-    app.state.settings = settings 
+    app.state.settings = get_settings() 
     app.state.neo4j_driver = mock_neo4j_driver 
     app.state.graph_repository = mock_graph_repo
     app.state.vector_store = mock_vector_store
@@ -188,7 +189,6 @@ async def test_client(
     app.dependency_overrides[get_graph_repository] = lambda: mock_graph_repo
     app.dependency_overrides[get_ingestion_service] = lambda: mock_ingestion_service
     app.dependency_overrides[get_graph_rag_engine] = lambda: mock_graph_rag_engine
-    app.dependency_overrides[get_neo4j_driver] = lambda: mock_neo4j_driver
     app.dependency_overrides[get_document_processor] = lambda: mock_doc_processor
     app.dependency_overrides[get_kg_builder] = lambda: mock_kg_builder
 
@@ -238,8 +238,8 @@ def event_loop() -> Generator:
 @pytest.fixture(scope="session")
 async def memgraph_connection() -> AsyncGenerator[AsyncGraphDatabase.driver, None]:
     """Create a Memgraph connection for testing."""
-    uri = settings.get_memgraph_uri()
-    auth = (settings.MEMGRAPH_USERNAME, settings.MEMGRAPH_PASSWORD)
+    uri = get_settings().get_memgraph_uri()
+    auth = (get_settings().MEMGRAPH_USERNAME, get_settings().MEMGRAPH_PASSWORD)
     
     driver = None
     max_retries = 3
@@ -250,8 +250,8 @@ async def memgraph_connection() -> AsyncGenerator[AsyncGraphDatabase.driver, Non
             driver = AsyncGraphDatabase.driver(
                 uri,
                 auth=auth,
-                max_connection_pool_size=settings.MEMGRAPH_MAX_POOL_SIZE,
-                connection_timeout=settings.MEMGRAPH_CONNECTION_TIMEOUT
+                max_connection_pool_size=get_settings().MEMGRAPH_MAX_POOL_SIZE,
+                connection_timeout=get_settings().MEMGRAPH_CONNECTION_TIMEOUT
             )
             await driver.verify_connectivity()
             break
@@ -313,4 +313,35 @@ async def graph_debugger(memgraph_repo: MemgraphGraphRepository) -> GraphDebugge
         await memgraph_repo.connect() # Ensure connection if needed
     if not memgraph_repo._driver:
          raise ValueError("Memgraph repository driver is not initialized after connect()")
-    return GraphDebugger(memgraph_repo._driver) 
+    return GraphDebugger(memgraph_repo._driver)
+
+# Fixture for Memgraph connection (Session-scoped)
+@pytest.fixture(scope="session")
+def memgraph_connection():
+    """Establishes a connection to Memgraph for integration tests."""
+    # Skip this fixture entirely if not running integration tests
+    if os.environ.get("RUNNING_INTEGRATION_TESTS") != "true":
+        pytest.skip("Skipping Memgraph connection: Not running integration tests.")
+
+    try:
+        # Use settings to get connection details
+        memgraph_uri = get_settings().get_memgraph_uri()
+        host, port_str = memgraph_uri.replace("bolt://", "").split(":")
+        port = int(port_str)
+
+        # Use mgclient.connect() instead of Memgraph()
+        db = mgclient.connect(host=host, port=port)
+        # Optional: Clear database before tests if needed
+        # cursor = db.cursor()
+        # cursor.execute("MATCH (n) DETACH DELETE n;")
+        yield db # Provide the connection object
+        db.close() # Ensure connection is closed after tests
+    except Exception as e:
+        pytest.fail(f"Failed to connect to Memgraph at {host}:{port}. Error: {e}")
+
+@pytest.fixture(scope="function") # Function scope might be better if state changes
+def graph_debugger(memgraph_connection):
+    """Provides a GraphDebugger instance connected to Memgraph."""
+    # graph_debugger relies on memgraph_connection, so it will also be skipped
+    # if memgraph_connection is skipped.
+    return GraphDebugger(memgraph_connection) 

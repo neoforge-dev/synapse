@@ -2,7 +2,7 @@ from fastapi import FastAPI, APIRouter, Request, HTTPException, status, Depends
 import logging
 import sys
 from contextlib import asynccontextmanager
-from graph_rag.config.settings import settings
+from graph_rag.config import get_settings
 from graph_rag.api.routers import documents, chunks, ingestion, search, query
 from graph_rag.api import dependencies as deps
 from graph_rag.core.interfaces import GraphRAGEngine
@@ -23,7 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
 from neo4j import AsyncGraphDatabase, AsyncDriver
 from neo4j.exceptions import Neo4jError
-from graph_rag.api.dependencies import get_graph_rag_engine, get_neo4j_driver, Neo4jDriverDep
+from graph_rag.api.dependencies import get_graph_rag_engine
 from typing import Annotated
 
 # --- Logging Configuration ---
@@ -31,15 +31,11 @@ from typing import Annotated
 # (like containers sending stdout/stderr directly)
 logging.getLogger().handlers.clear()
 
-# Configure root logger
-log_level = logging.DEBUG if settings.DEBUG else logging.INFO
-logging.basicConfig(
-    level=log_level,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout) # Ensure logs go to stdout
-    ]
-)
+# Call factory to get settings for logger setup
+local_settings = get_settings()
+logging.basicConfig(level=local_settings.api_log_level.upper(), # Use local_settings
+                      format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                      handlers=[logging.StreamHandler(sys.stdout)])
 
 logger = logging.getLogger(__name__) # Logger for this module
 
@@ -47,8 +43,10 @@ logger = logging.getLogger(__name__) # Logger for this module
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # --- Startup --- 
-    logger.info(f"Starting API... Config: {settings.model_dump(exclude={'memgraph_password'})}") # Log settings minus secrets
-    app.state.settings = settings
+    # Get settings instance for lifespan context
+    current_settings = get_settings()
+    logger.info(f"Starting API... Config: {current_settings.model_dump(exclude={'memgraph_password'})}") # Use current_settings
+    app.state.settings = current_settings # Store in state
     app.state.neo4j_driver: Optional[AsyncDriver] = None
     app.state.graph_repository: Optional[MemgraphRepository] = None
     app.state.vector_store = None
@@ -62,8 +60,8 @@ async def lifespan(app: FastAPI):
     if not hasattr(app.state, 'neo4j_driver') or app.state.neo4j_driver is None:
         try:
             driver = AsyncGraphDatabase.driver(
-                settings.get_memgraph_uri(),
-                auth=(settings.MEMGRAPH_USERNAME, settings.MEMGRAPH_PASSWORD.get_secret_value() if settings.MEMGRAPH_PASSWORD else None)
+                current_settings.get_memgraph_uri(),
+                auth=(current_settings.MEMGRAPH_USERNAME, current_settings.MEMGRAPH_PASSWORD.get_secret_value() if current_settings.MEMGRAPH_PASSWORD else None)
             )
             app.state.neo4j_driver = driver
             logger.info("Neo4j AsyncDriver initialized successfully.")
@@ -83,15 +81,15 @@ async def lifespan(app: FastAPI):
     # 3. Initialize VectorStore based on settings
     if not hasattr(app.state, 'vector_store') or app.state.vector_store is None:
         try:
-            if settings.vector_store_type.lower() == 'simple':
-                vector_store = SimpleVectorStore(embedding_model_name=settings.vector_store_embedding_model)
+            if current_settings.vector_store_type.lower() == 'simple':
+                vector_store = SimpleVectorStore(embedding_model_name=current_settings.vector_store_embedding_model)
                 app.state.vector_store = vector_store
-                logger.info(f"Using SimpleVectorStore with model '{settings.vector_store_embedding_model}'.")
-            elif settings.vector_store_type.lower() == 'mock':
+                logger.info(f"Using SimpleVectorStore with model '{current_settings.vector_store_embedding_model}'.")
+            elif current_settings.vector_store_type.lower() == 'mock':
                 app.state.vector_store = MockVectorStore()
                 logger.info("Using MockVectorStore.")
             else:
-                logger.warning(f"Unsupported vector_store_type '{settings.vector_store_type}'. Using MockVectorStore.")
+                logger.warning(f"Unsupported vector_store_type '{current_settings.vector_store_type}'. Using MockVectorStore.")
                 app.state.vector_store = MockVectorStore()
         except Exception as e:
             logger.error(f"Failed to initialize VectorStore: {e}. Using MockVectorStore as fallback.", exc_info=True)
@@ -100,14 +98,14 @@ async def lifespan(app: FastAPI):
     # 4. Initialize EntityExtractor based on settings
     if not hasattr(app.state, 'entity_extractor') or app.state.entity_extractor is None:
         try:
-            if settings.entity_extractor_type.lower() == 'spacy':
-                app.state.entity_extractor = SpacyEntityExtractor(model_name=settings.entity_extractor_model)
-                logger.info(f"Using SpacyEntityExtractor with model '{settings.entity_extractor_model}'.")
-            elif settings.entity_extractor_type.lower() == 'mock':
+            if current_settings.entity_extractor_type.lower() == 'spacy':
+                app.state.entity_extractor = SpacyEntityExtractor(model_name=current_settings.entity_extractor_model)
+                logger.info(f"Using SpacyEntityExtractor with model '{current_settings.entity_extractor_model}'.")
+            elif current_settings.entity_extractor_type.lower() == 'mock':
                 app.state.entity_extractor = MockEntityExtractor()
                 logger.info("Using MockEntityExtractor.")
             else:
-                logger.warning(f"Unsupported entity_extractor_type '{settings.entity_extractor_type}'. Using MockEntityExtractor.")
+                logger.warning(f"Unsupported entity_extractor_type '{current_settings.entity_extractor_type}'. Using MockEntityExtractor.")
                 app.state.entity_extractor = MockEntityExtractor()
         except Exception as e:
             logger.error(f"Failed to initialize EntityExtractor: {e}. Using MockEntityExtractor as fallback.", exc_info=True)
@@ -219,7 +217,9 @@ def get_graph_rag_engine(request: Request) -> "GraphRAGEngine":
 def create_app() -> FastAPI:
     """Factory function to create the FastAPI application with all dependencies."""
     app = FastAPI(
-        title="GraphRAG API",
+        # Use settings obtained at module level for initial app config if needed
+        # title=local_settings.APP_NAME, 
+        title="GraphRAG API", # Or keep hardcoded
         description="API for the GraphRAG system",
         version="1.0.0",
         lifespan=lifespan
@@ -307,16 +307,18 @@ def create_app() -> FastAPI:
 
     return app
 
-# --- Run Command --- 
+# Add this if block for direct execution support (uvicorn graph_rag.api.main:app)
 if __name__ == "__main__":
     import uvicorn
+    # Get settings again for running directly
+    run_settings = get_settings()
     uvicorn.run(
         "graph_rag.api.main:create_app", 
-        factory=True, # Important: Use factory pattern when create_app is used
-        host=settings.api_host, 
-        port=settings.api_port, 
-        log_level=settings.api_log_level.lower(), 
-        reload=True
+        host=run_settings.api_host,
+        port=run_settings.api_port,
+        log_level=run_settings.api_log_level.lower(),
+        reload=run_settings.DEBUG, # Enable reload if DEBUG is True
+        factory=True # Indicate uvicorn should call create_app
     )
 
 # Create and export the app instance

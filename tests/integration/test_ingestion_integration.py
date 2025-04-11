@@ -4,10 +4,13 @@ from httpx import AsyncClient
 from fastapi import status
 import logging
 from typing import Dict, Any
+from typer.testing import CliRunner
+from graph_rag.cli.main import app # Assuming your Typer app is here
+from graph_rag.config import get_settings
 
 # Removed direct app import
 # from graph_rag.api.main import app 
-from graph_rag.config import settings
+settings = get_settings() # Get settings instance
 # Use the fixture for repository, don't import directly
 # from graph_rag.infrastructure.repositories.graph_repository import GraphRepository
 from graph_rag.domain.models import Document, Chunk
@@ -219,3 +222,6 @@ async def test_error_handling_integration(test_client: AsyncClient, memgraph_rep
         await asyncio.sleep(2)  # Give some time for potential (failed) processing
         doc = await memgraph_repo.get_document_by_id(doc_id)
         assert doc is None, "Empty document should not have been created in the DB" 
+
+# Helper to run CLI commands
+runner = CliRunner() 

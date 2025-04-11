@@ -6,8 +6,12 @@ from typing import Dict, Any
 import pymgclient as mgclient
 from unittest.mock import AsyncMock, MagicMock, patch
 import numpy as np
+import asyncio
+import uuid
+from httpx import AsyncClient, Timeout
+from fastapi import status
 
-from graph_rag.config.settings import settings # Use configured settings
+from graph_rag.config import get_settings
 from graph_rag.stores.memgraph_store import MemgraphStore
 from graph_rag.stores.simple_vector_store import SimpleVectorStore
 from graph_rag.core.entity_extractor import SpacyEntityExtractor, MockEntityExtractor
@@ -62,14 +66,14 @@ def graph_store() -> MemgraphStore:
 @pytest.fixture(scope="module")
 def vector_store() -> SimpleVectorStore:
     # Use the model configured in settings if possible, else default
-    model = settings.vector_store_embedding_model
+    model = get_settings().vector_store_embedding_model
     return SimpleVectorStore(embedding_model_name=model)
 
 @pytest.fixture(scope="module")
 def entity_extractor() -> SpacyEntityExtractor:
     # Use spacy for a more realistic E2E test
     try:
-        return SpacyEntityExtractor(model_name=settings.entity_extractor_model)
+        return SpacyEntityExtractor(model_name=get_settings().entity_extractor_model)
     except RuntimeError as e:
         pytest.skip(f"Skipping E2E test needing Spacy: {e}")
 
@@ -279,3 +283,116 @@ async def test_query_endpoint_error_handling(client):
     data = await response.get_json()
     assert 'error' in data
     assert 'Test error' in data['error'] 
+
+# Instantiate settings
+settings = get_settings()
+
+# API base URL (consider moving to a shared config or fixture)
+API_BASE_URL = f"http://{settings.api_host}:{settings.api_port}"
+
+# Configure timeout for API requests
+TIMEOUT = Timeout(10.0, connect=5.0) # 10 second overall timeout
+
+# Helper to check Memgraph connection
+async def check_memgraph_connection():
+    # This check ideally uses the actual connection logic or a minimal client connection
+    # For now, assume connection check relies on fixture availability or test setup
+    # In a real scenario, might use mgclient or neo4j driver directly
+    try:
+        # Replace with actual connection check if possible
+        # Example using mgclient (if installed and configured)
+        import mgclient
+        conn = mgclient.connect(host=settings.MEMGRAPH_HOST, port=settings.MEMGRAPH_PORT)
+        conn.close()
+        return True
+    except Exception:
+        return False
+
+# Mark all tests as async and integration
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
+
+@pytest.fixture(scope="module", autouse=True)
+async def skip_if_memgraph_unavailable():
+    """Skips tests in this module if Memgraph is not reachable."""
+    if not await check_memgraph_connection():
+        pytest.skip("Cannot connect to Memgraph, skipping all MVP E2E tests.")
+
+async def ingest_document(client: AsyncClient, content: str, metadata: dict) -> str:
+    """Helper function to ingest a document via the API."""
+    response = await client.post(
+        f"{API_BASE_URL}/api/v1/ingestion/documents", 
+        json={"content": content, "metadata": metadata},
+        timeout=TIMEOUT
+    )
+    response.raise_for_status() # Raise exception for non-2xx responses
+    return response.json()["document_id"]
+
+async def wait_for_doc_in_db(doc_id: str, repo) -> bool:
+    """Waits for a document to appear in the database."""
+    for _ in range(10): # Wait up to 10 seconds
+        # Use repo fixture passed to the test function
+        doc = await repo.get_document_by_id(doc_id)
+        if doc:
+            return True
+        await asyncio.sleep(1)
+    return False
+
+async def test_e2e_mvp_pipeline(test_client: AsyncClient, memgraph_repo):
+    """Tests the Minimum Viable Product end-to-end flow: Ingest -> Query."""
+    doc_content = f"E2E Test MVP {uuid.uuid4()}. Key entity: E2E_COMPANY. Another: E2E_PERSON."
+    doc_metadata = {"source": "e2e-mvp", "test_run_id": str(uuid.uuid4())}
+    
+    # 1. Ingestion
+    print(f"\n[E2E] Ingesting document...")
+    try:
+        doc_id = await ingest_document(test_client, doc_content, doc_metadata)
+        print(f"[E2E] Document ingestion requested. Document ID: {doc_id}")
+    except Exception as e:
+        pytest.fail(f"[E2E] Document ingestion failed: {e}")
+
+    # 2. Verification (Wait for DB update)
+    print(f"[E2E] Waiting for document {doc_id} to appear in Memgraph...")
+    # Pass the memgraph_repo fixture here
+    assert await wait_for_doc_in_db(doc_id, memgraph_repo), \
+        f"[E2E] Document {doc_id} did not appear in Memgraph after waiting."
+    print(f"[E2E] Document {doc_id} confirmed in Memgraph.")
+    # Optional: Add checks for chunks/entities if repo methods exist
+    # chunks = await memgraph_repo.get_chunks_by_document_id(doc_id)
+    # assert chunks, f"[E2E] No chunks found for document {doc_id}"
+    # print(f"[E2E] Found {len(chunks)} chunks for document {doc_id}.")
+
+    # 3. Querying
+    query = "What key entities are mentioned?"
+    print(f"[E2E] Querying API: '{query}'")
+    try:
+        response = await test_client.post(
+            f"{API_BASE_URL}/api/v1/query/",
+            json={"query_text": query, "config": {"include_graph": True}}, 
+            timeout=TIMEOUT
+        )
+        response.raise_for_status()
+        query_result = response.json()
+        print(f"[E2E] Query successful. Result: {query_result}")
+    except Exception as e:
+        pytest.fail(f"[E2E] Query request failed: {e}")
+
+    # 4. Assertions on Query Result
+    assert "answer" in query_result, "[E2E] Query result missing 'answer' field."
+    assert isinstance(query_result["answer"], str)
+    # Check if expected entities are mentioned in the answer or context
+    assert "E2E_COMPANY" in query_result["answer"] or \
+           any("E2E_COMPANY" in c.get("text", "") for c in query_result.get("relevant_chunks", [])), \
+           "[E2E] Expected entity E2E_COMPANY not found in answer or relevant chunks."
+    assert "E2E_PERSON" in query_result["answer"] or \
+           any("E2E_PERSON" in c.get("text", "") for c in query_result.get("relevant_chunks", [])), \
+           "[E2E] Expected entity E2E_PERSON not found in answer or relevant chunks."
+
+    # Optional: Check graph context if included and populated
+    if query_result.get("graph_context"):
+        entities = query_result["graph_context"].get("entities", [])
+        entity_names = {e.get("name") for e in entities}
+        print(f"[E2E] Graph context entities found: {entity_names}")
+        assert "E2E_COMPANY" in entity_names, "[E2E] E2E_COMPANY not found in graph context entities."
+        assert "E2E_PERSON" in entity_names, "[E2E] E2E_PERSON not found in graph context entities."
+
+    print(f"[E2E] MVP Pipeline Test Completed Successfully.") 

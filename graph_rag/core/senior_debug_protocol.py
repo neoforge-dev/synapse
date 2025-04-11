@@ -11,6 +11,7 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 
 class TestFailure(BaseModel):
+    __test__ = False # Prevent pytest collection
     """Represents a test failure with context."""
     error_message: str
     test_file: str

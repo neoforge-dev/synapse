@@ -24,6 +24,7 @@ async def test_capture_system_state(graph_debugger: GraphDebugger):
     assert isinstance(state.active_queries, list)
     assert isinstance(state.performance_metrics, dict)
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_analyze_query_performance(graph_debugger: GraphDebugger):
     """Test query performance analysis."""
@@ -35,6 +36,7 @@ async def test_analyze_query_performance(graph_debugger: GraphDebugger):
     assert "plan" in result
     assert "stats" in result
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_validate_graph_structure(graph_debugger: GraphDebugger):
     """Test graph structure validation."""
@@ -44,6 +46,7 @@ async def test_validate_graph_structure(graph_debugger: GraphDebugger):
     assert "orphaned_nodes" in result
     assert "connected_components" in result
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_create_debug_context(graph_debugger: GraphDebugger):
     """Test creating debug context."""
@@ -60,6 +63,7 @@ async def test_create_debug_context(graph_debugger: GraphDebugger):
     assert context.test_function == "test_document_ingestion"
     assert isinstance(context.system_state, SystemState)
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_save_and_load_debug_context(
     graph_debugger: GraphDebugger,
@@ -87,6 +91,7 @@ async def test_save_and_load_debug_context(
     assert loaded_context.test_function == context.test_function
     assert loaded_context.error_message == context.error_message
 
+@pytest.mark.integration
 @pytest.fixture(scope="function", autouse=True)
 async def setup_debug_test_data(memgraph_repo: MemgraphGraphRepository):
     """Set up specific graph data for debug tools tests using memgraph_repo."""
@@ -165,6 +170,7 @@ async def test_capture_system_state_integration(graph_debugger: GraphDebugger):
     assert "index_organisation_id" in index_names # Check specific index name
     assert "index_query_id" in index_names    # From local setup
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_analyze_query_performance_integration(graph_debugger: GraphDebugger):
     """Test query performance analysis with actual data."""
@@ -177,6 +183,7 @@ async def test_analyze_query_performance_integration(graph_debugger: GraphDebugg
     assert "stats" in result
     assert "nodes_created" in result["stats"] # Example stat check
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_validate_graph_structure_integration(graph_debugger: GraphDebugger):
     """Test graph structure validation with actual data."""

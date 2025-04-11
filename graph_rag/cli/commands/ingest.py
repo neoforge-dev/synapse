@@ -8,12 +8,17 @@ import asyncio
 import uuid
 import typer
 import httpx
+import os
 
-from graph_rag.config import settings
+from graph_rag.config import get_settings
 from graph_rag.cli.config import cli_config
 from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
 from graph_rag.core.document_processor import SimpleDocumentProcessor
 from graph_rag.core.entity_extractor import SpacyEntityExtractor
+from graph_rag.core.interfaces import DocumentData
+from graph_rag.config import get_settings
+
+settings = get_settings()
 
 # Configure logging for CLI
 logging.basicConfig(

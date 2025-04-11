@@ -53,16 +53,24 @@ class Settings(BaseSettings):
 
     # Add other settings as needed...
 
-# Instantiate settings once
-try:
-    settings = Settings()
-    # You might want to log the loaded settings (excluding secrets)
-    # logger.info(f"Loaded settings: {settings.model_dump(exclude={'memgraph_password', 'vector_store_api_key'})}") 
-except Exception as e:
-    logger.error(f"Failed to load application settings: {e}", exc_info=True)
-    # Decide how to handle failure: exit, use defaults, etc.
-    # For now, let's try to proceed with defaults where possible, but log prominently
-    print(f"CRITICAL: Failed to load application settings: {e}. Attempting to use defaults.", file=sys.stderr)
-    settings = Settings() # Attempt to get defaults
+# Define a factory function instead
+def get_settings() -> Settings:
+    """Loads and returns the application settings."""
+    try:
+        # This will load from .env and environment variables based on model_config
+        loaded_settings = Settings()
+        # Optional: Add logging here if desired
+        # logger.info("Application settings loaded successfully.")
+        return loaded_settings
+    except Exception as e:
+        logger.error(f"CRITICAL: Failed to load application settings: {e}", exc_info=True)
+        # Depending on the application's needs, you might:
+        # 1. Re-raise the exception to halt startup
+        # 2. Return a default Settings() instance (potentially risky)
+        # 3. Exit the application
+        # For now, let's re-raise to make the failure explicit during startup/use
+        raise RuntimeError(f"Failed to initialize application settings: {e}") from e
 
-# Example usage: from graph_rag.config import settings 
+# Example usage: 
+# from graph_rag.config import get_settings
+# settings = get_settings() 

@@ -9,9 +9,9 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.syntax import Syntax
+from graph_rag.config import get_settings
 
 # Import settings and shared request helper
-from graph_rag.config import settings
 # Need to make make_api_request accessible, maybe move to a shared cli.utils?
 # For now, duplicate or adjust path assuming it's moved.
 # Let's assume we move make_api_request to graph_rag/cli/utils.py
@@ -19,6 +19,7 @@ from graph_rag.config import settings
 
 # --- Configuration --- 
 # Construct default API URL from settings
+settings = get_settings()
 DEFAULT_API_BASE_URL = f"http://{settings.api_host}:{settings.api_port}/api/v1"
 DEFAULT_QUERY_URL = f"{DEFAULT_API_BASE_URL}/query/"
 
