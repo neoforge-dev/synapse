@@ -9,6 +9,7 @@ import spacy # Add spacy import
 import subprocess # Keep subprocess for spaCy download check
 import sys # Add sys import
 import time # Add time import for sleep
+import pytest_asyncio # Add import
 
 import asyncio
 from httpx import AsyncClient, ASGITransport # Import ASGITransport
@@ -159,7 +160,7 @@ def mock_vector_store() -> AsyncMock:
     """Provides a reusable AsyncMock for the VectorStore."""
     return AsyncMock()
 
-@pytest.fixture(scope="session")
+@pytest_asyncio.fixture(scope="session")
 async def test_client(
     app: FastAPI, 
     mock_graph_repo: AsyncMock, 

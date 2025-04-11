@@ -30,6 +30,7 @@ dev = [
     "uv>=0.1.13",
     "spacy>=3.0.0",
     "gqlalchemy",
+    "pyopenssl",
 ]
 
 [build-system]

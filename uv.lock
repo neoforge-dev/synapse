@@ -827,6 +827,7 @@ dependencies = [
 [package.optional-dependencies]
 dev = [
     { name = "gqlalchemy" },
+    { name = "pyopenssl" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
@@ -846,6 +847,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.4.2" },
     { name = "pydantic-settings" },
     { name = "pymgclient", specifier = ">=1.3.0" },
+    { name = "pyopenssl", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.3" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.1" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
@@ -1976,6 +1978,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/65/22/01a2f071ad363448589952ee1394e911eac3d06d6b4f71079a95ffeb1c4b/pymgclient-1.3.1-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:d08aef9bde5f89853cf028b72b547f364b797f5f2fd2d13510817b21d04d210d", size = 1339366 },
     { url = "https://files.pythonhosted.org/packages/0b/19/138579051058e2a42e1b1eb3857e2108d4a134bbd15ac5e0a3a9debe9e0f/pymgclient-1.3.1-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:91faadc50d54ac4707e3b3239f77101d6610494658b1a16ecb4ef8976bb9aa0e", size = 1566448 },
     { url = "https://files.pythonhosted.org/packages/e6/3f/012997d1927f5c96124fbf2cc027a389add0bdb7f35e5625eac9fb1155b5/pymgclient-1.3.1-cp39-cp39-win_amd64.whl", hash = "sha256:1f9aec0deff251b4c7f7acd763caad193330a072ab29e090e2b60925439eb6da", size = 1437135 },
+]
+
+[[package]]
+name = "pyopenssl"
+version = "25.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cryptography" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9f/26/e25b4a374b4639e0c235527bbe31c0524f26eda701d79456a7e1877f4cc5/pyopenssl-25.0.0.tar.gz", hash = "sha256:cd2cef799efa3936bb08e8ccb9433a575722b9dd986023f1cabc4ae64e9dac16", size = 179573 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ca/d7/eb76863d2060dcbe7c7e6cccfd95ac02ea0b9acc37745a0d99ff6457aefb/pyOpenSSL-25.0.0-py3-none-any.whl", hash = "sha256:424c247065e46e76a37411b9ab1782541c23bb658bf003772c3405fbaa128e90", size = 56453 },
 ]
 
 [[package]]
