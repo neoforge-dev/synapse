@@ -28,19 +28,29 @@ def mock_neo4j_driver() -> AsyncDriver:
     driver = AsyncMock(spec=AsyncDriver)
     session = AsyncMock(spec=AsyncSession)
     result = AsyncMock(spec=Result)
+    record = AsyncMock(spec=Record) # Mock for record
     
     # Configure mocks
     driver.session.return_value.__aenter__.return_value = session
     session.run.return_value = result
     
+    # Configure session methods to be awaitable
+    session.execute_write = AsyncMock() 
+    session.close = AsyncMock()
+    
     # Default result behavior (can be overridden in tests)
-    result.single.return_value = None
+    # result.single.return_value = None # Old: Not awaitable
+    result.single = AsyncMock() # Make it awaitable
+    # Example: Make it return a mock record by default
+    mock_record_instance = record(data={'id': 'mock_id'}) # Create a mock record instance
+    result.single.return_value = mock_record_instance
+    
     result.data.return_value = [] 
     
     # Mock __aexit__ to avoid context manager issues
     driver.session.return_value.__aexit__.return_value = None 
-    session.close.return_value = None
-    driver.close.return_value = None
+    # session.close.return_value = None # Now handled by AsyncMock
+    driver.close = AsyncMock() # Make driver.close awaitable too
     
     return driver
 

@@ -122,7 +122,7 @@ async def test_query_pipeline(test_client: AsyncClient, ingested_doc_id: str, me
 # Define helper locally
 async def ingest_doc_helper(client: AsyncClient, doc_content: str, metadata: dict) -> str:
     response = await client.post(
-        f"/api/v1/ingestion/document", # Use relative path if base_url is set on client
+        f"/api/v1/ingestion/documents",
         json={"content": doc_content, "metadata": metadata, "generate_embeddings": True}
     )
     response.raise_for_status() # Raise exception for bad status codes
@@ -185,13 +185,15 @@ async def test_query_no_entities(test_client: AsyncClient):
     
     assert response.status_code == status.HTTP_200_OK
     response_data = response.json()
-    
+
     # Adjust assertion based on actual response structure
     # Assuming the API returns the original query text and empty results
-    assert "query_text" in response_data 
-    assert response_data["query_text"] == query_text
-    assert "results" in response_data
-    assert len(response_data["results"]) == 0
+    # assert "query_text" in response_data # Original assertion - incorrect
+    assert "answer" in response_data
+    assert "relevant_chunks" in response_data
+    assert len(response_data["relevant_chunks"]) == 0
+    # Optionally check the answer content if it's consistent
+    # assert "Could not find relevant information" in response_data["answer"]
 
 @pytest.mark.asyncio
 async def test_query_invalid_request(test_client: AsyncClient):

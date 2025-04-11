@@ -5,8 +5,9 @@ from pydantic import BaseModel
 import logging
 
 from graph_rag.domain.models import Document, Chunk, Edge
-from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
+from graph_rag.infrastructure.repositories.graph_repository import GraphRepository
 from graph_rag.services.embedding import EmbeddingService
+from graph_rag.core.document_processor import ChunkSplitter
 
 logger = logging.getLogger(__name__)
 
@@ -21,19 +22,26 @@ class IngestionResult(BaseModel):
 
 
 class IngestionService:
-    """Service for ingesting documents, chunking them, and storing in the graph."""
-    
-    def __init__(self, repository: MemgraphRepository):
-        self.repository = repository
-        # Ensure embedding model is loaded on service initialization 
-        # (or handle potential loading errors gracefully)
-        try:
-            self.embedding_service = EmbeddingService
-            self.embedding_service._get_model() # Pre-load model
-        except RuntimeError as e:
-            logger.error(f"Failed to initialize IngestionService due to embedding model error: {e}", exc_info=True)
-            # Depending on desired behavior, re-raise or set a flag indicating limited functionality
-            raise
+    """
+    Service responsible for processing and ingesting documents into the graph store.
+    """
+    def __init__(
+        self, 
+        graph_repo: GraphRepository, 
+        embedding_service: EmbeddingService,
+        chunk_splitter: ChunkSplitter
+    ):
+        """
+        Initializes the IngestionService.
+
+        Args:
+            graph_repo: An instance of GraphRepository for database interactions.
+            embedding_service: An instance of EmbeddingService for generating embeddings.
+            chunk_splitter: An instance of a ChunkSplitter implementation.
+        """
+        self.graph_repo = graph_repo
+        self.embedding_service = embedding_service
+        self.chunk_splitter = chunk_splitter
     
     async def ingest_document(
         self, 
@@ -62,14 +70,14 @@ class IngestionService:
             metadata=metadata
         )
         try:
-            document_id = await self.repository.save_document(document)
+            document_id = await self.graph_repo.save_document(document)
             logger.info(f"Saved document with ID: {document_id}")
         except Exception as e:
             logger.error(f"Failed to save document: {e}", exc_info=True)
             raise # Re-raise to signal failure
         
         # 2. Split content into chunks
-        chunk_objects = self._split_into_chunks(content, document_id, max_tokens_per_chunk)
+        chunk_objects = self._split_into_chunks(document)
         logger.info(f"Split document {document_id} into {len(chunk_objects)} chunks.")
         
         # 3. Generate embeddings (if requested)
@@ -105,7 +113,7 @@ class IngestionService:
                 if not hasattr(chunk, 'embedding'):
                      chunk.embedding = None
                      
-                chunk_id = await self.repository.save_chunk(chunk)
+                chunk_id = await self.graph_repo.save_chunk(chunk)
                 chunk_ids.append(chunk_id)
                 
                 # Create relationship: Document CONTAINS Chunk
@@ -115,7 +123,7 @@ class IngestionService:
                     source_id=document_id,
                     target_id=chunk_id
                 )
-                await self.repository.create_relationship(edge)
+                await self.graph_repo.create_relationship(edge)
             except Exception as e:
                 logger.error(f"Failed to save chunk {chunk.id} or its relationship for document {document_id}: {e}", exc_info=True)
                 # Optionally collect failed chunk IDs or raise immediately
@@ -128,7 +136,18 @@ class IngestionService:
             chunk_ids=chunk_ids
         )
     
-    def _split_into_chunks(
+    def _split_into_chunks(self, document: Document) -> List[Chunk]:
+        """Splits the document content into chunks using the configured splitter."""
+        logger.debug(f"Splitting document {document.id} using {type(self.chunk_splitter).__name__}")
+        try:
+            chunks = self.chunk_splitter.split(document)
+            logger.info(f"Document {document.id} split into {len(chunks)} chunks.")
+            return chunks
+        except Exception as e:
+            logger.error(f"Error splitting document {document.id}: {e}", exc_info=True)
+            return []
+    
+    def _split_into_chunks_old(
         self, 
         content: str, 
         document_id: str,
