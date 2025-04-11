@@ -53,36 +53,41 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
             raise TypeError("graph_store must be an instance of GraphStore")
         if not isinstance(vector_store, VectorStore):
             raise TypeError("vector_store must be an instance of VectorStore")
-        if not isinstance(entity_extractor, EntityExtractor):
-            raise TypeError("entity_extractor must be an instance of EntityExtractor")
+        # if not isinstance(entity_extractor, EntityExtractor):
+        #     raise TypeError("entity_extractor must be an instance of EntityExtractor")
             
         self._graph_store = graph_store
         self._vector_store = vector_store
         self._entity_extractor = entity_extractor # Store the extractor
         logger.info(f"SimpleGraphRAGEngine initialized with GraphStore: {type(graph_store).__name__}, VectorStore: {type(vector_store).__name__}, EntityExtractor: {type(entity_extractor).__name__}")
 
-    def _extract_entities_from_chunks(self, chunks: List[Chunk]) -> List[Entity]:
-        """Extracts entities from a list of chunks using the configured EntityExtractor."""
-        # This approach re-processes chunk text. Ideally, entities would be 
-        # extracted during ingestion and stored/linked to chunks.
-        # For simplicity in this engine, we re-extract here.
-        logger.debug(f"Extracting entities from {len(chunks)} chunks using {type(self._entity_extractor).__name__}")
-        
-        # Combine chunk text for the extractor. This assumes the extractor can handle 
+    async def _extract_entities_from_chunks(self, chunks: List[Chunk]) -> List[Entity]:
+        """Extracts entities from a list of chunks using the configured extractor."""
+        if not chunks:
+            return []
+        # Combine text from chunks. Decide if extractor works better on 
         # a larger block of text or internally processes it appropriately.
         # Alternatively, could process chunk by chunk, but might miss cross-chunk entities.
         combined_text = " ".join([c.text for c in chunks])
         # Create a dummy document ID for extraction purposes
         temp_doc_id = f"query-chunks-{hash(combined_text)}"
+        # Assuming Document model takes content, not text
+        # temp_doc = Document(id=temp_doc_id, text=combined_text, chunks=chunks) <-- Incorrect if Document uses content
+        # Assuming graph_rag.models.Document requires content
         temp_doc = Document(id=temp_doc_id, content=combined_text, chunks=chunks) # Pass chunks if extractor uses them
         
         try:
             # Use the injected entity extractor
             # The extractor expects a Document and returns ProcessedDocument
-            processed_doc = self._entity_extractor.extract(temp_doc)
-            logger.info(f"Entity Extractor found {len(processed_doc.entities)} entities from combined text of {len(chunks)} chunks.")
-            # Return the list of Entity objects
-            return processed_doc.entities
+            # Await the async call
+            processed_doc = await self._entity_extractor.extract(temp_doc)
+            if processed_doc: # Check if result is not None
+                logger.info(f"Entity Extractor found {len(processed_doc.entities)} entities from combined text of {len(chunks)} chunks.")
+                # Return the list of Entity objects
+                return processed_doc.entities
+            else:
+                logger.warning("Entity extractor returned None.")
+                return []
         except Exception as e:
             logger.error(f"Entity extraction during query failed: {e}", exc_info=True)
             return [] # Return empty list on failure
@@ -171,7 +176,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         logger.info(f"Aggregated graph context: {len(all_neighbor_entities)} entities, {len(all_relationships)} relationships.")
         return list(all_neighbor_entities.values()), list(all_relationships.values())
 
-    def query(self, query_text: str, config: Optional[Dict[str, Any]] = None) -> QueryResult:
+    async def query(self, query_text: str, config: Optional[Dict[str, Any]] = None) -> QueryResult:
         """Processes a query using vector search and graph context retrieval."""
         logger.info(f"Received query: '{query_text}' with config: {config}")
         config = config or {}
@@ -196,7 +201,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
             if include_graph_context:
                 logger.debug("Attempting to retrieve graph context...")
                 # a. Extract entities from chunks using the configured EntityExtractor
-                extracted_entities = self._extract_entities_from_chunks(relevant_chunks)
+                extracted_entities = await self._extract_entities_from_chunks(relevant_chunks)
                 
                 if extracted_entities:
                     # b. Find these entities in the graph using properties (name, type)

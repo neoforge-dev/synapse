@@ -1,6 +1,7 @@
 import pytest
 import uuid
 from typing import Dict, List, Set
+from unittest.mock import MagicMock
 
 from graph_rag.core.interfaces import (
     DocumentData, ChunkData, ExtractedEntity, ExtractedRelationship
@@ -143,22 +144,21 @@ async def test_add_duplicate_document(memory_kg: InMemoryKnowledgeGraphBuilder, 
 def test_builder_adds_entities_and_relationships(mock_graph_store, processed_doc_with_data):
     """Test that the builder calls the graph store's bulk add method."""
     builder = SimpleKnowledgeGraphBuilder(graph_store=mock_graph_store)
+    
+    # Wrap the target method with MagicMock for assertion
+    mock_graph_store.add_entities_and_relationships = MagicMock(
+        wraps=mock_graph_store.add_entities_and_relationships # Optional: retain original behavior
+    )
+    
     builder.build(processed_doc_with_data)
 
-    # Verify the bulk add method was called once
-    assert len(mock_graph_store.calls["add_entities_and_relationships"]) == 1
+    # Verify the bulk add method was called once with the correct data
+    mock_graph_store.add_entities_and_relationships.assert_called_once_with(
+        processed_doc_with_data.entities, 
+        processed_doc_with_data.relationships
+    )
     
-    # Verify the content of the call
-    call_args = mock_graph_store.calls["add_entities_and_relationships"][0]
-    assert len(call_args) == 2 # Should be (entities, relationships)
-    
-    passed_entities = call_args[0]
-    passed_relationships = call_args[1]
-    
-    assert passed_entities == processed_doc_with_data.entities
-    assert passed_relationships == processed_doc_with_data.relationships
-    
-    # Optionally, check the state of the mock store itself (though checking calls is often sufficient)
+    # Verify the state of the mock store itself (though checking calls is often sufficient)
     assert len(mock_graph_store.entities) == 3
     assert "ent-alice" in mock_graph_store.entities
     assert "ent-bob" in mock_graph_store.entities
@@ -169,18 +169,26 @@ def test_builder_adds_entities_and_relationships(mock_graph_store, processed_doc
 def test_builder_no_data_does_nothing(mock_graph_store, processed_doc_no_data):
     """Test that the builder does not call the store if there's no data."""
     builder = SimpleKnowledgeGraphBuilder(graph_store=mock_graph_store)
+
+    # Wrap methods with MagicMock for assertion
+    mock_graph_store.add_entities_and_relationships = MagicMock()
+    mock_graph_store.add_entity = MagicMock() # Also check individual adds just in case
+    mock_graph_store.add_relationship = MagicMock()
+
     builder.build(processed_doc_no_data)
-    
+
     # Verify no add methods were called
-    assert not mock_graph_store.calls["add_entity"]
-    assert not mock_graph_store.calls["add_relationship"]
-    assert not mock_graph_store.calls["add_entities_and_relationships"]
+    mock_graph_store.add_entities_and_relationships.assert_not_called()
+    mock_graph_store.add_entity.assert_not_called()
+    mock_graph_store.add_relationship.assert_not_called()
     
     # Verify store is empty
     assert not mock_graph_store.entities
     assert not mock_graph_store.relationships
 
 def test_builder_requires_graph_store():
-    """Test that the builder raises TypeError if not given a GraphStore."""
-    with pytest.raises(TypeError):
-        SimpleKnowledgeGraphBuilder(graph_store=object()) # Pass something that isn't a GraphStore 
+    """Test that the builder raises TypeError if graph_store is invalid."""
+    with pytest.raises(TypeError, match="graph_store must be an instance of GraphStore"):
+        SimpleKnowledgeGraphBuilder(graph_store=None) # type: ignore
+    with pytest.raises(TypeError, match="graph_store must be an instance of GraphStore"):
+        SimpleKnowledgeGraphBuilder(graph_store={"not": "a store"}) # type: ignore 

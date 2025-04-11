@@ -132,4 +132,40 @@ class InMemoryKnowledgeGraphBuilder(KnowledgeGraphBuilder):
              self.chunk_entity_links[chunk_id].update(valid_entity_ids)
              logger.debug(f"Linked chunk {chunk_id} to entities: {valid_entity_ids}")
         else:
-             logger.debug(f"No valid entities provided to link to chunk {chunk_id}") 
+             logger.debug(f"No valid entities provided to link to chunk {chunk_id}")
+
+    # Implementation of the abstract method from KnowledgeGraphBuilder ABC
+    async def build(self, processed_document: ProcessedDocument):
+        """Builds the in-memory graph from a processed document.
+        Calls the existing async add methods.
+        """
+        logger.info(f"Building in-memory graph for document {processed_document.id}")
+        
+        if not processed_document.entities and not processed_document.relationships:
+            logger.debug(f"No entities or relationships in {processed_document.id} to build.")
+            return
+            
+        # Add entities (awaiting each call)
+        for entity_model in processed_document.entities:
+            # Convert graph_rag.models.Entity to interfaces.ExtractedEntity if necessary
+            # Assuming they are compatible for now or handled by the caller
+            # For InMemory, let's assume we store the model directly or adapt
+            extracted_entity = ExtractedEntity(id=entity_model.id, label=entity_model.type, text=entity_model.name)
+            await self.add_entity(extracted_entity)
+            
+        # Add relationships (awaiting each call)
+        for relationship_model in processed_document.relationships:
+            # Convert graph_rag.models.Relationship to interfaces.ExtractedRelationship
+            extracted_relationship = ExtractedRelationship(
+                source_entity_id=relationship_model.source.id,
+                target_entity_id=relationship_model.target.id,
+                label=relationship_model.type
+            )
+            await self.add_relationship(extracted_relationship)
+            
+        # TODO: Potentially link chunks to entities if that info is in ProcessedDocument
+        # chunk_links = ... # Get links from processed_document if available
+        # for chunk_id, entity_ids in chunk_links.items():
+        #     await self.link_chunk_to_entities(chunk_id, entity_ids)
+            
+        logger.info(f"Completed building in-memory graph for document {processed_document.id}") 

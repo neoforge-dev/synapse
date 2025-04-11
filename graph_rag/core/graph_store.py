@@ -66,32 +66,37 @@ class MockGraphStore(GraphStore):
 
     def __init__(self):
         self.entities: Dict[str, Entity] = {}
-        self.relationships: List[Relationship] = []
+        self.relationships: Dict[str, Relationship] = {}
         self.nodes: Dict[str, Dict] = {} # Generic node storage
         self.edges: List[Dict] = [] # Generic edge storage
         logger.info("MockGraphStore initialized.")
 
     def add_entity(self, entity: Entity):
-        # Safely access name from properties for logging
-        entity_name = entity.properties.get('name', '[name missing]')
-        logger.debug(f"MockGraphStore: Adding entity {entity.id} ({entity_name})")
+        # Safely access name from metadata for logging
+        entity_name = entity.metadata.get('name', entity.name)
+        logger.debug(f"MockGraphStore adding entity: {entity.type} - {entity_name} (ID: {entity.id})")
         self.entities[entity.id] = entity
         # Also add to generic nodes
         self.nodes[entity.id] = {
             "id": entity.id, 
             "label": entity.type, # Assuming type maps to label
-            "properties": entity.properties
+            "properties": entity.metadata
         }
 
     def add_relationship(self, relationship: Relationship):
-        logger.debug(f"MockGraphStore: Adding relationship {relationship.type} from {relationship.source_id} to {relationship.target_id}")
-        self.relationships.append(relationship)
+        # Extract source/target names for logging, using metadata or name
+        source_name = relationship.source.metadata.get('name', relationship.source.name)
+        target_name = relationship.target.metadata.get('name', relationship.target.name)
+        logger.debug(f"MockGraphStore adding relationship: {source_name} -[{relationship.type}]-> {target_name}")
+        # Simple keying for mock; real store might need different handling
+        rel_key = f"{relationship.source.id}-{relationship.type}-{relationship.target.id}"
+        self.relationships[rel_key] = relationship
         # Also add to generic edges
         self.edges.append({
-            "source": relationship.source_id,
-            "target": relationship.target_id,
+            "source": relationship.source.id,
+            "target": relationship.target.id,
             "type": relationship.type,
-            "properties": relationship.properties
+            "properties": relationship.metadata
         })
 
     def add_entities_and_relationships(self, entities: List[Entity], relationships: List[Relationship]):
@@ -106,7 +111,7 @@ class MockGraphStore(GraphStore):
     def clear(self):
         """Clears the mock store for test isolation."""
         self.entities = {}
-        self.relationships = []
+        self.relationships = {}
         self.nodes = {}
         self.edges = []
         logger.info("MockGraphStore cleared.")
@@ -123,7 +128,7 @@ class MockGraphStore(GraphStore):
         neighbor_entities: Dict[str, Entity] = {}
         connecting_relationships: List[Relationship] = []
         
-        for rel in self.relationships:
+        for rel in self.relationships.values():
             is_match = False
             neighbor_id = None
             
