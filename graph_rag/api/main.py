@@ -14,7 +14,7 @@ from graph_rag.core.graph_rag_engine import SimpleGraphRAGEngine
 from graph_rag.core.knowledge_graph_builder import KnowledgeGraphBuilder, SimpleKnowledgeGraphBuilder
 from graph_rag.core.graph_store import GraphStore, MockGraphStore
 from graph_rag.core.vector_store import VectorStore, MockVectorStore
-from graph_rag.stores.simple_vector_store import SimpleVectorStore
+from graph_rag.infrastructure.vector_stores import SimpleVectorStore
 from graph_rag.api.models import IngestRequest, IngestResponse
 from graph_rag.services.ingestion import IngestionService
 import uuid
@@ -198,7 +198,7 @@ def get_doc_processor(request: Request) -> "SimpleDocumentProcessor":
         raise HTTPException(status_code=503, detail="Document processor not initialized")
     return request.app.state.doc_processor
 
-def get_kg_builder(request: Request) -> "SimpleKnowledgeGraphBuilder":
+def get_knowledge_graph_builder(request: Request) -> "SimpleKnowledgeGraphBuilder":
     if not hasattr(request.app.state, 'kg_builder') or request.app.state.kg_builder is None:
         raise HTTPException(status_code=503, detail="Knowledge graph builder not initialized")
     return request.app.state.kg_builder
@@ -238,24 +238,40 @@ def create_app() -> FastAPI:
     ingestion_router = ingestion.create_ingestion_router(
         doc_processor_dep=deps.get_document_processor,
         entity_extractor_dep=deps.get_entity_extractor,
-        kg_builder_dep=deps.get_kg_builder,
+        kg_builder_dep=deps.get_knowledge_graph_builder,
         graph_repository_dep=deps.get_graph_repository
     )
 
     # Create query router
     query_router = query.create_query_router()
 
-    # Create documents router
-    # documents_router = documents.create_documents_router() # Assuming similar pattern
+    # Create documents router - Use the factory function
+    documents_router = documents.create_documents_router() # Use the factory function
 
-    # Include routers
-    app.include_router(ingestion_router, prefix="/api/v1/ingestion", tags=["ingestion"])
-    app.include_router(query_router, prefix="/api/v1/query", tags=["query"])
-    # Use the imported router directly if it doesn't need a factory
-    app.include_router(documents.router, prefix="/api/v1/documents", tags=["documents"])
+    # Create chunks router (Assuming a similar factory exists or we use the router directly)
+    # chunks_router = chunks.create_chunks_router() # If factory exists
+    # Or if the router is defined directly in the module:
+    # from graph_rag.api.routers import chunks as chunks_router_module
 
-    # Include search router
-    app.include_router(search.router, prefix="/api/v1/search", tags=["search"])
+    # Create search router - import directly
+    # search_router = search.create_search_router() # Assuming similar pattern
+    search_router = search.create_search_router() # Use the factory function
+
+    # Include all routers
+    api_v1_router = APIRouter(prefix="/api/v1")
+    api_v1_router.include_router(ingestion_router, prefix="/ingestion", tags=["Ingestion"])
+    api_v1_router.include_router(query_router, prefix="/query", tags=["Query"])
+    # api_v1_router.include_router(documents_router, prefix="/documents", tags=["Documents"])
+    api_v1_router.include_router(documents_router, prefix="/documents", tags=["Documents"]) # Include the router created by the factory
+    # api_v1_router.include_router(chunks_router, prefix="/chunks", tags=["Chunks"]) # Uncomment if chunks router is ready
+    api_v1_router.include_router(search_router, prefix="/search", tags=["Search"]) # Include the router created by the factory
+
+    app.include_router(api_v1_router)
+    # app.include_router(ingestion.router, prefix=\"/api/v1\", tags=[\"Ingestion\"])
+    # app.include_router(query.router, prefix=\"/api/v1\", tags=[\"Query\"])
+    # app.include_router(documents.router, prefix=\"/api/v1/documents\", tags=[\"Documents\"])
+    # app.include_router(chunks.router, prefix=\"/api/v1/chunks\", tags=[\"Chunks\"])
+    # app.include_router(search.router, prefix=\"/api/v1/search\", tags=[\"Search\"])
 
     # --- API Routers --- 
     @app.get("/", tags=["Root"], include_in_schema=False)
@@ -263,13 +279,20 @@ def create_app() -> FastAPI:
         return RedirectResponse(url="/docs")
 
     @app.get("/health", tags=["Status"], status_code=status.HTTP_200_OK)
-    async def health_check(request: Request):
+    async def health_check(
+        request: Request, 
+        graph_rag_engine: GraphRAGEngine = Depends(get_graph_rag_engine) # Use Depends
+    ):
         # Check core engine availability via state
-        if not hasattr(request.app.state, 'graph_rag_engine') or request.app.state.graph_rag_engine is None:
-             logger.warning("Health check failed: Core RAG engine not available in state.")
+        # if not hasattr(request.app.state, 'graph_rag_engine') or request.app.state.graph_rag_engine is None:
+        # Use the injected dependency instead of checking state directly
+        if graph_rag_engine is None: # Dependency will raise 503 if it cannot be created
+             logger.warning("Health check failed: Core RAG engine not available.")
+             # This part might be redundant if get_graph_rag_engine already raises 503
              raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Core RAG engine not available.")
         
         # Check database driver connectivity via state
+        # This part might still need state access or a separate DB health check dependency
         if hasattr(request.app.state, 'neo4j_driver') and request.app.state.neo4j_driver:
             try:
                  await request.app.state.neo4j_driver.verify_connectivity()

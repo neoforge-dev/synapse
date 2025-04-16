@@ -47,6 +47,7 @@ def test_ingest_file_success(
     mock_settings_instance.MEMGRAPH_USERNAME = "user"
     mock_settings_instance.MEMGRAPH_PASSWORD = MagicMock()
     mock_settings_instance.MEMGRAPH_PASSWORD.get_secret_value.return_value = "pass"
+    mock_settings_instance.get_memgraph_uri.return_value = f"bolt://{mock_settings_instance.MEMGRAPH_HOST}:{mock_settings_instance.MEMGRAPH_PORT}"
     mock_settings_cls.return_value = mock_settings_instance
 
     result = runner.invoke(
@@ -142,6 +143,7 @@ def test_cli_large_file_handling(
     mock_settings_instance.MEMGRAPH_USERNAME = "user"
     mock_settings_instance.MEMGRAPH_PASSWORD = MagicMock()
     mock_settings_instance.MEMGRAPH_PASSWORD.get_secret_value.return_value = "pass"
+    mock_settings_instance.get_memgraph_uri.return_value = f"bolt://{mock_settings_instance.MEMGRAPH_HOST}:{mock_settings_instance.MEMGRAPH_PORT}"
     mock_settings_cls.return_value = mock_settings_instance
 
     result = runner.invoke(
@@ -183,6 +185,7 @@ def test_cli_special_chars_handling(
     mock_settings_instance.MEMGRAPH_USERNAME = "user"
     mock_settings_instance.MEMGRAPH_PASSWORD = MagicMock()
     mock_settings_instance.MEMGRAPH_PASSWORD.get_secret_value.return_value = "pass"
+    mock_settings_instance.get_memgraph_uri.return_value = f"bolt://{mock_settings_instance.MEMGRAPH_HOST}:{mock_settings_instance.MEMGRAPH_PORT}"
     mock_settings_cls.return_value = mock_settings_instance
 
     result = runner.invoke(
@@ -223,6 +226,7 @@ def test_ingest_processing_error(
     mock_settings_instance.MEMGRAPH_USERNAME = "user"
     mock_settings_instance.MEMGRAPH_PASSWORD = MagicMock()
     mock_settings_instance.MEMGRAPH_PASSWORD.get_secret_value.return_value = "pass"
+    mock_settings_instance.get_memgraph_uri.return_value = f"bolt://{mock_settings_instance.MEMGRAPH_HOST}:{mock_settings_instance.MEMGRAPH_PORT}"
     mock_settings_cls.return_value = mock_settings_instance
 
     # Simulate an error during processing

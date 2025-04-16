@@ -61,6 +61,18 @@ class GraphStore(ABC):
         """
         pass
 
+    @abstractmethod
+    def delete_document(self, document_id: str) -> bool:
+        """Deletes a document and its associated chunks/relationships.
+        
+        Args:
+            document_id: The ID of the document to delete.
+            
+        Returns:
+            True if the document was found and deleted, False otherwise.
+        """
+        pass
+
 class MockGraphStore(GraphStore):
     """In-memory mock implementation of GraphStore for testing."""
 
@@ -182,6 +194,22 @@ class MockGraphStore(GraphStore):
                     
         logger.debug(f"MockGraphStore: Found {len(matches)} entities matching properties.")
         return matches 
+
+    def delete_document(self, document_id: str) -> bool:
+        """Mock implementation for deleting a document."""
+        logger.debug(f"MockGraphStore: Attempting to delete document {document_id}")
+        if document_id in self.entities:
+            # For simplicity, just remove the entity. 
+            # A more thorough mock might remove related chunks/relationships.
+            del self.entities[document_id]
+            # Also remove from generic nodes
+            if document_id in self.nodes:
+                 del self.nodes[document_id]
+            logger.info(f"MockGraphStore: Deleted document {document_id}")
+            return True
+        else:
+            logger.warning(f"MockGraphStore: Document {document_id} not found for deletion.")
+            return False
 
     # Implement other methods as needed for tests, returning mock data
     async def get_neighbors(self, node_id: str, relationship_type: Optional[str] = None, direction: str = "out") -> List[Dict]:

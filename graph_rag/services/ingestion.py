@@ -4,8 +4,10 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 import logging
 
-from graph_rag.domain.models import Document, Chunk, Edge
-from graph_rag.infrastructure.repositories.graph_repository import GraphRepository
+from graph_rag.domain.models import Document, Chunk, Edge, Entity, Relationship
+from graph_rag.core.document_processor import DocumentProcessor
+from graph_rag.core.entity_extractor import EntityExtractor
+from graph_rag.core.graph_store import GraphStore
 from graph_rag.services.embedding import EmbeddingService
 from graph_rag.core.document_processor import ChunkSplitter
 
@@ -26,8 +28,10 @@ class IngestionService:
     Service responsible for processing and ingesting documents into the graph store.
     """
     def __init__(
-        self, 
-        graph_repo: GraphRepository, 
+        self,
+        document_processor: DocumentProcessor,
+        entity_extractor: EntityExtractor,
+        graph_store: GraphStore,
         embedding_service: EmbeddingService,
         chunk_splitter: ChunkSplitter
     ):
@@ -35,13 +39,21 @@ class IngestionService:
         Initializes the IngestionService.
 
         Args:
-            graph_repo: An instance of GraphRepository for database interactions.
+            document_processor: An instance of DocumentProcessor for processing documents.
+            entity_extractor: An instance of EntityExtractor for extracting entities from documents.
+            graph_store: An instance of GraphStore for storing entities and relationships.
             embedding_service: An instance of EmbeddingService for generating embeddings.
             chunk_splitter: An instance of a ChunkSplitter implementation.
         """
-        self.graph_repo = graph_repo
+        self.document_processor = document_processor
+        self.entity_extractor = entity_extractor
+        self.graph_store = graph_store
         self.embedding_service = embedding_service
         self.chunk_splitter = chunk_splitter
+        logger.info(
+            f"IngestionService initialized with processor: {type(document_processor).__name__}, \
+            extractor: {type(entity_extractor).__name__}, store: {type(graph_store).__name__}"
+        )
     
     async def ingest_document(
         self, 
@@ -70,7 +82,7 @@ class IngestionService:
             metadata=metadata
         )
         try:
-            document_id = await self.graph_repo.save_document(document)
+            document_id = await self.graph_store.add_entity(document)
             logger.info(f"Saved document with ID: {document_id}")
         except Exception as e:
             logger.error(f"Failed to save document: {e}", exc_info=True)
@@ -120,7 +132,7 @@ class IngestionService:
                     embedding_preview = str(chunk.embedding[:5]) + ('...' if len(chunk.embedding) > 5 else '') 
                     print(f"DEBUG: Embedding value preview: {embedding_preview}")
                      
-                chunk_id = await self.graph_repo.save_chunk(chunk)
+                chunk_id = await self.graph_store.add_entity(chunk)
                 chunk_ids.append(chunk_id)
                 
                 # Create relationship: Document CONTAINS Chunk
@@ -130,7 +142,7 @@ class IngestionService:
                     source_id=document_id,
                     target_id=chunk_id
                 )
-                await self.graph_repo.create_relationship(edge)
+                await self.graph_store.add_relationship(edge)
             except Exception as e:
                 logger.error(f"Failed to save chunk {chunk.id} or its relationship for document {document_id}: {e}", exc_info=True)
                 # Optionally collect failed chunk IDs or raise immediately

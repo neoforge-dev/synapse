@@ -1,12 +1,12 @@
 import logging
-from typing import AsyncGenerator, Annotated
+from typing import AsyncGenerator, Annotated, Optional, List, Dict, Any
 
 from fastapi import Depends, HTTPException, status, Request
 # Remove if unused
 # from fastapi.security import APIKeyHeader
 
 # Configuration
-from graph_rag.config import get_settings # Import factory
+from graph_rag.config import get_settings, Settings
 
 # Core Interfaces and Engine
 from graph_rag.core.interfaces import (
@@ -15,10 +15,12 @@ from graph_rag.core.interfaces import (
     EmbeddingService, GraphRAGEngine
 )
 from graph_rag.core.graph_rag_engine import GraphRAGEngine as ConcreteGraphRAGEngine
+from graph_rag.llm.protocols import LLMService
+from graph_rag.infrastructure.cache.protocols import CacheService
 
 # Concrete Implementations (adjust paths as needed)
 from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
-from graph_rag.stores.simple_vector_store import SimpleVectorStore
+from graph_rag.infrastructure.vector_stores import SimpleVectorStore
 from graph_rag.services.embedding import SentenceTransformerEmbeddingService
 from graph_rag.core.document_processor import SimpleDocumentProcessor
 from graph_rag.core.entity_extractor import SpacyEntityExtractor
@@ -30,122 +32,171 @@ from graph_rag.services.search import SearchService
 # Remove QueryEngine import
 # from graph_rag.core.query_engine import QueryEngine
 
+# Import cache implementations
+from graph_rag.infrastructure.cache.memory_cache import MemoryCache
 
 # Initialize settings once
 settings = get_settings()
 
 logger = logging.getLogger(__name__)
 
+# Use a dictionary to store singletons
+_singletons: Dict[str, Any] = {}
 
-# --- Factory functions for dependencies --- 
-# These functions create instances based on settings.
-# In a real app, you might register these with the FastAPI app state or a DI container.
+# --- Singleton Instances (cached at application level if possible) ---
+_embedding_service_instance: Optional[EmbeddingService] = None
+_llm_service_instance: Optional[LLMService] = None
+_graph_repository_instance: Optional[MemgraphGraphRepository] = None
+_vector_store_instance: Optional[VectorStore] = None
+_document_processor_instance: Optional[DocumentProcessor] = None
+_entity_extractor_instance: Optional[EntityExtractor] = None
+_cache_service_instance: Optional[CacheService] = None
 
-def create_graph_repository() -> GraphRepository:
-    logger.debug("Creating MemgraphGraphRepository instance")
-    return MemgraphGraphRepository(
-        host=settings.MEMGRAPH_HOST,
-        port=settings.MEMGRAPH_PORT,
-        # Add user/password if configured
-        # user=settings.MEMGRAPH_USER,
-        # password=settings.MEMGRAPH_PASSWORD,
+def get_cache_service(settings: Settings = Depends(get_settings)) -> CacheService:
+    global _cache_service_instance
+    if _cache_service_instance is None:
+        logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
+        if settings.cache_type == "memory":
+            _cache_service_instance = MemoryCache()
+        # elif settings.cache_type == "redis":
+        #     _cache_service_instance = RedisCache(host=settings.redis_host, port=settings.redis_port)
+        else:
+            logger.warning(f"Unsupported cache type '{settings.cache_type}', falling back to MemoryCache.")
+            _cache_service_instance = MemoryCache()
+    return _cache_service_instance
+
+# --- Factory Functions --- 
+
+# These create instances when needed, potentially using settings or other dependencies.
+
+def create_graph_repository(settings: Settings) -> MemgraphGraphRepository:
+    """Provides a MemgraphGraphRepository instance. Expects resolved settings."""
+    logger.debug(f"Creating MemgraphGraphRepository instance for {settings.MEMGRAPH_HOST}:{settings.MEMGRAPH_PORT}")
+    from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphConnectionConfig
+    config = MemgraphConnectionConfig(settings)
+    repo = MemgraphGraphRepository(
+        config=config
     )
+    return repo
 
-def create_embedding_service() -> EmbeddingService:
-    logger.debug("Creating SentenceTransformerEmbeddingService instance")
-    # Use the actual service now
-    return SentenceTransformerEmbeddingService(model_name=settings.EMBEDDING_MODEL)
+def create_llm_service(settings: Settings) -> LLMService: # Remove Depends
+    """Creates an LLMService instance based on settings. Expects resolved settings."""
+    try:
+        llm_type = settings.LLM_TYPE.lower()
+        logger.info(f"Creating LLMService instance of type: {llm_type}")
+        if llm_type == "openai":
+            # Ensure API key is handled securely
+            api_key = settings.OPENAI_API_KEY.get_secret_value() if settings.OPENAI_API_KEY else None
+            if not api_key:
+                logger.error("OpenAI API key is not configured.")
+                raise HTTPException(status_code=503, detail="LLM Service (OpenAI) not configured: API key missing.")
+            instance = SentenceTransformerEmbeddingService(api_key=api_key, model_name=settings.LLM_MODEL_NAME)
+        elif llm_type == "mock":
+            instance = MockLLMService()
+        else:
+            logger.warning(f"Unsupported LLM_TYPE '{settings.LLM_TYPE}'. Falling back to MockLLMService.")
+            instance = MockLLMService()
+    except AttributeError:
+        # If LLM_TYPE is not defined in settings, use mock service
+        logger.warning("LLM_TYPE not found in settings. Falling back to MockLLMService.")
+        instance = MockLLMService()
+        
+    return instance
 
-def create_vector_store() -> VectorStore:
-    logger.debug("Creating SimpleVectorStore instance")
-    # Assuming SimpleVectorStore needs embedding dim or is self-contained
-    # If it needs dim, we might need to get it from the embedding service
-    # embedding_service = create_embedding_service() # Temporary instance if needed
-    # dim = embedding_service.get_embedding_dim()
-    return SimpleVectorStore(embedding_dim=settings.EMBEDDING_DIM) # Pass dim if needed
-
-def create_entity_extractor() -> EntityExtractor:
-    logger.debug("Creating SpacyEntityExtractor instance")
-    # Instantiate the correct class - Assuming model name comes from settings
-    # Update args if needed after checking file
-    return SpacyEntityExtractor(model_name=settings.SPACY_MODEL)
+def create_vector_store(settings: Settings) -> VectorStore: # Remove Depends
+    """Factory function to create a VectorStore instance based on settings."""
+    vector_store_type = settings.vector_store_type.lower()
+    
+    if vector_store_type == 'simple':
+        # Use the direct constructor with the embedding model name
+        return SimpleVectorStore(embedding_model_name=settings.vector_store_embedding_model)
+    else:
+        logger.warning(f"Unsupported vector_store_type '{settings.vector_store_type}'. Using SimpleVectorStore.")
+        return SimpleVectorStore(embedding_model_name=settings.vector_store_embedding_model)
 
 def create_document_processor() -> DocumentProcessor:
-    logger.debug("Creating SimpleDocumentProcessor instance")
-    
-    # Get strategy from settings, default to paragraph
-    strategy = getattr(settings, 'CHUNK_STRATEGY', 'paragraph')
-    # Use CHUNK_SIZE for tokens_per_chunk if strategy is 'token'
-    tokens = getattr(settings, 'CHUNK_SIZE', 200) 
+    global _document_processor_instance
+    if _document_processor_instance is None:
+        logger.info("Creating DocumentProcessor instance (SimpleDocumentProcessor)")
+        # Configure based on settings if needed
+        _document_processor_instance = SimpleDocumentProcessor()
+    return _document_processor_instance
 
-    logger.info(f"Using chunk strategy: {strategy}, tokens per chunk: {tokens}")
-    
-    # Instantiate the correct class with appropriate args
-    return SimpleDocumentProcessor(
-        chunk_strategy=strategy,
-        tokens_per_chunk=tokens
-        # chunk_overlap is not used by SimpleDocumentProcessor
-    )
+def create_entity_extractor(settings: Settings) -> EntityExtractor: # Remove Depends
+    """Creates an EntityExtractor instance based on settings. Expects resolved settings."""
+    # global _entity_extractor_instance
+    # if _entity_extractor_instance is None:
+    extractor_type = settings.entity_extractor_type.lower()
+    logger.info(f"Creating EntityExtractor instance of type: {extractor_type}")
+    if extractor_type == 'spacy':
+        instance = SpacyEntityExtractor(model_name=settings.entity_extractor_model)
+    elif extractor_type == 'mock':
+        instance = MockEntityExtractor()
+    else:
+        logger.warning(f"Unsupported entity_extractor_type '{settings.entity_extractor_type}'. Falling back to MockEntityExtractor.")
+        instance = MockEntityExtractor()
+    # _entity_extractor_instance = instance
+    return instance
+    # return _entity_extractor_instance
 
-def create_kg_builder(graph_repo: GraphRepository, entity_extractor: EntityExtractor) -> KnowledgeGraphBuilder:
-    logger.debug("Creating PersistentKnowledgeGraphBuilder instance")
-    return PersistentKnowledgeGraphBuilder(graph_repository=graph_repo, entity_extractor=entity_extractor)
+def create_kg_builder(
+    graph_repo: MemgraphGraphRepository = Depends(create_graph_repository),
+    entity_extractor: EntityExtractor = Depends(create_entity_extractor)
+) -> KnowledgeGraphBuilder:
+    logger.debug("Creating KnowledgeGraphBuilder instance")
+    return KnowledgeGraphBuilder(graph_repo=graph_repo, entity_extractor=entity_extractor)
 
 def create_search_service(
-    graph_repo: GraphRepository = Depends(create_graph_repository) # Assumes MemgraphRepository compatible with GraphRepository
-    # embedding_service: EmbeddingService = Depends(create_embedding_service) # SearchService init might need this
+    graph_repo: MemgraphGraphRepository,
+    vector_store: VectorStore
 ) -> SearchService:
     logger.debug("Creating SearchService instance")
-    # Check SearchService constructor signature
-    # Assuming it takes repository and potentially embedding service
-    return SearchService(repository=graph_repo)
+    return SearchService(
+        graph_repo=graph_repo,
+        vector_store=vector_store
+    )
 
 def create_graph_rag_engine(
-    graph_repository: GraphRepository = Depends(create_graph_repository),
-    vector_store: VectorStore = Depends(create_vector_store),
-    embedding_service: EmbeddingService = Depends(create_embedding_service),
-    entity_extractor: EntityExtractor = Depends(create_entity_extractor),
-    document_processor: DocumentProcessor = Depends(create_document_processor),
-    kg_builder: KnowledgeGraphBuilder = Depends(create_kg_builder),
-    search_service: SearchService = Depends(create_search_service) # Add SearchService dependency
-) -> GraphRAGEngine:
-    logger.debug("Creating ConcreteGraphRAGEngine instance")
-    # Update constructor call for ConcreteGraphRAGEngine
+    llm_service: LLMService,
+    embedding_service: EmbeddingService,
+    graph_repository: MemgraphGraphRepository,
+    vector_store: VectorStore,
+    cache_service: CacheService,
+    settings: Settings = Depends(get_settings)
+) -> ConcreteGraphRAGEngine:
+    logger.debug("Creating GraphRAGEngine instance")
     return ConcreteGraphRAGEngine(
+        llm_service=llm_service,
+        embedding_service=embedding_service,
         graph_repository=graph_repository,
         vector_store=vector_store,
-        embedding_service=embedding_service,
-        entity_extractor=entity_extractor,
-        document_processor=document_processor,
-        kg_builder=kg_builder,
-        # Pass search_service instead of individual searchers
-        search_service=search_service
-        # vector_searcher=vector_searcher,
-        # keyword_searcher=keyword_searcher,
-        # graph_searcher=graph_searcher,
+        cache_service=cache_service,
+        graph_context_tokens=settings.graph_context_max_tokens,
+        vector_similarity_threshold=settings.vector_similarity_threshold,
+        max_vector_results=settings.max_vector_results
     )
 
 def create_ingestion_service(
-    graph_repo: GraphRepository,
-    vector_store: VectorStore,
     doc_processor: DocumentProcessor,
-    entity_extractor: EntityExtractor
+    entity_extractor: EntityExtractor,
+    graph_repo: MemgraphGraphRepository,
+    vector_store: VectorStore,
+    embedding_service: EmbeddingService
 ) -> IngestionService:
     logger.debug("Creating IngestionService instance")
+    # Get a chunk splitter from the document processor
+    chunk_splitter = doc_processor.chunk_splitter
+    
     return IngestionService(
-        graph_repo=graph_repo,
-        vector_store=vector_store,
         document_processor=doc_processor,
-        entity_extractor=entity_extractor
+        entity_extractor=entity_extractor,
+        graph_store=graph_repo,
+        embedding_service=embedding_service,
+        chunk_splitter=chunk_splitter
     )
 
-# Remove QueryEngine factory
-# def create_query_engine(...):
-#     ...
-
 def create_knowledge_graph_builder(
-    # Only need the graph repository for SimpleKnowledgeGraphBuilder
-    graph_repo: GraphRepository = Depends(create_graph_repository),
+    graph_repo: MemgraphGraphRepository = Depends(create_graph_repository),
     # entity_extractor: EntityExtractor = Depends(create_entity_extractor), # Not needed for SimpleKGB constructor
     # embedding_service: EmbeddingService = Depends(create_embedding_service) # Not needed for SimpleKGB constructor
 ) -> KnowledgeGraphBuilder:
@@ -157,28 +208,39 @@ def create_knowledge_graph_builder(
          # embedding_service=embedding_service # Removed
      )
 
-# --- FastAPI Dependency Provider Functions --- 
-# These functions are used by FastAPI's Depends() to inject instances into route handlers.
-# They call the factory functions above.
+# --- FastAPI Dependency Provider Async Functions (DEFINED BEFORE USAGE) ---
+# These use the factory functions or return cached singletons.
 
-async def get_graph_repository() -> GraphRepository:
+async def get_graph_repository(settings: Settings = Depends(get_settings)) -> MemgraphGraphRepository:
+    """Dependency getter for GraphRepository, using singleton pattern."""
     if "graph_repository" not in _singletons:
-        _singletons["graph_repository"] = create_graph_repository()
+        # Pass the resolved settings object to the creation function
+        _singletons["graph_repository"] = create_graph_repository(settings=settings)
     return _singletons["graph_repository"]
 
 async def get_embedding_service() -> EmbeddingService:
+    """Dependency getter for EmbeddingService, using singleton pattern."""
     if "embedding_service" not in _singletons:
-        _singletons["embedding_service"] = create_embedding_service()
+        # Create a mock embedding service for now
+        from graph_rag.services.embedding import SentenceTransformerEmbeddingService
+        logger.info("Creating EmbeddingService instance (SentenceTransformerEmbeddingService)")
+        # Reuse the setting for vector store embedding model
+        settings_obj = get_settings()
+        _singletons["embedding_service"] = SentenceTransformerEmbeddingService(
+            model_name=settings_obj.vector_store_embedding_model
+        )
     return _singletons["embedding_service"]
 
-async def get_vector_store() -> VectorStore:
+async def get_vector_store(settings: Settings = Depends(get_settings)) -> VectorStore:
+    """Dependency getter for VectorStore, using singleton pattern."""
     if "vector_store" not in _singletons:
-        _singletons["vector_store"] = create_vector_store()
+        _singletons["vector_store"] = create_vector_store(settings=settings)
     return _singletons["vector_store"]
 
-async def get_entity_extractor() -> EntityExtractor:
+async def get_entity_extractor(settings: Settings = Depends(get_settings)) -> EntityExtractor:
+    """Dependency getter for EntityExtractor, using singleton pattern."""
     if "entity_extractor" not in _singletons:
-        _singletons["entity_extractor"] = create_entity_extractor()
+        _singletons["entity_extractor"] = create_entity_extractor(settings=settings)
     return _singletons["entity_extractor"]
 
 async def get_document_processor() -> DocumentProcessor:
@@ -186,11 +248,25 @@ async def get_document_processor() -> DocumentProcessor:
         _singletons["document_processor"] = create_document_processor()
     return _singletons["document_processor"]
 
+async def get_llm_service(settings: Settings = Depends(get_settings)) -> LLMService:
+    """Dependency getter for LLMService, using singleton pattern."""
+    if "llm_service" not in _singletons:
+        _singletons["llm_service"] = create_llm_service(settings=settings)
+    return _singletons["llm_service"]
+
 async def get_kg_builder(
-    graph_repo: GraphRepository = Depends(get_graph_repository),
     entity_extractor: EntityExtractor = Depends(get_entity_extractor),
-    embedding_service: EmbeddingService = Depends(get_embedding_service)
+    embedding_service: EmbeddingService = Depends(get_embedding_service),
+    graph_repo: MemgraphGraphRepository = Depends(get_graph_repository)
 ) -> KnowledgeGraphBuilder:
+    """DEPRECATED: Use get_knowledge_graph_builder instead for consistency."""
+    import warnings
+    warnings.warn(
+        "get_kg_builder is deprecated and will be removed in a future version. "
+        "Please use get_knowledge_graph_builder instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
     logger.debug("Creating PersistentKnowledgeGraphBuilder instance")
     return PersistentKnowledgeGraphBuilder(
         graph_repository=graph_repo,
@@ -198,98 +274,91 @@ async def get_kg_builder(
         embedding_service=embedding_service
     )
 
-# Assuming VectorStore implements VectorSearcher, GraphStore implements Graph/KeywordSearcher
-VectorSearcherDep = Annotated[VectorSearcher, Depends(get_vector_store)]
-KeywordSearcherDep = Annotated[KeywordSearcher, Depends(get_graph_repository)] 
-GraphSearcherDep = Annotated[GraphSearcher, Depends(get_graph_repository)]
-
 async def get_search_service(
-    graph_repo: GraphRepository = Depends(get_graph_repository)
-    # embedding_service: EmbeddingService = Depends(get_embedding_service)
+    graph_repo: MemgraphGraphRepository = Depends(get_graph_repository),
+    vector_store: VectorStore = Depends(get_vector_store)
 ) -> SearchService:
-    # Decide if singleton or fresh instance
     if "search_service" not in _singletons:
-        _singletons["search_service"] = create_search_service(graph_repo)
+        _singletons["search_service"] = create_search_service(graph_repo, vector_store)
     return _singletons["search_service"]
 
 async def get_graph_rag_engine(
+    llm_service: LLMService = Depends(get_llm_service),
+    embedding_service: EmbeddingService = Depends(get_embedding_service),
     graph_repository: GraphRepository = Depends(get_graph_repository),
     vector_store: VectorStore = Depends(get_vector_store),
-    embedding_service: EmbeddingService = Depends(get_embedding_service),
-    entity_extractor: EntityExtractor = Depends(get_entity_extractor),
-    document_processor: DocumentProcessor = Depends(get_document_processor),
-    kg_builder: KnowledgeGraphBuilder = Depends(get_kg_builder),
-    search_service: SearchService = Depends(get_search_service) # Add SearchService dependency
-) -> GraphRAGEngine:
-    # Decide if Engine should be singleton (likely yes if it holds state or is expensive)
+    cache_service: CacheService = Depends(get_cache_service),
+    settings: Settings = Depends(get_settings)
+) -> ConcreteGraphRAGEngine:
     if "graph_rag_engine" not in _singletons:
         _singletons["graph_rag_engine"] = create_graph_rag_engine(
+            llm_service=llm_service,
+            embedding_service=embedding_service,
             graph_repository=graph_repository,
             vector_store=vector_store,
-            embedding_service=embedding_service,
-            entity_extractor=entity_extractor,
-            document_processor=document_processor,
-            kg_builder=kg_builder,
-            search_service=search_service
+            cache_service=cache_service,
+            settings=settings
         )
     return _singletons["graph_rag_engine"]
 
 async def get_ingestion_service(
+    doc_processor: DocumentProcessor = Depends(get_document_processor),
+    entity_extractor: EntityExtractor = Depends(get_entity_extractor),
     graph_repo: GraphRepository = Depends(get_graph_repository),
     vector_store: VectorStore = Depends(get_vector_store),
-    doc_processor: DocumentProcessor = Depends(get_document_processor),
-    entity_extractor: EntityExtractor = Depends(get_entity_extractor)
+    embedding_service: EmbeddingService = Depends(get_embedding_service),
 ) -> IngestionService:
     logger.warning("Ingestion service not found in app state, creating new instance.")
-    return IngestionService(
+    return create_ingestion_service(
+        doc_processor=doc_processor,
+        entity_extractor=entity_extractor,
         graph_repo=graph_repo,
         vector_store=vector_store,
-        document_processor=doc_processor,
-        entity_extractor=entity_extractor
+        embedding_service=embedding_service
     )
 
-# Remove QueryEngine provider
-# async def get_query_engine(...):
-#     ...
+async def get_knowledge_graph_builder(
+    graph_repo: MemgraphGraphRepository = Depends(get_graph_repository),
+    # If this is meant to be the Simple one, use its factory
+) -> KnowledgeGraphBuilder:
+    if "simple_kg_builder" not in _singletons:
+         _singletons["simple_kg_builder"] = create_knowledge_graph_builder(graph_repo=graph_repo)
+    return _singletons["simple_kg_builder"]
 
-# --- Removed incorrect functions from previous edit attempt ---
-
-# Use a dictionary to store singletons
-_singletons = {}
-
-# --- Annotated Dependencies ---
+# --- Annotated Dependencies (USING ABOVE PROVIDERS) ---
 
 GraphRepositoryDep = Annotated[GraphRepository, Depends(get_graph_repository)]
 VectorStoreDep = Annotated[VectorStore, Depends(get_vector_store)]
 EmbeddingServiceDep = Annotated[EmbeddingService, Depends(get_embedding_service)]
 EntityExtractorDep = Annotated[EntityExtractor, Depends(get_entity_extractor)]
 DocumentProcessorDep = Annotated[DocumentProcessor, Depends(get_document_processor)]
-KnowledgeGraphBuilderDep = Annotated[KnowledgeGraphBuilder, Depends(get_kg_builder)]
-# Remove individual searcher deps
-# VectorSearcherDep = Annotated[VectorSearcher, Depends(get_vector_searcher)]
-# KeywordSearcherDep = Annotated[KeywordSearcher, Depends(get_keyword_searcher)]
-# GraphSearcherDep = Annotated[GraphSearcher, Depends(get_graph_searcher)]
-# Add SearchService dep
+LLMServiceDep = Annotated[LLMService, Depends(get_llm_service)]
+KnowledgeGraphBuilderDep = Annotated[KnowledgeGraphBuilder, Depends(get_knowledge_graph_builder)]
+CacheServiceDep = Annotated[CacheService, Depends(get_cache_service)]
+IngestionServiceDep = Annotated[IngestionService, Depends(get_ingestion_service)]
 SearchServiceDep = Annotated[SearchService, Depends(get_search_service)]
 GraphRAGEngineDep = Annotated[GraphRAGEngine, Depends(get_graph_rag_engine)]
 
+# Assuming VectorStore implements VectorSearcher, GraphStore implements Graph/KeywordSearcher
+# These should ideally point to the async providers if using singletons
+VectorSearcherDep = Annotated[VectorSearcher, Depends(get_vector_store)]
+KeywordSearcherDep = Annotated[KeywordSearcher, Depends(get_graph_repository)] 
+GraphSearcherDep = Annotated[GraphSearcher, Depends(get_graph_repository)]
 
-# Optional: API Key Verification Dependency
-# api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)
 
-# async def verify_api_key(api_key: str = Depends(api_key_header)):
-#     if not api_key:
-#         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="API key is missing")
-#     if api_key != settings.API_KEY:
-#         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid API key")
-#     return api_key
+# --- Old Provider Functions (Removed as they are defined above now) ---
+# async def get_graph_repository() -> MemgraphRepository:
+# async def get_embedding_service() -> EmbeddingService:
+# async def get_vector_store() -> VectorStore:
+# async def get_entity_extractor() -> EntityExtractor:
+# async def get_document_processor() -> DocumentProcessor:
+# async def get_kg_builder(...): # This one seems duplicated/confusing
+# async def get_search_service(...):
+# async def get_graph_rag_engine(...):
+# async def get_ingestion_service(...):
+# async def get_knowledge_graph_builder(...):
 
-# # Usage in endpoints: Depends(verify_api_key)
 
-async def get_knowledge_graph_builder(
-    graph_repo: GraphRepository = Depends(get_graph_repository),
-    # entity_extractor: EntityExtractor = Depends(get_entity_extractor), # Ensure these aren't passed down if not needed
-    # embedding_service: EmbeddingService = Depends(get_embedding_service)
-) -> KnowledgeGraphBuilder:
-     # Pass only the required dependency
-     return create_knowledge_graph_builder(graph_repo)
+# Remove QueryEngine provider
+# async def get_query_engine(...):
+#     ...

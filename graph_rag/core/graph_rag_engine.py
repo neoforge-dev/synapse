@@ -17,8 +17,11 @@ from graph_rag.core.graph_store import GraphStore, MockGraphStore # Import Mock 
 from graph_rag.core.vector_store import VectorStore
 from graph_rag.core.entity_extractor import EntityExtractor # Import base class
 from graph_rag.services.search import SearchService, SearchResult # Import SearchResult model too
+from graph_rag.config import get_settings
+from graph_rag.domain.models import Context # Added Context
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 @dataclass
 class QueryResult:
@@ -258,14 +261,14 @@ class GraphRAGEngine(GraphRAGEngine):
         entity_extractor: EntityExtractor,
         kg_builder: KnowledgeGraphBuilder,
         embedding_service: EmbeddingService,
-        search_service: SearchService # Add SearchService
+        graph_store: GraphStore,
     ):
         self.document_processor = document_processor
         self.entity_extractor = entity_extractor
         self.kg_builder = kg_builder
         self.embedding_service = embedding_service
-        self.search_service = search_service
-        logger.info("GraphRAGEngine initialized with core components and SearchService.")
+        self.graph_store = graph_store
+        logger.info("GraphRAGEngine initialized with core components.")
         
     async def process_and_store_document(self, doc_content: str, metadata: Dict[str, Any]) -> None:
         """Full pipeline: chunk, extract entities, build graph, store vectors."""

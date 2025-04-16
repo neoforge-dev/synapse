@@ -8,6 +8,8 @@ import uuid
 import pytest
 from pydantic import Field
 from pydantic_settings import BaseSettings
+import json
+from dateutil.parser import isoparse
 
 from neo4j import AsyncGraphDatabase, AsyncDriver
 from neo4j.exceptions import Neo4jError, ServiceUnavailable, AuthError
@@ -73,9 +75,37 @@ class MemgraphGraphRepository(GraphStore):
         else:
             self.config = config
         
+        self._connection: Optional[mgclient.Connection] = None # Added connection attribute
         # mgclient uses synchronous connect, connection pooling is handled internally or needs manual management
         # We don't store a persistent driver/connection object here in this sync implementation
         logger.info(f"MemgraphGraphRepository initialized for {self.config.host}:{self.config.port}")
+
+    async def connect(self):
+        """Establishes and stores a connection for reuse."""
+        # Assume connection is None or needs re-establishing if connect is called
+        # Rely on mgclient to raise errors if operations are attempted on a closed connection
+        if self._connection is None:
+            loop = asyncio.get_running_loop()
+            try:
+                self._connection = await loop.run_in_executor(None, self._get_connection)
+                logger.info("Persistent connection established.")
+            except Exception as e:
+                logger.error(f"Failed to establish persistent connection: {e}", exc_info=True)
+                self._connection = None # Ensure it's None on failure
+                raise # Re-raise the connection error
+
+    async def close(self):
+        """Closes the stored connection if it exists."""
+        # Directly attempt to close if connection exists
+        if self._connection:
+            loop = asyncio.get_running_loop()
+            try:
+                await loop.run_in_executor(None, self._connection.close)
+                logger.info("Persistent connection closed.")
+            except Exception as e:
+                logger.error(f"Failed to close persistent connection: {e}", exc_info=True)
+            finally:
+                self._connection = None
 
     @retry(stop=stop_after_attempt(settings.MEMGRAPH_MAX_RETRIES), 
            wait=wait_fixed(settings.MEMGRAPH_RETRY_WAIT_SECONDS),
@@ -85,13 +115,17 @@ class MemgraphGraphRepository(GraphStore):
         """Establishes and returns a new synchronous connection to Memgraph."""
         try:
             logger.debug(f"Attempting to connect to Memgraph at {self.config.host}:{self.config.port}...")
+            # Ensure username and password are strings, even if empty, for positional args
+            db_user = self.config.user if self.config.user is not None else ""
+            db_password = self.config.password if self.config.password is not None else ""
+            
             conn = mgclient.Connection(
                 host=self.config.host,
                 port=self.config.port,
-                username=self.config.user,
-                password=self.config.password,
-                # Add sslmode if needed based on self.config.use_ssl
-                # sslmode=mgclient.SSLMODE_REQUIRE if self.config.use_ssl else mgclient.SSLMODE_DISABLE 
+                username=db_user,      # Use sanitized user
+                password=db_password,  # Use sanitized password
+                # sslmode is keyword-only if supported, or might need specific positioning
+                # sslmode=mgclient.SSLMODE.REQUIRE if self.config.use_ssl else mgclient.SSLMODE.DISABLE 
             )
             logger.debug("Connection successful.")
             return conn
@@ -104,123 +138,190 @@ class MemgraphGraphRepository(GraphStore):
 
     async def execute_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Executes a Cypher query and returns results.
-           Note: This needs to be async to conform to the interface, but mgclient is sync.
-           We'll run the sync DB operations in a thread pool executor.
+           Uses the existing connection if available, otherwise creates a temporary one.
         """
         loop = asyncio.get_running_loop()
-        conn = None
+        conn_to_use: Optional[mgclient.Connection] = None
+        cursor: Optional[mgclient.Cursor] = None
+        is_temporary_connection = False
+
         try:
-            # Run sync DB operations in a thread pool
-            conn = await loop.run_in_executor(None, self._get_connection)
-            cursor = conn.cursor()
+            # Use existing connection if available
+            if self._connection:
+                conn_to_use = self._connection
+                logger.debug("Using existing persistent connection for query.")
+            else:
+                # Create a temporary connection for this query
+                conn_to_use = await loop.run_in_executor(None, self._get_connection)
+                is_temporary_connection = True
+                logger.debug("Created temporary connection for query.")
+            
+            if not conn_to_use: # Safety check
+                 raise ConnectionError("Failed to get a database connection.")
+
+            cursor = conn_to_use.cursor()
             logger.debug(f"Executing query: {query} with params: {params}")
             await loop.run_in_executor(None, cursor.execute, query, params or {})
-            results = await loop.run_in_executor(None, cursor.fetchall)
-            # Convert results (tuples) to dictionaries
-            column_names = [desc[0] for desc in cursor.description]
-            dict_results = [dict(zip(column_names, row)) for row in results]
-            await loop.run_in_executor(None, conn.commit) # Commit changes
-            logger.debug(f"Query executed successfully, {len(dict_results)} results fetched.")
+            
+            column_names = [desc.name for desc in cursor.description] if cursor.description else []
+            results_raw = await loop.run_in_executor(None, cursor.fetchall)
+            dict_results = [dict(zip(column_names, row)) for row in results_raw]
+            
+            # Restore automatic commit
+            await loop.run_in_executor(None, conn_to_use.commit) 
+            logger.debug(f"Query executed and committed successfully, {len(dict_results)} results fetched. Temp: {is_temporary_connection}")
+
             return dict_results
-        except mgclient.Error as e:
+        except (mgclient.Error, ConnectionError) as e:
             logger.error(f"Error executing query: {query} | Params: {params} | Error: {e}", exc_info=True)
-            if conn:
-                await loop.run_in_executor(None, conn.rollback) # Rollback on error
-            raise # Re-raise the original Memgraph error
+            # Only attempt rollback on the connection we actually used
+            if conn_to_use:
+                try:
+                    await loop.run_in_executor(None, conn_to_use.rollback) # Rollback on error
+                except Exception as rb_exc:
+                     logger.error(f"Failed to rollback transaction: {rb_exc}", exc_info=True)
+            raise # Re-raise the original error
         except Exception as e:
             logger.error(f"Unexpected error during query execution: {e}", exc_info=True)
-            if conn:
-                 await loop.run_in_executor(None, conn.rollback)
+            # Check if conn_to_use is not None before attempting rollback
+            if conn_to_use:
+                 try:
+                    await loop.run_in_executor(None, conn_to_use.rollback)
+                 except Exception as rb_exc:
+                     logger.error(f"Failed to rollback transaction: {rb_exc}", exc_info=True)
             raise
         finally:
-            if conn:
-                await loop.run_in_executor(None, conn.close)
+            # Close cursor always
+            if cursor:
+                 try:
+                     await loop.run_in_executor(None, cursor.close) # Close cursor
+                 except Exception as c_exc:
+                     logger.error(f"Failed to close cursor: {c_exc}", exc_info=True)
+            # Only close the connection if it was temporary
+            if is_temporary_connection and conn_to_use:
+                try:
+                     await loop.run_in_executor(None, conn_to_use.close) # Close temporary connection
+                     logger.debug("Temporary connection closed.")
+                except Exception as conn_exc:
+                     logger.error(f"Failed to close temporary connection: {conn_exc}", exc_info=True)
 
     async def add_document(self, document: Document):
         """Adds a document node to the graph."""
         logger.debug(f"Adding document {document.id}")
-        # Use .model_dump() for Pydantic v2 models
-        props = {k: v for k, v in document.model_dump().items() if k not in {"id", "chunks", "type", "properties"}}
-        # Ensure basic properties exist, add default or raise if needed
-        # 'content' and 'metadata' should be handled by model_dump() if they are fields
-        # props["content"] = document.content
-        # props["metadata"] = document.metadata
-        # Handle potential naive datetime from Pydantic default_factory
-        created_at = props.get("created_at", datetime.now(timezone.utc))
-        if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
-        props["created_at"] = created_at
-        # Updated_at should be set by the database ideally, or handled in model_dump logic
-        updated_at = datetime.now(timezone.utc) # Set updated_at on add/update
-        props["updated_at"] = updated_at
+        
+        # Prepare parameters, ensuring timezone aware datetimes
+        created_at_dt = document.created_at or datetime.now(timezone.utc)
+        if created_at_dt.tzinfo is None:
+            created_at_dt = created_at_dt.replace(tzinfo=timezone.utc)
+            
+        updated_at_dt = datetime.now(timezone.utc)
 
-        # Use MERGE for idempotency
+        params = {
+            "id": document.id,
+            "content": document.content,
+            "metadata": document.metadata if document.metadata else {}, # Pass metadata as a map parameter
+            "created_at": created_at_dt, 
+            "updated_at": updated_at_dt 
+        }
+
+        # Use individual property assignments in SET clauses
         query = """
         MERGE (d:Document {id: $id})
-        ON CREATE SET d += $props, d.created_at = $created_at
-        ON MATCH SET d += $props, d.updated_at = $updated_at
+        ON CREATE SET 
+            d.content = $content, 
+            d.metadata = $metadata, 
+            d.created_at = $created_at, 
+            d.updated_at = $updated_at
+        ON MATCH SET 
+            d.content = $content, 
+            d.metadata = $metadata, 
+            d.updated_at = $updated_at 
         """
-        params = {
-            "id": document.id, 
-            "props": props, 
-            "created_at": props["created_at"],
-            "updated_at": props["updated_at"]
-        }
+        
         try:
+            # Execute query assumes commit happens within or implicitly
             await self.execute_query(query, params)
             logger.info(f"Successfully added/updated document {document.id}")
         except Exception as e:
             logger.error(f"Failed to add document {document.id}: {e}", exc_info=True)
             raise
 
-    async def get_document_by_id(self, doc_id: str) -> Optional[Document]:
-        """Retrieves a Document node by ID."""
-        query = "MATCH (d:Document {id: $id}) RETURN properties(d) as props"
-        results = await self.execute_query(query, {"id": doc_id})
-        if results:
-            node_data = results[0]["props"]
-            converted_data = _convert_neo4j_temporal_types(node_data)
-            # Ensure 'id' is present for model creation
-            if 'id' not in converted_data:
-                converted_data['id'] = doc_id
-            return Document(**converted_data)
-        return None
+    async def get_document_by_id(self, document_id: str) -> Optional[Document]:
+        """Retrieves a document by its ID."""
+        logger.debug(f"Attempting to retrieve document with ID: {document_id}")
+        query = (
+            "MATCH (d:Document {id: $doc_id}) "
+            "RETURN d.id as id, d.content as content, d.metadata as metadata, "
+            "d.created_at as created_at, d.updated_at as updated_at"
+        )
+        params = {"doc_id": document_id}
+        try:
+            results = await self.execute_query(query, params)
+            if results and results[0]:
+                doc_data = results[0]
+                # Convert datetime strings to datetime objects if necessary
+                if isinstance(doc_data.get('created_at'), str):
+                    doc_data['created_at'] = isoparse(doc_data['created_at'])
+                if isinstance(doc_data.get('updated_at'), str):
+                    doc_data['updated_at'] = isoparse(doc_data['updated_at'])
 
-    async def add_chunk(self, chunk: Chunk):
-        """Adds a chunk node and links it to its document."""
-        logger.debug(f"Adding chunk {chunk.id} for document {chunk.document_id}")
-        # Use .model_dump() for Pydantic v2 models
-        props = {k: v for k, v in chunk.model_dump().items() if k not in {"id", "document_id", "type", "properties"}}
-        # Ensure basic properties exist
-        # props["content"] = chunk.content # Use content as per model
-        # props["metadata"] = chunk.metadata
-        # props["embedding"] = chunk.embedding
-        created_at = props.get("created_at", datetime.now(timezone.utc))
-        if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
-        props["created_at"] = created_at
-        updated_at = datetime.now(timezone.utc) # Set updated_at on add/update
-        if updated_at.tzinfo is None:
-            updated_at = updated_at.replace(tzinfo=timezone.utc)
-        props["updated_at"] = updated_at
+                # Ensure metadata is a dictionary
+                metadata = doc_data.get('metadata')
+                if isinstance(metadata, str):
+                    try:
+                        metadata = json.loads(metadata)
+                    except json.JSONDecodeError:
+                        logger.warning(f"Could not parse metadata for document {document_id}: {metadata}")
+                        metadata = {}
+                elif not isinstance(metadata, dict):
+                    metadata = {}
 
-        query = """
-        MATCH (d:Document {id: $doc_id})
-        MERGE (c:Chunk {id: $chunk_id})
-        ON CREATE SET c += $props, c.created_at = $created_at
-        ON MATCH SET c += $props, c.updated_at = $updated_at
-        MERGE (d)-[:CONTAINS]->(c)
+                document = Document(
+                    id=doc_data['id'],
+                    content=doc_data.get('content', ''),
+                    metadata=metadata,
+                    created_at=doc_data.get('created_at'),
+                    updated_at=doc_data.get('updated_at'),
+                )
+                logger.debug(f"Successfully retrieved document: {document_id}")
+                return document
+            else:
+                logger.warning(f"Document not found with ID: {document_id}")
+                return None
+        except Exception as e:
+            logger.error(f"Error retrieving document {document_id}: {e}", exc_info=True)
+            return None
+
+    async def add_chunk(self, chunk: Chunk) -> None:
+        """Adds a chunk node and links it to its parent document.
+           Ensures the parent document exists before creating the chunk.
         """
+        logger.debug(f"Attempting to add chunk {chunk.id} for document {chunk.document_id}")
+        query = (
+            "MATCH (d:Document {id: $doc_id}) "
+            "WITH d " # Pass the matched document (or null if no match)
+            "WHERE d IS NOT NULL " # Proceed only if document was found
+            "MERGE (c:Chunk {id: $chunk_id}) "
+            "ON CREATE SET c.id = $chunk_id, c.document_id = $doc_id, c.text = $text, c.embedding = $embedding, c.created_at = $created_at, c.updated_at = $updated_at "
+            "ON MATCH SET c.text = $text, c.embedding = $embedding, c.updated_at = $updated_at "
+            "MERGE (d)-[:CONTAINS]->(c) "
+            "RETURN count(c) > 0 AS chunk_created_or_updated"
+        )
         params = {
             "doc_id": chunk.document_id,
             "chunk_id": chunk.id,
-            "props": props,
-            "created_at": props["created_at"],
-            "updated_at": props["updated_at"]
+            "text": chunk.text,
+            "embedding": chunk.embedding,
+            "created_at": chunk.created_at or datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
         }
         try:
-            await self.execute_query(query, params)
-            logger.info(f"Successfully added/updated chunk {chunk.id} linked to doc {chunk.document_id}")
+            results = await self.execute_query(query, params)
+            if results and results[0].get('chunk_created_or_updated'):
+                logger.info(f"Successfully added/updated chunk {chunk.id} for document {chunk.document_id}")
+            else:
+                logger.warning(f"Failed to add chunk {chunk.id}: Document {chunk.document_id} not found.")
+                raise ValueError(f"Document {chunk.document_id} not found, cannot add chunk {chunk.id}.")
         except Exception as e:
             logger.error(f"Failed to add chunk {chunk.id}: {e}", exc_info=True)
             raise
@@ -313,25 +414,38 @@ class MemgraphGraphRepository(GraphStore):
     async def get_node_by_id(self, node_id: str) -> Optional[Node]:
         """Retrieves a node by its ID, reconstructing the Node model."""
         logger.debug(f"Getting node by ID: {node_id}")
-        query = "MATCH (n {id: $id}) RETURN properties(n) as props, labels(n) as labels"
+        # Query now returns the node object itself, not just properties
+        query = "MATCH (n {id: $id}) RETURN n" 
         params = {"id": node_id}
         try:
             result = await self.execute_query(query, params)
             if not result:
                 return None
             
-            node_props = result[0]["props"]
-            labels = result[0]["labels"]
+            # Assuming execute_query returns [{'n': <mgclient_node>}]
+            node_obj = result[0].get("n") 
+            if not node_obj:
+                 logger.warning(f"Node object not found in query result for ID {node_id}")
+                 return None
+
+            # Extract properties and labels directly from the mgclient.Node object
+            # Use node_obj.properties and node_obj.labels
+            node_props = node_obj.properties if hasattr(node_obj, 'properties') else {}
+            labels = node_obj.labels if hasattr(node_obj, 'labels') else set()
+            
             # Find the most specific label (excluding base labels like _Node if any)
-            node_type = labels[0] if labels else "Unknown" # Simple approach
-            if len(labels) > 1:
+            # Convert set to list to access by index, or iterate
+            labels_list = list(labels)
+            node_type = labels_list[0] if labels_list else "Unknown" # Simple approach
+            if len(labels_list) > 1:
                  # Prioritize non-internal labels if needed
-                 specific_labels = [l for l in labels if not l.startswith('_')]
+                 specific_labels = [l for l in labels_list if not l.startswith('_')]
                  if specific_labels:
                      node_type = specific_labels[0]
             
             # Convert temporal types before creating Node model
-            converted_props = _convert_neo4j_temporal_types(node_props)
+            # Apply conversion directly to the extracted properties
+            converted_props = _convert_neo4j_temporal_types(node_props) 
             
             # Pop base fields from props to avoid passing them to properties dict
             node_id_prop = converted_props.pop("id", node_id) # Use ID from query param if not in props
@@ -360,19 +474,23 @@ class MemgraphGraphRepository(GraphStore):
         
         label_filter = f":{escape_cypher_string(node_type)}" if node_type else ""
         where_clauses = []
-        params = properties.copy()
-        
+        params = {} # Start with empty params
+        prop_index = 0
         for key, value in properties.items():
-            # Simple equality check for now
-            where_clauses.append(f"n.`{key}` = ${key}")
+            # Use parameterized props for safety
+            param_name = f"prop_{prop_index}"
+            where_clauses.append(f"n.`{escape_cypher_string(key)}` = ${param_name}")
+            params[param_name] = value
+            prop_index += 1
             
         where_clause = " AND ".join(where_clauses) if where_clauses else ""
         if where_clause:
             where_clause = f"WHERE {where_clause}"
             
+        # Query returns the node object directly
         query = f"""
         MATCH (n{label_filter}) {where_clause}
-        RETURN properties(n) as props, labels(n) as labels
+        RETURN n
         LIMIT toInteger($limit)
         """
         params["limit"] = limit
@@ -381,13 +499,20 @@ class MemgraphGraphRepository(GraphStore):
         try:
             results = await self.execute_query(query, params)
             for record in results:
-                node_props = record["props"]
-                labels = record["labels"]
+                # Extract node object from result dict
+                node_obj = record.get("n") 
+                if not node_obj:
+                    continue
+
+                # Extract properties and labels from node object
+                node_props = node_obj.properties if hasattr(node_obj, 'properties') else {}
+                labels = node_obj.labels if hasattr(node_obj, 'labels') else set()
                 converted_props = _convert_neo4j_temporal_types(node_props)
                 
                 node_id_prop = converted_props.pop("id", None)
                 if not node_id_prop: continue # Skip nodes without ID?
                 
+                # Determine type
                 found_node_type = labels[0] if labels else "Unknown"
                 if len(labels) > 1:
                      specific_labels = [l for l in labels if not l.startswith('_')]
@@ -595,8 +720,10 @@ class MemgraphGraphRepository(GraphStore):
         # Build relationship pattern
         rel_pattern = ""
         if relationship_types:
-            rel_types = "|".join(relationship_types)
-            rel_pattern = f":{rel_types}"
+            # Escape each type individually before joining
+            escaped_types = [escape_cypher_string(rt) for rt in relationship_types]
+            rel_types = "|".join(escaped_types)
+            rel_pattern = f":`{rel_types}`" # Use backticks for safety with potentially special chars in types
         
         # Build direction pattern
         if direction == "outgoing":
@@ -606,103 +733,100 @@ class MemgraphGraphRepository(GraphStore):
         else:  # both
             pattern = f"-[r{rel_pattern}]-"
 
+        # Query returns the nodes and relationship objects directly
         query = f"""
         MATCH (e {{id: $id}}){pattern}(n)
         RETURN n, r, e
         """
+        params = {"id": entity_id}
         
-        # Execute query but get raw records, not just data()
-        records = []
-        async def _task_to_retry():
-            conn = await self._get_connection()
-            cursor = conn.cursor()
-            try:
-                await cursor.execute(query, {"id": entity_id})
-                # Collect raw records
-                nonlocal records
-                records = [record async for record in cursor]
-            except mgclient.Error as e:
-                logger.error(f"Read query failed: {e} | Query: {query} | Params: {{'id': entity_id}}")
-                raise
-        await self.execute_query(query, {"id": entity_id})
-
-        # Process raw records
         entities: List[Entity] = []
         relationships: List[Relationship] = []
         processed_node_ids = set()
-        processed_rel_ids = set()
-        
-        for record in records: # Iterate through neo4j.ResultRecord objects
-            # Process neighbor node (convert properties from node object)
-            neighbor_node_obj = record["n"] # neo4j.graph.Node
-            neighbor_id = neighbor_node_obj.get('id') # Access properties via get()
-            if neighbor_id and neighbor_id not in processed_node_ids:
-                 neighbor_props = dict(neighbor_node_obj) # Convert all properties
-                 converted_neighbor_props = _convert_neo4j_temporal_types(neighbor_props)
-                 neighbor_labels = list(neighbor_node_obj.labels)
-                 # Determine type, prioritize non-generic labels if present
-                 neighbor_type = 'Entity' # Default if no specific label
-                 specific_labels = [l for l in neighbor_labels if not l.startswith('_') and l != 'Node']
-                 if specific_labels:
-                     neighbor_type = specific_labels[0]
-                 
-                 # Pop base fields from props 
-                 created_at = converted_neighbor_props.pop("created_at", None)
-                 updated_at = converted_neighbor_props.pop("updated_at", None)
-                 # Remove internal id if present
-                 converted_neighbor_props.pop("id", None) 
-                 # Extract name if present, else use ID
-                 name = converted_neighbor_props.pop("name", neighbor_id) 
-                 
-                 # Construct Entity object
-                 neighbor_entity = Entity(
-                     id=neighbor_id,
-                     name=name, # Use extracted or default name
-                     type=neighbor_type,
-                     metadata=converted_neighbor_props, # Remaining items are metadata
-                     created_at=created_at,
-                     updated_at=updated_at
-                 )
-                 entities.append(neighbor_entity) # Append Entity object
-                 processed_node_ids.add(neighbor_id)
-                
-            # Process source node (only need its ID for relationship)
-            source_node_obj = record["e"] # neo4j.graph.Node
-            source_id = source_node_obj.get('id')
+        processed_rel_ids = set() # Use internal mgclient ID for deduplication during processing
 
-            # Process relationship (use neo4j.graph.Relationship object)
-            # --- DEBUG --- START ---
-            try:
-                print(f"[DEBUG] Type of record['r']: {type(record['r'])}")
-                print(f"[DEBUG] Repr of record['r']: {repr(record['r'])}")
-            except Exception as e:
-                print(f"[DEBUG] Error printing debug info for record['r']: {e}")
-            # --- DEBUG --- END ---
-            rel_obj = record["r"] # neo4j.graph.Relationship
-            # Use element_id for a unique internal ID if needed, or generate UUID
-            rel_internal_id = rel_obj.element_id 
-            if rel_internal_id not in processed_rel_ids and source_id and neighbor_id:
-                rel_props = dict(rel_obj) # Convert properties to dict
-                converted_rel_props = _convert_neo4j_temporal_types(rel_props)
-                created_at = converted_rel_props.pop("created_at", None)
-                updated_at = converted_rel_props.pop("updated_at", None)
-                rel_type = rel_obj.type
+        try:
+            # Execute query and get list of dictionaries [{ 'n': node, 'r': rel, 'e': source_node }, ...]
+            results = await self.execute_query(query, params)
+            
+            for record in results:
+                # Extract objects from the result dictionary using .get()
+                neighbor_node_obj = record.get("n")
+                rel_obj = record.get("r")
+                source_node_obj = record.get("e")
                 
-                # Determine actual source/target based on relationship object nodes
-                actual_source_node_id = rel_obj.start_node.get('id')
-                actual_target_node_id = rel_obj.end_node.get('id')
+                # Basic validation: ensure all parts are present
+                if not all([neighbor_node_obj, rel_obj, source_node_obj]):
+                    logger.warning(f"Skipping incomplete neighbor record for entity {entity_id}")
+                    continue
+
+                # --- Process Neighbor Node --- 
+                neighbor_props = neighbor_node_obj.properties
+                neighbor_labels = neighbor_node_obj.labels
+                neighbor_id = neighbor_props.get('id') # Get ID from properties
+
+                if neighbor_id and neighbor_id not in processed_node_ids:
+                     # Determine type, prioritize specific labels
+                     neighbor_type = 'Entity' # Default
+                     specific_labels = [l for l in neighbor_labels if not l.startswith('_')]
+                     if specific_labels:
+                         neighbor_type = specific_labels[0]
+                     
+                     # Convert temporal types & pop base fields
+                     converted_neighbor_props = _convert_neo4j_temporal_types(neighbor_props)
+                     created_at = converted_neighbor_props.pop("created_at", None)
+                     updated_at = converted_neighbor_props.pop("updated_at", None)
+                     # Remove internal id if present in props
+                     converted_neighbor_props.pop("id", None) 
+                     # Extract name if present, else use ID
+                     name = converted_neighbor_props.pop("name", neighbor_id) 
+                     
+                     # Construct Entity object
+                     neighbor_entity = Entity(
+                         id=neighbor_id,
+                         name=name,
+                         type=neighbor_type,
+                         metadata=converted_neighbor_props, # Remaining props are metadata
+                         created_at=created_at,
+                         updated_at=updated_at
+                     )
+                     entities.append(neighbor_entity)
+                     processed_node_ids.add(neighbor_id)
+                    
+                # --- Process Relationship --- 
+                # Use internal id for deduplication during this processing step
+                rel_internal_id = rel_obj.id # mgclient uses .id for internal id
+                if rel_internal_id not in processed_rel_ids:
+                    rel_props = rel_obj.properties
+                    converted_rel_props = _convert_neo4j_temporal_types(rel_props)
+                    created_at = converted_rel_props.pop("created_at", None)
+                    updated_at = converted_rel_props.pop("updated_at", None)
+                    rel_type = rel_obj.type
+                    
+                    # Get start/end node IDs directly from the relationship object
+                    actual_source_node_id = rel_obj.start_node.properties.get('id')
+                    actual_target_node_id = rel_obj.end_node.properties.get('id')
+                    
+                    # Validate we have the IDs needed
+                    if not actual_source_node_id or not actual_target_node_id:
+                        logger.warning(f"Skipping relationship processing due to missing start/end node ID. Rel internal ID: {rel_internal_id}")
+                        continue
+                        
+                    rel_model = Relationship(
+                        id=str(uuid.uuid4()), # Generate app-level ID
+                        source_id=actual_source_node_id,
+                        target_id=actual_target_node_id,
+                        type=rel_type,
+                        properties=converted_rel_props,
+                        created_at=created_at,
+                        updated_at=updated_at
+                    )
+                    relationships.append(rel_model)
+                    processed_rel_ids.add(rel_internal_id)
                 
-                rel_model = Relationship(
-                    id=str(uuid.uuid4()), # Generate app-level ID
-                    source_id=actual_source_node_id,
-                    target_id=actual_target_node_id,
-                    type=rel_type,
-                    properties=converted_rel_props,
-                    created_at=created_at,
-                    updated_at=updated_at
-                )
-                relationships.append(rel_model)
-                processed_rel_ids.add(rel_internal_id)
+        except Exception as e:
+            logger.error(f"Failed to get neighbors for entity {entity_id}: {e}", exc_info=True)
+            raise # Re-raise after logging
             
         return entities, relationships
 
@@ -712,51 +836,75 @@ class MemgraphGraphRepository(GraphStore):
         limit: Optional[int] = None
     ) -> List[Entity]:
         """Searches for entities matching specific properties."""
-        where_clauses = [f"n.`{k}` = ${k}" for k in properties.keys()]
-        query = f"""
-        MATCH (n)
-        WHERE {' AND '.join(where_clauses)}
-        RETURN properties(n) as props, labels(n) as labels
-        """
-        if limit:
-            query += f" LIMIT {limit}"
-            
-        # Use a copy for parameters to avoid modifying the input dict
-        params = properties.copy()
-        if limit:
-            params["limit"] = limit # Add limit to params if needed for query
+        # Reuse search_nodes_by_properties logic
+        # We expect Entity nodes to have a label matching their type
+        # For now, assume a generic search and then filter/convert
+        # A more optimized approach might filter by label in the query if possible
+        logger.debug(f"Searching entities by properties: {properties}, limit: {limit}")
 
-        results = await self.execute_query(query, params)
+        # Parameterize properties for safety
+        where_clauses = []
+        params = {}
+        prop_index = 0
+        for key, value in properties.items():
+            param_name = f"prop_{prop_index}"
+            where_clauses.append(f"n.`{escape_cypher_string(key)}` = ${param_name}")
+            params[param_name] = value
+            prop_index += 1
+
+        where_clause = " AND ".join(where_clauses) if where_clauses else ""
+        if where_clause:
+            where_clause = f"WHERE {where_clause}"
+
+        # Query returns the node object directly
+        query = f"""
+        MATCH (n) {where_clause} 
+        RETURN n
+        """ # Removed LIMIT here, apply later if needed
+        
+        if limit:
+            query += f" LIMIT $limit"
+            params["limit"] = limit
+
         entities_found = []
-        for record in results: # Process each record
-             node_props = record["props"]
-             labels = record["labels"]
-             converted_data = _convert_neo4j_temporal_types(node_props)
-             entity_id = converted_data.pop('id', None)
-             if not entity_id: continue
-             
-             # Determine type, prioritize specific labels
-             entity_type = 'Entity' # Default
-             specific_labels = [l for l in labels if not l.startswith('_') and l != 'Node']
-             if specific_labels:
-                 entity_type = specific_labels[0]
+        try:
+            results = await self.execute_query(query, params)
+            for record in results: # Process each record dictionary
+                 node_obj = record.get("n") # Extract node object
+                 if not node_obj: continue
+
+                 node_props = node_obj.properties if hasattr(node_obj, 'properties') else {}
+                 labels = node_obj.labels if hasattr(node_obj, 'labels') else set()
+                 converted_data = _convert_neo4j_temporal_types(node_props)
+                 entity_id = converted_data.pop('id', None)
+                 if not entity_id: continue
                  
-             created_at = converted_data.pop("created_at", None)
-             updated_at = converted_data.pop("updated_at", None)
-             # Extract name if present, else use ID
-             name = converted_data.pop("name", entity_id) 
+                 # Determine type, prioritize specific labels
+                 entity_type = 'Entity' # Default
+                 specific_labels = [l for l in labels if not l.startswith('_')]
+                 if specific_labels:
+                     entity_type = specific_labels[0]
+                     
+                 created_at = converted_data.pop("created_at", None)
+                 updated_at = converted_data.pop("updated_at", None)
+                 # Extract name if present, else use ID
+                 name = converted_data.pop("name", entity_id) 
+                 
+                 # Remaining properties go into metadata
+                 metadata = converted_data
+                 
+                 entities_found.append(Entity(
+                     id=entity_id,
+                     name=name,
+                     type=entity_type,
+                     metadata=metadata,
+                     created_at=created_at,
+                     updated_at=updated_at
+                     ))
+        except Exception as e:
+             logger.error(f"Failed during entity search: {e}", exc_info=True)
+             raise # Re-raise the error
              
-             # Remaining properties go into metadata
-             metadata = converted_data
-             
-             entities_found.append(Entity(
-                 id=entity_id,
-                 name=name, # Use extracted or default name
-                 type=entity_type,
-                 metadata=metadata,
-                 created_at=created_at,
-                 updated_at=updated_at
-                 ))
         return entities_found
 
     async def add_entity(self, entity: Entity):
@@ -764,6 +912,45 @@ class MemgraphGraphRepository(GraphStore):
         # Reuse the add_node logic, ensuring the type is correctly handled
         # The Entity model already sets type='Entity'
         await self.add_node(entity)
+
+    async def delete_document(self, document_id: str) -> bool:
+        """Deletes a document and its associated chunks.
+        
+        Returns:
+            bool: True if the document was found and deleted, False otherwise.
+        """
+        logger.debug(f"Deleting document {document_id} and its chunks.")
+        # Use OPTIONAL MATCH, attempt delete, return explicit boolean based on existence before delete
+        query = """
+        OPTIONAL MATCH (d:Document {id: $id})
+        WITH d 
+        DETACH DELETE d
+        RETURN d IS NOT NULL AS deleted
+        """
+        params = {"id": document_id}
+        try:
+            results = await self.execute_query(query, params)
+            # Explicitly handle empty results (no row returned)
+            if not results:
+                logger.warning(f"Document {document_id} not found, nothing deleted (no result row).")
+                status_to_return = False
+                logger.debug(f"Repo delete_document returning: {status_to_return}")
+                return status_to_return
+            # Check if the query returned a result and the 'deleted' flag is True
+            if results[0].get('deleted') is True:
+                logger.info(f"Successfully deleted document {document_id}.")
+                status_to_return = True
+                logger.debug(f"Repo delete_document returning: {status_to_return}")
+                return status_to_return
+            else:
+                # Handles document not found (d was null, deleted is false)
+                logger.warning(f"Document {document_id} not found, nothing deleted (deleted flag false).")
+                status_to_return = False
+                logger.debug(f"Repo delete_document returning: {status_to_return}")
+                return status_to_return
+        except Exception as e:
+            logger.error(f"Failed to delete document {document_id}: {e}", exc_info=True)
+            raise
 
     async def __aenter__(self):
         """Context manager entry."""
@@ -773,6 +960,46 @@ class MemgraphGraphRepository(GraphStore):
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         pass
+
+    async def get_chunks_by_document_id(self, document_id: str) -> list[Chunk]:
+        """Retrieve all chunks linked to a given document by its id."""
+        logger.debug(f"Retrieving chunks for document {document_id}")
+        query = (
+            "MATCH (d:Document {id: $doc_id})-[:CONTAINS]->(c:Chunk) "
+            "RETURN c"
+        )
+        params = {"doc_id": document_id}
+        try:
+            results = await self.execute_query(query, params)
+            chunks = []
+            for record in results:
+                node_obj = record.get("c")
+                if not node_obj:
+                    continue
+                node_props = node_obj.properties if hasattr(node_obj, 'properties') else {}
+                # Convert temporal types if needed
+                created_at = node_props.get("created_at")
+                updated_at = node_props.get("updated_at")
+                # Ensure embedding is a list of floats
+                embedding = node_props.get("embedding")
+                if embedding is not None and not isinstance(embedding, list):
+                    try:
+                        embedding = list(embedding)
+                    except Exception:
+                        embedding = None
+                chunk = Chunk(
+                    id=node_props.get("id"),
+                    text=node_props.get("text", ""),
+                    document_id=node_props.get("document_id"),
+                    embedding=embedding,
+                    created_at=created_at,
+                    updated_at=updated_at
+                )
+                chunks.append(chunk)
+            return chunks
+        except Exception as e:
+            logger.error(f"Failed to retrieve chunks for document {document_id}: {e}", exc_info=True)
+            raise
 
 def escape_cypher_string(value: str) -> str:
     """Escapes characters in a string for safe use in Cypher labels/types."""

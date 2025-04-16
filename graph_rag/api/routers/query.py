@@ -37,7 +37,7 @@ def create_query_router() -> APIRouter:
             for chunk in query_result.relevant_chunks:
                 api_chunks.append(QueryResultChunk(
                     id=chunk.id,
-                    text=chunk.content, 
+                    text=chunk.text,
                     document_id=chunk.document_id,
                     # Chunk inherits 'properties' from Node, not 'metadata'
                     metadata=chunk.properties or {}, # Use properties

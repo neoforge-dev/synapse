@@ -1,7 +1,9 @@
 import asyncio
 import logging
 from graph_rag.config import get_settings
-from graph_rag.infrastructure.repositories.graph_repository import GraphRepository
+from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
+from graph_rag.domain.models import Document
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -9,10 +11,9 @@ settings = get_settings() # Get settings instance
 
 async def setup_test_database():
     """Set up test database with clean state."""
-    repo = GraphRepository(
-        uri=settings.memgraph_uri,
-        username=settings.memgraph_username,
-        password=settings.memgraph_password
+    repo = MemgraphRepository(
+        host="localhost", # Use environment variables in real app
+        port=7687
     )
     
     try:
@@ -35,10 +36,9 @@ async def setup_test_database():
 
 async def cleanup_test_database():
     """Clean up test database after tests."""
-    repo = GraphRepository(
-        uri=settings.memgraph_uri,
-        username=settings.memgraph_username,
-        password=settings.memgraph_password
+    repo = MemgraphRepository(
+        host="localhost", # Use environment variables in real app
+        port=7687
     )
     
     try:

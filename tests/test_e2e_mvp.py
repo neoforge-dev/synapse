@@ -13,7 +13,7 @@ from fastapi import status
 
 from graph_rag.config import get_settings
 from graph_rag.stores.memgraph_store import MemgraphStore
-from graph_rag.stores.simple_vector_store import SimpleVectorStore
+from graph_rag.infrastructure.vector_stores import SimpleVectorStore
 from graph_rag.core.entity_extractor import SpacyEntityExtractor, MockEntityExtractor
 from graph_rag.core.document_processor import SimpleDocumentProcessor, SentenceSplitter
 from graph_rag.core.persistent_kg_builder import PersistentKnowledgeGraphBuilder

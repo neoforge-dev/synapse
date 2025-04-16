@@ -10,7 +10,7 @@ from graph_rag.core.interfaces import (
     KnowledgeGraphBuilder, VectorSearcher, KeywordSearcher, GraphSearcher,
     EmbeddingService, VectorStore, GraphRepository
 )
-from graph_rag.core.graph_rag_engine import GraphRAGEngine, SimpleGraphRAGEngine, QueryResult
+from graph_rag.core.graph_rag_engine import GraphRAGEngine as ConcreteGraphRAGEngine, SimpleGraphRAGEngine, QueryResult
 from graph_rag.models import Document, Chunk, Entity, Relationship, ProcessedDocument
 from graph_rag.domain.models import Node
 from graph_rag.core.graph_store import MockGraphStore, GraphStore
@@ -19,8 +19,9 @@ from graph_rag.core.document_processor import DocumentProcessor
 from graph_rag.core.entity_extractor import MockEntityExtractor
 from graph_rag.core.knowledge_graph_builder import KnowledgeGraphBuilder
 from graph_rag.services.embedding import EmbeddingService
-from graph_rag.core.interfaces import DocumentData, ChunkData, SearchResultData, ExtractionResult
 from graph_rag.services.search import SearchService
+from graph_rag.llm.protocols import LLMService
+from graph_rag.infrastructure.cache.protocols import CacheService
 
 # Configure logging for tests
 logger = logging.getLogger(__name__)
@@ -57,8 +58,10 @@ def mock_kg_builder() -> KnowledgeGraphBuilder:
 
 @pytest.fixture
 def mock_embedding_service() -> MagicMock:
-    # Embedding service might be sync or async, using MagicMock for flexibility
-    return MagicMock(spec=EmbeddingService)
+    service = MagicMock(spec=EmbeddingService)
+    service.encode_documents = AsyncMock(return_value=[[0.1, 0.2], [0.3, 0.4]])
+    service.encode_query = AsyncMock(return_value=[0.5, 0.6])
+    return service
 
 @pytest.fixture
 def mock_vector_searcher() -> VectorSearcher:
@@ -132,6 +135,13 @@ def mock_vector_store() -> MockVectorStore:
     store.add_chunks([chunk1, chunk2])
     logger.info("MockVectorStore populated with 2 chunks.")
     return store
+
+@pytest.fixture
+def mock_graph_repository() -> MagicMock:
+    repo = MagicMock(spec=GraphRepository) # Use GraphRepository interface
+    repo.get_neighbors = AsyncMock(return_value=([], []))
+    repo.add_entity = AsyncMock()
+    return repo
 
 # --- Engine Fixture --- 
 

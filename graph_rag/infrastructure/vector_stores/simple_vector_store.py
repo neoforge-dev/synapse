@@ -1,18 +1,5 @@
-# graph_rag/stores/simple_vector_store.py
-# DEPRECATED: This file is deprecated and will be removed in a future release.
-# Please use graph_rag.infrastructure.vector_stores.SimpleVectorStore instead.
-import warnings
-
-# Issue deprecation warning when this module is imported
-warnings.warn(
-    "This module is deprecated and will be removed in a future version. "
-    "Please use graph_rag.infrastructure.vector_stores.SimpleVectorStore instead.",
-    DeprecationWarning,
-    stacklevel=2
-)
-
 import logging
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import numpy as np
 from sentence_transformers import SentenceTransformer

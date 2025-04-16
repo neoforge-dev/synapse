@@ -1,39 +1,41 @@
-from fastapi import APIRouter, HTTPException, status
-from typing import List
-import uuid
+from typing import Annotated, List, Dict, Any, Optional
+from fastapi import APIRouter, Depends, HTTPException, status, Body, Query
+from graph_rag.domain.models import Chunk, Entity, Relationship
+from graph_rag.api.schemas import (
+    ChunkResultSchema, CreateResponse, ErrorDetail
+)
+from graph_rag.api.dependencies import GraphRepositoryDep # This uses MemgraphRepository now
 import logging
+import uuid
 
-from graph_rag.api import schemas
-from graph_rag.domain.models import Chunk
-from graph_rag.api.dependencies import GraphRepositoryDep
-
-router = APIRouter()
+router = APIRouter(prefix="/chunks", tags=["Chunks"])
 logger = logging.getLogger(__name__)
 
 @router.post(
     "/", 
-    response_model=schemas.CreateResponse, 
+    response_model=CreateResponse, 
     status_code=status.HTTP_201_CREATED
 )
 async def create_chunk(
-    chunk_in: schemas.ChunkCreate,
+    chunk_in: ChunkResultSchema,
     repo: GraphRepositoryDep
 ):
     """Create a new chunk node in the graph."""
-    chunk_id = chunk_in.id or str(uuid.uuid4())
+    chunk_id = chunk_in.id
     logger.info(f"Attempting to create chunk {chunk_id} for document {chunk_in.document_id}")
     # TODO: Validate that the document_id exists?
     chunk = Chunk(
         id=chunk_id,
-        content=chunk_in.content,
+        content=chunk_in.text,
         document_id=chunk_in.document_id,
-        embedding=chunk_in.embedding
+        embedding=None
     )
     try:
-        created_chunk_id = await repo.save_chunk(chunk)
+        await repo.add_entity(Entity(id=chunk.id, type="Chunk", properties=chunk.model_dump(exclude={'id', 'type'})))
+        created_chunk_id = chunk.id
         logger.info(f"Successfully created chunk {created_chunk_id}")
         # TODO: Create relationship to parent document here? (Now done in IngestionService)
-        return schemas.CreateResponse(id=created_chunk_id)
+        return CreateResponse(id=created_chunk_id)
     except Exception as e:
         logger.error(f"API Error: Failed to save chunk {chunk_id}. Error: {e}")
         raise HTTPException(
@@ -41,7 +43,7 @@ async def create_chunk(
             detail=f"Failed to save chunk. Check logs for details."
         )
 
-@router.get("/by_document/{document_id}", response_model=List[schemas.ChunkResponse])
+@router.get("/by_document/{document_id}", response_model=List[ChunkResultSchema])
 async def get_chunks_by_document(
     document_id: str,
     repo: GraphRepositoryDep
@@ -49,16 +51,15 @@ async def get_chunks_by_document(
     """Retrieve all chunks associated with a specific document ID."""
     logger.info(f"Attempting to retrieve chunks for document {document_id}")
     try:
-        chunks = await repo.get_chunks_by_document(document_id)
-        logger.info(f"Found {len(chunks)} chunks for document {document_id}")
+        chunk_entities = await repo.search_entities_by_properties({"type": "Chunk", "document_id": document_id})
+        logger.info(f"Found {len(chunk_entities)} chunks for document {document_id}")
         # Map domain models to response schemas
         return [
-            schemas.ChunkResponse(
-                id=c.id,
-                text=c.content,
-                document_id=c.document_id,
-                metadata=c.metadata
-            ) for c in chunks
+            ChunkResultSchema(
+                id=entity.id,
+                text=entity.properties.get('content', ''),
+                document_id=entity.properties.get('document_id', '')
+            ) for entity in chunk_entities
         ]
     except Exception as e:
         logger.error(f"API Error: Failed to retrieve chunks for document {document_id}. Error: {e}")
@@ -67,4 +68,46 @@ async def get_chunks_by_document(
             detail=f"Failed to retrieve chunks. Check logs for details."
         )
 
-# TODO: Add endpoints for getting individual chunks, updating, deleting 
+@router.get(
+    "/",
+    response_model=List[ChunkResultSchema],
+    summary="List all chunks (use with caution)",
+    description="Retrieves all chunk nodes from the graph. Warning: potentially large response."
+)
+async def list_all_chunks(
+    repo: GraphRepositoryDep,
+    limit: Optional[int] = Query(100, description="Limit the number of chunks returned", ge=1, le=1000)
+):
+    """Fetches all chunks, potentially paginated or limited."""
+    try:
+        chunks_as_entities = await repo.search_entities_by_properties({"type": "Chunk"}, limit=limit)
+        return [ChunkResultSchema.model_validate(entity) for entity in chunks_as_entities]
+    except Exception as e:
+        logger.error(f"Error listing chunks: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve chunks")
+
+@router.get(
+    "/{chunk_id}",
+    response_model=ChunkResultSchema,
+    summary="Get chunk by ID",
+    responses={
+        404: {"model": ErrorDetail, "description": "Chunk not found"},
+        500: {"model": ErrorDetail}
+    }
+)
+async def get_chunk(
+    chunk_id: str,
+    repo: GraphRepositoryDep
+):
+    """Retrieve a specific chunk by its unique ID."""
+    chunk_entity = await repo.get_entity_by_id(chunk_id)
+    if not chunk_entity or chunk_entity.type != "Chunk":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Chunk with id '{chunk_id}' not found")
+    return ChunkResultSchema.model_validate(chunk_entity)
+
+# POST /chunks/bulk - Placeholder for potential bulk creation (complex)
+# Might be better handled by ingestion service
+
+# GET /chunks/{chunk_id}/entities - Placeholder for linked entities
+# GET /chunks/{chunk_id}/relationships - Placeholder for relationships involving chunk
+# DELETE /chunks/{chunk_id} - Placeholder 

@@ -159,11 +159,23 @@ def ingest(
         typer.echo(f"Error: Could not load settings - {e}", err=True)
         raise typer.Exit(1)
 
-    graph_repository = MemgraphRepository(
-        uri=f"bolt://{local_settings.MEMGRAPH_HOST}:{local_settings.MEMGRAPH_PORT}",
-        user=local_settings.MEMGRAPH_USERNAME,
-        password=local_settings.MEMGRAPH_PASSWORD.get_secret_value() if local_settings.MEMGRAPH_PASSWORD else None
-    )
+    # Initialize Neo4j Driver first
+    driver = None
+    try:
+        from neo4j import AsyncGraphDatabase # Import here
+        driver = AsyncGraphDatabase.driver(
+            local_settings.get_memgraph_uri(),
+            auth=(local_settings.MEMGRAPH_USERNAME, local_settings.MEMGRAPH_PASSWORD.get_secret_value() if local_settings.MEMGRAPH_PASSWORD else None)
+        )
+        # Optional: Add a connectivity check here if needed for CLI robustness
+        # asyncio.run(driver.verify_connectivity()) 
+    except Exception as e:
+        logger.error(f"Failed to initialize Neo4j driver: {e}", exc_info=True)
+        typer.echo(f"Error: Could not connect to the database - {e}", err=True)
+        raise typer.Exit(1)
+
+    # Initialize repository with the driver instance
+    graph_repository = MemgraphRepository(driver=driver)
     doc_processor = SimpleDocumentProcessor()
     entity_extractor = SpacyEntityExtractor()
     
@@ -175,5 +187,9 @@ def ingest(
         doc_processor,
         entity_extractor
     ))
+
+    # Close the driver when done
+    if driver:
+        asyncio.run(driver.close())
 
 # Removed if __name__ == "__main__" block 

@@ -8,9 +8,9 @@ from graph_rag.services.search import SearchService, SearchResult
 from graph_rag.services.embedding import EmbeddingService # Needed for mocking
 
 # Sample chunk data for mocking repository response
-SAMPLE_CHUNK_1 = Chunk(id="chunk1", content="Apples are red.", document_id="doc1", embedding=[0.1]*384)
-SAMPLE_CHUNK_2 = Chunk(id="chunk2", content="Oranges are orange.", document_id="doc1", embedding=[0.2]*384)
-SAMPLE_CHUNK_3 = Chunk(id="chunk3", content="Another chunk mentioning red Apple.", document_id="doc2", embedding=[0.3]*384)
+SAMPLE_CHUNK_1 = Chunk(id="chunk1", text="Apples are red.", document_id="doc1", embedding=[0.1]*384)
+SAMPLE_CHUNK_2 = Chunk(id="chunk2", text="Oranges are orange.", document_id="doc1", embedding=[0.2]*384)
+SAMPLE_CHUNK_3 = Chunk(id="chunk3", text="Another chunk mentioning red Apple.", document_id="doc2", embedding=[0.3]*384)
 
 SAMPLE_CHUNKS_CONTENT = [SAMPLE_CHUNK_1, SAMPLE_CHUNK_3]
 SAMPLE_CHUNKS_SIMILARITY = [
@@ -94,7 +94,7 @@ async def test_search_chunks_similarity_returns_results(mock_graph_repository_wi
         expected_chunk, expected_score = SAMPLE_CHUNKS_SIMILARITY[i]
         assert result.chunk_id == expected_chunk.id
         assert result.document_id == expected_chunk.document_id
-        assert result.content == expected_chunk.content
+        assert result.content == expected_chunk.text
         assert result.score == expected_score # Score comes from repo
 
 @pytest.mark.asyncio

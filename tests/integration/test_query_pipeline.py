@@ -4,11 +4,15 @@ from httpx import AsyncClient
 from fastapi import status
 import logging
 from typing import List, Dict, Any
+from unittest.mock import AsyncMock, MagicMock
 
 # Change import
 from graph_rag.config import get_settings 
-from graph_rag.infrastructure.repositories.graph_repository import GraphRepository
+from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
 from graph_rag.domain.models import Document, Chunk, Entity, Relationship
+from graph_rag.core.vector_store import VectorStore
+from graph_rag.services.embedding import EmbeddingService
+from graph_rag.core.graph_rag_engine import GraphRAGEngine
 
 # Instantiate settings
 settings = get_settings()

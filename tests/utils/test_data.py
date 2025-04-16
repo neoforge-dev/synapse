@@ -1,7 +1,7 @@
 """Test data for GraphRAG tests."""
 
 from typing import Dict, List, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import numpy as np
 from graph_rag.core.interfaces import DocumentData, ChunkData
@@ -14,7 +14,7 @@ def create_test_document_data(**kwargs) -> DocumentData:
     defaults = {
         "id": str(uuid.uuid4()),
         "content": "This is a test document.",
-        "metadata": {"source": "test", "created_at": datetime.utcnow().isoformat()}
+        "metadata": {"source": "test", "created_at": datetime.now(timezone.utc).isoformat()}
     }
     defaults.update(kwargs)
     return DocumentData(**defaults)
@@ -25,7 +25,7 @@ def create_test_chunk_data(**kwargs) -> ChunkData:
         "id": str(uuid.uuid4()),
         "document_id": kwargs.get("document_id", str(uuid.uuid4())), # Ensure document_id exists
         "text": "This is a test chunk.",
-        "metadata": {"source_document": "test_doc", "created_at": datetime.utcnow().isoformat()},
+        "metadata": {"source_document": "test_doc", "created_at": datetime.now(timezone.utc).isoformat()},
         "embedding": np.random.rand(EMBEDDING_DIM).tolist()
     }
     # Ensure embedding matches expectation if provided
@@ -47,7 +47,7 @@ SAMPLE_DOCUMENTS: List[Dict[str, Any]] = [
         "content": "John Smith works at Acme Corp. He lives in New York.",
         "metadata": {
             "source": "test",
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
     },
     {
@@ -55,7 +55,7 @@ SAMPLE_DOCUMENTS: List[Dict[str, Any]] = [
         "content": "Acme Corp is a technology company based in New York.",
         "metadata": {
             "source": "test",
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
     }
 ]

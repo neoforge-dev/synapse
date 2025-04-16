@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 import uuid
 
@@ -75,44 +75,26 @@ class CreateResponse(BaseModel):
     """Response schema for create operations that return an ID."""
     id: str 
 
+# --- Document Schemas ---
+# Removed DocumentProperties as it's not used directly in the response
+
 class DocumentCreate(BaseModel):
     """Schema for creating a new document."""
     content: str
     metadata: Optional[Dict[str, Any]] = None
 
 class DocumentResponse(BaseModel):
-    """Schema for document response."""
+    """Response model for a single document, matching repository structure."""
     id: str
-    type: str # Added type field
-    content: str
-    metadata: Dict[str, Any]
-    created_at: Optional[datetime] = None # Added created_at
-    updated_at: Optional[datetime] = None # Added updated_at
+    metadata: Dict[str, Any] = Field(default_factory=dict) # Direct metadata field
+    type: Optional[str] = None  # Add type to match test expectations
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
-class ChunkCreate(BaseModel):
-    """Schema for creating a new chunk."""
-    text: str
-    document_id: str
-    metadata: Optional[Dict[str, Any]] = None
+class DocumentMetadataUpdate(BaseModel):
+    """Request model for updating document metadata. Allows arbitrary key-value pairs."""
+    properties: dict[str, Any] = Field(..., description="Metadata key-value pairs to update.")
 
-class ChunkResponse(BaseModel):
-    """Schema for chunk response."""
-    id: str
-    text: str
-    document_id: str
-    metadata: Dict[str, Any]
-
-class QueryRequest(BaseModel):
-    """Schema for query request."""
-    query_text: str
-    k: int = 5
-
-class ResultItem(BaseModel):
-    """Schema for a single result item."""
-    content: str
-    metadata: Dict[str, Any]
-
-class QueryResult(BaseModel):
-    """Schema for query response."""
-    query: str
-    results: List[ResultItem] 
+class ErrorDetail(BaseModel):
+    """Standard error response detail."""
+    detail: str 

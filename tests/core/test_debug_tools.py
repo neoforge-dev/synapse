@@ -50,7 +50,7 @@ async def test_validate_graph_structure(graph_debugger: GraphDebugger):
 @pytest.mark.asyncio
 async def test_create_debug_context(graph_debugger: GraphDebugger):
     """Test creating debug context."""
-    context = graph_debugger.create_debug_context(
+    context = await graph_debugger.create_debug_context(
         error_type="State Transition Error",
         test_file="test_ingest_command.py",
         test_function="test_document_ingestion",
@@ -71,7 +71,7 @@ async def test_save_and_load_debug_context(
 ):
     """Test saving and loading debug context."""
     # Create context
-    context = graph_debugger.create_debug_context(
+    context = await graph_debugger.create_debug_context(
         error_type="Integration Error",
         test_file="test_query_pipeline.py",
         test_function="test_query_execution",

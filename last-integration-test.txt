@@ -1,0 +1,511 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.7, pytest-8.3.5, pluggy-1.5.0 -- /Users/bogdan/til/graph-rag-mcp/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/bogdan/til/graph-rag-mcp
+configfile: pytest.ini
+plugins: anyio-4.9.0, asyncio-0.26.0, mock-3.14.0, cov-6.1.1
+asyncio: mode=Mode.STRICT, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collecting ... collected 238 items / 167 deselected / 1 skipped / 71 selected
+
+pymgclient/test/test_connection.py::test_connect_insecure_success SKIPPED [  1%]
+pymgclient/test/test_connection.py::test_connection_secure_fail SKIPPED  [  2%]
+pymgclient/test/test_connection.py::test_connection_secure_success SKIPPED [  4%]
+pymgclient/test/test_connection.py::test_connection_close SKIPPED (M...) [  5%]
+pymgclient/test/test_connection.py::test_connection_close_lazy SKIPPED   [  7%]
+pymgclient/test/test_connection.py::test_autocommit_regular SKIPPED      [  8%]
+pymgclient/test/test_connection.py::test_autocommit_lazy SKIPPED (ME...) [  9%]
+pymgclient/test/test_connection.py::test_commit SKIPPED (MEMGRAPH_HO...) [ 11%]
+pymgclient/test/test_connection.py::test_rollback SKIPPED (MEMGRAPH_...) [ 12%]
+pymgclient/test/test_connection.py::test_close_doesnt_commit SKIPPED     [ 14%]
+pymgclient/test/test_connection.py::test_commit_rollback_lazy SKIPPED    [ 15%]
+pymgclient/test/test_connection.py::test_autocommit_failure SKIPPED      [ 16%]
+pymgclient/test/test_cursor.py::test_cursor_visibility SKIPPED (MEMG...) [ 18%]
+pymgclient/test/test_cursor.py::TestCursorInRegularConnection::test_execute_closed_connection SKIPPED [ 19%]
+pymgclient/test/test_cursor.py::TestCursorInRegularConnection::test_cursor_close SKIPPED [ 21%]
+pymgclient/test/test_cursor.py::TestCursorInRegularConnection::test_cursor_fetchone SKIPPED [ 22%]
+pymgclient/test/test_cursor.py::TestCursorInRegularConnection::test_cursor_fetchmany SKIPPED [ 23%]
+pymgclient/test/test_cursor.py::TestCursorInRegularConnection::test_cursor_fetchall SKIPPED [ 25%]
+pymgclient/test/test_cursor.py::TestCursorInRegularConnection::test_cursor_multiple_queries SKIPPED [ 26%]
+pymgclient/test/test_cursor.py::TestCursorInRegularConnection::test_cursor_syntax_error SKIPPED [ 28%]
+pymgclient/test/test_cursor.py::TestCursorInRegularConnection::test_cursor_runtime_error SKIPPED [ 29%]
+pymgclient/test/test_cursor.py::TestCursorInRegularConnection::test_cursor_description SKIPPED [ 30%]
+pymgclient/test/test_cursor.py::TestCursorInRegularConnection::test_cursor_fetchone_without_result SKIPPED [ 32%]
+pymgclient/test/test_cursor.py::TestCursorInRegularConnection::test_cursor_fetchmany_without_result SKIPPED [ 33%]
+pymgclient/test/test_cursor.py::TestCursorInRegularConnection::test_cursor_result_ref_counts SKIPPED [ 35%]
+pymgclient/test/test_cursor.py::TestCursorInLazyConnection::test_lazy_cant_execute_twice SKIPPED [ 36%]
+pymgclient/test/test_cursor.py::TestCursorInLazyConnection::test_lazy_cant_execute_during_execution SKIPPED [ 38%]
+pymgclient/test/test_cursor.py::TestCursorInLazyConnection::test_lazy_cant_close_during_execution SKIPPED [ 39%]
+pymgclient/test/test_cursor.py::TestCursorInLazyConnection::test_lazy_result_available_after_fetch SKIPPED [ 40%]
+pymgclient/test/test_glue.py::test_none SKIPPED (MEMGRAPH_HOST is un...) [ 42%]
+pymgclient/test/test_glue.py::test_bool SKIPPED (MEMGRAPH_HOST is un...) [ 43%]
+pymgclient/test/test_glue.py::test_integer SKIPPED (MEMGRAPH_HOST is...) [ 45%]
+pymgclient/test/test_glue.py::test_float SKIPPED (MEMGRAPH_HOST is u...) [ 46%]
+pymgclient/test/test_glue.py::test_string SKIPPED (MEMGRAPH_HOST is ...) [ 47%]
+pymgclient/test/test_glue.py::test_list SKIPPED (MEMGRAPH_HOST is un...) [ 49%]
+pymgclient/test/test_glue.py::test_map SKIPPED (MEMGRAPH_HOST is uns...) [ 50%]
+pymgclient/test/test_glue.py::test_node SKIPPED (MEMGRAPH_HOST is un...) [ 52%]
+pymgclient/test/test_glue.py::test_relationship SKIPPED (MEMGRAPH_HO...) [ 53%]
+pymgclient/test/test_glue.py::test_path SKIPPED (MEMGRAPH_HOST is un...) [ 54%]
+pymgclient/test/test_glue.py::test_tuple SKIPPED (MEMGRAPH_HOST is u...) [ 56%]
+pymgclient/test/test_glue.py::test_time SKIPPED (MEMGRAPH_HOST is un...) [ 57%]
+pymgclient/test/test_glue.py::test_date SKIPPED (MEMGRAPH_HOST is un...) [ 59%]
+pymgclient/test/test_glue.py::test_datetime SKIPPED (MEMGRAPH_HOST i...) [ 60%]
+pymgclient/test/test_glue.py::test_duration SKIPPED (MEMGRAPH_HOST i...) [ 61%]
+tests/core/test_debug_tools.py::test_analyze_query_performance 
+-------------------------------- live log setup --------------------------------
+INFO     tests.conftest:conftest.py:63 spaCy model 'en_core_web_sm' already available.
+SKIPPED (Skipping Memgraph connection: Not running integration tests.)   [ 63%]
+tests/core/test_debug_tools.py::test_validate_graph_structure SKIPPED    [ 64%]
+tests/core/test_debug_tools.py::test_create_debug_context SKIPPED (S...) [ 66%]
+tests/core/test_debug_tools.py::test_save_and_load_debug_context SKIPPED [ 67%]
+tests/core/test_debug_tools.py::test_analyze_query_performance_integration SKIPPED [ 69%]
+tests/core/test_debug_tools.py::test_validate_graph_structure_integration SKIPPED [ 70%]
+tests/data_stores/test_memgraph_store.py::test_integration_connection SKIPPED [ 71%]
+tests/data_stores/test_memgraph_store.py::test_integration_add_and_get_node SKIPPED [ 73%]
+tests/data_stores/test_memgraph_store.py::test_integration_add_relationship SKIPPED [ 74%]
+tests/infrastructure/graph_stores/test_memgraph_store.py::test_add_get_entity 
+-------------------------------- live log setup --------------------------------
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:39 Neo4j AsyncDriver created for fixture: bolt://localhost:7687
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:22 MemgraphRepository initialized with neo4j AsyncDriver.
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:43 Clearing Memgraph database for test using async driver...
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:45 Cleared Memgraph database for test.
+-------------------------------- live log call ---------------------------------
+ERROR    graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:179 Unexpected error retrieving entity 0052bbfb-455f-4fe7-b462-64433474afa3: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 249281000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+Traceback (most recent call last):
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 173, in get_entity_by_id
+    return self._map_node_to_entity(node_data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 154, in _map_node_to_entity
+    return Entity(
+           ^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 249281000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+FAILED                                                                   [ 76%]
+------------------------------ live log teardown -------------------------------
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:294 Neo4j AsyncDriver closed.
+
+tests/infrastructure/graph_stores/test_memgraph_store.py::test_document_as_entity 
+-------------------------------- live log setup --------------------------------
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:39 Neo4j AsyncDriver created for fixture: bolt://localhost:7687
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:22 MemgraphRepository initialized with neo4j AsyncDriver.
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:43 Clearing Memgraph database for test using async driver...
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:45 Cleared Memgraph database for test.
+-------------------------------- live log call ---------------------------------
+ERROR    graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:179 Unexpected error retrieving entity 623017ac-b6bc-471d-bf07-be5a04e2066a: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 321929000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+Traceback (most recent call last):
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 173, in get_entity_by_id
+    return self._map_node_to_entity(node_data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 154, in _map_node_to_entity
+    return Entity(
+           ^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 321929000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+FAILED                                                                   [ 77%]
+------------------------------ live log teardown -------------------------------
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:294 Neo4j AsyncDriver closed.
+
+tests/infrastructure/graph_stores/test_memgraph_store.py::test_chunk_as_entity 
+-------------------------------- live log setup --------------------------------
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:39 Neo4j AsyncDriver created for fixture: bolt://localhost:7687
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:22 MemgraphRepository initialized with neo4j AsyncDriver.
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:43 Clearing Memgraph database for test using async driver...
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:45 Cleared Memgraph database for test.
+-------------------------------- live log call ---------------------------------
+ERROR    graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:179 Unexpected error retrieving entity e4c3769b-8332-4279-9f58-e00dbe26cc2b: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 340759000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+Traceback (most recent call last):
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 173, in get_entity_by_id
+    return self._map_node_to_entity(node_data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 154, in _map_node_to_entity
+    return Entity(
+           ^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 340759000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+FAILED                                                                   [ 78%]
+------------------------------ live log teardown -------------------------------
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:294 Neo4j AsyncDriver closed.
+
+tests/infrastructure/graph_stores/test_memgraph_store.py::test_entity_interface_operations 
+-------------------------------- live log setup --------------------------------
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:39 Neo4j AsyncDriver created for fixture: bolt://localhost:7687
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:22 MemgraphRepository initialized with neo4j AsyncDriver.
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:43 Clearing Memgraph database for test using async driver...
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:45 Cleared Memgraph database for test.
+-------------------------------- live log call ---------------------------------
+ERROR    graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:179 Unexpected error retrieving entity 30c80406-2783-4db0-bada-ae74e984e4ac: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 436907000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+Traceback (most recent call last):
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 173, in get_entity_by_id
+    return self._map_node_to_entity(node_data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 154, in _map_node_to_entity
+    return Entity(
+           ^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 436907000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+FAILED                                                                   [ 80%]
+------------------------------ live log teardown -------------------------------
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:294 Neo4j AsyncDriver closed.
+
+tests/infrastructure/graph_stores/test_memgraph_store.py::test_relationship_operations 
+-------------------------------- live log setup --------------------------------
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:39 Neo4j AsyncDriver created for fixture: bolt://localhost:7687
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:22 MemgraphRepository initialized with neo4j AsyncDriver.
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:43 Clearing Memgraph database for test using async driver...
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:45 Cleared Memgraph database for test.
+FAILED                                                                   [ 81%]
+------------------------------ live log teardown -------------------------------
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:294 Neo4j AsyncDriver closed.
+
+
+=================================== FAILURES ===================================
+_____________________________ test_add_get_entity ______________________________
+tests/infrastructure/graph_stores/test_memgraph_store.py:73: in test_add_get_entity
+    retrieved = await memgraph_repo.get_entity_by_id(entity_id)
+graph_rag/infrastructure/repositories/graph_repository.py:173: in get_entity_by_id
+    return self._map_node_to_entity(node_data)
+graph_rag/infrastructure/repositories/graph_repository.py:154: in _map_node_to_entity
+    return Entity(
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for Entity
+E   updated_at
+E     Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 249281000), input_type=DateTime]
+E       For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+---------------------------- Captured stdout setup -----------------------------
+2025-04-16 12:11:32,243 - tests.infrastructure.graph_stores.test_memgraph_store - INFO - Neo4j AsyncDriver created for fixture: bolt://localhost:7687
+2025-04-16 12:11:32,243 - graph_rag.infrastructure.repositories.graph_repository - INFO - MemgraphRepository initialized with neo4j AsyncDriver.
+2025-04-16 12:11:32,243 - tests.infrastructure.graph_stores.test_memgraph_store - INFO - Clearing Memgraph database for test using async driver...
+2025-04-16 12:11:32,248 - tests.infrastructure.graph_stores.test_memgraph_store - INFO - Cleared Memgraph database for test.
+------------------------------ Captured log setup ------------------------------
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:39 Neo4j AsyncDriver created for fixture: bolt://localhost:7687
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:22 MemgraphRepository initialized with neo4j AsyncDriver.
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:43 Clearing Memgraph database for test using async driver...
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:45 Cleared Memgraph database for test.
+----------------------------- Captured stdout call -----------------------------
+2025-04-16 12:11:32,252 - graph_rag.infrastructure.repositories.graph_repository - ERROR - Unexpected error retrieving entity 0052bbfb-455f-4fe7-b462-64433474afa3: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 249281000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+Traceback (most recent call last):
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 173, in get_entity_by_id
+    return self._map_node_to_entity(node_data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 154, in _map_node_to_entity
+    return Entity(
+           ^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 249281000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+------------------------------ Captured log call -------------------------------
+ERROR    graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:179 Unexpected error retrieving entity 0052bbfb-455f-4fe7-b462-64433474afa3: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 249281000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+Traceback (most recent call last):
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 173, in get_entity_by_id
+    return self._map_node_to_entity(node_data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 154, in _map_node_to_entity
+    return Entity(
+           ^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 249281000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+--------------------------- Captured stdout teardown ---------------------------
+2025-04-16 12:11:32,316 - graph_rag.infrastructure.repositories.graph_repository - INFO - Neo4j AsyncDriver closed.
+---------------------------- Captured log teardown -----------------------------
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:294 Neo4j AsyncDriver closed.
+___________________________ test_document_as_entity ____________________________
+tests/infrastructure/graph_stores/test_memgraph_store.py:101: in test_document_as_entity
+    retrieved_entity = await memgraph_repo.get_entity_by_id(doc_id)
+graph_rag/infrastructure/repositories/graph_repository.py:173: in get_entity_by_id
+    return self._map_node_to_entity(node_data)
+graph_rag/infrastructure/repositories/graph_repository.py:154: in _map_node_to_entity
+    return Entity(
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for Entity
+E   updated_at
+E     Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 321929000), input_type=DateTime]
+E       For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+---------------------------- Captured stdout setup -----------------------------
+2025-04-16 12:11:32,318 - tests.infrastructure.graph_stores.test_memgraph_store - INFO - Neo4j AsyncDriver created for fixture: bolt://localhost:7687
+2025-04-16 12:11:32,318 - graph_rag.infrastructure.repositories.graph_repository - INFO - MemgraphRepository initialized with neo4j AsyncDriver.
+2025-04-16 12:11:32,318 - tests.infrastructure.graph_stores.test_memgraph_store - INFO - Clearing Memgraph database for test using async driver...
+2025-04-16 12:11:32,321 - tests.infrastructure.graph_stores.test_memgraph_store - INFO - Cleared Memgraph database for test.
+------------------------------ Captured log setup ------------------------------
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:39 Neo4j AsyncDriver created for fixture: bolt://localhost:7687
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:22 MemgraphRepository initialized with neo4j AsyncDriver.
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:43 Clearing Memgraph database for test using async driver...
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:45 Cleared Memgraph database for test.
+----------------------------- Captured stdout call -----------------------------
+2025-04-16 12:11:32,324 - graph_rag.infrastructure.repositories.graph_repository - ERROR - Unexpected error retrieving entity 623017ac-b6bc-471d-bf07-be5a04e2066a: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 321929000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+Traceback (most recent call last):
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 173, in get_entity_by_id
+    return self._map_node_to_entity(node_data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 154, in _map_node_to_entity
+    return Entity(
+           ^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 321929000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+------------------------------ Captured log call -------------------------------
+ERROR    graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:179 Unexpected error retrieving entity 623017ac-b6bc-471d-bf07-be5a04e2066a: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 321929000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+Traceback (most recent call last):
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 173, in get_entity_by_id
+    return self._map_node_to_entity(node_data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 154, in _map_node_to_entity
+    return Entity(
+           ^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 321929000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+--------------------------- Captured stdout teardown ---------------------------
+2025-04-16 12:11:32,334 - graph_rag.infrastructure.repositories.graph_repository - INFO - Neo4j AsyncDriver closed.
+---------------------------- Captured log teardown -----------------------------
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:294 Neo4j AsyncDriver closed.
+_____________________________ test_chunk_as_entity _____________________________
+tests/infrastructure/graph_stores/test_memgraph_store.py:156: in test_chunk_as_entity
+    retrieved_chunk = await memgraph_repo.get_entity_by_id(chunk_id)
+graph_rag/infrastructure/repositories/graph_repository.py:173: in get_entity_by_id
+    return self._map_node_to_entity(node_data)
+graph_rag/infrastructure/repositories/graph_repository.py:154: in _map_node_to_entity
+    return Entity(
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for Entity
+E   updated_at
+E     Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 340759000), input_type=DateTime]
+E       For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+---------------------------- Captured stdout setup -----------------------------
+2025-04-16 12:11:32,336 - tests.infrastructure.graph_stores.test_memgraph_store - INFO - Neo4j AsyncDriver created for fixture: bolt://localhost:7687
+2025-04-16 12:11:32,336 - graph_rag.infrastructure.repositories.graph_repository - INFO - MemgraphRepository initialized with neo4j AsyncDriver.
+2025-04-16 12:11:32,336 - tests.infrastructure.graph_stores.test_memgraph_store - INFO - Clearing Memgraph database for test using async driver...
+2025-04-16 12:11:32,339 - tests.infrastructure.graph_stores.test_memgraph_store - INFO - Cleared Memgraph database for test.
+------------------------------ Captured log setup ------------------------------
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:39 Neo4j AsyncDriver created for fixture: bolt://localhost:7687
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:22 MemgraphRepository initialized with neo4j AsyncDriver.
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:43 Clearing Memgraph database for test using async driver...
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:45 Cleared Memgraph database for test.
+----------------------------- Captured stdout call -----------------------------
+2025-04-16 12:11:32,422 - graph_rag.infrastructure.repositories.graph_repository - ERROR - Unexpected error retrieving entity e4c3769b-8332-4279-9f58-e00dbe26cc2b: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 340759000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+Traceback (most recent call last):
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 173, in get_entity_by_id
+    return self._map_node_to_entity(node_data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 154, in _map_node_to_entity
+    return Entity(
+           ^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 340759000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+------------------------------ Captured log call -------------------------------
+ERROR    graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:179 Unexpected error retrieving entity e4c3769b-8332-4279-9f58-e00dbe26cc2b: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 340759000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+Traceback (most recent call last):
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 173, in get_entity_by_id
+    return self._map_node_to_entity(node_data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 154, in _map_node_to_entity
+    return Entity(
+           ^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 340759000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+--------------------------- Captured stdout teardown ---------------------------
+2025-04-16 12:11:32,432 - graph_rag.infrastructure.repositories.graph_repository - INFO - Neo4j AsyncDriver closed.
+---------------------------- Captured log teardown -----------------------------
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:294 Neo4j AsyncDriver closed.
+_______________________ test_entity_interface_operations _______________________
+tests/infrastructure/graph_stores/test_memgraph_store.py:204: in test_entity_interface_operations
+    retrieved_entity1 = await memgraph_repo.get_entity_by_id(entity1_id)
+graph_rag/infrastructure/repositories/graph_repository.py:173: in get_entity_by_id
+    return self._map_node_to_entity(node_data)
+graph_rag/infrastructure/repositories/graph_repository.py:154: in _map_node_to_entity
+    return Entity(
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for Entity
+E   updated_at
+E     Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 436907000), input_type=DateTime]
+E       For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+---------------------------- Captured stdout setup -----------------------------
+2025-04-16 12:11:32,433 - tests.infrastructure.graph_stores.test_memgraph_store - INFO - Neo4j AsyncDriver created for fixture: bolt://localhost:7687
+2025-04-16 12:11:32,433 - graph_rag.infrastructure.repositories.graph_repository - INFO - MemgraphRepository initialized with neo4j AsyncDriver.
+2025-04-16 12:11:32,433 - tests.infrastructure.graph_stores.test_memgraph_store - INFO - Clearing Memgraph database for test using async driver...
+2025-04-16 12:11:32,436 - tests.infrastructure.graph_stores.test_memgraph_store - INFO - Cleared Memgraph database for test.
+------------------------------ Captured log setup ------------------------------
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:39 Neo4j AsyncDriver created for fixture: bolt://localhost:7687
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:22 MemgraphRepository initialized with neo4j AsyncDriver.
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:43 Clearing Memgraph database for test using async driver...
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:45 Cleared Memgraph database for test.
+----------------------------- Captured stdout call -----------------------------
+2025-04-16 12:11:32,439 - graph_rag.infrastructure.repositories.graph_repository - ERROR - Unexpected error retrieving entity 30c80406-2783-4db0-bada-ae74e984e4ac: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 436907000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+Traceback (most recent call last):
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 173, in get_entity_by_id
+    return self._map_node_to_entity(node_data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 154, in _map_node_to_entity
+    return Entity(
+           ^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 436907000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+------------------------------ Captured log call -------------------------------
+ERROR    graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:179 Unexpected error retrieving entity 30c80406-2783-4db0-bada-ae74e984e4ac: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 436907000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+Traceback (most recent call last):
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 173, in get_entity_by_id
+    return self._map_node_to_entity(node_data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/repositories/graph_repository.py", line 154, in _map_node_to_entity
+    return Entity(
+           ^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Entity
+updated_at
+  Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 436907000), input_type=DateTime]
+    For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+--------------------------- Captured stdout teardown ---------------------------
+2025-04-16 12:11:32,448 - graph_rag.infrastructure.repositories.graph_repository - INFO - Neo4j AsyncDriver closed.
+---------------------------- Captured log teardown -----------------------------
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:294 Neo4j AsyncDriver closed.
+_________________________ test_relationship_operations _________________________
+tests/infrastructure/graph_stores/test_memgraph_store.py:291: in test_relationship_operations
+    neighbors1, rels1 = await memgraph_repo.get_neighbors(entity1_id, direction="outgoing")
+graph_rag/infrastructure/repositories/graph_repository.py:245: in get_neighbors
+    neighbor_entity = self._map_node_to_entity(neighbor_id)
+graph_rag/infrastructure/repositories/graph_repository.py:154: in _map_node_to_entity
+    return Entity(
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for Entity
+E   updated_at
+E     Input should be a valid datetime [type=datetime_type, input_value=neo4j.time.DateTime(2025,..., 12, 11, 32, 456105000), input_type=DateTime]
+E       For further information visit https://errors.pydantic.dev/2.11/v/datetime_type
+---------------------------- Captured stdout setup -----------------------------
+2025-04-16 12:11:32,449 - tests.infrastructure.graph_stores.test_memgraph_store - INFO - Neo4j AsyncDriver created for fixture: bolt://localhost:7687
+2025-04-16 12:11:32,449 - graph_rag.infrastructure.repositories.graph_repository - INFO - MemgraphRepository initialized with neo4j AsyncDriver.
+2025-04-16 12:11:32,449 - tests.infrastructure.graph_stores.test_memgraph_store - INFO - Clearing Memgraph database for test using async driver...
+2025-04-16 12:11:32,453 - tests.infrastructure.graph_stores.test_memgraph_store - INFO - Cleared Memgraph database for test.
+------------------------------ Captured log setup ------------------------------
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:39 Neo4j AsyncDriver created for fixture: bolt://localhost:7687
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:22 MemgraphRepository initialized with neo4j AsyncDriver.
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:43 Clearing Memgraph database for test using async driver...
+INFO     tests.infrastructure.graph_stores.test_memgraph_store:test_memgraph_store.py:45 Cleared Memgraph database for test.
+--------------------------- Captured stdout teardown ---------------------------
+2025-04-16 12:11:32,472 - graph_rag.infrastructure.repositories.graph_repository - INFO - Neo4j AsyncDriver closed.
+---------------------------- Captured log teardown -----------------------------
+INFO     graph_rag.infrastructure.repositories.graph_repository:graph_repository.py:294 Neo4j AsyncDriver closed.
+=============================== warnings summary ===============================
+tests/core/test_debug_tools.py:94
+  /Users/bogdan/til/graph-rag-mcp/tests/core/test_debug_tools.py:94: PytestRemovedIn9Warning: Marks applied to fixtures have no effect
+  See docs: https://docs.pytest.org/en/stable/deprecations.html#applying-a-mark-to-a-fixture-function
+    @pytest.mark.integration
+
+tests/infrastructure/graph_stores/test_memgraph_store.py::test_add_get_entity
+  /Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:1019: PytestDeprecationWarning: asyncio test 'test_add_get_entity' requested async @pytest.fixture 'clean_db' in strict mode. You might want to use @pytest_asyncio.fixture or switch to auto mode. This will become an error in future versions of flake8-asyncio.
+    warnings.warn(
+
+tests/infrastructure/graph_stores/test_memgraph_store.py::test_document_as_entity
+  /Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:1019: PytestDeprecationWarning: asyncio test 'test_document_as_entity' requested async @pytest.fixture 'clean_db' in strict mode. You might want to use @pytest_asyncio.fixture or switch to auto mode. This will become an error in future versions of flake8-asyncio.
+    warnings.warn(
+
+tests/infrastructure/graph_stores/test_memgraph_store.py::test_chunk_as_entity
+  /Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:1019: PytestDeprecationWarning: asyncio test 'test_chunk_as_entity' requested async @pytest.fixture 'clean_db' in strict mode. You might want to use @pytest_asyncio.fixture or switch to auto mode. This will become an error in future versions of flake8-asyncio.
+    warnings.warn(
+
+tests/infrastructure/graph_stores/test_memgraph_store.py::test_chunk_as_entity
+  /Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/neo4j/_codec/hydration/v2/hydration_handler.py:98: RuntimeWarning: coroutine 'clean_db' was never awaited
+    return HydrationScope(self, _GraphHydrator())
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/infrastructure/graph_stores/test_memgraph_store.py::test_entity_interface_operations
+  /Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:1019: PytestDeprecationWarning: asyncio test 'test_entity_interface_operations' requested async @pytest.fixture 'clean_db' in strict mode. You might want to use @pytest_asyncio.fixture or switch to auto mode. This will become an error in future versions of flake8-asyncio.
+    warnings.warn(
+
+tests/infrastructure/graph_stores/test_memgraph_store.py::test_relationship_operations
+  /Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:1019: PytestDeprecationWarning: asyncio test 'test_relationship_operations' requested async @pytest.fixture 'clean_db' in strict mode. You might want to use @pytest_asyncio.fixture or switch to auto mode. This will become an error in future versions of flake8-asyncio.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/infrastructure/graph_stores/test_memgraph_store.py::test_add_get_entity
+FAILED tests/infrastructure/graph_stores/test_memgraph_store.py::test_document_as_entity
+FAILED tests/infrastructure/graph_stores/test_memgraph_store.py::test_chunk_as_entity
+FAILED tests/infrastructure/graph_stores/test_memgraph_store.py::test_entity_interface_operations
+FAILED tests/infrastructure/graph_stores/test_memgraph_store.py::test_relationship_operations
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 5 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+========== 5 failed, 54 skipped, 167 deselected, 7 warnings in 1.78s ===========

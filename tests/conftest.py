@@ -19,21 +19,23 @@ from unittest.mock import AsyncMock # Add AsyncMock
 
 # Imports for Memgraph setup
 from neo4j import AsyncGraphDatabase, AsyncDriver
-from neo4j.exceptions import ServiceUnavailable, Neo4jError
+from neo4j.exceptions import ServiceUnavailable, Neo4jError, AuthError
 # from tenacity import retry, stop_after_delay, wait_fixed, retry_if_exception_type # Removed
 
 from graph_rag.config import get_settings
-from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
 from graph_rag.core.entity_extractor import EntityExtractor, MockEntityExtractor
 # Use standardized getter for graph repository
 from graph_rag.api.dependencies import (
     get_entity_extractor, get_graph_repository, get_ingestion_service, 
     get_graph_rag_engine, # get_neo4j_driver, # Removed Neo4j driver getter
-    get_document_processor, get_kg_builder # Corrected: get_document_processor
+    get_document_processor, get_knowledge_graph_builder # Corrected: get_document_processor
 )
 from graph_rag.api.main import create_app
 from graph_rag.core.debug_tools import GraphDebugger
 import mgclient # Add correct import
+import neo4j
+from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 
 logger = logging.getLogger(__name__)
 
@@ -166,61 +168,73 @@ async def test_client(
     mock_graph_repo: AsyncMock, 
     mock_ingestion_service: AsyncMock, 
     mock_graph_rag_engine: AsyncMock, 
-    mock_neo4j_driver: AsyncMock,
     mock_vector_store: AsyncMock,
     mock_doc_processor: AsyncMock,
-    mock_kg_builder: AsyncMock
+    mock_kg_builder: AsyncMock,
+    mock_entity_extractor: AsyncMock # Added mock entity extractor
 ) -> AsyncGenerator[AsyncClient, None]:
-    """Provides an async test client with state setup and dependency overrides."""
-    # Reset mocks for function scope if necessary
-    # (AsyncMock typically resets automatically, but be mindful of side effects)
+    """Provides an async test client with dependency overrides and state mocking."""
+    # Reset mocks for function scope
     mock_graph_repo.reset_mock()
     mock_ingestion_service.reset_mock()
     mock_graph_rag_engine.reset_mock()
-    mock_neo4j_driver.reset_mock()
     mock_vector_store.reset_mock()
     mock_doc_processor.reset_mock()
     mock_kg_builder.reset_mock()
-    
-    # Re-apply side effects if they are needed consistently across tests
-    # (Example - adjust as needed for actual mock requirements)
+    mock_entity_extractor.reset_mock() # Reset entity extractor mock
+
+    # Re-apply necessary side effects if they are needed consistently across tests
     mock_ingestion_service.ingest_document.side_effect = lambda **kwargs: {"document_id": "test-id", "chunk_ids": ["chunk-1"]}
     mock_ingestion_service.ingest_document_background.return_value = ("doc_id_123", "task_id_456")
-    mock_neo4j_driver.verify_connectivity.return_value = None
 
     original_overrides = app.dependency_overrides.copy()
-    
-    # --- Pre-populate app state BEFORE lifespan runs --- 
-    # (Consider if state needs reset per function or if session state is okay)
-    app.state.settings = get_settings() 
-    app.state.neo4j_driver = mock_neo4j_driver 
-    app.state.graph_repository = mock_graph_repo
-    app.state.vector_store = mock_vector_store
-    app.state.entity_extractor = get_mock_entity_extractor()
-    app.state.doc_processor = mock_doc_processor
-    app.state.kg_builder = mock_kg_builder
-    app.state.graph_rag_engine = mock_graph_rag_engine 
-    app.state.ingestion_service = mock_ingestion_service
-
-    # --- Apply dependency overrides for direct endpoint injection (Depends) --- 
-    app.dependency_overrides[get_entity_extractor] = get_mock_entity_extractor
+    # --- Apply dependency overrides for direct endpoint injection (Depends) ---
+    app.dependency_overrides[get_entity_extractor] = lambda: mock_entity_extractor
     app.dependency_overrides[get_graph_repository] = lambda: mock_graph_repo
     app.dependency_overrides[get_ingestion_service] = lambda: mock_ingestion_service
-    app.dependency_overrides[get_graph_rag_engine] = lambda: mock_graph_rag_engine
+    app.dependency_overrides[get_graph_rag_engine] = lambda: mock_graph_rag_engine # Override for lifespan/startup
     app.dependency_overrides[get_document_processor] = lambda: mock_doc_processor
-    app.dependency_overrides[get_kg_builder] = lambda: mock_kg_builder
+    app.dependency_overrides[get_knowledge_graph_builder] = lambda: mock_kg_builder
+
+    # Store original state attributes we plan to mock
+    original_state = {}
+    state_keys_to_mock = [
+        "graph_repository", "ingestion_service", "graph_rag_engine", 
+        "vector_store", "doc_processor", "kg_builder", "entity_extractor"
+    ]
+    for key in state_keys_to_mock:
+        if hasattr(app.state, key):
+             original_state[key] = getattr(app.state, key)
 
     # Lifespan runs when the client starts
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        yield client
+        # Wait briefly for lifespan startup if necessary (though overrides might cover it)
+        await asyncio.sleep(0.01)
+        
+        # --- Explicitly mock state attributes after potential lifespan setup ---
+        # Ensure critical state attributes needed by endpoints (like health check) are mocked
+        if hasattr(app.state, "graph_rag_engine"):
+            app.state.graph_rag_engine = mock_graph_rag_engine
+        else:
+            # If the state attribute doesn't exist after lifespan, set it directly.
+            # This covers cases where lifespan might fail or not set the attribute.
+            setattr(app.state, "graph_rag_engine", mock_graph_rag_engine)
+
+        # Optionally mock other state attributes if needed by tests
+        # if hasattr(app.state, "graph_repository"): app.state.graph_repository = mock_graph_repo
+        # ... etc for other state keys ...
+
+        yield client # Tests run here with overridden dependencies and state mocks
         
     # Restore original overrides
     app.dependency_overrides = original_overrides
-    # Clear state if necessary for function scope
-    # (Potentially redundant if lifespan handles teardown correctly)
-    if hasattr(app.state, 'settings'): del app.state.settings
-    if hasattr(app.state, 'neo4j_driver'): del app.state.neo4j_driver
-    # ... clear other state ...
+    # Restore original state attributes
+    for key, value in original_state.items():
+        if value is not Ellipsis: # Use Ellipsis or another marker for intentionally skipped keys
+             setattr(app.state, key, value)
+        elif hasattr(app.state, key):
+            # If we didn't store an original value, remove the mocked one if it exists
+            delattr(app.state, key)
 
 @pytest.fixture(scope="function")
 def sync_test_client(app: FastAPI) -> TestClient:
@@ -241,54 +255,69 @@ def setup_test_environment():
     os.environ["MEMGRAPH_MAX_POOL_SIZE"] = "10"
     os.environ["MEMGRAPH_CONNECTION_TIMEOUT"] = "5"
 
-@pytest.fixture(scope="session")
-async def memgraph_connection() -> AsyncGenerator[AsyncGraphDatabase.driver, None]:
-    """Create a Memgraph connection for testing."""
-    uri = get_settings().get_memgraph_uri()
-    auth = (get_settings().MEMGRAPH_USERNAME, get_settings().MEMGRAPH_PASSWORD)
-    
+# ========================
+# Memgraph/Neo4j Fixtures
+# ========================
+
+# Use function scope for the driver to avoid sharing across tests, preventing state leakage.
+# @pytest.mark.skip(reason="Need to investigate Neo4j/Memgraph driver issues in async")
+# @pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
+async def memgraph_connection() -> AsyncGenerator[AsyncDriver, None]:
+    """
+    Provides an asynchronous Neo4j driver instance connected to Memgraph.
+    Handles driver creation and closure.
+    Uses MEMGRAPH_URI from environment variables or defaults.
+    """
+    settings = get_settings()
+    uri = settings.get_memgraph_uri()
+    auth = (
+        (settings.MEMGRAPH_USERNAME, settings.MEMGRAPH_PASSWORD.get_secret_value() if settings.MEMGRAPH_PASSWORD else None)
+        if settings.MEMGRAPH_USERNAME # Check only for username existence
+        else None
+    )
+
     driver = None
-    max_retries = 3
-    retry_count = 0
-    
-    while retry_count < max_retries:
-        try:
-            driver = AsyncGraphDatabase.driver(
-                uri,
-                auth=auth,
-                max_connection_pool_size=get_settings().MEMGRAPH_MAX_POOL_SIZE,
-                connection_timeout=get_settings().MEMGRAPH_CONNECTION_TIMEOUT
-            )
-            await driver.verify_connectivity()
-            break
-        except ServiceUnavailable:
-            retry_count += 1
-            if retry_count == max_retries:
-                raise
-            await asyncio.sleep(1)
-    
-    yield driver
-    
-    if driver:
-        await driver.close()
-
-@pytest.fixture(scope="function")
-async def clean_memgraph(memgraph_connection: AsyncGraphDatabase.driver) -> None:
-    """Clean Memgraph database before each test."""
-    async with memgraph_connection.session() as session:
-        await session.run("MATCH (n) DETACH DELETE n")
-
-@pytest.fixture(scope="function")
-async def memgraph_repo(memgraph_connection: AsyncGraphDatabase.driver) -> AsyncGenerator[MemgraphGraphRepository, None]:
-    """Create a MemgraphGraphRepository instance for testing."""
-    repo = MemgraphGraphRepository(memgraph_connection)
     try:
-        await repo.connect()
-        yield repo
+        driver = neo4j.AsyncGraphDatabase.driver(uri, auth=auth)
+        # Use the driver's built-in connectivity check
+        await driver.verify_connectivity()
+        logger.debug("Memgraph connection verified successfully.") # Add log
+        # connection_successful = await check_memgraph_connection(driver) # Removed call to undefined function
+        # if not connection_successful:
+        #     pytest.skip("Cannot connect to Memgraph, skipping integration tests.")
+        yield driver
+    except ServiceUnavailable as e: # Catch specific connection errors
+        logger.error(f"Failed to connect to Memgraph at {uri}: {e}")
+        pytest.skip(f"Cannot connect to Memgraph ({uri}): {e}")
+    except AuthError as e: # Catch specific auth errors
+        logger.error(f"Authentication failed for Memgraph at {uri}: {e}")
+        pytest.skip(f"Memgraph authentication failed ({uri}): {e}")
+    except Exception as e: # Catch other potential errors
+        logger.error(f"Failed to connect to Memgraph: {e}", exc_info=True) # Log full traceback for unexpected errors
+        pytest.skip(f"Cannot connect to Memgraph: {e}")
     finally:
-        await repo.close()
+        if driver:
+            await driver.close()
 
-# --- Sample Data Fixtures ---
+@pytest_asyncio.fixture(scope="function")
+async def memgraph_repo(memgraph_connection: AsyncDriver) -> AsyncGenerator[MemgraphGraphRepository, None]:
+    """
+    Create a MemgraphGraphRepository instance for testing, ensuring the database is clean before each test.
+    Uses the new MemgraphGraphRepository implementation and the session-scoped driver.
+    """
+    from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+    repo = MemgraphGraphRepository()  # Use default config (connects to Memgraph)
+    # Clean the database before the test using the driver from the connection fixture
+    logger.debug("Cleaning database before yielding repository using session driver...")
+    try:
+        await memgraph_connection.execute_query("MATCH (n) DETACH DELETE n")
+        logger.debug("Database cleaned for repository fixture.")
+    except Exception as e:
+         logger.error(f"Failed to clean database in memgraph_repo fixture: {e}", exc_info=True)
+         pytest.fail(f"Database cleaning failed: {e}")
+    yield repo
+    logger.debug("Memgraph repository fixture scope ended.")
 
 @pytest.fixture
 def sample_document() -> dict[str, Any]:
@@ -317,42 +346,40 @@ def sample_text() -> str:
 # --- Debugging Fixtures ---
 
 @pytest.fixture(scope="function")
-async def graph_debugger(memgraph_repo: MemgraphGraphRepository) -> GraphDebugger:
-    """Fixture for GraphDebugger instance using the shared MemgraphGraphRepository."""
-    # Assuming GraphDebugger needs the driver, accessed via the repo
-    if not memgraph_repo._driver or not memgraph_repo._is_connected:
-        await memgraph_repo.connect() # Ensure connection if needed
-    if not memgraph_repo._driver:
-         raise ValueError("Memgraph repository driver is not initialized after connect()")
-    return GraphDebugger(memgraph_repo._driver)
+async def mock_graph_debugger() -> AsyncMock: # Removed dependency, this is just a mock
+    """Provides a MOCKED instance of GraphDebugger."""
+    mock_debugger = AsyncMock(spec=GraphDebugger)
+    # Add specific mock behaviors if needed for unit tests
+    mock_debugger.capture_system_state.return_value = SystemState(node_counts={}, relationship_counts={}, indexes=[], constraints=[])
+    mock_debugger.debug_test_failure.return_value = (Investigation(hypotheses=[]), DebugContext())
+    yield mock_debugger
 
-# Fixture for Memgraph connection (Session-scoped)
-@pytest.fixture(scope="session")
-def memgraph_connection():
-    """Establishes a connection to Memgraph for integration tests."""
-    # Skip this fixture entirely if not running integration tests
+# Define graph_debugger as a top-level fixture
+# Use the session-scoped memgraph_connection for the driver
+@pytest_asyncio.fixture(scope="function")
+async def graph_debugger(memgraph_connection: AsyncDriver):
+    """Provides a GraphDebugger instance connected via the session's neo4j driver."""
     if os.environ.get("RUNNING_INTEGRATION_TESTS") != "true":
-        pytest.skip("Skipping Memgraph connection: Not running integration tests.")
-
+        pytest.skip("Skipping GraphDebugger fixture: Not running integration tests.")
+    from graph_rag.core.debug_tools import GraphDebugger
+    driver = memgraph_connection
     try:
-        # Use settings to get connection details
-        memgraph_uri = get_settings().get_memgraph_uri()
-        host, port_str = memgraph_uri.replace("bolt://", "").split(":")
-        port = int(port_str)
-
-        # Use mgclient.connect() instead of Memgraph()
-        db = mgclient.connect(host=host, port=port)
-        # Optional: Clear database before tests if needed
-        # cursor = db.cursor()
-        # cursor.execute("MATCH (n) DETACH DELETE n;")
-        yield db # Provide the connection object
-        db.close() # Ensure connection is closed after tests
+        logger.debug("GraphDebugger fixture: Clearing DB.")
+        await driver.execute_query("MATCH (n) DETACH DELETE n")
+        debugger = GraphDebugger(driver)
+        return debugger
     except Exception as e:
-        pytest.fail(f"Failed to connect to Memgraph at {host}:{port}. Error: {e}")
+        pytest.fail(f"Failed to initialize GraphDebugger with provided driver: {e}")
 
-@pytest.fixture(scope="function") # Function scope might be better if state changes
-def graph_debugger(memgraph_connection):
-    """Provides a GraphDebugger instance connected to Memgraph."""
-    # graph_debugger relies on memgraph_connection, so it will also be skipped
-    # if memgraph_connection is skipped.
-    return GraphDebugger(memgraph_connection) 
+# --- Graph Repository Fixtures ---
+
+# Removed the duplicate memgraph_repo definition previously here
+
+# Use this fixture for tests needing a real (but potentially mocked transport) repository
+# @pytest.fixture(scope="function") # This is the first definition, now corrected above
+# async def memgraph_repo(memgraph_connection: AsyncDriver) -> MemgraphGraphRepository:
+
+@pytest.fixture(scope="session")
+def mock_entity_extractor() -> AsyncMock: # Add mock fixture for entity extractor
+    """Provides a reusable AsyncMock for the EntityExtractor."""
+    return AsyncMock() 

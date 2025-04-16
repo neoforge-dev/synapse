@@ -1,0 +1,1 @@
+- For PATCH endpoints that update entities, return the merged/updated entity directly after the update operation, rather than re-fetching from the repository. This is more robust for stateless mocks and aligns with pragmatic API patterns. 

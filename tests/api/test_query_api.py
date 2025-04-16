@@ -38,8 +38,8 @@ def mock_query_engine() -> AsyncMock:
         return DomainQueryResult(
             answer=f"Answer for {query_text}",
             relevant_chunks=[
-                Chunk(id="c1", content="Chunk 1 content", document_id="d1", metadata={}),
-                Chunk(id="c2", content="Chunk 2 content", document_id="d2", metadata={})
+                Chunk(id="c1", text="Chunk 1 content", document_id="d1", metadata={}),
+                Chunk(id="c2", text="Chunk 2 content", document_id="d2", metadata={})
             ],
             graph_context=(mock_entities, mock_relationships), # Use Tuple structure
             metadata={'query_time_ms': 123}
@@ -65,7 +65,7 @@ async def test_query_success(test_client: AsyncClient, mock_graph_rag_engine: As
          return DomainQueryResult(
             answer=f"Mocked answer about {query_text}",
             relevant_chunks=[
-                Chunk(id="alice_c1", content="Alice lives here.", document_id="doc_alice", properties={"score": 0.9}),
+                Chunk(id="alice_c1", text="Alice lives here.", document_id="doc_alice", properties={"score": 0.9}),
             ],
             graph_context=None, # Keep as None for this specific test case
             metadata={'source': 'mock_engine'}
@@ -98,7 +98,7 @@ async def test_query_success_with_graph_context(test_client: AsyncClient, mock_g
     async def mock_query_with_graph(query_text, k):
         return DomainQueryResult(
             answer=f"Mocked answer about {query_text} graph.",
-            relevant_chunks=[Chunk(id="bob_c1", content="Bob info", document_id="d_bob", properties={"score": 0.85})],
+            relevant_chunks=[Chunk(id="bob_c1", text="Bob info", document_id="d_bob", properties={"score": 0.85})],
             graph_context=(mock_entities, mock_relationships),
             metadata={'source': 'mock_engine_graph'}
         )
