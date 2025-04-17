@@ -25,6 +25,7 @@ class ExtractedEntity(BaseModel):
     id: str # e.g., normalized name or unique ID
     label: str # e.g., PER, ORG, LOC
     text: str # The original text span
+    name: Optional[str] = None # Display name, defaults to text if not provided
     # Add confidence scores or other relevant info if needed
 
 class ExtractedRelationship(BaseModel):

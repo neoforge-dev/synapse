@@ -107,9 +107,10 @@ async def test_ingest_document_creates_document(
         embedding_service=mock_embedding_service, 
         chunk_splitter=mock_chunk_splitter
     )
+    document_id = str(uuid.uuid4())
     metadata = {"source": "test_doc"}
     
-    result = await service.ingest_document(sample_text, metadata, generate_embeddings=False)
+    result = await service.ingest_document(document_id, sample_text, metadata, generate_embeddings=False)
     
     # Verify graph_store.add_entity was called for the Document
     # Find the call corresponding to the Document entity
@@ -146,9 +147,10 @@ async def test_ingest_document_creates_chunks_with_embeddings(
         embedding_service=mock_embedding_service, 
         chunk_splitter=mock_chunk_splitter
     )
+    document_id = str(uuid.uuid4())
     metadata = {"source": "test_chunks_embed"}
     
-    result = await service.ingest_document(sample_text, metadata, generate_embeddings=True)
+    result = await service.ingest_document(document_id, sample_text, metadata, generate_embeddings=True)
     
     mock_embedding_service.encode.assert_called_once()
     chunk_calls = [call_item for call_item in mock_graph_repository.add_entity.call_args_list if isinstance(call_item.args[0], Chunk)]
@@ -183,9 +185,10 @@ async def test_ingest_document_skips_embeddings(
         embedding_service=mock_embedding_service, 
         chunk_splitter=mock_chunk_splitter
     )
+    document_id = str(uuid.uuid4())
     metadata = {"source": "test_skip_embed"}
     
-    result = await service.ingest_document(sample_text, metadata, generate_embeddings=False)
+    result = await service.ingest_document(document_id, sample_text, metadata, generate_embeddings=False)
     
     mock_embedding_service.encode.assert_not_called()
     chunk_calls = [call_item for call_item in mock_graph_repository.add_entity.call_args_list if isinstance(call_item.args[0], Chunk)]
@@ -218,9 +221,10 @@ async def test_ingest_document_creates_relationships(
         embedding_service=mock_embedding_service, 
         chunk_splitter=mock_chunk_splitter
     )
+    document_id = str(uuid.uuid4())
     metadata = {"source": "test_rels"}
     
-    result = await service.ingest_document(sample_text, metadata, generate_embeddings=False)
+    result = await service.ingest_document(document_id, sample_text, metadata, generate_embeddings=False)
     
     # Verify add_relationship was called for each chunk
     assert mock_graph_repository.add_relationship.call_count == result.num_chunks
@@ -251,10 +255,11 @@ async def test_ingest_document_returns_ingestion_result(
         embedding_service=mock_embedding_service, 
         chunk_splitter=mock_chunk_splitter
     )
+    document_id = str(uuid.uuid4())
     content = "Test content for result."
     metadata = {"source": "test_result"}
     
-    result = await service.ingest_document(content, metadata)
+    result = await service.ingest_document(document_id, content, metadata)
     
     assert isinstance(result, IngestionResult)
     assert isinstance(result.document_id, str)
@@ -291,6 +296,7 @@ async def test_ingest_handles_custom_chunk_size(
         embedding_service=mock_embedding_service, 
         chunk_splitter=real_splitter # Use the real splitter
     )
+    document_id = str(uuid.uuid4())
     long_text = "word " * 100  # 100 words
     metadata = {"source": "test_custom_chunk"}
     
@@ -299,7 +305,7 @@ async def test_ingest_handles_custom_chunk_size(
     # TODO: Enhance this test with a configurable mock_chunk_splitter or by
     #       inspecting the chunks produced by the real splitter.
     try:
-        await service.ingest_document(long_text, metadata, max_tokens_per_chunk=20)
+        await service.ingest_document(document_id, long_text, metadata, max_tokens_per_chunk=20)
     except Exception as e:
         pytest.fail(f"Ingestion with custom chunk size failed: {e}")
     
@@ -337,10 +343,12 @@ async def test_ingest_document_no_embeddings(
 ):
     # """Test ingestion without embedding generation using the service fixture."""
     "Test ingestion without embedding generation using the service fixture."
+    document_id = str(uuid.uuid4())
     content = "Test document content."
     metadata = {"source": "no-embed-test"}
     
     await ingestion_service.ingest_document(
+        document_id=document_id,
         content=content,
         metadata=metadata,
         generate_embeddings=False
@@ -364,10 +372,12 @@ async def test_ingest_document_with_embeddings(
 ):
     # """Test ingestion with embedding generation using the service fixture."""
     "Test ingestion with embedding generation using the service fixture."
+    document_id = str(uuid.uuid4())
     content = "Another test document."
     metadata = {"source": "embed-test"}
 
     await ingestion_service.ingest_document(
+        document_id=document_id,
         content=content,
         metadata=metadata,
         generate_embeddings=True

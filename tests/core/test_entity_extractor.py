@@ -31,8 +31,7 @@ def mock_spacy_nlp(mock_spacy_doc):
 
 # --- Test Cases --- 
 
-@pytest.mark.asyncio
-async def test_spacy_extracts_entities(mock_spacy_nlp):
+def test_spacy_extracts_entities(mock_spacy_nlp):
     """Test that entities are extracted correctly using mocked spaCy."""
     # Configure the mock nlp object passed via fixture for *this specific test*
     # Create mock entities
@@ -83,8 +82,7 @@ async def test_spacy_extracts_entities(mock_spacy_nlp):
         # Verify spaCy was called correctly
         mock_spacy_nlp.assert_called_once_with(test_text)
 
-@pytest.mark.asyncio
-async def test_spacy_extract_no_entities(mock_spacy_nlp):
+def test_spacy_extract_no_entities(mock_spacy_nlp):
     """Test extraction when spaCy finds no entities."""
     # Configure the mocked Doc to have no entities
     mock_spacy_doc_no_ents = MagicMock()
@@ -98,7 +96,6 @@ async def test_spacy_extract_no_entities(mock_spacy_nlp):
         test_text = "Just some plain text without named entities."
         test_doc = Document(id="test-doc-2", content=test_text, chunks=[Chunk(id="c2", text=test_text, document_id="test-doc-2")])
 
-        # Removed await as extract is sync
         extraction_result = extractor.extract(test_doc)
 
         assert len(extraction_result.entities) == 0
@@ -107,8 +104,7 @@ async def test_spacy_extract_no_entities(mock_spacy_nlp):
         # Verify spaCy was called
         mock_spacy_nlp.assert_called_once_with(test_text) # Check if nlp() was called with text
 
-@pytest.mark.asyncio
-async def test_spacy_extract_empty_text(mock_spacy_nlp):
+def test_spacy_extract_empty_text(mock_spacy_nlp):
     """Test extraction with empty input text."""
     # Configure mock for empty text if needed (spaCy might handle it gracefully)
     mock_spacy_doc_empty = MagicMock()
@@ -121,7 +117,6 @@ async def test_spacy_extract_empty_text(mock_spacy_nlp):
         extractor = SpacyEntityExtractor()
         test_doc = Document(id="test-doc-empty", content="", chunks=[]) # Empty doc
 
-        # Removed await as extract is sync
         extraction_result = extractor.extract(test_doc)
 
         assert len(extraction_result.entities) == 0

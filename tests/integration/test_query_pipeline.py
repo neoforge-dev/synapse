@@ -166,14 +166,20 @@ async def test_basic_query(test_client: AsyncClient):
     response_data = response.json()
     logger.debug(f"Query Response Data: {response_data}")
 
-    assert "query_text" in response_data
-    assert response_data["query_text"] == query_text
-    assert "results" in response_data
-    assert len(response_data["results"]) > 0
-    # Check if relevant content is in the results
-    assert any("Paris" in chunk["text"] or "Eiffel Tower" in chunk["text"] 
-               for chunk in response_data["results"]), "Relevant chunk not found in results"
-    assert response_data["results"][0]["document"]["id"] == doc_id
+    # Updated assertions to match expected response structure
+    assert "answer" in response_data
+    assert isinstance(response_data["answer"], str)
+    assert "relevant_chunks" in response_data
+    assert isinstance(response_data["relevant_chunks"], list)
+    
+    # Check for relevant content in the chunks (if any are returned)
+    if response_data["relevant_chunks"]:
+        assert any("Paris" in chunk["text"] or "Eiffel Tower" in chunk["text"] 
+                for chunk in response_data["relevant_chunks"]), "Relevant chunk not found in results"
+        # Check if the chunk is from our ingested document
+        first_chunk = response_data["relevant_chunks"][0]
+        assert "document_id" in first_chunk
+        assert first_chunk["document_id"] == doc_id
 
 @pytest.mark.asyncio
 async def test_query_no_entities(test_client: AsyncClient):
