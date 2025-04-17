@@ -14,7 +14,8 @@ runner = CliRunner()
 # Mock the function directly called by the CLI command
 @patch('graph_rag.cli.commands.ingest.process_and_store_document')
 @patch('graph_rag.cli.commands.ingest.typer.Exit')  # Mock typer.Exit
-def test_ingest_document_file_success(mock_exit, mock_process_and_store, tmp_path):
+@patch('graph_rag.cli.commands.ingest.MemgraphRepository') # <<< ADD THIS PATCH
+def test_ingest_document_file_success(mock_memgraph_repo, mock_exit, mock_process_and_store, tmp_path):
     """Test successful ingestion via file path argument."""
     # Create temporary file
     test_file = tmp_path / "test_doc.txt"
@@ -25,6 +26,9 @@ def test_ingest_document_file_success(mock_exit, mock_process_and_store, tmp_pat
     # Configure the mock to simulate successful processing
     mock_process_and_store.return_value = None # Assume it returns None on success
 
+    # Optional: Configure the patched MemgraphRepository mock if needed
+    # mock_memgraph_repo.return_value = AsyncMock() # Example
+
     try:
         # Run the command directly
         from graph_rag.cli.commands.ingest import ingest
@@ -33,8 +37,17 @@ def test_ingest_document_file_success(mock_exit, mock_process_and_store, tmp_pat
         # Verify mocks were called as expected
         mock_exit.assert_not_called()
         mock_process_and_store.assert_called_once()
-        assert mock_process_and_store.call_args[0][0] == str(test_file)
-        assert json.loads(metadata_json) == mock_process_and_store.call_args[0][1]
+        # Access the actual arguments passed to the mocked process_and_store_document
+        call_args_list = mock_process_and_store.call_args_list
+        assert len(call_args_list) == 1
+        args, kwargs = call_args_list[0]
+        
+        assert isinstance(args[0], Path) and str(args[0]) == str(test_file) # Check Path object
+        assert args[1] == metadata_dict # Check parsed metadata dict
+        # Check the other args (repo, processor, extractor) if necessary, 
+        # though they are instantiated within the (patched) ingest command context
+        # assert isinstance(args[2], MagicMock) # Should be the mock_memgraph_repo instance
+
     except Exception as e:
         pytest.fail(f"Test failed with exception: {e}")
 

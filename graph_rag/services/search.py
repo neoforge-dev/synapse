@@ -17,9 +17,9 @@ class SearchResult(BaseModel):
 class SearchService:
     """Service for performing search operations over the graph."""
     
-    def __init__(self, repository: MemgraphRepository):
+    def __init__(self, repository: MemgraphRepository, embedding_service: EmbeddingService):
         self.repository = repository
-        self.embedding_service = EmbeddingService
+        self.embedding_service = embedding_service # Store the passed instance
         
     async def search_chunks(self, query: str, limit: int = 10) -> List[SearchResult]:
         """
@@ -45,7 +45,7 @@ class SearchService:
                 SearchResult(
                     chunk_id=chunk.id,
                     document_id=chunk.document_id,
-                    content=chunk.content,
+                    content=chunk.text,
                     score=score
                 )
             )
@@ -86,7 +86,7 @@ class SearchService:
             SearchResult(
                 chunk_id=chunk.id,
                 document_id=chunk.document_id,
-                content=chunk.content,
+                content=chunk.text,
                 score=score # Score is the similarity from the repository
             ) for chunk, score in results_with_scores
         ]

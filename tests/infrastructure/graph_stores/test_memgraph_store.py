@@ -9,9 +9,10 @@ import logging
 import pytest_asyncio
 from neo4j import AsyncGraphDatabase, AsyncDriver
 
-from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
-from graph_rag.domain.models import Document, Chunk, Entity, Relationship
 from graph_rag.config import get_settings
+from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
+from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+from graph_rag.domain.models import Document, Chunk, Entity, Relationship
 
 pytestmark = pytest.mark.asyncio
 
@@ -20,8 +21,8 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 @pytest_asyncio.fixture
-async def memgraph_repo() -> AsyncGenerator[MemgraphRepository, None]:
-    """Fixture providing a MemgraphRepository instance connected to the integration test DB."""
+async def memgraph_repo() -> AsyncGenerator[MemgraphGraphRepository, None]:
+    """Fixture providing a MemgraphGraphRepository instance connected to the integration test DB."""
     host = settings.MEMGRAPH_HOST
     port = settings.MEMGRAPH_PORT
     user = settings.MEMGRAPH_USERNAME
@@ -33,12 +34,12 @@ async def memgraph_repo() -> AsyncGenerator[MemgraphRepository, None]:
         pytest.skip(f"Skipping integration tests: MEMGRAPH_HOST ('{host}') is not in allowed hosts ({allowed_hosts}) or not in CI.")
 
     driver: Optional[AsyncDriver] = None
-    repo: Optional[MemgraphRepository] = None
+    repo: Optional[MemgraphGraphRepository] = None
     try:
         driver = AsyncGraphDatabase.driver(db_uri, auth=(user, password) if user else None)
         logger.info(f"Neo4j AsyncDriver created for fixture: {db_uri}")
 
-        repo = MemgraphRepository(driver=driver)
+        repo = MemgraphGraphRepository(driver=driver)
 
         logger.info("Clearing Memgraph database for test using async driver...")
         await driver.execute_query("MATCH (n) DETACH DELETE n;")
@@ -57,28 +58,133 @@ async def memgraph_repo() -> AsyncGenerator[MemgraphRepository, None]:
             logger.info("Neo4j AsyncDriver closed directly in fixture finally block.")
 
 @pytest.fixture
-async def clean_db(memgraph_repo: MemgraphRepository) -> None:
+async def clean_db(memgraph_repo: MemgraphGraphRepository) -> None:
     """Fixture to ensure the database is clean before each test using this."""
     pass
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_add_get_entity(memgraph_repo: MemgraphRepository, clean_db: None):
+async def test_add_get_entity(memgraph_repo: MemgraphGraphRepository, clean_db: None):
     """Test adding and retrieving a simple Entity."""
-    entity_id = str(uuid.uuid4())
-    entity_props = {"name": "Test Entity", "value": 123}
-    entity = Entity(id=entity_id, type="TestType", properties=entity_props)
+    entity = Entity(id="ent1", name="Test Entity", type="TestType", metadata={"source": "test"})
 
     await memgraph_repo.add_entity(entity)
-    retrieved = await memgraph_repo.get_entity_by_id(entity_id)
+    retrieved = await memgraph_repo.get_entity_by_id(entity.id)
 
     assert retrieved is not None
     assert isinstance(retrieved, Entity)
-    assert retrieved.id == entity_id
-    assert retrieved.type == "TestType"
-    assert retrieved.properties.get("name") == entity_props["name"]
-    assert retrieved.properties.get("value") == entity_props["value"]
-    assert "id" not in retrieved.properties
+    assert retrieved.id == entity.id
+    assert retrieved.type == entity.type
+    assert retrieved.name == entity.name
+    assert retrieved.metadata.get("source") == entity.metadata.get("source")
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_add_get_relationship(memgraph_repo: MemgraphGraphRepository, clean_db: None):
+    """Test adding and retrieving a simple Relationship."""
+    source_entity = Entity(id="src1", name="Source Entity", type="SourceType")
+    target_entity = Entity(id="tgt1", name="Target Entity", type="TargetType")
+    relationship = Relationship(id="rel1", type="CONNECTED_TO", source_id=source_entity.id, target_id=target_entity.id)
+
+    await memgraph_repo.add_entity(source_entity)
+    await memgraph_repo.add_entity(target_entity)
+    await memgraph_repo.add_relationship(relationship)
+
+    retrieved_relationship = await memgraph_repo.get_relationship_by_id(relationship.id)
+
+    assert retrieved_relationship is not None
+    assert isinstance(retrieved_relationship, Relationship)
+    assert retrieved_relationship.id == relationship.id
+    assert retrieved_relationship.type == relationship.type
+    assert retrieved_relationship.source_id == relationship.source_id
+    assert retrieved_relationship.target_id == relationship.target_id
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_add_get_document(memgraph_repo: MemgraphGraphRepository, clean_db: None):
+    """Test adding and retrieving a Document."""
+    doc = Document(id="doc1", text="Test document text", metadata={"source": "test"})
+
+    await memgraph_repo.add_entity(doc)
+    retrieved = await memgraph_repo.get_entity_by_id(doc.id)
+
+    assert retrieved is not None
+    assert isinstance(retrieved, Document)
+    assert retrieved.id == doc.id
+    assert retrieved.text == doc.text
+    assert retrieved.metadata == doc.metadata
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_add_get_chunk(memgraph_repo: MemgraphGraphRepository, clean_db: None):
+    """Test adding and retrieving a Chunk."""
+    doc = Document(id="doc1", text="Parent document")
+    chunk = Chunk(id="chunk1", text="This is a text chunk.", document_id=doc.id)
+
+    await memgraph_repo.add_entity(doc)
+    await memgraph_repo.add_entity(chunk)
+
+    retrieved_chunk = await memgraph_repo.get_entity_by_id(chunk.id)
+
+    assert retrieved_chunk is not None
+    assert isinstance(retrieved_chunk, Chunk)
+    assert retrieved_chunk.id == chunk.id
+    assert retrieved_chunk.text == chunk.text
+    assert retrieved_chunk.document_id == chunk.document_id
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_get_document_by_id_not_found(memgraph_repo: MemgraphGraphRepository, clean_db: None):
+    """Test retrieving a non-existent document."""
+    result = await memgraph_repo.get_document_by_id("non-existent-doc")
+
+    assert result is None
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_get_neighbors(memgraph_repo: MemgraphGraphRepository, clean_db: None):
+    """Test retrieving neighbors of an entity."""
+    # Create entities and relationships
+    entity1 = Entity(id="ent1", name="Entity 1", type="TestNode")
+    entity2 = Entity(id="ent2", name="Entity 2", type="TestNode")
+    relationship = Relationship(id="rel1", type="CONNECTED_TO", source_id=entity1.id, target_id=entity2.id)
+
+    await memgraph_repo.add_entity(entity1)
+    await memgraph_repo.add_entity(entity2)
+    await memgraph_repo.add_relationship(relationship)
+
+    neighbors, relationships = await memgraph_repo.get_neighbors(entity1.id, direction="outgoing")
+
+    assert len(neighbors) == 1
+    assert neighbors[0].id == entity2.id
+    assert neighbors[0].name == entity2.name
+
+    assert len(relationships) == 1
+    rel = relationships[0]
+    assert isinstance(rel, Relationship)
+    assert rel.id == relationship.id
+    assert rel.type == relationship.type
+    assert rel.source_id == relationship.source_id
+    assert rel.target_id == relationship.target_id
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_add_duplicate_entity(memgraph_repo: MemgraphGraphRepository, clean_db: None):
+    """Test adding the same entity twice (should merge/update)."""
+    entity1 = Entity(id="dup_ent1", name="Duplicate Entity", type="DupType", metadata={"first": 1})
+    entity2 = Entity(id="dup_ent1", name="Duplicate Entity", type="DupType", metadata={"second": 2})
+
+    await memgraph_repo.add_entity(entity1)
+    await memgraph_repo.add_entity(entity2)
+
+    retrieved_entity = await memgraph_repo.get_entity_by_id(entity1.id)
+
+    assert retrieved_entity is not None
+    assert isinstance(retrieved_entity, Entity)
+    assert retrieved_entity.id == entity1.id
+    assert retrieved_entity.name == entity2.name
+    assert retrieved_entity.type == entity2.type
+    assert retrieved_entity.metadata == entity2.metadata
 
 @pytest.mark.integration
 @pytest.mark.asyncio

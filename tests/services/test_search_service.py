@@ -40,15 +40,15 @@ def mock_embedding_service_for_search():
 # --- Keyword Search Tests --- 
 
 @pytest.mark.asyncio
-async def test_search_chunks_calls_repository(mock_graph_repository_with_search):
-    service = SearchService(mock_graph_repository_with_search)
+async def test_search_chunks_calls_repository(mock_graph_repository_with_search, mock_embedding_service_for_search):
+    service = SearchService(mock_graph_repository_with_search, mock_embedding_service_for_search)
     query = "apple"
     await service.search_chunks(query)
     mock_graph_repository_with_search.search_chunks_by_content.assert_called_once_with(query, 10) # Default limit
 
 @pytest.mark.asyncio
-async def test_search_chunks_returns_search_results(mock_graph_repository_with_search):
-    service = SearchService(mock_graph_repository_with_search)
+async def test_search_chunks_returns_search_results(mock_graph_repository_with_search, mock_embedding_service_for_search):
+    service = SearchService(mock_graph_repository_with_search, mock_embedding_service_for_search)
     query = "apple"
     results = await service.search_chunks(query)
     assert len(results) == len(SAMPLE_CHUNKS_CONTENT)
@@ -57,9 +57,9 @@ async def test_search_chunks_returns_search_results(mock_graph_repository_with_s
         assert result.score == 1.0 # Default score for keyword match
 
 @pytest.mark.asyncio
-async def test_search_chunks_handles_no_results(mock_graph_repository_with_search):
+async def test_search_chunks_handles_no_results(mock_graph_repository_with_search, mock_embedding_service_for_search):
     mock_graph_repository_with_search.search_chunks_by_content.return_value = []
-    service = SearchService(mock_graph_repository_with_search)
+    service = SearchService(mock_graph_repository_with_search, mock_embedding_service_for_search)
     results = await service.search_chunks("nonexistent")
     assert results == []
 
@@ -68,7 +68,7 @@ async def test_search_chunks_handles_no_results(mock_graph_repository_with_searc
 @pytest.mark.asyncio
 async def test_search_chunks_similarity_calls_embedding_and_repo(mock_graph_repository_with_search, mock_embedding_service_for_search):
     """Test similarity search calls embedding service and repo method."""
-    service = SearchService(mock_graph_repository_with_search)
+    service = SearchService(mock_graph_repository_with_search, mock_embedding_service_for_search)
     query = "find similar apples"
     limit = 5
     
@@ -81,9 +81,9 @@ async def test_search_chunks_similarity_calls_embedding_and_repo(mock_graph_repo
     )
 
 @pytest.mark.asyncio
-async def test_search_chunks_similarity_returns_results(mock_graph_repository_with_search):
+async def test_search_chunks_similarity_returns_results(mock_graph_repository_with_search, mock_embedding_service_for_search):
     """Test similarity search returns correctly mapped results with scores."""
-    service = SearchService(mock_graph_repository_with_search)
+    service = SearchService(mock_graph_repository_with_search, mock_embedding_service_for_search)
     query = "find similar apples"
     
     results = await service.search_chunks_by_similarity(query)
@@ -98,10 +98,10 @@ async def test_search_chunks_similarity_returns_results(mock_graph_repository_wi
         assert result.score == expected_score # Score comes from repo
 
 @pytest.mark.asyncio
-async def test_search_chunks_similarity_handles_no_results(mock_graph_repository_with_search):
+async def test_search_chunks_similarity_handles_no_results(mock_graph_repository_with_search, mock_embedding_service_for_search):
     """Test similarity search returns empty list when repo finds nothing."""
     mock_graph_repository_with_search.search_chunks_by_similarity.return_value = []
-    service = SearchService(mock_graph_repository_with_search)
+    service = SearchService(mock_graph_repository_with_search, mock_embedding_service_for_search)
     
     results = await service.search_chunks_by_similarity("nonexistent")
     assert results == [] 

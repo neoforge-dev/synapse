@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     vector_store_type: str = "simple"
     vector_store_embedding_model: str = "all-MiniLM-L6-v2"
 
+    # Cache settings
+    cache_type: str = "memory"
+
     def get_memgraph_uri(self) -> str:
         if self.MEMGRAPH_URI:
             return self.MEMGRAPH_URI

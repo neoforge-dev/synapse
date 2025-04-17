@@ -26,6 +26,7 @@ class ExtractedEntity(BaseModel):
     label: str # e.g., PER, ORG, LOC
     text: str # The original text span
     name: Optional[str] = None # Display name, defaults to text if not provided
+    metadata: Dict[str, Any] = Field(default_factory=dict) # Add metadata field
     # Add confidence scores or other relevant info if needed
 
 class ExtractedRelationship(BaseModel):

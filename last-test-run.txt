@@ -134,8 +134,8 @@ tests/core/test_document_processor_async.py::test_simple_chunking_fixed_tokens P
 tests/core/test_document_processor_async.py::test_simple_chunking_invalid_strategy PASSED [ 56%]
 tests/core/test_document_processor_async.py::test_simple_chunking_empty_doc PASSED [ 57%]
 tests/core/test_document_processor_async.py::test_simple_chunking_whitespace_doc PASSED [ 57%]
-tests/core/test_entity_extractor.py::test_spacy_extracts_entities PASSED [ 58%]
-tests/core/test_entity_extractor.py::test_spacy_extract_no_entities PASSED [ 58%]
+tests/core/test_entity_extractor.py::test_spacy_extracts_entities FAILED [ 58%]
+tests/core/test_entity_extractor.py::test_spacy_extract_no_entities FAILED [ 58%]
 tests/core/test_entity_extractor.py::test_spacy_extract_empty_text PASSED [ 59%]
 tests/core/test_entity_extractor.py::test_mock_extractor_finds_entities PASSED [ 59%]
 tests/core/test_entity_extractor.py::test_mock_extractor_no_entities PASSED [ 60%]
@@ -193,15 +193,275 @@ tests/infrastructure/repositories/test_graph_repository.py::test_update_document
 tests/integration/test_e2e.py::test_ingest_and_keyword_search FAILED     [ 83%]
 tests/integration/test_e2e.py::test_ingest_and_vector_search FAILED      [ 84%]
 tests/integration/test_e2e.py::test_search_nonexistent_term FAILED       [ 84%]
-tests/integration/test_e2e.py::test_ingest_and_delete FAILED             [ 85%]
-tests/integration/test_e2e.py::test_delete_nonexistent PASSED            [ 85%]
-tests/integration/test_graph_store_integration.py::TestMemgraphGraphRepositoryIntegration::test_document_operations PASSED [ 85%]
-tests/integration/test_graph_store_integration.py::TestMemgraphGraphRepositoryIntegration::test_entity_operations PASSED [ 86%]
-tests/integration/test_graph_store_integration.py::TestMemgraphGraphRepositoryIntegration::test_bulk_operations PASSED [ 86%]
-tests/integration/test_graph_store_integration.py::TestMemgraphGraphRepositoryIntegration::test_error_handling PASSED [ 87%]
-tests/integration/test_ingest_command.py::test_process_and_store_document_cli_logic FAILED [ 87%]
 
 =================================== FAILURES ===================================
+_________________________ test_spacy_extracts_entities _________________________
+
+self = <graph_rag.core.entity_extractor.SpacyEntityExtractor object at 0x353313860>
+document = Document(id='test-doc-1', content='Some text mentioning Apple Inc. in Cupertino with Tim Cook.', metadata={}, chunks=[...ent_id='test-doc-1', metadata={}, embedding=None, created_at=None, updated_at=None)], created_at=None, updated_at=None)
+
+    def extract(self, document: Document) -> ProcessedDocument:
+        """Extracts entities from all chunks in a document using spaCy NER.
+           Processes chunk by chunk using extract_from_text.
+           Relationships are not extracted by this implementation.
+        """
+        if not self.nlp:
+            logger.error(f"spaCy model '{self.model_name}' is not loaded. Cannot extract entities.")
+            # Return a ProcessedDocument with empty lists
+            return ProcessedDocument(
+                id=document.id,
+                content=document.content,
+                metadata=document.metadata.copy(),
+                chunks=document.chunks, # Keep original chunks
+                entities=[],
+                relationships=[]
+            )
+    
+        all_entities: Dict[str, Entity] = {}
+        # The original extract method expected document.chunks, ensure it exists or handle error
+        # For robustness, check if document has chunks attribute
+        if not hasattr(document, 'chunks') or not document.chunks:
+             logger.warning(f"Document {document.id} has no chunks attribute or empty chunks list. Cannot extract entities.")
+             return ProcessedDocument(
+                 id=document.id,
+                 content=document.content,
+                 metadata=document.metadata.copy(),
+                 chunks=[], # Return empty chunks list
+                 entities=[],
+                 relationships=[]
+             )
+    
+        logger.info(f"Starting spaCy entity extraction for document {document.id} ({len(document.chunks)} chunks)")
+    
+        tasks = []
+        for i, chunk in enumerate(document.chunks):
+            logger.debug(f"Scheduling chunk {i+1}/{len(document.chunks)} (id: {chunk.id}) for entity extraction.")
+            if chunk.text and not chunk.text.isspace():
+                context = {"chunk_id": chunk.id, "doc_id": document.id}
+                tasks.append(self.extract_from_text(chunk.text, context))
+    
+        # Run extraction tasks concurrently, handling sync/async context
+        try:
+>           loop = asyncio.get_running_loop()
+E           RuntimeError: no running event loop
+
+graph_rag/core/entity_extractor.py:168: RuntimeError
+
+During handling of the above exception, another exception occurred:
+
+mock_spacy_nlp = <MagicMock name='load()' id='14284499104'>
+
+    def test_spacy_extracts_entities(mock_spacy_nlp):
+        """Test that entities are extracted correctly using mocked spaCy."""
+        # Configure the mock nlp object passed via fixture for *this specific test*
+        # Create mock entities
+        mock_ent_apple = MagicMock()
+        mock_ent_apple.text = "Apple Inc."
+        mock_ent_apple.label_ = "ORG"
+    
+        mock_ent_cupertino = MagicMock()
+        mock_ent_cupertino.text = "Cupertino"
+        mock_ent_cupertino.label_ = "GPE" # Geo-Political Entity
+    
+        mock_ent_cook = MagicMock()
+        mock_ent_cook.text = "Tim Cook"
+        mock_ent_cook.label_ = "PERSON"
+    
+        # Create a mock Doc object containing these entities
+        mock_doc_for_test = MagicMock()
+        mock_doc_for_test.ents = [mock_ent_apple, mock_ent_cupertino, mock_ent_cook]
+    
+        # Set the return value of the mock nlp *instance* for this test
+        mock_spacy_nlp.return_value = mock_doc_for_test
+    
+        # Patch spacy.load directly, as import is local in __init__
+        with patch("spacy.load") as mock_spacy_load:
+            mock_spacy_load.return_value = mock_spacy_nlp
+    
+            extractor = SpacyEntityExtractor()
+            # The extractor now uses the mocked nlp object during initialization
+    
+            # Define test text and create a Document object
+            test_text = "Some text mentioning Apple Inc. in Cupertino with Tim Cook."
+            test_doc = Document(id="test-doc-1", content=test_text, chunks=[Chunk(id="c1", text=test_text, document_id="test-doc-1")])
+    
+            # Call extract method with Document object
+>           extraction_result: ProcessedDocument = extractor.extract(test_doc)
+
+tests/core/test_entity_extractor.py:69: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+graph_rag/core/entity_extractor.py:172: in extract
+    extraction_results = asyncio.run(asyncio.gather(*tasks))
+../../.pyenv/versions/3.12.7/lib/python3.12/asyncio/tasks.py:831: in gather
+    fut = ensure_future(arg, loop=loop)
+../../.pyenv/versions/3.12.7/lib/python3.12/asyncio/tasks.py:693: in ensure_future
+    loop = events.get_event_loop()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.unix_events._UnixDefaultEventLoopPolicy object at 0x3501afc80>
+
+    def get_event_loop(self):
+        """Get the event loop for the current context.
+    
+        Returns an instance of EventLoop or raises an exception.
+        """
+        if (self._local._loop is None and
+                not self._local._set_called and
+                threading.current_thread() is threading.main_thread()):
+            stacklevel = 2
+            try:
+                f = sys._getframe(1)
+            except AttributeError:
+                pass
+            else:
+                # Move up the call stack so that the warning is attached
+                # to the line outside asyncio itself.
+                while f:
+                    module = f.f_globals.get('__name__')
+                    if not (module == 'asyncio' or module.startswith('asyncio.')):
+                        break
+                    f = f.f_back
+                    stacklevel += 1
+            import warnings
+            warnings.warn('There is no current event loop',
+                          DeprecationWarning, stacklevel=stacklevel)
+            self.set_event_loop(self.new_event_loop())
+    
+        if self._local._loop is None:
+>           raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
+E           RuntimeError: There is no current event loop in thread 'MainThread'.
+
+../../.pyenv/versions/3.12.7/lib/python3.12/asyncio/events.py:702: RuntimeError
+----------------------------- Captured stdout call -----------------------------
+2025-04-17 10:34:54,626 - graph_rag.core.entity_extractor - INFO - spaCy model 'en_core_web_sm' loaded successfully.
+2025-04-17 10:34:54,626 - graph_rag.core.entity_extractor - INFO - Starting spaCy entity extraction for document test-doc-1 (1 chunks)
+------------------------------ Captured log call -------------------------------
+INFO     graph_rag.core.entity_extractor:entity_extractor.py:75 spaCy model 'en_core_web_sm' loaded successfully.
+INFO     graph_rag.core.entity_extractor:entity_extractor.py:157 Starting spaCy entity extraction for document test-doc-1 (1 chunks)
+________________________ test_spacy_extract_no_entities ________________________
+
+self = <graph_rag.core.entity_extractor.SpacyEntityExtractor object at 0x35367b080>
+document = Document(id='test-doc-2', content='Just some plain text without named entities.', metadata={}, chunks=[Chunk(id='c2', ...ent_id='test-doc-2', metadata={}, embedding=None, created_at=None, updated_at=None)], created_at=None, updated_at=None)
+
+    def extract(self, document: Document) -> ProcessedDocument:
+        """Extracts entities from all chunks in a document using spaCy NER.
+           Processes chunk by chunk using extract_from_text.
+           Relationships are not extracted by this implementation.
+        """
+        if not self.nlp:
+            logger.error(f"spaCy model '{self.model_name}' is not loaded. Cannot extract entities.")
+            # Return a ProcessedDocument with empty lists
+            return ProcessedDocument(
+                id=document.id,
+                content=document.content,
+                metadata=document.metadata.copy(),
+                chunks=document.chunks, # Keep original chunks
+                entities=[],
+                relationships=[]
+            )
+    
+        all_entities: Dict[str, Entity] = {}
+        # The original extract method expected document.chunks, ensure it exists or handle error
+        # For robustness, check if document has chunks attribute
+        if not hasattr(document, 'chunks') or not document.chunks:
+             logger.warning(f"Document {document.id} has no chunks attribute or empty chunks list. Cannot extract entities.")
+             return ProcessedDocument(
+                 id=document.id,
+                 content=document.content,
+                 metadata=document.metadata.copy(),
+                 chunks=[], # Return empty chunks list
+                 entities=[],
+                 relationships=[]
+             )
+    
+        logger.info(f"Starting spaCy entity extraction for document {document.id} ({len(document.chunks)} chunks)")
+    
+        tasks = []
+        for i, chunk in enumerate(document.chunks):
+            logger.debug(f"Scheduling chunk {i+1}/{len(document.chunks)} (id: {chunk.id}) for entity extraction.")
+            if chunk.text and not chunk.text.isspace():
+                context = {"chunk_id": chunk.id, "doc_id": document.id}
+                tasks.append(self.extract_from_text(chunk.text, context))
+    
+        # Run extraction tasks concurrently, handling sync/async context
+        try:
+>           loop = asyncio.get_running_loop()
+E           RuntimeError: no running event loop
+
+graph_rag/core/entity_extractor.py:168: RuntimeError
+
+During handling of the above exception, another exception occurred:
+
+mock_spacy_nlp = <MagicMock name='load()' id='14284315232'>
+
+    def test_spacy_extract_no_entities(mock_spacy_nlp):
+        """Test extraction when spaCy finds no entities."""
+        # Configure the mocked Doc to have no entities
+        mock_spacy_doc_no_ents = MagicMock()
+        mock_spacy_doc_no_ents.ents = []
+        mock_spacy_nlp.return_value = mock_spacy_doc_no_ents
+    
+        with patch("spacy.load") as mock_spacy_load: # Corrected patch target
+            mock_spacy_load.return_value = mock_spacy_nlp
+    
+            extractor = SpacyEntityExtractor()
+            test_text = "Just some plain text without named entities."
+            test_doc = Document(id="test-doc-2", content=test_text, chunks=[Chunk(id="c2", text=test_text, document_id="test-doc-2")])
+    
+>           extraction_result = extractor.extract(test_doc)
+
+tests/core/test_entity_extractor.py:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+graph_rag/core/entity_extractor.py:172: in extract
+    extraction_results = asyncio.run(asyncio.gather(*tasks))
+../../.pyenv/versions/3.12.7/lib/python3.12/asyncio/tasks.py:831: in gather
+    fut = ensure_future(arg, loop=loop)
+../../.pyenv/versions/3.12.7/lib/python3.12/asyncio/tasks.py:693: in ensure_future
+    loop = events.get_event_loop()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.unix_events._UnixDefaultEventLoopPolicy object at 0x3501afc80>
+
+    def get_event_loop(self):
+        """Get the event loop for the current context.
+    
+        Returns an instance of EventLoop or raises an exception.
+        """
+        if (self._local._loop is None and
+                not self._local._set_called and
+                threading.current_thread() is threading.main_thread()):
+            stacklevel = 2
+            try:
+                f = sys._getframe(1)
+            except AttributeError:
+                pass
+            else:
+                # Move up the call stack so that the warning is attached
+                # to the line outside asyncio itself.
+                while f:
+                    module = f.f_globals.get('__name__')
+                    if not (module == 'asyncio' or module.startswith('asyncio.')):
+                        break
+                    f = f.f_back
+                    stacklevel += 1
+            import warnings
+            warnings.warn('There is no current event loop',
+                          DeprecationWarning, stacklevel=stacklevel)
+            self.set_event_loop(self.new_event_loop())
+    
+        if self._local._loop is None:
+>           raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
+E           RuntimeError: There is no current event loop in thread 'MainThread'.
+
+../../.pyenv/versions/3.12.7/lib/python3.12/asyncio/events.py:702: RuntimeError
+----------------------------- Captured stdout call -----------------------------
+2025-04-17 10:34:54,676 - graph_rag.core.entity_extractor - INFO - spaCy model 'en_core_web_sm' loaded successfully.
+2025-04-17 10:34:54,677 - graph_rag.core.entity_extractor - INFO - Starting spaCy entity extraction for document test-doc-2 (1 chunks)
+------------------------------ Captured log call -------------------------------
+INFO     graph_rag.core.entity_extractor:entity_extractor.py:75 spaCy model 'en_core_web_sm' loaded successfully.
+INFO     graph_rag.core.entity_extractor:entity_extractor.py:157 Starting spaCy entity extraction for document test-doc-2 (1 chunks)
 ________________________ test_ingest_and_keyword_search ________________________
   + Exception Group Traceback (most recent call last):
   |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/_utils.py", line 76, in collapse_excgroups
@@ -366,35 +626,23 @@ ________________________ test_ingest_and_keyword_search ________________________
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in app
     |     solved_result = await solve_dependencies(
     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 615, in solve_dependencies
-    |     solved_result = await solve_dependencies(
-    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 640, in solve_dependencies
-    |     solved = await run_in_threadpool(call, **solved_result.values)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
-    |     return await anyio.to_thread.run_sync(func)
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    |     return await get_async_backend().run_sync_in_worker_thread(
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2470, in run_sync_in_worker_thread
-    |     return await future
-    |            ^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 967, in run
-    |     result = context.run(func, *args)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 61, in get_cache_service
-    |     logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
-    |                                                          ^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 638, in solve_dependencies
+    |     solved = await call(**solved_result.values)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 297, in get_graph_rag_engine
+    |     _singletons["graph_rag_engine"] = create_graph_rag_engine(
+    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 177, in create_graph_rag_engine
+    |     graph_context_tokens=settings.graph_context_max_tokens,
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 994, in __getattr__
     |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-    | AttributeError: 'Settings' object has no attribute 'cache_type'
+    | AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
     +------------------------------------
 
 During handling of the above exception, another exception occurred:
 
-e2e_test_client = <httpx.AsyncClient object at 0x349c7a570>
+e2e_test_client = <httpx.AsyncClient object at 0x353671fa0>
 
     @pytest.mark.integration
     @pytest.mark.asyncio
@@ -491,24 +739,16 @@ graph_rag/api/main.py:316: in add_request_id
     response = await f(request)
 .venv/lib/python3.12/site-packages/fastapi/routing.py:291: in app
     solved_result = await solve_dependencies(
-.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py:615: in solve_dependencies
-    solved_result = await solve_dependencies(
-.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py:640: in solve_dependencies
-    solved = await run_in_threadpool(call, **solved_result.values)
-.venv/lib/python3.12/site-packages/starlette/concurrency.py:37: in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-.venv/lib/python3.12/site-packages/anyio/to_thread.py:56: in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
-.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:2470: in run_sync_in_worker_thread
-    return await future
-.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:967: in run
-    result = context.run(func, *args)
-graph_rag/api/dependencies.py:61: in get_cache_service
-    logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
+.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py:638: in solve_dependencies
+    solved = await call(**solved_result.values)
+graph_rag/api/dependencies.py:297: in get_graph_rag_engine
+    _singletons["graph_rag_engine"] = create_graph_rag_engine(
+graph_rag/api/dependencies.py:177: in create_graph_rag_engine
+    graph_context_tokens=settings.graph_context_max_tokens,
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = Settings(APP_NAME='graph-rag-mcp', APP_VERSION='0.1.0', DEBUG=False, api_host='localhost', api_port=8000, api_log_leve..., entity_extractor_model='en_core_web_sm', vector_store_type='simple', vector_store_embedding_model='all-MiniLM-L6-v2')
-item = 'cache_type'
+self = Settings(APP_NAME='graph-rag-mcp', APP_VERSION='0.1.0', DEBUG=False, api_host='localhost', api_port=8000, api_log_leve...del='en_core_web_sm', vector_store_type='simple', vector_store_embedding_model='all-MiniLM-L6-v2', cache_type='memory')
+item = 'graph_context_max_tokens'
 
     def __getattr__(self, item: str) -> Any:
         private_attributes = object.__getattribute__(self, '__private_attributes__')
@@ -541,75 +781,46 @@ item = 'cache_type'
                 else:
                     # this is the current error
 >                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-E                   AttributeError: 'Settings' object has no attribute 'cache_type'
+E                   AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
 
 .venv/lib/python3.12/site-packages/pydantic/main.py:994: AttributeError
 ----------------------------- Captured stdout call -----------------------------
-2025-04-17 00:00:41,056 - graph_rag.api.main - INFO - rid=4a2a7880-fa5c-4b3b-981c-0b8100d369f8 path=/api/v1/ingestion/documents method=POST
-2025-04-17 00:00:41,057 - graph_rag.api.dependencies - INFO - Creating DocumentProcessor instance (SimpleDocumentProcessor)
-2025-04-17 00:00:41,057 - graph_rag.core.document_processor - INFO - Initialized SimpleDocumentProcessor with strategy: paragraph, tokens_per_chunk: 200
-2025-04-17 00:00:41,057 - graph_rag.api.dependencies - INFO - Creating EntityExtractor instance of type: spacy
-2025-04-17 00:00:41,293 - graph_rag.core.entity_extractor - INFO - spaCy model 'en_core_web_sm' loaded successfully.
-2025-04-17 00:00:41,293 - graph_rag.infrastructure.graph_stores.memgraph_store - INFO - MemgraphGraphRepository initialized for localhost:7687
-2025-04-17 00:00:41,293 - graph_rag.infrastructure.vector_stores.simple_vector_store - INFO - Loading sentence-transformer model: all-MiniLM-L6-v2
-2025-04-17 00:00:41,293 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
-2025-04-17 00:00:41,293 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
-2025-04-17 00:00:43,121 - graph_rag.infrastructure.vector_stores.simple_vector_store - INFO - Sentence-transformer model loaded successfully.
-2025-04-17 00:00:43,122 - graph_rag.api.dependencies - INFO - Creating EmbeddingService instance (SentenceTransformerEmbeddingService)
-2025-04-17 00:00:43,122 - graph_rag.services.embedding - INFO - Loading embedding model: all-MiniLM-L6-v2
-2025-04-17 00:00:43,123 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
-2025-04-17 00:00:43,123 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
-2025-04-17 00:00:44,765 - graph_rag.services.embedding - INFO - Embedding model loaded successfully.
-2025-04-17 00:00:44,766 - graph_rag.api.dependencies - WARNING - Ingestion service not found in app state, creating new instance.
-2025-04-17 00:00:44,766 - graph_rag.services.ingestion - INFO - IngestionService initialized with processor: SimpleDocumentProcessor,             extractor: SpacyEntityExtractor, store: MemgraphGraphRepository
-2025-04-17 00:00:44,766 - graph_rag.api.routers.ingestion - INFO - [Req ID: 8a7ed628-9c91-4872-bc7a-79710ef53fe2] Received ingestion request.
-2025-04-17 00:00:44,766 - graph_rag.services.ingestion - INFO - Starting ingestion for document with metadata: {'source': 'integration_test', 'color': 'blue'}
-2025-04-17 00:00:44,770 - graph_rag.infrastructure.graph_stores.memgraph_store - INFO - Successfully added/updated node 99791b3f-9e1c-4943-aa12-8c184c15d542 with type Document
-2025-04-17 00:00:44,770 - graph_rag.services.ingestion - INFO - Saved document with ID: None
-2025-04-17 00:00:44,771 - graph_rag.core.document_processor - INFO - Split document 99791b3f-9e1c-4943-aa12-8c184c15d542 into 1 sentence chunks.
-2025-04-17 00:00:44,771 - graph_rag.services.ingestion - INFO - Document 99791b3f-9e1c-4943-aa12-8c184c15d542 split into 1 chunks.
-2025-04-17 00:00:44,771 - graph_rag.services.ingestion - INFO - Split document None into 1 chunks.
-2025-04-17 00:00:44,771 - graph_rag.services.ingestion - ERROR - Failed to generate embeddings for document None: 'Chunk' object has no attribute 'content'
-Traceback (most recent call last):
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 98, in ingest_document
-    chunk_texts = [chunk.content for chunk in chunk_objects]
-                   ^^^^^^^^^^^^^
-AttributeError: 'Chunk' object has no attribute 'content'
-DEBUG: Before save_chunk - Chunk ID: abd73026-cf19-433e-a1cc-a22ef5f5c0e0, Embedding is None: True
-2025-04-17 00:00:44,771 - graph_rag.services.ingestion - ERROR - Failed to save chunk abd73026-cf19-433e-a1cc-a22ef5f5c0e0 or its relationship for document None: 'Chunk' object has no attribute 'type'
-Traceback (most recent call last):
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 135, in ingest_document
-    chunk_id = await self.graph_store.add_entity(chunk)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/graph_stores/memgraph_store.py", line 914, in add_entity
-    await self.add_node(entity)
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/graph_stores/memgraph_store.py", line 331, in add_node
-    logger.debug(f"Adding/updating node {node.id} ({node.type})")
-                                                    ^^^^^^^^^
-AttributeError: 'Chunk' object has no attribute 'type'
-2025-04-17 00:00:44,772 - graph_rag.services.ingestion - INFO - Ingestion complete for document None. Saved 0 chunks.
-2025-04-17 00:00:44,772 - graph_rag.api.routers.ingestion - ERROR - Background processing failed for document doc-3c604805-51d9-49d3-a160-9a32c6a77de4: 1 validation error for IngestionResult
-document_id
-  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
-    For further information visit https://errors.pydantic.dev/2.11/v/string_type
+2025-04-17 10:34:55,009 - graph_rag.api.main - INFO - rid=005f0013-5809-4fb6-93f7-e259cedb50c4 path=/api/v1/ingestion/documents method=POST
+2025-04-17 10:34:55,009 - graph_rag.api.dependencies - INFO - Creating DocumentProcessor instance (SimpleDocumentProcessor)
+2025-04-17 10:34:55,009 - graph_rag.core.document_processor - INFO - Initialized SimpleDocumentProcessor with strategy: paragraph, tokens_per_chunk: 200
+2025-04-17 10:34:55,010 - graph_rag.api.dependencies - INFO - Creating EntityExtractor instance of type: spacy
+2025-04-17 10:34:55,250 - graph_rag.core.entity_extractor - INFO - spaCy model 'en_core_web_sm' loaded successfully.
+2025-04-17 10:34:55,250 - graph_rag.infrastructure.graph_stores.memgraph_store - INFO - MemgraphGraphRepository initialized for localhost:7687
+2025-04-17 10:34:55,250 - graph_rag.infrastructure.vector_stores.simple_vector_store - INFO - Loading sentence-transformer model: all-MiniLM-L6-v2
+2025-04-17 10:34:55,251 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-04-17 10:34:55,251 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-04-17 10:34:57,668 - graph_rag.infrastructure.vector_stores.simple_vector_store - INFO - Sentence-transformer model loaded successfully.
+2025-04-17 10:34:57,668 - graph_rag.api.dependencies - INFO - Creating EmbeddingService instance (SentenceTransformerEmbeddingService)
+2025-04-17 10:34:57,669 - graph_rag.services.embedding - INFO - Loading embedding model: all-MiniLM-L6-v2
+2025-04-17 10:34:57,669 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-04-17 10:34:57,669 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-04-17 10:34:59,547 - graph_rag.services.embedding - INFO - Embedding model loaded successfully.
+2025-04-17 10:34:59,547 - graph_rag.api.dependencies - WARNING - Ingestion service not found in app state, creating new instance.
+2025-04-17 10:34:59,547 - graph_rag.services.ingestion - INFO - IngestionService initialized with processor: SimpleDocumentProcessor,             extractor: SpacyEntityExtractor, store: MemgraphGraphRepository
+2025-04-17 10:34:59,547 - graph_rag.api.routers.ingestion - INFO - [Req ID: b08d26ac-6a71-4efe-beca-5e88f1c97676] Received ingestion request.
+2025-04-17 10:34:59,548 - graph_rag.services.ingestion - INFO - Starting ingestion for document doc-0b22a820-050a-40e3-9b3e-85497b8b01a8 with metadata: {'source': 'integration_test', 'color': 'blue'}
+2025-04-17 10:34:59,553 - graph_rag.infrastructure.graph_stores.memgraph_store - INFO - Successfully added/updated document doc-0b22a820-050a-40e3-9b3e-85497b8b01a8
+2025-04-17 10:34:59,553 - graph_rag.services.ingestion - INFO - Saved document with ID: doc-0b22a820-050a-40e3-9b3e-85497b8b01a8
+2025-04-17 10:34:59,553 - graph_rag.api.routers.ingestion - ERROR - Background processing failed for document doc-0b22a820-050a-40e3-9b3e-85497b8b01a8: object of type 'coroutine' has no len()
 Traceback (most recent call last):
   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/routers/ingestion.py", line 28, in process_document_with_service
     await ingestion_service.ingest_document(
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 153, in ingest_document
-    return IngestionResult(
-           ^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
-    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-pydantic_core._pydantic_core.ValidationError: 1 validation error for IngestionResult
-document_id
-  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
-    For further information visit https://errors.pydantic.dev/2.11/v/string_type
-2025-04-17 00:00:44,773 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/ingestion/documents "HTTP/1.1 202 Accepted"
-2025-04-17 00:00:44,773 - test_e2e - INFO - Waiting 5 seconds for ingestion to process...
-2025-04-17 00:00:59,775 - graph_rag.api.main - INFO - rid=6f4a1ff9-6328-4eb8-a583-28b709545dec path=/api/v1/search/query method=POST
-2025-04-17 00:00:59,776 - graph_rag.api.dependencies - WARNING - LLM_TYPE not found in settings. Falling back to MockLLMService.
-2025-04-17 00:00:59,776 - graph_rag.api.main - ERROR - Unhandled exception for request http://localhost:8000/api/v1/search/query: 'Settings' object has no attribute 'cache_type'
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 100, in ingest_document
+    logger.info(f"Split document {document_id} into {len(chunk_objects)} chunks.")
+                                                     ^^^^^^^^^^^^^^^^^^
+TypeError: object of type 'coroutine' has no len()
+2025-04-17 10:34:59,554 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/ingestion/documents "HTTP/1.1 202 Accepted"
+2025-04-17 10:34:59,554 - test_e2e - INFO - Waiting 5 seconds for ingestion to process...
+2025-04-17 10:35:14,556 - graph_rag.api.main - INFO - rid=1cc5e9a3-1516-4f6d-b095-1bff45a31b33 path=/api/v1/search/query method=POST
+2025-04-17 10:35:14,558 - graph_rag.api.dependencies - WARNING - LLM_TYPE not found in settings. Falling back to MockLLMService.
+2025-04-17 10:35:14,558 - graph_rag.api.dependencies - INFO - Creating CacheService instance (type: memory)
+2025-04-17 10:35:14,558 - graph_rag.infrastructure.cache.memory_cache - INFO - MemoryCache initialized.
+2025-04-17 10:35:14,558 - graph_rag.api.main - ERROR - Unhandled exception for request http://localhost:8000/api/v1/search/query: 'Settings' object has no attribute 'graph_context_max_tokens'
   + Exception Group Traceback (most recent call last):
   |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/_utils.py", line 76, in collapse_excgroups
   |     yield
@@ -666,30 +877,18 @@ document_id
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in app
     |     solved_result = await solve_dependencies(
     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 615, in solve_dependencies
-    |     solved_result = await solve_dependencies(
-    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 640, in solve_dependencies
-    |     solved = await run_in_threadpool(call, **solved_result.values)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
-    |     return await anyio.to_thread.run_sync(func)
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    |     return await get_async_backend().run_sync_in_worker_thread(
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2470, in run_sync_in_worker_thread
-    |     return await future
-    |            ^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 967, in run
-    |     result = context.run(func, *args)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 61, in get_cache_service
-    |     logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
-    |                                                          ^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 638, in solve_dependencies
+    |     solved = await call(**solved_result.values)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 297, in get_graph_rag_engine
+    |     _singletons["graph_rag_engine"] = create_graph_rag_engine(
+    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 177, in create_graph_rag_engine
+    |     graph_context_tokens=settings.graph_context_max_tokens,
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 994, in __getattr__
     |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-    | AttributeError: 'Settings' object has no attribute 'cache_type'
+    | AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
     +------------------------------------
 
 During handling of the above exception, another exception occurred:
@@ -740,36 +939,24 @@ Traceback (most recent call last):
   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in app
     solved_result = await solve_dependencies(
                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 615, in solve_dependencies
-    solved_result = await solve_dependencies(
-                    ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 640, in solve_dependencies
-    solved = await run_in_threadpool(call, **solved_result.values)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2470, in run_sync_in_worker_thread
-    return await future
-           ^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 967, in run
-    result = context.run(func, *args)
-             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 61, in get_cache_service
-    logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
-                                                         ^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 638, in solve_dependencies
+    solved = await call(**solved_result.values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 297, in get_graph_rag_engine
+    _singletons["graph_rag_engine"] = create_graph_rag_engine(
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 177, in create_graph_rag_engine
+    graph_context_tokens=settings.graph_context_max_tokens,
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 994, in __getattr__
     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-AttributeError: 'Settings' object has no attribute 'cache_type'
+AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
 ------------------------------ Captured log call -------------------------------
-INFO     graph_rag.api.main:main.py:315 rid=4a2a7880-fa5c-4b3b-981c-0b8100d369f8 path=/api/v1/ingestion/documents method=POST
+INFO     graph_rag.api.main:main.py:315 rid=005f0013-5809-4fb6-93f7-e259cedb50c4 path=/api/v1/ingestion/documents method=POST
 INFO     graph_rag.api.dependencies:dependencies.py:123 Creating DocumentProcessor instance (SimpleDocumentProcessor)
 INFO     graph_rag.core.document_processor:document_processor.py:104 Initialized SimpleDocumentProcessor with strategy: paragraph, tokens_per_chunk: 200
 INFO     graph_rag.api.dependencies:dependencies.py:133 Creating EntityExtractor instance of type: spacy
-INFO     graph_rag.core.entity_extractor:entity_extractor.py:74 spaCy model 'en_core_web_sm' loaded successfully.
+INFO     graph_rag.core.entity_extractor:entity_extractor.py:75 spaCy model 'en_core_web_sm' loaded successfully.
 INFO     graph_rag.infrastructure.graph_stores.memgraph_store:memgraph_store.py:81 MemgraphGraphRepository initialized for localhost:7687
 INFO     graph_rag.infrastructure.vector_stores.simple_vector_store:simple_vector_store.py:18 Loading sentence-transformer model: all-MiniLM-L6-v2
 INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:211 Use pytorch device_name: mps
@@ -782,53 +969,25 @@ INFO     sentence_transformers.SentenceTransformer:SentenceTransformer.py:219 Lo
 INFO     graph_rag.services.embedding:embedding.py:31 Embedding model loaded successfully.
 WARNING  graph_rag.api.dependencies:dependencies.py:314 Ingestion service not found in app state, creating new instance.
 INFO     graph_rag.services.ingestion:ingestion.py:53 IngestionService initialized with processor: SimpleDocumentProcessor,             extractor: SpacyEntityExtractor, store: MemgraphGraphRepository
-INFO     graph_rag.api.routers.ingestion:ingestion.py:62 [Req ID: 8a7ed628-9c91-4872-bc7a-79710ef53fe2] Received ingestion request.
-INFO     graph_rag.services.ingestion:ingestion.py:77 Starting ingestion for document with metadata: {'source': 'integration_test', 'color': 'blue'}
-INFO     graph_rag.infrastructure.graph_stores.memgraph_store:memgraph_store.py:360 Successfully added/updated node 99791b3f-9e1c-4943-aa12-8c184c15d542 with type Document
-INFO     graph_rag.services.ingestion:ingestion.py:86 Saved document with ID: None
-INFO     graph_rag.core.document_processor:document_processor.py:86 Split document 99791b3f-9e1c-4943-aa12-8c184c15d542 into 1 sentence chunks.
-INFO     graph_rag.services.ingestion:ingestion.py:163 Document 99791b3f-9e1c-4943-aa12-8c184c15d542 split into 1 chunks.
-INFO     graph_rag.services.ingestion:ingestion.py:93 Split document None into 1 chunks.
-ERROR    graph_rag.services.ingestion:ingestion.py:115 Failed to generate embeddings for document None: 'Chunk' object has no attribute 'content'
-Traceback (most recent call last):
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 98, in ingest_document
-    chunk_texts = [chunk.content for chunk in chunk_objects]
-                   ^^^^^^^^^^^^^
-AttributeError: 'Chunk' object has no attribute 'content'
-ERROR    graph_rag.services.ingestion:ingestion.py:147 Failed to save chunk abd73026-cf19-433e-a1cc-a22ef5f5c0e0 or its relationship for document None: 'Chunk' object has no attribute 'type'
-Traceback (most recent call last):
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 135, in ingest_document
-    chunk_id = await self.graph_store.add_entity(chunk)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/graph_stores/memgraph_store.py", line 914, in add_entity
-    await self.add_node(entity)
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/graph_stores/memgraph_store.py", line 331, in add_node
-    logger.debug(f"Adding/updating node {node.id} ({node.type})")
-                                                    ^^^^^^^^^
-AttributeError: 'Chunk' object has no attribute 'type'
-INFO     graph_rag.services.ingestion:ingestion.py:151 Ingestion complete for document None. Saved 0 chunks.
-ERROR    graph_rag.api.routers.ingestion:ingestion.py:35 Background processing failed for document doc-3c604805-51d9-49d3-a160-9a32c6a77de4: 1 validation error for IngestionResult
-document_id
-  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
-    For further information visit https://errors.pydantic.dev/2.11/v/string_type
+INFO     graph_rag.api.routers.ingestion:ingestion.py:63 [Req ID: b08d26ac-6a71-4efe-beca-5e88f1c97676] Received ingestion request.
+INFO     graph_rag.services.ingestion:ingestion.py:79 Starting ingestion for document doc-0b22a820-050a-40e3-9b3e-85497b8b01a8 with metadata: {'source': 'integration_test', 'color': 'blue'}
+INFO     graph_rag.infrastructure.graph_stores.memgraph_store:memgraph_store.py:244 Successfully added/updated document doc-0b22a820-050a-40e3-9b3e-85497b8b01a8
+INFO     graph_rag.services.ingestion:ingestion.py:93 Saved document with ID: doc-0b22a820-050a-40e3-9b3e-85497b8b01a8
+ERROR    graph_rag.api.routers.ingestion:ingestion.py:36 Background processing failed for document doc-0b22a820-050a-40e3-9b3e-85497b8b01a8: object of type 'coroutine' has no len()
 Traceback (most recent call last):
   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/routers/ingestion.py", line 28, in process_document_with_service
     await ingestion_service.ingest_document(
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 153, in ingest_document
-    return IngestionResult(
-           ^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
-    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-pydantic_core._pydantic_core.ValidationError: 1 validation error for IngestionResult
-document_id
-  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
-    For further information visit https://errors.pydantic.dev/2.11/v/string_type
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 100, in ingest_document
+    logger.info(f"Split document {document_id} into {len(chunk_objects)} chunks.")
+                                                     ^^^^^^^^^^^^^^^^^^
+TypeError: object of type 'coroutine' has no len()
 INFO     httpx:_client.py:1740 HTTP Request: POST http://localhost:8000/api/v1/ingestion/documents "HTTP/1.1 202 Accepted"
 INFO     test_e2e:test_e2e.py:143 Waiting 5 seconds for ingestion to process...
-INFO     graph_rag.api.main:main.py:315 rid=6f4a1ff9-6328-4eb8-a583-28b709545dec path=/api/v1/search/query method=POST
+INFO     graph_rag.api.main:main.py:315 rid=1cc5e9a3-1516-4f6d-b095-1bff45a31b33 path=/api/v1/search/query method=POST
 WARNING  graph_rag.api.dependencies:dependencies.py:104 LLM_TYPE not found in settings. Falling back to MockLLMService.
-ERROR    graph_rag.api.main:main.py:323 Unhandled exception for request http://localhost:8000/api/v1/search/query: 'Settings' object has no attribute 'cache_type'
+INFO     graph_rag.api.dependencies:dependencies.py:61 Creating CacheService instance (type: memory)
+INFO     graph_rag.infrastructure.cache.memory_cache:memory_cache.py:13 MemoryCache initialized.
+ERROR    graph_rag.api.main:main.py:323 Unhandled exception for request http://localhost:8000/api/v1/search/query: 'Settings' object has no attribute 'graph_context_max_tokens'
   + Exception Group Traceback (most recent call last):
   |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/_utils.py", line 76, in collapse_excgroups
   |     yield
@@ -885,30 +1044,18 @@ ERROR    graph_rag.api.main:main.py:323 Unhandled exception for request http://l
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in app
     |     solved_result = await solve_dependencies(
     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 615, in solve_dependencies
-    |     solved_result = await solve_dependencies(
-    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 640, in solve_dependencies
-    |     solved = await run_in_threadpool(call, **solved_result.values)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
-    |     return await anyio.to_thread.run_sync(func)
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    |     return await get_async_backend().run_sync_in_worker_thread(
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2470, in run_sync_in_worker_thread
-    |     return await future
-    |            ^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 967, in run
-    |     result = context.run(func, *args)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 61, in get_cache_service
-    |     logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
-    |                                                          ^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 638, in solve_dependencies
+    |     solved = await call(**solved_result.values)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 297, in get_graph_rag_engine
+    |     _singletons["graph_rag_engine"] = create_graph_rag_engine(
+    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 177, in create_graph_rag_engine
+    |     graph_context_tokens=settings.graph_context_max_tokens,
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 994, in __getattr__
     |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-    | AttributeError: 'Settings' object has no attribute 'cache_type'
+    | AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
     +------------------------------------
 
 During handling of the above exception, another exception occurred:
@@ -959,30 +1106,18 @@ Traceback (most recent call last):
   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in app
     solved_result = await solve_dependencies(
                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 615, in solve_dependencies
-    solved_result = await solve_dependencies(
-                    ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 640, in solve_dependencies
-    solved = await run_in_threadpool(call, **solved_result.values)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2470, in run_sync_in_worker_thread
-    return await future
-           ^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 967, in run
-    result = context.run(func, *args)
-             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 61, in get_cache_service
-    logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
-                                                         ^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 638, in solve_dependencies
+    solved = await call(**solved_result.values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 297, in get_graph_rag_engine
+    _singletons["graph_rag_engine"] = create_graph_rag_engine(
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 177, in create_graph_rag_engine
+    graph_context_tokens=settings.graph_context_max_tokens,
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 994, in __getattr__
     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-AttributeError: 'Settings' object has no attribute 'cache_type'
+AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
 ________________________ test_ingest_and_vector_search _________________________
   + Exception Group Traceback (most recent call last):
   |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/_utils.py", line 76, in collapse_excgroups
@@ -1147,35 +1282,23 @@ ________________________ test_ingest_and_vector_search _________________________
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in app
     |     solved_result = await solve_dependencies(
     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 615, in solve_dependencies
-    |     solved_result = await solve_dependencies(
-    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 640, in solve_dependencies
-    |     solved = await run_in_threadpool(call, **solved_result.values)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
-    |     return await anyio.to_thread.run_sync(func)
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    |     return await get_async_backend().run_sync_in_worker_thread(
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2470, in run_sync_in_worker_thread
-    |     return await future
-    |            ^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 967, in run
-    |     result = context.run(func, *args)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 61, in get_cache_service
-    |     logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
-    |                                                          ^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 638, in solve_dependencies
+    |     solved = await call(**solved_result.values)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 297, in get_graph_rag_engine
+    |     _singletons["graph_rag_engine"] = create_graph_rag_engine(
+    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 177, in create_graph_rag_engine
+    |     graph_context_tokens=settings.graph_context_max_tokens,
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 994, in __getattr__
     |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-    | AttributeError: 'Settings' object has no attribute 'cache_type'
+    | AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
     +------------------------------------
 
 During handling of the above exception, another exception occurred:
 
-e2e_test_client = <httpx.AsyncClient object at 0x34be363f0>
+e2e_test_client = <httpx.AsyncClient object at 0x353713e30>
 
     @pytest.mark.integration
     @pytest.mark.asyncio
@@ -1269,24 +1392,16 @@ graph_rag/api/main.py:316: in add_request_id
     response = await f(request)
 .venv/lib/python3.12/site-packages/fastapi/routing.py:291: in app
     solved_result = await solve_dependencies(
-.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py:615: in solve_dependencies
-    solved_result = await solve_dependencies(
-.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py:640: in solve_dependencies
-    solved = await run_in_threadpool(call, **solved_result.values)
-.venv/lib/python3.12/site-packages/starlette/concurrency.py:37: in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-.venv/lib/python3.12/site-packages/anyio/to_thread.py:56: in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
-.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:2470: in run_sync_in_worker_thread
-    return await future
-.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:967: in run
-    result = context.run(func, *args)
-graph_rag/api/dependencies.py:61: in get_cache_service
-    logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
+.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py:638: in solve_dependencies
+    solved = await call(**solved_result.values)
+graph_rag/api/dependencies.py:297: in get_graph_rag_engine
+    _singletons["graph_rag_engine"] = create_graph_rag_engine(
+graph_rag/api/dependencies.py:177: in create_graph_rag_engine
+    graph_context_tokens=settings.graph_context_max_tokens,
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = Settings(APP_NAME='graph-rag-mcp', APP_VERSION='0.1.0', DEBUG=False, api_host='localhost', api_port=8000, api_log_leve..., entity_extractor_model='en_core_web_sm', vector_store_type='simple', vector_store_embedding_model='all-MiniLM-L6-v2')
-item = 'cache_type'
+self = Settings(APP_NAME='graph-rag-mcp', APP_VERSION='0.1.0', DEBUG=False, api_host='localhost', api_port=8000, api_log_leve...del='en_core_web_sm', vector_store_type='simple', vector_store_embedding_model='all-MiniLM-L6-v2', cache_type='memory')
+item = 'graph_context_max_tokens'
 
     def __getattr__(self, item: str) -> Any:
         private_attributes = object.__getattribute__(self, '__private_attributes__')
@@ -1319,60 +1434,29 @@ item = 'cache_type'
                 else:
                     # this is the current error
 >                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-E                   AttributeError: 'Settings' object has no attribute 'cache_type'
+E                   AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
 
 .venv/lib/python3.12/site-packages/pydantic/main.py:994: AttributeError
 ----------------------------- Captured stdout call -----------------------------
-2025-04-17 00:01:00,097 - graph_rag.api.main - INFO - rid=9fa0297b-241b-463f-b051-328f9a8ce757 path=/api/v1/ingestion/documents method=POST
-2025-04-17 00:01:00,098 - graph_rag.api.dependencies - WARNING - Ingestion service not found in app state, creating new instance.
-2025-04-17 00:01:00,098 - graph_rag.services.ingestion - INFO - IngestionService initialized with processor: SimpleDocumentProcessor,             extractor: SpacyEntityExtractor, store: MemgraphGraphRepository
-2025-04-17 00:01:00,098 - graph_rag.api.routers.ingestion - INFO - [Req ID: fd3fb730-5ce2-46c6-be21-05ee57c049d1] Received ingestion request.
-2025-04-17 00:01:00,098 - graph_rag.services.ingestion - INFO - Starting ingestion for document with metadata: {'source': 'integration_test', 'topic': 'search'}
-2025-04-17 00:01:00,104 - graph_rag.infrastructure.graph_stores.memgraph_store - INFO - Successfully added/updated node c960d1c9-3658-4211-8396-0f1bab81c8e0 with type Document
-2025-04-17 00:01:00,104 - graph_rag.services.ingestion - INFO - Saved document with ID: None
-2025-04-17 00:01:00,104 - graph_rag.core.document_processor - INFO - Split document c960d1c9-3658-4211-8396-0f1bab81c8e0 into 1 sentence chunks.
-2025-04-17 00:01:00,104 - graph_rag.services.ingestion - INFO - Document c960d1c9-3658-4211-8396-0f1bab81c8e0 split into 1 chunks.
-2025-04-17 00:01:00,104 - graph_rag.services.ingestion - INFO - Split document None into 1 chunks.
-2025-04-17 00:01:00,104 - graph_rag.services.ingestion - ERROR - Failed to generate embeddings for document None: 'Chunk' object has no attribute 'content'
-Traceback (most recent call last):
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 98, in ingest_document
-    chunk_texts = [chunk.content for chunk in chunk_objects]
-                   ^^^^^^^^^^^^^
-AttributeError: 'Chunk' object has no attribute 'content'
-DEBUG: Before save_chunk - Chunk ID: 30613af5-b49e-4ae7-8778-acabb8260519, Embedding is None: True
-2025-04-17 00:01:00,105 - graph_rag.services.ingestion - ERROR - Failed to save chunk 30613af5-b49e-4ae7-8778-acabb8260519 or its relationship for document None: 'Chunk' object has no attribute 'type'
-Traceback (most recent call last):
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 135, in ingest_document
-    chunk_id = await self.graph_store.add_entity(chunk)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/graph_stores/memgraph_store.py", line 914, in add_entity
-    await self.add_node(entity)
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/graph_stores/memgraph_store.py", line 331, in add_node
-    logger.debug(f"Adding/updating node {node.id} ({node.type})")
-                                                    ^^^^^^^^^
-AttributeError: 'Chunk' object has no attribute 'type'
-2025-04-17 00:01:00,105 - graph_rag.services.ingestion - INFO - Ingestion complete for document None. Saved 0 chunks.
-2025-04-17 00:01:00,105 - graph_rag.api.routers.ingestion - ERROR - Background processing failed for document doc-d6e4dda3-86de-47a0-9a7e-c1430321f2ae: 1 validation error for IngestionResult
-document_id
-  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
-    For further information visit https://errors.pydantic.dev/2.11/v/string_type
+2025-04-17 10:35:14,815 - graph_rag.api.main - INFO - rid=8528efee-ed67-4991-9ea1-109840fa8619 path=/api/v1/ingestion/documents method=POST
+2025-04-17 10:35:14,816 - graph_rag.api.dependencies - WARNING - Ingestion service not found in app state, creating new instance.
+2025-04-17 10:35:14,817 - graph_rag.services.ingestion - INFO - IngestionService initialized with processor: SimpleDocumentProcessor,             extractor: SpacyEntityExtractor, store: MemgraphGraphRepository
+2025-04-17 10:35:14,817 - graph_rag.api.routers.ingestion - INFO - [Req ID: 95cab435-c8e0-47d8-9b41-4ebacc936db1] Received ingestion request.
+2025-04-17 10:35:14,817 - graph_rag.services.ingestion - INFO - Starting ingestion for document doc-3efec1db-84c1-4c7a-87a4-ac3da455ec23 with metadata: {'source': 'integration_test', 'topic': 'search'}
+2025-04-17 10:35:14,822 - graph_rag.infrastructure.graph_stores.memgraph_store - INFO - Successfully added/updated document doc-3efec1db-84c1-4c7a-87a4-ac3da455ec23
+2025-04-17 10:35:14,822 - graph_rag.services.ingestion - INFO - Saved document with ID: doc-3efec1db-84c1-4c7a-87a4-ac3da455ec23
+2025-04-17 10:35:14,822 - graph_rag.api.routers.ingestion - ERROR - Background processing failed for document doc-3efec1db-84c1-4c7a-87a4-ac3da455ec23: object of type 'coroutine' has no len()
 Traceback (most recent call last):
   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/routers/ingestion.py", line 28, in process_document_with_service
     await ingestion_service.ingest_document(
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 153, in ingest_document
-    return IngestionResult(
-           ^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
-    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-pydantic_core._pydantic_core.ValidationError: 1 validation error for IngestionResult
-document_id
-  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
-    For further information visit https://errors.pydantic.dev/2.11/v/string_type
-2025-04-17 00:01:00,105 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/ingestion/documents "HTTP/1.1 202 Accepted"
-2025-04-17 00:01:00,105 - test_e2e - INFO - Waiting 5 seconds for ingestion and embedding to process...
-2025-04-17 00:01:15,107 - graph_rag.api.main - INFO - rid=a88775b0-3339-4ab9-912b-bd323c60e330 path=/api/v1/search/query method=POST
-2025-04-17 00:01:15,109 - graph_rag.api.main - ERROR - Unhandled exception for request http://localhost:8000/api/v1/search/query: 'Settings' object has no attribute 'cache_type'
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 100, in ingest_document
+    logger.info(f"Split document {document_id} into {len(chunk_objects)} chunks.")
+                                                     ^^^^^^^^^^^^^^^^^^
+TypeError: object of type 'coroutine' has no len()
+2025-04-17 10:35:14,822 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/ingestion/documents "HTTP/1.1 202 Accepted"
+2025-04-17 10:35:14,822 - test_e2e - INFO - Waiting 5 seconds for ingestion and embedding to process...
+2025-04-17 10:35:29,824 - graph_rag.api.main - INFO - rid=136fd579-c82b-4592-bef6-03ef1c92d556 path=/api/v1/search/query method=POST
+2025-04-17 10:35:29,830 - graph_rag.api.main - ERROR - Unhandled exception for request http://localhost:8000/api/v1/search/query: 'Settings' object has no attribute 'graph_context_max_tokens'
   + Exception Group Traceback (most recent call last):
   |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/_utils.py", line 76, in collapse_excgroups
   |     yield
@@ -1429,30 +1513,18 @@ document_id
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in app
     |     solved_result = await solve_dependencies(
     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 615, in solve_dependencies
-    |     solved_result = await solve_dependencies(
-    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 640, in solve_dependencies
-    |     solved = await run_in_threadpool(call, **solved_result.values)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
-    |     return await anyio.to_thread.run_sync(func)
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    |     return await get_async_backend().run_sync_in_worker_thread(
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2470, in run_sync_in_worker_thread
-    |     return await future
-    |            ^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 967, in run
-    |     result = context.run(func, *args)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 61, in get_cache_service
-    |     logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
-    |                                                          ^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 638, in solve_dependencies
+    |     solved = await call(**solved_result.values)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 297, in get_graph_rag_engine
+    |     _singletons["graph_rag_engine"] = create_graph_rag_engine(
+    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 177, in create_graph_rag_engine
+    |     graph_context_tokens=settings.graph_context_max_tokens,
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 994, in __getattr__
     |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-    | AttributeError: 'Settings' object has no attribute 'cache_type'
+    | AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
     +------------------------------------
 
 During handling of the above exception, another exception occurred:
@@ -1503,80 +1575,38 @@ Traceback (most recent call last):
   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in app
     solved_result = await solve_dependencies(
                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 615, in solve_dependencies
-    solved_result = await solve_dependencies(
-                    ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 640, in solve_dependencies
-    solved = await run_in_threadpool(call, **solved_result.values)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2470, in run_sync_in_worker_thread
-    return await future
-           ^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 967, in run
-    result = context.run(func, *args)
-             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 61, in get_cache_service
-    logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
-                                                         ^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 638, in solve_dependencies
+    solved = await call(**solved_result.values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 297, in get_graph_rag_engine
+    _singletons["graph_rag_engine"] = create_graph_rag_engine(
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 177, in create_graph_rag_engine
+    graph_context_tokens=settings.graph_context_max_tokens,
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 994, in __getattr__
     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-AttributeError: 'Settings' object has no attribute 'cache_type'
+AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
 ------------------------------ Captured log call -------------------------------
-INFO     graph_rag.api.main:main.py:315 rid=9fa0297b-241b-463f-b051-328f9a8ce757 path=/api/v1/ingestion/documents method=POST
+INFO     graph_rag.api.main:main.py:315 rid=8528efee-ed67-4991-9ea1-109840fa8619 path=/api/v1/ingestion/documents method=POST
 WARNING  graph_rag.api.dependencies:dependencies.py:314 Ingestion service not found in app state, creating new instance.
 INFO     graph_rag.services.ingestion:ingestion.py:53 IngestionService initialized with processor: SimpleDocumentProcessor,             extractor: SpacyEntityExtractor, store: MemgraphGraphRepository
-INFO     graph_rag.api.routers.ingestion:ingestion.py:62 [Req ID: fd3fb730-5ce2-46c6-be21-05ee57c049d1] Received ingestion request.
-INFO     graph_rag.services.ingestion:ingestion.py:77 Starting ingestion for document with metadata: {'source': 'integration_test', 'topic': 'search'}
-INFO     graph_rag.infrastructure.graph_stores.memgraph_store:memgraph_store.py:360 Successfully added/updated node c960d1c9-3658-4211-8396-0f1bab81c8e0 with type Document
-INFO     graph_rag.services.ingestion:ingestion.py:86 Saved document with ID: None
-INFO     graph_rag.core.document_processor:document_processor.py:86 Split document c960d1c9-3658-4211-8396-0f1bab81c8e0 into 1 sentence chunks.
-INFO     graph_rag.services.ingestion:ingestion.py:163 Document c960d1c9-3658-4211-8396-0f1bab81c8e0 split into 1 chunks.
-INFO     graph_rag.services.ingestion:ingestion.py:93 Split document None into 1 chunks.
-ERROR    graph_rag.services.ingestion:ingestion.py:115 Failed to generate embeddings for document None: 'Chunk' object has no attribute 'content'
-Traceback (most recent call last):
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 98, in ingest_document
-    chunk_texts = [chunk.content for chunk in chunk_objects]
-                   ^^^^^^^^^^^^^
-AttributeError: 'Chunk' object has no attribute 'content'
-ERROR    graph_rag.services.ingestion:ingestion.py:147 Failed to save chunk 30613af5-b49e-4ae7-8778-acabb8260519 or its relationship for document None: 'Chunk' object has no attribute 'type'
-Traceback (most recent call last):
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 135, in ingest_document
-    chunk_id = await self.graph_store.add_entity(chunk)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/graph_stores/memgraph_store.py", line 914, in add_entity
-    await self.add_node(entity)
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/graph_stores/memgraph_store.py", line 331, in add_node
-    logger.debug(f"Adding/updating node {node.id} ({node.type})")
-                                                    ^^^^^^^^^
-AttributeError: 'Chunk' object has no attribute 'type'
-INFO     graph_rag.services.ingestion:ingestion.py:151 Ingestion complete for document None. Saved 0 chunks.
-ERROR    graph_rag.api.routers.ingestion:ingestion.py:35 Background processing failed for document doc-d6e4dda3-86de-47a0-9a7e-c1430321f2ae: 1 validation error for IngestionResult
-document_id
-  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
-    For further information visit https://errors.pydantic.dev/2.11/v/string_type
+INFO     graph_rag.api.routers.ingestion:ingestion.py:63 [Req ID: 95cab435-c8e0-47d8-9b41-4ebacc936db1] Received ingestion request.
+INFO     graph_rag.services.ingestion:ingestion.py:79 Starting ingestion for document doc-3efec1db-84c1-4c7a-87a4-ac3da455ec23 with metadata: {'source': 'integration_test', 'topic': 'search'}
+INFO     graph_rag.infrastructure.graph_stores.memgraph_store:memgraph_store.py:244 Successfully added/updated document doc-3efec1db-84c1-4c7a-87a4-ac3da455ec23
+INFO     graph_rag.services.ingestion:ingestion.py:93 Saved document with ID: doc-3efec1db-84c1-4c7a-87a4-ac3da455ec23
+ERROR    graph_rag.api.routers.ingestion:ingestion.py:36 Background processing failed for document doc-3efec1db-84c1-4c7a-87a4-ac3da455ec23: object of type 'coroutine' has no len()
 Traceback (most recent call last):
   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/routers/ingestion.py", line 28, in process_document_with_service
     await ingestion_service.ingest_document(
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 153, in ingest_document
-    return IngestionResult(
-           ^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
-    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-pydantic_core._pydantic_core.ValidationError: 1 validation error for IngestionResult
-document_id
-  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
-    For further information visit https://errors.pydantic.dev/2.11/v/string_type
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 100, in ingest_document
+    logger.info(f"Split document {document_id} into {len(chunk_objects)} chunks.")
+                                                     ^^^^^^^^^^^^^^^^^^
+TypeError: object of type 'coroutine' has no len()
 INFO     httpx:_client.py:1740 HTTP Request: POST http://localhost:8000/api/v1/ingestion/documents "HTTP/1.1 202 Accepted"
 INFO     test_e2e:test_e2e.py:185 Waiting 5 seconds for ingestion and embedding to process...
-INFO     graph_rag.api.main:main.py:315 rid=a88775b0-3339-4ab9-912b-bd323c60e330 path=/api/v1/search/query method=POST
-ERROR    graph_rag.api.main:main.py:323 Unhandled exception for request http://localhost:8000/api/v1/search/query: 'Settings' object has no attribute 'cache_type'
+INFO     graph_rag.api.main:main.py:315 rid=136fd579-c82b-4592-bef6-03ef1c92d556 path=/api/v1/search/query method=POST
+ERROR    graph_rag.api.main:main.py:323 Unhandled exception for request http://localhost:8000/api/v1/search/query: 'Settings' object has no attribute 'graph_context_max_tokens'
   + Exception Group Traceback (most recent call last):
   |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/_utils.py", line 76, in collapse_excgroups
   |     yield
@@ -1633,30 +1663,18 @@ ERROR    graph_rag.api.main:main.py:323 Unhandled exception for request http://l
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in app
     |     solved_result = await solve_dependencies(
     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 615, in solve_dependencies
-    |     solved_result = await solve_dependencies(
-    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 640, in solve_dependencies
-    |     solved = await run_in_threadpool(call, **solved_result.values)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
-    |     return await anyio.to_thread.run_sync(func)
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    |     return await get_async_backend().run_sync_in_worker_thread(
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2470, in run_sync_in_worker_thread
-    |     return await future
-    |            ^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 967, in run
-    |     result = context.run(func, *args)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 61, in get_cache_service
-    |     logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
-    |                                                          ^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 638, in solve_dependencies
+    |     solved = await call(**solved_result.values)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 297, in get_graph_rag_engine
+    |     _singletons["graph_rag_engine"] = create_graph_rag_engine(
+    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 177, in create_graph_rag_engine
+    |     graph_context_tokens=settings.graph_context_max_tokens,
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 994, in __getattr__
     |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-    | AttributeError: 'Settings' object has no attribute 'cache_type'
+    | AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
     +------------------------------------
 
 During handling of the above exception, another exception occurred:
@@ -1707,30 +1725,18 @@ Traceback (most recent call last):
   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in app
     solved_result = await solve_dependencies(
                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 615, in solve_dependencies
-    solved_result = await solve_dependencies(
-                    ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 640, in solve_dependencies
-    solved = await run_in_threadpool(call, **solved_result.values)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2470, in run_sync_in_worker_thread
-    return await future
-           ^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 967, in run
-    result = context.run(func, *args)
-             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 61, in get_cache_service
-    logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
-                                                         ^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 638, in solve_dependencies
+    solved = await call(**solved_result.values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 297, in get_graph_rag_engine
+    _singletons["graph_rag_engine"] = create_graph_rag_engine(
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 177, in create_graph_rag_engine
+    graph_context_tokens=settings.graph_context_max_tokens,
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 994, in __getattr__
     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-AttributeError: 'Settings' object has no attribute 'cache_type'
+AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
 _________________________ test_search_nonexistent_term _________________________
   + Exception Group Traceback (most recent call last):
   |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/_utils.py", line 76, in collapse_excgroups
@@ -1895,35 +1901,23 @@ _________________________ test_search_nonexistent_term _________________________
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in app
     |     solved_result = await solve_dependencies(
     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 615, in solve_dependencies
-    |     solved_result = await solve_dependencies(
-    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 640, in solve_dependencies
-    |     solved = await run_in_threadpool(call, **solved_result.values)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
-    |     return await anyio.to_thread.run_sync(func)
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    |     return await get_async_backend().run_sync_in_worker_thread(
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2470, in run_sync_in_worker_thread
-    |     return await future
-    |            ^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 967, in run
-    |     result = context.run(func, *args)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 61, in get_cache_service
-    |     logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
-    |                                                          ^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 638, in solve_dependencies
+    |     solved = await call(**solved_result.values)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 297, in get_graph_rag_engine
+    |     _singletons["graph_rag_engine"] = create_graph_rag_engine(
+    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 177, in create_graph_rag_engine
+    |     graph_context_tokens=settings.graph_context_max_tokens,
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 994, in __getattr__
     |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-    | AttributeError: 'Settings' object has no attribute 'cache_type'
+    | AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
     +------------------------------------
 
 During handling of the above exception, another exception occurred:
 
-e2e_test_client = <httpx.AsyncClient object at 0x348fcd130>
+e2e_test_client = <httpx.AsyncClient object at 0x3537104d0>
 
     @pytest.mark.integration
     @pytest.mark.asyncio
@@ -2000,24 +1994,16 @@ graph_rag/api/main.py:316: in add_request_id
     response = await f(request)
 .venv/lib/python3.12/site-packages/fastapi/routing.py:291: in app
     solved_result = await solve_dependencies(
-.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py:615: in solve_dependencies
-    solved_result = await solve_dependencies(
-.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py:640: in solve_dependencies
-    solved = await run_in_threadpool(call, **solved_result.values)
-.venv/lib/python3.12/site-packages/starlette/concurrency.py:37: in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-.venv/lib/python3.12/site-packages/anyio/to_thread.py:56: in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
-.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:2470: in run_sync_in_worker_thread
-    return await future
-.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py:967: in run
-    result = context.run(func, *args)
-graph_rag/api/dependencies.py:61: in get_cache_service
-    logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
+.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py:638: in solve_dependencies
+    solved = await call(**solved_result.values)
+graph_rag/api/dependencies.py:297: in get_graph_rag_engine
+    _singletons["graph_rag_engine"] = create_graph_rag_engine(
+graph_rag/api/dependencies.py:177: in create_graph_rag_engine
+    graph_context_tokens=settings.graph_context_max_tokens,
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = Settings(APP_NAME='graph-rag-mcp', APP_VERSION='0.1.0', DEBUG=False, api_host='localhost', api_port=8000, api_log_leve..., entity_extractor_model='en_core_web_sm', vector_store_type='simple', vector_store_embedding_model='all-MiniLM-L6-v2')
-item = 'cache_type'
+self = Settings(APP_NAME='graph-rag-mcp', APP_VERSION='0.1.0', DEBUG=False, api_host='localhost', api_port=8000, api_log_leve...del='en_core_web_sm', vector_store_type='simple', vector_store_embedding_model='all-MiniLM-L6-v2', cache_type='memory')
+item = 'graph_context_max_tokens'
 
     def __getattr__(self, item: str) -> Any:
         private_attributes = object.__getattribute__(self, '__private_attributes__')
@@ -2050,12 +2036,12 @@ item = 'cache_type'
                 else:
                     # this is the current error
 >                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-E                   AttributeError: 'Settings' object has no attribute 'cache_type'
+E                   AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
 
 .venv/lib/python3.12/site-packages/pydantic/main.py:994: AttributeError
 ----------------------------- Captured stdout call -----------------------------
-2025-04-17 00:01:15,364 - graph_rag.api.main - INFO - rid=7865eda6-fd44-45cb-a7e2-bed303943dd9 path=/api/v1/search/query method=POST
-2025-04-17 00:01:15,365 - graph_rag.api.main - ERROR - Unhandled exception for request http://localhost:8000/api/v1/search/query: 'Settings' object has no attribute 'cache_type'
+2025-04-17 10:35:30,085 - graph_rag.api.main - INFO - rid=6185c475-b917-4fe3-824d-1da48c618525 path=/api/v1/search/query method=POST
+2025-04-17 10:35:30,086 - graph_rag.api.main - ERROR - Unhandled exception for request http://localhost:8000/api/v1/search/query: 'Settings' object has no attribute 'graph_context_max_tokens'
   + Exception Group Traceback (most recent call last):
   |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/_utils.py", line 76, in collapse_excgroups
   |     yield
@@ -2112,30 +2098,18 @@ E                   AttributeError: 'Settings' object has no attribute 'cache_ty
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in app
     |     solved_result = await solve_dependencies(
     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 615, in solve_dependencies
-    |     solved_result = await solve_dependencies(
-    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 640, in solve_dependencies
-    |     solved = await run_in_threadpool(call, **solved_result.values)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
-    |     return await anyio.to_thread.run_sync(func)
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    |     return await get_async_backend().run_sync_in_worker_thread(
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2470, in run_sync_in_worker_thread
-    |     return await future
-    |            ^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 967, in run
-    |     result = context.run(func, *args)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 61, in get_cache_service
-    |     logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
-    |                                                          ^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 638, in solve_dependencies
+    |     solved = await call(**solved_result.values)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 297, in get_graph_rag_engine
+    |     _singletons["graph_rag_engine"] = create_graph_rag_engine(
+    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 177, in create_graph_rag_engine
+    |     graph_context_tokens=settings.graph_context_max_tokens,
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 994, in __getattr__
     |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-    | AttributeError: 'Settings' object has no attribute 'cache_type'
+    | AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
     +------------------------------------
 
 During handling of the above exception, another exception occurred:
@@ -2186,33 +2160,21 @@ Traceback (most recent call last):
   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in app
     solved_result = await solve_dependencies(
                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 615, in solve_dependencies
-    solved_result = await solve_dependencies(
-                    ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 640, in solve_dependencies
-    solved = await run_in_threadpool(call, **solved_result.values)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2470, in run_sync_in_worker_thread
-    return await future
-           ^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 967, in run
-    result = context.run(func, *args)
-             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 61, in get_cache_service
-    logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
-                                                         ^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 638, in solve_dependencies
+    solved = await call(**solved_result.values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 297, in get_graph_rag_engine
+    _singletons["graph_rag_engine"] = create_graph_rag_engine(
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 177, in create_graph_rag_engine
+    graph_context_tokens=settings.graph_context_max_tokens,
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 994, in __getattr__
     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-AttributeError: 'Settings' object has no attribute 'cache_type'
+AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
 ------------------------------ Captured log call -------------------------------
-INFO     graph_rag.api.main:main.py:315 rid=7865eda6-fd44-45cb-a7e2-bed303943dd9 path=/api/v1/search/query method=POST
-ERROR    graph_rag.api.main:main.py:323 Unhandled exception for request http://localhost:8000/api/v1/search/query: 'Settings' object has no attribute 'cache_type'
+INFO     graph_rag.api.main:main.py:315 rid=6185c475-b917-4fe3-824d-1da48c618525 path=/api/v1/search/query method=POST
+ERROR    graph_rag.api.main:main.py:323 Unhandled exception for request http://localhost:8000/api/v1/search/query: 'Settings' object has no attribute 'graph_context_max_tokens'
   + Exception Group Traceback (most recent call last):
   |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/_utils.py", line 76, in collapse_excgroups
   |     yield
@@ -2269,30 +2231,18 @@ ERROR    graph_rag.api.main:main.py:323 Unhandled exception for request http://l
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in app
     |     solved_result = await solve_dependencies(
     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 615, in solve_dependencies
-    |     solved_result = await solve_dependencies(
-    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 640, in solve_dependencies
-    |     solved = await run_in_threadpool(call, **solved_result.values)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
-    |     return await anyio.to_thread.run_sync(func)
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    |     return await get_async_backend().run_sync_in_worker_thread(
-    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2470, in run_sync_in_worker_thread
-    |     return await future
-    |            ^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 967, in run
-    |     result = context.run(func, *args)
-    |              ^^^^^^^^^^^^^^^^^^^^^^^^
-    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 61, in get_cache_service
-    |     logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
-    |                                                          ^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 638, in solve_dependencies
+    |     solved = await call(**solved_result.values)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 297, in get_graph_rag_engine
+    |     _singletons["graph_rag_engine"] = create_graph_rag_engine(
+    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 177, in create_graph_rag_engine
+    |     graph_context_tokens=settings.graph_context_max_tokens,
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 994, in __getattr__
     |     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-    | AttributeError: 'Settings' object has no attribute 'cache_type'
+    | AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
     +------------------------------------
 
 During handling of the above exception, another exception occurred:
@@ -2343,441 +2293,23 @@ Traceback (most recent call last):
   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in app
     solved_result = await solve_dependencies(
                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 615, in solve_dependencies
-    solved_result = await solve_dependencies(
-                    ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 640, in solve_dependencies
-    solved = await run_in_threadpool(call, **solved_result.values)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2470, in run_sync_in_worker_thread
-    return await future
-           ^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 967, in run
-    result = context.run(func, *args)
-             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 61, in get_cache_service
-    logger.info(f"Creating CacheService instance (type: {settings.cache_type})")
-                                                         ^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/fastapi/dependencies/utils.py", line 638, in solve_dependencies
+    solved = await call(**solved_result.values)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 297, in get_graph_rag_engine
+    _singletons["graph_rag_engine"] = create_graph_rag_engine(
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/dependencies.py", line 177, in create_graph_rag_engine
+    graph_context_tokens=settings.graph_context_max_tokens,
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 994, in __getattr__
     raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
-AttributeError: 'Settings' object has no attribute 'cache_type'
-____________________________ test_ingest_and_delete ____________________________
-
-e2e_test_client = <httpx.AsyncClient object at 0x349379790>
-
-    @pytest.mark.integration
-    @pytest.mark.asyncio
-    async def test_ingest_and_delete(e2e_test_client: httpx.AsyncClient):
-        """Verify ingestion and subsequent deletion."""
-        doc_content = "This document is created solely for deletion testing."
-        metadata = {"source": "integration_test_delete"}
-    
-        # 1. Ingest directly using test_client
-        ingest_response = await e2e_test_client.post(
-            f"{BASE_URL}/ingestion/documents",
-            json={"content": doc_content, "metadata": metadata, "generate_embeddings": False} # No embedding needed
-        )
-        if ingest_response.status_code != status.HTTP_202_ACCEPTED:
-            print(f"Ingest response status: {ingest_response.status_code}, body: {ingest_response.text}")
-        assert ingest_response.status_code == status.HTTP_202_ACCEPTED
-        ingest_result = ingest_response.json()
-        assert "document_id" in ingest_result
-        assert "status" in ingest_result
-        assert "task_id" in ingest_result
-        doc_id = ingest_result["document_id"]
-    
-        # 2. Verify existence (optional - depends on having a GET /document/{id} endpoint)
-        # get_response = await test_client.get(f"{BASE_URL}/documents/{doc_id}")
-        # assert get_response.status_code == status.HTTP_200_OK
-    
-        # 3. Delete directly using test_client
-        delete_response = await e2e_test_client.delete(f"{BASE_URL}/documents/{doc_id}")
-        if delete_response.status_code != status.HTTP_204_NO_CONTENT:
-            print(f"Delete response status: {delete_response.status_code}, body: {delete_response.text}")
->       assert delete_response.status_code == status.HTTP_204_NO_CONTENT
-E       assert 404 == 204
-E        +  where 404 = <Response [404 Not Found]>.status_code
-E        +  and   204 = status.HTTP_204_NO_CONTENT
-
-tests/integration/test_e2e.py:267: AssertionError
------------------------------ Captured stdout call -----------------------------
-2025-04-17 00:01:15,622 - graph_rag.api.main - INFO - rid=edbcdc14-7ffa-4280-8d9a-245e9d029c68 path=/api/v1/ingestion/documents method=POST
-2025-04-17 00:01:15,623 - graph_rag.api.dependencies - WARNING - Ingestion service not found in app state, creating new instance.
-2025-04-17 00:01:15,623 - graph_rag.services.ingestion - INFO - IngestionService initialized with processor: SimpleDocumentProcessor,             extractor: SpacyEntityExtractor, store: MemgraphGraphRepository
-2025-04-17 00:01:15,623 - graph_rag.api.routers.ingestion - INFO - [Req ID: c3d380dc-c600-4d1e-88e7-6158735edc16] Received ingestion request.
-2025-04-17 00:01:15,624 - graph_rag.services.ingestion - INFO - Starting ingestion for document with metadata: {'source': 'integration_test_delete'}
-2025-04-17 00:01:15,630 - graph_rag.infrastructure.graph_stores.memgraph_store - INFO - Successfully added/updated node c5da2855-5859-4a0c-9fa1-79f08f72512c with type Document
-2025-04-17 00:01:15,630 - graph_rag.services.ingestion - INFO - Saved document with ID: None
-2025-04-17 00:01:15,630 - graph_rag.core.document_processor - INFO - Split document c5da2855-5859-4a0c-9fa1-79f08f72512c into 1 sentence chunks.
-2025-04-17 00:01:15,630 - graph_rag.services.ingestion - INFO - Document c5da2855-5859-4a0c-9fa1-79f08f72512c split into 1 chunks.
-2025-04-17 00:01:15,630 - graph_rag.services.ingestion - INFO - Split document None into 1 chunks.
-2025-04-17 00:01:15,630 - graph_rag.services.ingestion - ERROR - Failed to generate embeddings for document None: 'Chunk' object has no attribute 'content'
-Traceback (most recent call last):
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 98, in ingest_document
-    chunk_texts = [chunk.content for chunk in chunk_objects]
-                   ^^^^^^^^^^^^^
-AttributeError: 'Chunk' object has no attribute 'content'
-DEBUG: Before save_chunk - Chunk ID: 69a02ed0-a9a1-4e24-9b8f-d1f4f46ce01a, Embedding is None: True
-2025-04-17 00:01:15,630 - graph_rag.services.ingestion - ERROR - Failed to save chunk 69a02ed0-a9a1-4e24-9b8f-d1f4f46ce01a or its relationship for document None: 'Chunk' object has no attribute 'type'
-Traceback (most recent call last):
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 135, in ingest_document
-    chunk_id = await self.graph_store.add_entity(chunk)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/graph_stores/memgraph_store.py", line 914, in add_entity
-    await self.add_node(entity)
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/graph_stores/memgraph_store.py", line 331, in add_node
-    logger.debug(f"Adding/updating node {node.id} ({node.type})")
-                                                    ^^^^^^^^^
-AttributeError: 'Chunk' object has no attribute 'type'
-2025-04-17 00:01:15,631 - graph_rag.services.ingestion - INFO - Ingestion complete for document None. Saved 0 chunks.
-2025-04-17 00:01:15,631 - graph_rag.api.routers.ingestion - ERROR - Background processing failed for document doc-d6bc229b-ee2a-4a8d-98c4-1567a95c1bfc: 1 validation error for IngestionResult
-document_id
-  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
-    For further information visit https://errors.pydantic.dev/2.11/v/string_type
-Traceback (most recent call last):
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/routers/ingestion.py", line 28, in process_document_with_service
-    await ingestion_service.ingest_document(
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 153, in ingest_document
-    return IngestionResult(
-           ^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
-    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-pydantic_core._pydantic_core.ValidationError: 1 validation error for IngestionResult
-document_id
-  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
-    For further information visit https://errors.pydantic.dev/2.11/v/string_type
-2025-04-17 00:01:15,631 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/ingestion/documents "HTTP/1.1 202 Accepted"
-2025-04-17 00:01:15,631 - graph_rag.api.main - INFO - rid=211417bc-46d7-411f-a86b-e57a7eeb70b1 path=/api/v1/documents/doc-d6bc229b-ee2a-4a8d-98c4-1567a95c1bfc method=DELETE
-2025-04-17 00:01:15,632 - graph_rag.api.routers.documents - INFO - Attempting to delete document doc-d6bc229b-ee2a-4a8d-98c4-1567a95c1bfc and its chunks.
-2025-04-17 00:01:15,636 - graph_rag.infrastructure.graph_stores.memgraph_store - WARNING - Document doc-d6bc229b-ee2a-4a8d-98c4-1567a95c1bfc not found, nothing deleted (deleted flag false).
-2025-04-17 00:01:15,636 - graph_rag.api.routers.documents - WARNING - Document doc-d6bc229b-ee2a-4a8d-98c4-1567a95c1bfc not found for deletion.
-2025-04-17 00:01:15,636 - graph_rag.api.main - WARNING - HTTP exception for http://localhost:8000/api/v1/documents/doc-d6bc229b-ee2a-4a8d-98c4-1567a95c1bfc: 404 - Document with id doc-d6bc229b-ee2a-4a8d-98c4-1567a95c1bfc not found or could not be deleted.
-2025-04-17 00:01:15,637 - httpx - INFO - HTTP Request: DELETE http://localhost:8000/api/v1/documents/doc-d6bc229b-ee2a-4a8d-98c4-1567a95c1bfc "HTTP/1.1 404 Not Found"
-Delete response status: 404, body: {"detail":"Document with id doc-d6bc229b-ee2a-4a8d-98c4-1567a95c1bfc not found or could not be deleted."}
------------------------------- Captured log call -------------------------------
-INFO     graph_rag.api.main:main.py:315 rid=edbcdc14-7ffa-4280-8d9a-245e9d029c68 path=/api/v1/ingestion/documents method=POST
-WARNING  graph_rag.api.dependencies:dependencies.py:314 Ingestion service not found in app state, creating new instance.
-INFO     graph_rag.services.ingestion:ingestion.py:53 IngestionService initialized with processor: SimpleDocumentProcessor,             extractor: SpacyEntityExtractor, store: MemgraphGraphRepository
-INFO     graph_rag.api.routers.ingestion:ingestion.py:62 [Req ID: c3d380dc-c600-4d1e-88e7-6158735edc16] Received ingestion request.
-INFO     graph_rag.services.ingestion:ingestion.py:77 Starting ingestion for document with metadata: {'source': 'integration_test_delete'}
-INFO     graph_rag.infrastructure.graph_stores.memgraph_store:memgraph_store.py:360 Successfully added/updated node c5da2855-5859-4a0c-9fa1-79f08f72512c with type Document
-INFO     graph_rag.services.ingestion:ingestion.py:86 Saved document with ID: None
-INFO     graph_rag.core.document_processor:document_processor.py:86 Split document c5da2855-5859-4a0c-9fa1-79f08f72512c into 1 sentence chunks.
-INFO     graph_rag.services.ingestion:ingestion.py:163 Document c5da2855-5859-4a0c-9fa1-79f08f72512c split into 1 chunks.
-INFO     graph_rag.services.ingestion:ingestion.py:93 Split document None into 1 chunks.
-ERROR    graph_rag.services.ingestion:ingestion.py:115 Failed to generate embeddings for document None: 'Chunk' object has no attribute 'content'
-Traceback (most recent call last):
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 98, in ingest_document
-    chunk_texts = [chunk.content for chunk in chunk_objects]
-                   ^^^^^^^^^^^^^
-AttributeError: 'Chunk' object has no attribute 'content'
-ERROR    graph_rag.services.ingestion:ingestion.py:147 Failed to save chunk 69a02ed0-a9a1-4e24-9b8f-d1f4f46ce01a or its relationship for document None: 'Chunk' object has no attribute 'type'
-Traceback (most recent call last):
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 135, in ingest_document
-    chunk_id = await self.graph_store.add_entity(chunk)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/graph_stores/memgraph_store.py", line 914, in add_entity
-    await self.add_node(entity)
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/infrastructure/graph_stores/memgraph_store.py", line 331, in add_node
-    logger.debug(f"Adding/updating node {node.id} ({node.type})")
-                                                    ^^^^^^^^^
-AttributeError: 'Chunk' object has no attribute 'type'
-INFO     graph_rag.services.ingestion:ingestion.py:151 Ingestion complete for document None. Saved 0 chunks.
-ERROR    graph_rag.api.routers.ingestion:ingestion.py:35 Background processing failed for document doc-d6bc229b-ee2a-4a8d-98c4-1567a95c1bfc: 1 validation error for IngestionResult
-document_id
-  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
-    For further information visit https://errors.pydantic.dev/2.11/v/string_type
-Traceback (most recent call last):
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/api/routers/ingestion.py", line 28, in process_document_with_service
-    await ingestion_service.ingest_document(
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/services/ingestion.py", line 153, in ingest_document
-    return IngestionResult(
-           ^^^^^^^^^^^^^^^^
-  File "/Users/bogdan/til/graph-rag-mcp/.venv/lib/python3.12/site-packages/pydantic/main.py", line 253, in __init__
-    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-pydantic_core._pydantic_core.ValidationError: 1 validation error for IngestionResult
-document_id
-  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
-    For further information visit https://errors.pydantic.dev/2.11/v/string_type
-INFO     httpx:_client.py:1740 HTTP Request: POST http://localhost:8000/api/v1/ingestion/documents "HTTP/1.1 202 Accepted"
-INFO     graph_rag.api.main:main.py:315 rid=211417bc-46d7-411f-a86b-e57a7eeb70b1 path=/api/v1/documents/doc-d6bc229b-ee2a-4a8d-98c4-1567a95c1bfc method=DELETE
-INFO     graph_rag.api.routers.documents:documents.py:126 Attempting to delete document doc-d6bc229b-ee2a-4a8d-98c4-1567a95c1bfc and its chunks.
-WARNING  graph_rag.infrastructure.graph_stores.memgraph_store:memgraph_store.py:947 Document doc-d6bc229b-ee2a-4a8d-98c4-1567a95c1bfc not found, nothing deleted (deleted flag false).
-WARNING  graph_rag.api.routers.documents:documents.py:130 Document doc-d6bc229b-ee2a-4a8d-98c4-1567a95c1bfc not found for deletion.
-WARNING  graph_rag.api.main:main.py:328 HTTP exception for http://localhost:8000/api/v1/documents/doc-d6bc229b-ee2a-4a8d-98c4-1567a95c1bfc: 404 - Document with id doc-d6bc229b-ee2a-4a8d-98c4-1567a95c1bfc not found or could not be deleted.
-INFO     httpx:_client.py:1740 HTTP Request: DELETE http://localhost:8000/api/v1/documents/doc-d6bc229b-ee2a-4a8d-98c4-1567a95c1bfc "HTTP/1.1 404 Not Found"
-__________________ test_process_and_store_document_cli_logic ___________________
-
-file_path = PosixPath('/var/folders/h4/rhh6b9dd7779n60jjvzcpx580000gn/T/tmpqoi8syvy.txt')
-metadata_dict = {'language': 'en', 'source': 'test-cli-ingest', 'type': 'factual'}
-graph_repository = <graph_rag.infrastructure.graph_stores.memgraph_store.MemgraphGraphRepository object at 0x34921f620>
-doc_processor = <graph_rag.core.document_processor.SimpleDocumentProcessor object at 0x34921fb90>
-entity_extractor = <graph_rag.core.entity_extractor.SpacyEntityExtractor object at 0x348f1cdd0>
-
-    async def process_and_store_document(
-        file_path: Path,
-        metadata_dict: Dict[str, Any],
-        graph_repository: MemgraphRepository,
-        doc_processor: SimpleDocumentProcessor,
-        entity_extractor: SpacyEntityExtractor
-    ) -> None:
-        """Process a document and store it in the graph database."""
-        try:
-            # Read document content
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
-    
-            # Generate document ID
-            doc_id = str(uuid.uuid4())
-    
-            # Process document into chunks
->           chunks = await doc_processor.process_document(content)
-E           AttributeError: 'SimpleDocumentProcessor' object has no attribute 'process_document'
-
-graph_rag/cli/commands/ingest.py:76: AttributeError
-
-During handling of the above exception, another exception occurred:
-
-test_document = '\n    The Eiffel Tower is a wrought-iron lattice tower in Paris, France.\n    It was designed by Gustave Eiffel and completed in 1889.\n    The tower is 330 meters tall and is the most-visited paid monument in the world.\n    '
-test_metadata = {'language': 'en', 'source': 'test-cli-ingest', 'type': 'factual'}
-memgraph_repo = <graph_rag.infrastructure.graph_stores.memgraph_store.MemgraphGraphRepository object at 0x34921f620>
-
-    @pytest.mark.asyncio
-    async def test_process_and_store_document_cli_logic( # Rename test for clarity
-        test_document: str,
-        test_metadata: Dict[str, Any],
-        memgraph_repo: MemgraphGraphRepository # Use the fixture from conftest
-    ):
-        """Test the core document processing and storage logic from the CLI command."""
-        doc_content_for_query = test_document # Store for assertion query
-    
-        # Create a temporary file with the test document content
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", encoding='utf-8', delete=False) as f:
-            f.write(test_document)
-            file_path = Path(f.name)
-    
-        # Define a query to find the document later based on unique metadata
-        find_doc_query = "MATCH (d:Document {source: $source}) RETURN d.id as id, d.content as content, d.metadata as metadata LIMIT 1"
-        find_doc_params = {"source": test_metadata["source"]}
-    
-        try:
-            # Initialize components needed by the function
-            doc_processor = SimpleDocumentProcessor(chunk_strategy="paragraph")
-            entity_extractor = SpacyEntityExtractor() # Assumes model is downloaded/available
-    
-            # Call the CLI processing function directly
->           await process_and_store_document(
-                file_path=file_path,
-                metadata_dict=test_metadata,
-                graph_repository=memgraph_repo, # Pass the correct repo instance
-                doc_processor=doc_processor,
-                entity_extractor=entity_extractor
-                # No kg_builder needed here
-            )
-
-tests/integration/test_ingest_command.py:77: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-file_path = PosixPath('/var/folders/h4/rhh6b9dd7779n60jjvzcpx580000gn/T/tmpqoi8syvy.txt')
-metadata_dict = {'language': 'en', 'source': 'test-cli-ingest', 'type': 'factual'}
-graph_repository = <graph_rag.infrastructure.graph_stores.memgraph_store.MemgraphGraphRepository object at 0x34921f620>
-doc_processor = <graph_rag.core.document_processor.SimpleDocumentProcessor object at 0x34921fb90>
-entity_extractor = <graph_rag.core.entity_extractor.SpacyEntityExtractor object at 0x348f1cdd0>
-
-    async def process_and_store_document(
-        file_path: Path,
-        metadata_dict: Dict[str, Any],
-        graph_repository: MemgraphRepository,
-        doc_processor: SimpleDocumentProcessor,
-        entity_extractor: SpacyEntityExtractor
-    ) -> None:
-        """Process a document and store it in the graph database."""
-        try:
-            # Read document content
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
-    
-            # Generate document ID
-            doc_id = str(uuid.uuid4())
-    
-            # Process document into chunks
-            chunks = await doc_processor.process_document(content)
-    
-            # Store document
-            await graph_repository.add_document({
-                "id": doc_id,
-                "content": content,
-                "metadata": metadata_dict
-            })
-    
-            # Process and store each chunk
-            for chunk in chunks:
-                # Generate chunk ID
-                chunk_id = str(uuid.uuid4())
-    
-                # Extract entities from chunk
-                entities = await entity_extractor.extract_entities(chunk.text)
-    
-                # Store chunk
-                await graph_repository.add_chunk({
-                    "id": chunk_id,
-                    "text": chunk.text,
-                    "document_id": doc_id,
-                    "embedding": None  # TODO: Add embedding support
-                })
-    
-                # Store entities and create relationships
-                entity_ids = []
-                for entity in entities:
-                    entity_id = str(uuid.uuid4())
-                    await graph_repository.add_entity({
-                        "id": entity_id,
-                        "label": entity.label,
-                        "text": entity.text
-                    })
-                    entity_ids.append(entity_id)
-    
-                # Link chunk to entities
-                if entity_ids:
-                    await graph_repository.link_chunk_to_entities(chunk_id, entity_ids)
-    
-            typer.echo(f"Successfully ingested document {doc_id}")
-    
-        except Exception as e:
-            logger.error(f"Error processing document: {str(e)}", exc_info=True)
-            typer.echo(f"Error processing document: {str(e)}", err=True)
->           raise typer.Exit(1)
-E           click.exceptions.Exit: 1
-
-graph_rag/cli/commands/ingest.py:121: Exit
-
-During handling of the above exception, another exception occurred:
-
-test_document = '\n    The Eiffel Tower is a wrought-iron lattice tower in Paris, France.\n    It was designed by Gustave Eiffel and completed in 1889.\n    The tower is 330 meters tall and is the most-visited paid monument in the world.\n    '
-test_metadata = {'language': 'en', 'source': 'test-cli-ingest', 'type': 'factual'}
-memgraph_repo = <graph_rag.infrastructure.graph_stores.memgraph_store.MemgraphGraphRepository object at 0x34921f620>
-
-    @pytest.mark.asyncio
-    async def test_process_and_store_document_cli_logic( # Rename test for clarity
-        test_document: str,
-        test_metadata: Dict[str, Any],
-        memgraph_repo: MemgraphGraphRepository # Use the fixture from conftest
-    ):
-        """Test the core document processing and storage logic from the CLI command."""
-        doc_content_for_query = test_document # Store for assertion query
-    
-        # Create a temporary file with the test document content
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", encoding='utf-8', delete=False) as f:
-            f.write(test_document)
-            file_path = Path(f.name)
-    
-        # Define a query to find the document later based on unique metadata
-        find_doc_query = "MATCH (d:Document {source: $source}) RETURN d.id as id, d.content as content, d.metadata as metadata LIMIT 1"
-        find_doc_params = {"source": test_metadata["source"]}
-    
-        try:
-            # Initialize components needed by the function
-            doc_processor = SimpleDocumentProcessor(chunk_strategy="paragraph")
-            entity_extractor = SpacyEntityExtractor() # Assumes model is downloaded/available
-    
-            # Call the CLI processing function directly
-            await process_and_store_document(
-                file_path=file_path,
-                metadata_dict=test_metadata,
-                graph_repository=memgraph_repo, # Pass the correct repo instance
-                doc_processor=doc_processor,
-                entity_extractor=entity_extractor
-                # No kg_builder needed here
-            )
-    
-            # Verify document was stored by querying metadata/content
-            # Allow some time for potential async writes if necessary, though await should handle it
-            await asyncio.sleep(0.1)
-            result = await memgraph_repo._execute_read_query(find_doc_query, find_doc_params)
-    
-            assert result is not None and len(result) == 1, f"Document with source '{test_metadata['source']}' not found."
-            stored_doc_data = result[0]
-            doc_id = stored_doc_data["id"] # Get the generated ID for further checks
-    
-            assert stored_doc_data["content"] == doc_content_for_query
-            assert stored_doc_data["metadata"] == test_metadata
-    
-            # Verify chunks were created and linked (Requires get_chunks_by_document_id or direct query)
-            # Example direct query:
-            chunk_check_query = "MATCH (d:Document {id: $doc_id})-[:CONTAINS]->(c:Chunk) RETURN count(c) as count"
-            chunk_result = await memgraph_repo._execute_read_query(chunk_check_query, {"doc_id": doc_id})
-            assert chunk_result[0]["count"] > 0, "No chunks found linked to the document."
-    
-            # Verify entities were extracted and linked
-            entity_check_query = """
-            MATCH (d:Document {id: $doc_id})-[:CONTAINS]->(c:Chunk)<-[:MENTIONED_IN]-(e:Entity)
-            RETURN DISTINCT e.name as name
-            """
-            # Note: process_and_store_document stores entity 'text', not 'name'. Adjust query/code.
-            # Assuming entity node has 'text' property based on process_and_store_document code:
-            entity_check_query_alt = """
-            MATCH (d:Document {id: $doc_id})-[:CONTAINS]->(c:Chunk)-[:MENTIONS]->(e:Entity)
-            RETURN DISTINCT e.text as name
-            """ # Relationship is :MENTIONS based on process_and_store_document
-            result_entities = await memgraph_repo._execute_read_query(entity_check_query_alt, {"doc_id": doc_id})
-    
-            extracted_entities = {r["name"] for r in result_entities}
-            logger.info(f"Extracted entities for doc {doc_id}: {extracted_entities}")
-            assert len(extracted_entities) > 0
-            assert "Eiffel Tower" in extracted_entities
-            assert "Paris" in extracted_entities
-            assert "Gustave Eiffel" in extracted_entities
-    
-        finally:
-            # Clean up the temporary file
-            if file_path.exists():
-                file_path.unlink()
-    
-            # Clean up the graph using the retrieved doc_id if found
-            if 'doc_id' in locals() and doc_id:
-                 await memgraph_repo._execute_write_query("MATCH (d:Document {id: $doc_id}) DETACH DELETE d", {"doc_id": doc_id})
-            else: # Fallback cleanup based on metadata if doc_id wasn't retrieved
->                await memgraph_repo._execute_write_query("MATCH (d:Document {source: $source}) DETACH DELETE d", find_doc_params)
-E                AttributeError: 'MemgraphGraphRepository' object has no attribute '_execute_write_query'
-
-tests/integration/test_ingest_command.py:133: AttributeError
----------------------------- Captured stdout setup -----------------------------
-2025-04-17 00:01:16,040 - graph_rag.infrastructure.graph_stores.memgraph_store - INFO - MemgraphGraphRepository initialized for localhost:7687
------------------------------- Captured log setup ------------------------------
-INFO     graph_rag.infrastructure.graph_stores.memgraph_store:memgraph_store.py:81 MemgraphGraphRepository initialized for localhost:7687
------------------------------ Captured stdout call -----------------------------
-2025-04-17 00:01:16,042 - graph_rag.core.document_processor - INFO - Initialized SimpleDocumentProcessor with strategy: paragraph, tokens_per_chunk: 200
-2025-04-17 00:01:16,281 - graph_rag.core.entity_extractor - INFO - spaCy model 'en_core_web_sm' loaded successfully.
-2025-04-17 00:01:16,282 - graph_rag.cli.commands.ingest - ERROR - Error processing document: 'SimpleDocumentProcessor' object has no attribute 'process_document'
-Traceback (most recent call last):
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/cli/commands/ingest.py", line 76, in process_and_store_document
-    chunks = await doc_processor.process_document(content)
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AttributeError: 'SimpleDocumentProcessor' object has no attribute 'process_document'
------------------------------ Captured stderr call -----------------------------
-Error processing document: 'SimpleDocumentProcessor' object has no attribute 'process_document'
------------------------------- Captured log call -------------------------------
-INFO     graph_rag.core.document_processor:document_processor.py:104 Initialized SimpleDocumentProcessor with strategy: paragraph, tokens_per_chunk: 200
-INFO     graph_rag.core.entity_extractor:entity_extractor.py:74 spaCy model 'en_core_web_sm' loaded successfully.
-ERROR    graph_rag.cli.commands.ingest:ingest.py:119 Error processing document: 'SimpleDocumentProcessor' object has no attribute 'process_document'
-Traceback (most recent call last):
-  File "/Users/bogdan/til/graph-rag-mcp/graph_rag/cli/commands/ingest.py", line 76, in process_and_store_document
-    chunks = await doc_processor.process_document(content)
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AttributeError: 'SimpleDocumentProcessor' object has no attribute 'process_document'
+AttributeError: 'Settings' object has no attribute 'graph_context_max_tokens'
 =========================== short test summary info ============================
+FAILED tests/core/test_entity_extractor.py::test_spacy_extracts_entities - Ru...
+FAILED tests/core/test_entity_extractor.py::test_spacy_extract_no_entities - ...
 FAILED tests/integration/test_e2e.py::test_ingest_and_keyword_search - Attrib...
 FAILED tests/integration/test_e2e.py::test_ingest_and_vector_search - Attribu...
 FAILED tests/integration/test_e2e.py::test_search_nonexistent_term - Attribut...
-FAILED tests/integration/test_e2e.py::test_ingest_and_delete - assert 404 == 204
-FAILED tests/integration/test_ingest_command.py::test_process_and_store_document_cli_logic
 !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 5 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
-=========== 5 failed, 123 passed, 66 skipped, 39 warnings in 37.94s ============
+=========== 5 failed, 116 passed, 66 skipped, 40 warnings in 38.33s ============

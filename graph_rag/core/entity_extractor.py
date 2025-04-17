@@ -14,7 +14,7 @@ class EntityExtractor(ABC):
     """Abstract base class for extracting entities and relationships from text."""
 
     @abstractmethod
-    def extract(self, document: Document) -> ProcessedDocument:
+    async def extract(self, document: Document) -> ProcessedDocument:
         """Extracts entities and relationships from the document's chunks.
         
         Args:
@@ -29,7 +29,7 @@ class EntityExtractor(ABC):
 class MockEntityExtractor(EntityExtractor):
     """A mock implementation that returns predefined entities/relationships for testing."""
     
-    def extract(self, document: Document) -> ProcessedDocument:
+    async def extract(self, document: Document) -> ProcessedDocument:
         logger.info(f"Mock extracting entities/relationships for document {document.id}")
         entities = []
         relationships = []
@@ -123,7 +123,7 @@ class SpacyEntityExtractor(EntityExtractor):
 
     # Keep the old method but make it use the new one for consistency
     # It might be removed later if not needed elsewhere
-    def extract(self, document: Document) -> ProcessedDocument:
+    async def extract(self, document: Document) -> ProcessedDocument:
         """Extracts entities from all chunks in a document using spaCy NER.
            Processes chunk by chunk using extract_from_text.
            Relationships are not extracted by this implementation.
@@ -156,17 +156,15 @@ class SpacyEntityExtractor(EntityExtractor):
 
         logger.info(f"Starting spaCy entity extraction for document {document.id} ({len(document.chunks)} chunks)")
 
-        loop = asyncio.get_event_loop()
         tasks = []
         for i, chunk in enumerate(document.chunks):
             logger.debug(f"Scheduling chunk {i+1}/{len(document.chunks)} (id: {chunk.id}) for entity extraction.")
             if chunk.text and not chunk.text.isspace():
-                # Pass chunk ID as context
                 context = {"chunk_id": chunk.id, "doc_id": document.id}
                 tasks.append(self.extract_from_text(chunk.text, context))
 
-        # Run extraction tasks concurrently
-        extraction_results = loop.run_until_complete(asyncio.gather(*tasks))
+        # Run extraction tasks concurrently using gather
+        extraction_results = await asyncio.gather(*tasks)
 
         # Collect unique entities from all results
         for result in extraction_results:
@@ -179,7 +177,7 @@ class SpacyEntityExtractor(EntityExtractor):
                         id=entity_id,
                         name=extracted_entity.name,
                         type=extracted_entity.label,
-                        properties=extracted_entity.metadata # Store context metadata
+                        metadata=extracted_entity.metadata # Use metadata instead of properties
                     )
 
         final_entities = list(all_entities.values())

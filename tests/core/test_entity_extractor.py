@@ -31,7 +31,8 @@ def mock_spacy_nlp(mock_spacy_doc):
 
 # --- Test Cases --- 
 
-def test_spacy_extracts_entities(mock_spacy_nlp):
+@pytest.mark.asyncio
+async def test_spacy_extracts_entities(mock_spacy_nlp):
     """Test that entities are extracted correctly using mocked spaCy."""
     # Configure the mock nlp object passed via fixture for *this specific test*
     # Create mock entities
@@ -65,8 +66,10 @@ def test_spacy_extracts_entities(mock_spacy_nlp):
         test_text = "Some text mentioning Apple Inc. in Cupertino with Tim Cook."
         test_doc = Document(id="test-doc-1", content=test_text, chunks=[Chunk(id="c1", text=test_text, document_id="test-doc-1")])
 
-        # Call extract method with Document object
-        extraction_result: ProcessedDocument = extractor.extract(test_doc)
+        # Call extract method with Document object - handle async if the method is async
+        extraction_result = extractor.extract(test_doc)
+        if hasattr(extraction_result, "__await__"):
+            extraction_result = await extraction_result
 
         # Assertions
         assert len(extraction_result.entities) == 3
@@ -82,7 +85,8 @@ def test_spacy_extracts_entities(mock_spacy_nlp):
         # Verify spaCy was called correctly
         mock_spacy_nlp.assert_called_once_with(test_text)
 
-def test_spacy_extract_no_entities(mock_spacy_nlp):
+@pytest.mark.asyncio
+async def test_spacy_extract_no_entities(mock_spacy_nlp):
     """Test extraction when spaCy finds no entities."""
     # Configure the mocked Doc to have no entities
     mock_spacy_doc_no_ents = MagicMock()
@@ -96,7 +100,10 @@ def test_spacy_extract_no_entities(mock_spacy_nlp):
         test_text = "Just some plain text without named entities."
         test_doc = Document(id="test-doc-2", content=test_text, chunks=[Chunk(id="c2", text=test_text, document_id="test-doc-2")])
 
+        # Handle async extraction if needed
         extraction_result = extractor.extract(test_doc)
+        if hasattr(extraction_result, "__await__"):
+            extraction_result = await extraction_result
 
         assert len(extraction_result.entities) == 0
         assert len(extraction_result.relationships) == 0 # Assuming relationships are empty too
@@ -104,7 +111,8 @@ def test_spacy_extract_no_entities(mock_spacy_nlp):
         # Verify spaCy was called
         mock_spacy_nlp.assert_called_once_with(test_text) # Check if nlp() was called with text
 
-def test_spacy_extract_empty_text(mock_spacy_nlp):
+@pytest.mark.asyncio
+async def test_spacy_extract_empty_text(mock_spacy_nlp):
     """Test extraction with empty input text."""
     # Configure mock for empty text if needed (spaCy might handle it gracefully)
     mock_spacy_doc_empty = MagicMock()
@@ -117,7 +125,7 @@ def test_spacy_extract_empty_text(mock_spacy_nlp):
         extractor = SpacyEntityExtractor()
         test_doc = Document(id="test-doc-empty", content="", chunks=[]) # Empty doc
 
-        extraction_result = extractor.extract(test_doc)
+        extraction_result = await extractor.extract(test_doc)
 
         assert len(extraction_result.entities) == 0
         assert len(extraction_result.relationships) == 0
@@ -158,10 +166,11 @@ def empty_doc_for_extraction() -> Document:
     """An empty document (no content, no chunks)."""
     return Document(id="doc-empty-extract", content="", metadata={}, chunks=[])
 
-def test_mock_extractor_finds_entities(doc_with_entities):
+@pytest.mark.asyncio
+async def test_mock_extractor_finds_entities(doc_with_entities):
     """Test that the mock extractor returns expected entities and relationships."""
     extractor = MockEntityExtractor()
-    processed_doc = extractor.extract(doc_with_entities)
+    processed_doc = await extractor.extract(doc_with_entities)
 
     assert isinstance(processed_doc, ProcessedDocument)
     
@@ -183,10 +192,11 @@ def test_mock_extractor_finds_entities(doc_with_entities):
     assert rel.source.name == "Alice"
     assert rel.target.name == "Bob"
 
-def test_mock_extractor_no_entities(doc_without_entities):
+@pytest.mark.asyncio
+async def test_mock_extractor_no_entities(doc_without_entities):
     """Test extraction when no entities are found by the mock."""
     extractor = MockEntityExtractor()
-    processed_doc = extractor.extract(doc_without_entities)
+    processed_doc = await extractor.extract(doc_without_entities)
     
     assert isinstance(processed_doc, ProcessedDocument)
     assert processed_doc.id == doc_without_entities.id
@@ -194,10 +204,11 @@ def test_mock_extractor_no_entities(doc_without_entities):
     assert len(processed_doc.entities) == 0
     assert len(processed_doc.relationships) == 0
 
-def test_mock_extractor_empty_document(empty_doc_for_extraction):
+@pytest.mark.asyncio
+async def test_mock_extractor_empty_document(empty_doc_for_extraction):
     """Test extraction on a document with no chunks."""
     extractor = MockEntityExtractor()
-    processed_doc = extractor.extract(empty_doc_for_extraction)
+    processed_doc = await extractor.extract(empty_doc_for_extraction)
     
     assert isinstance(processed_doc, ProcessedDocument)
     assert processed_doc.id == empty_doc_for_extraction.id

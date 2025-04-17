@@ -46,12 +46,18 @@ def create_query_router() -> APIRouter:
 
             api_graph_context = None
             if query_result.graph_context:
-                domain_entities, domain_relationships = query_result.graph_context
-                api_graph_context = QueryResultGraphContext(
-                    # Convert domain Entity/Relationship objects to simple dicts for API
-                    entities=[e.model_dump() for e in domain_entities] if domain_entities else [],
-                    relationships=[r.model_dump() for r in domain_relationships] if domain_relationships else []
-                )
+                # Unpack only if graph_context is not None and is iterable (e.g., a tuple)
+                try:
+                    domain_entities, domain_relationships = query_result.graph_context
+                    api_graph_context = QueryResultGraphContext(
+                        # Convert domain Entity/Relationship objects to simple dicts for API
+                        entities=[e.model_dump() for e in domain_entities] if domain_entities else [],
+                        relationships=[r.model_dump() for r in domain_relationships] if domain_relationships else []
+                    )
+                except (TypeError, ValueError) as unpack_error:
+                    # Log if unpacking fails unexpectedly (e.g., not a 2-tuple)
+                    logger.warning(f"Could not unpack graph_context: {query_result.graph_context}. Error: {unpack_error}")
+                    # Keep api_graph_context as None
 
             return QueryResponse(
                 answer=query_result.answer,

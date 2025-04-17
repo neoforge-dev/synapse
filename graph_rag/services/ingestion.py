@@ -96,13 +96,13 @@ class IngestionService:
             raise # Re-raise to signal failure
         
         # 2. Split content into chunks
-        chunk_objects = self._split_into_chunks(document)
+        chunk_objects = self._split_into_chunks(document)  # Use our internal method instead of async one
         logger.info(f"Split document {document_id} into {len(chunk_objects)} chunks.")
         
         # 3. Generate embeddings (if requested)
         if generate_embeddings:
             try:
-                chunk_texts = [chunk.content for chunk in chunk_objects]
+                chunk_texts = [chunk.text for chunk in chunk_objects]
                 if chunk_texts:
                     logger.info(f"Generating embeddings for {len(chunk_texts)} chunks...")
                     embeddings = self.embedding_service.encode(chunk_texts)

@@ -24,6 +24,16 @@ class GraphStore(ABC):
         """Adds multiple entities and relationships, ideally in a single transaction."""
         pass
         
+    @abstractmethod
+    def add_document(self, document):
+        """Adds or updates a document node in the graph."""
+        pass
+        
+    @abstractmethod
+    def add_chunk(self, chunk):
+        """Adds or updates a chunk node in the graph and links it to its document."""
+        pass
+        
     # Add query methods later as needed, e.g.:
     # @abstractmethod
     # def get_subgraph(self, center_entity_id: str, hops: int = 1) -> Tuple[List[Entity], List[Relationship]]:
@@ -73,6 +83,11 @@ class GraphStore(ABC):
         """
         pass
 
+    @abstractmethod
+    def get_document_by_id(self, document_id: str):
+        """Retrieves a document by its ID."""
+        pass
+
 class MockGraphStore(GraphStore):
     """In-memory mock implementation of GraphStore for testing."""
 
@@ -81,6 +96,8 @@ class MockGraphStore(GraphStore):
         self.relationships: Dict[str, Relationship] = {}
         self.nodes: Dict[str, Dict] = {} # Generic node storage
         self.edges: List[Dict] = [] # Generic edge storage
+        self.documents = {}  # Store Document objects
+        self.chunks = {}  # Store Chunk objects
         logger.info("MockGraphStore initialized.")
 
     def add_entity(self, entity: Entity):
@@ -210,6 +227,23 @@ class MockGraphStore(GraphStore):
         else:
             logger.warning(f"MockGraphStore: Document {document_id} not found for deletion.")
             return False
+
+    def add_document(self, document):
+        """Adds a document to the mock store."""
+        logger.info(f"MockGraphStore: Adding document {document.id}")
+        self.documents[document.id] = document
+        return None
+        
+    def add_chunk(self, chunk):
+        """Adds a chunk to the mock store and links it to its document."""
+        logger.info(f"MockGraphStore: Adding chunk {chunk.id} for document {chunk.document_id}")
+        self.chunks[chunk.id] = chunk
+        return None
+    
+    def get_document_by_id(self, document_id: str):
+        """Retrieves a document by its ID from the mock store."""
+        logger.info(f"MockGraphStore: Getting document by ID {document_id}")
+        return self.documents.get(document_id)
 
     # Implement other methods as needed for tests, returning mock data
     async def get_neighbors(self, node_id: str, relationship_type: Optional[str] = None, direction: str = "out") -> List[Dict]:

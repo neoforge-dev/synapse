@@ -10,12 +10,13 @@ import subprocess # Keep subprocess for spaCy download check
 import sys # Add sys import
 import time # Add time import for sleep
 import pytest_asyncio # Add import
+import uuid # <-- Added import
 
 import asyncio
 from httpx import AsyncClient, ASGITransport # Import ASGITransport
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock # Add AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch # Add AsyncMock, MagicMock, patch
 
 # Imports for Memgraph setup
 from neo4j import AsyncGraphDatabase, AsyncDriver
@@ -36,6 +37,7 @@ from graph_rag.core.debug_tools import GraphDebugger
 import mgclient # Add correct import
 import neo4j
 from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+from graph_rag.core.graph_rag_engine import QueryResult # <- Corrected import
 
 logger = logging.getLogger(__name__)
 
@@ -183,9 +185,47 @@ async def test_client(
     mock_kg_builder.reset_mock()
     mock_entity_extractor.reset_mock() # Reset entity extractor mock
 
+    # Configure mock_graph_rag_engine.query to return a default QueryResult
+    default_query_result = QueryResult(
+        answer="Default mock answer",
+        relevant_chunks=[],
+        graph_context=([], []), # Default empty tuple for entities and relationships
+        metadata={"source": "mock_engine"}
+    )
+    mock_graph_rag_engine.query.return_value = default_query_result
+
     # Re-apply necessary side effects if they are needed consistently across tests
-    mock_ingestion_service.ingest_document.side_effect = lambda **kwargs: {"document_id": "test-id", "chunk_ids": ["chunk-1"]}
-    mock_ingestion_service.ingest_document_background.return_value = ("doc_id_123", "task_id_456")
+    # mock_ingestion_service.ingest_document.side_effect = lambda **kwargs: {"document_id": "test-id", "chunk_ids": ["chunk-1"]} # Kept original line commented for reference
+    # mock_ingestion_service.ingest_document_background.return_value = ("doc_id_123", "task_id_456") # Kept original line commented for reference
+
+    # --- Configure mock_ingestion_service for background task testing ---
+    # Define a side effect that simulates the background processing
+    async def mock_ingest_effect(**kwargs):
+        # Simulate adding the document to the mocked graph repo if needed for checks
+        # Note: This requires access to the mock_graph_repo instance from the outer scope.
+        doc_id = kwargs.get("document_id", f"doc-{uuid.uuid4()}")
+        content = kwargs.get("content", "")
+        metadata = kwargs.get("metadata", {})
+        
+        # Create a dummy Document object to pass to the mock repo
+        # Use the actual Document model if the mock expects it
+        # For simplicity, maybe the mock just needs the ID?
+        # Let's assume add_document is called on the *mocked* repo
+        try:
+            # Create a simple object or dict that mock_graph_repo.add_document might expect
+            # This depends on how strictly add_document's signature is mocked/checked.
+            # Let's assume it can accept a simple object/dict for testing purposes.
+            dummy_doc_data = {"id": doc_id, "content": content, "metadata": metadata}
+            await mock_graph_repo.add_document(dummy_doc_data) # Call add_document on the MOCK repo
+            logger.debug(f"Mock Ingestion Service: Simulated add_document for {doc_id} on mock_graph_repo.")
+        except Exception as e:
+            logger.error(f"Mock Ingestion Service: Error during mock add_document for {doc_id}: {e}")
+            
+        # Background task doesn't return directly
+        return
+
+    # Make ingest_document awaitable and apply the side effect
+    mock_ingestion_service.ingest_document = AsyncMock(side_effect=mock_ingest_effect)
 
     original_overrides = app.dependency_overrides.copy()
     # --- Apply dependency overrides for direct endpoint injection (Depends) ---
