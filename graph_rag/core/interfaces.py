@@ -1,5 +1,11 @@
-from typing import Protocol, List, Dict, Any, Tuple, AsyncGenerator, Optional
-from pydantic import BaseModel
+from typing import Protocol, List, Dict, Any, Tuple, AsyncGenerator, Optional, runtime_checkable
+from pydantic import BaseModel, Field
+
+# Use TYPE_CHECKING to avoid runtime circular imports
+# Using string forward references instead now
+# from typing import TYPE_CHECKING
+# if TYPE_CHECKING:
+#     from graph_rag.domain.models import Document, ProcessedDocument
 
 # --- Data Structures ---
 
@@ -46,11 +52,29 @@ class DocumentProcessor(Protocol):
         """Splits a document into manageable chunks."""
         ...
 
+@runtime_checkable
 class EntityExtractor(Protocol):
-    """Interface for extracting entities and relationships from text."""
-    
-    async def extract(self, text: str) -> ExtractionResult:
-        """Extracts entities and relationships from a given text block."""
+    """Protocol for extracting entities and relationships from text or documents."""
+
+    # Use string forward reference for Document and ProcessedDocument
+    def extract(self, document: 'Document') -> 'ProcessedDocument':
+        """Extracts entities and relationships from an entire document object.
+
+        Deprecated: Prefer extract_from_text or process documents chunk by chunk.
+        Processes all chunks within the document.
+        """
+        ...
+
+    async def extract_from_text(self, text: str, context: Optional[Dict[str, Any]] = None) -> ExtractionResult:
+        """Extracts entities and relationships from a single text string.
+
+        Args:
+            text: The input text string.
+            context: Optional context dictionary (e.g., chunk_id, doc_id).
+
+        Returns:
+            An ExtractionResult containing lists of extracted entities and relationships.
+        """
         ...
 
 class KnowledgeExtractor(Protocol):

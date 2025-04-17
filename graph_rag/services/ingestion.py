@@ -56,8 +56,9 @@ class IngestionService:
         )
     
     async def ingest_document(
-        self, 
-        content: str, 
+        self,
+        document_id: str,
+        content: str,
         metadata: Dict[str, Any],
         max_tokens_per_chunk: Optional[int] = None,
         generate_embeddings: bool = True # Add flag to control embedding generation
@@ -66,6 +67,7 @@ class IngestionService:
         Ingest a document: store it, chunk it, generate embeddings, and create relationships.
         
         Args:
+            document_id: The unique ID for the document.
             content: The document content
             metadata: Additional metadata about the document
             max_tokens_per_chunk: Optional max tokens per chunk (defaults to paragraph splitting)
@@ -74,18 +76,23 @@ class IngestionService:
         Returns:
             IngestionResult with document and chunk IDs
         """
-        logger.info(f"Starting ingestion for document with metadata: {metadata}")
-        # 1. Create and save document
+        logger.info(f"Starting ingestion for document {document_id} with metadata: {metadata}")
+        # 1. Create and save document using the provided ID
         document = Document(
-            id=str(uuid.uuid4()),
+            id=document_id,
             content=content,
             metadata=metadata
         )
         try:
-            document_id = await self.graph_store.add_entity(document)
+            # Use the specific add_document method for Document objects
+            await self.graph_store.add_document(document) 
+            # add_document doesn't return the ID, we already have it
+            # if saved_doc_id != document_id:
+            #      # Log a warning if the returned ID is different (unexpected)
+            #      logger.warning(f"Saved document ID '{saved_doc_id}' differs from provided ID '{document_id}'. Using provided ID.")
             logger.info(f"Saved document with ID: {document_id}")
         except Exception as e:
-            logger.error(f"Failed to save document: {e}", exc_info=True)
+            logger.error(f"Failed to save document {document_id}: {e}", exc_info=True)
             raise # Re-raise to signal failure
         
         # 2. Split content into chunks
@@ -132,17 +139,21 @@ class IngestionService:
                     embedding_preview = str(chunk.embedding[:5]) + ('...' if len(chunk.embedding) > 5 else '') 
                     print(f"DEBUG: Embedding value preview: {embedding_preview}")
                      
-                chunk_id = await self.graph_store.add_entity(chunk)
-                chunk_ids.append(chunk_id)
+                # Use add_chunk for Chunk objects
+                await self.graph_store.add_chunk(chunk)
+                # Add the chunk's ID to the list
+                chunk_ids.append(chunk.id)
                 
                 # Create relationship: Document CONTAINS Chunk
-                edge = Edge(
+                # Relationship needs source/target IDs and type
+                # Use Relationship model (alias for Edge) consistent with add_relationship signature
+                rel = Relationship(
                     id=str(uuid.uuid4()),
                     type="CONTAINS",
                     source_id=document_id,
-                    target_id=chunk_id
+                    target_id=chunk.id # Use chunk.id
                 )
-                await self.graph_store.add_relationship(edge)
+                await self.graph_store.add_relationship(rel)
             except Exception as e:
                 logger.error(f"Failed to save chunk {chunk.id} or its relationship for document {document_id}: {e}", exc_info=True)
                 # Optionally collect failed chunk IDs or raise immediately

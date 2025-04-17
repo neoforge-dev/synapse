@@ -16,7 +16,8 @@ from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepos
 from graph_rag.core.document_processor import SimpleDocumentProcessor
 from graph_rag.core.entity_extractor import SpacyEntityExtractor
 from graph_rag.core.interfaces import DocumentData
-from graph_rag.config import get_settings
+from graph_rag.domain.models import Document, Chunk, Entity, Relationship
+from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 
 settings = get_settings()
 
@@ -29,32 +30,6 @@ logger = logging.getLogger(__name__)
 
 # Create Typer app for ingest commands
 # app = typer.Typer(help="Commands for ingesting documents into the knowledge graph.")
-
-async def make_api_request(
-    method: str,
-    url: str,
-    data: Optional[Dict[str, Any]] = None,
-    files: Optional[Dict[str, Any]] = None,
-    headers: Optional[Dict[str, str]] = None
-) -> Dict[str, Any]:
-    """Make an HTTP request to the API."""
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.request(
-                method=method,
-                url=url,
-                json=data,
-                files=files,
-                headers=headers or {}
-            )
-            response.raise_for_status()
-            return response.json()
-    except httpx.HTTPError as e:
-        logger.error(f"HTTP error occurred: {str(e)}")
-        raise typer.Exit(1)
-    except Exception as e:
-        logger.error(f"Error making API request: {str(e)}")
-        raise typer.Exit(1)
 
 async def process_and_store_document(
     file_path: Path,
@@ -73,45 +48,59 @@ async def process_and_store_document(
         doc_id = str(uuid.uuid4())
         
         # Process document into chunks
-        chunks = await doc_processor.process_document(content)
+        chunks = await doc_processor.chunk_document(DocumentData(id=doc_id, content=content, metadata=metadata_dict))
         
         # Store document
-        await graph_repository.add_document({
-            "id": doc_id,
-            "content": content,
-            "metadata": metadata_dict
-        })
+        await graph_repository.add_document(Document(
+            id=doc_id,
+            content=content,
+            metadata=metadata_dict
+        ))
         
         # Process and store each chunk
         for chunk in chunks:
             # Generate chunk ID
             chunk_id = str(uuid.uuid4())
             
-            # Extract entities from chunk
-            entities = await entity_extractor.extract_entities(chunk.text)
+            # Extract entities from chunk using the new method
+            extraction_result = await entity_extractor.extract_from_text(
+                chunk.text,
+                context={"chunk_id": chunk_id, "doc_id": doc_id}
+            )
+            entities = extraction_result.entities # Get ExtractedEntity objects
             
             # Store chunk
-            await graph_repository.add_chunk({
-                "id": chunk_id,
-                "text": chunk.text,
-                "document_id": doc_id,
-                "embedding": None  # TODO: Add embedding support
-            })
+            await graph_repository.add_chunk(Chunk(
+                id=chunk_id,
+                text=chunk.text,
+                document_id=doc_id,
+                embedding=None  # TODO: Add embedding support
+            ))
             
             # Store entities and create relationships
             entity_ids = []
             for entity in entities:
+                # entity is now ExtractedEntity from interfaces
                 entity_id = str(uuid.uuid4())
-                await graph_repository.add_entity({
-                    "id": entity_id,
-                    "label": entity.label,
-                    "text": entity.text
-                })
+                await graph_repository.add_node(Entity(
+                    id=entity_id, # Use generated UUID
+                    name=entity.text,
+                    type=entity.label, # Use label field from ExtractedEntity
+                    properties={"original_text": entity.text, "label": entity.label} # Store original text/label as properties
+                ))
                 entity_ids.append(entity_id)
             
             # Link chunk to entities
             if entity_ids:
-                await graph_repository.link_chunk_to_entities(chunk_id, entity_ids)
+                for entity_id in entity_ids:
+                    rel = Relationship(
+                        id=str(uuid.uuid4()),
+                        source_id=chunk_id,
+                        target_id=entity_id,
+                        type="MENTIONS",
+                        properties={}
+                    )
+                    await graph_repository.add_relationship(rel)
         
         typer.echo(f"Successfully ingested document {doc_id}")
         

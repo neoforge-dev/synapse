@@ -35,6 +35,9 @@ from graph_rag.services.search import SearchService
 # Import cache implementations
 from graph_rag.infrastructure.cache.memory_cache import MemoryCache
 
+# Import MockLLMService
+from graph_rag.llm import MockLLMService
+
 # Initialize settings once
 settings = get_settings()
 

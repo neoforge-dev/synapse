@@ -1,9 +1,10 @@
 from graph_rag.core.interfaces import EntityExtractor, ExtractionResult, ExtractedEntity
 import logging
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional, Any
 import uuid # Added for ID generation
 import re # Added import
+import asyncio
 
 from graph_rag.models import Chunk, Entity, Relationship, ProcessedDocument, Document
 
@@ -85,65 +86,112 @@ class SpacyEntityExtractor(EntityExtractor):
         text = re.sub(r'[.,!?;:\'"()]$', '', text) # Escaped single quote
         text = re.sub(r'^["(]', '', text) # Simplified: Removed single quote from leading char set
         return text
-        
+
+    # Implement the new interface method
+    async def extract_from_text(self, text: str, context: Optional[Dict[str, Any]] = None) -> ExtractionResult:
+        """Extracts entities from a text string using spaCy NER."""
+        if not self.nlp:
+            logger.error(f"spaCy model '{self.model_name}' is not loaded. Cannot extract entities.")
+            return ExtractionResult(entities=[], relationships=[])
+
+        entities: Dict[str, ExtractedEntity] = {}
+        if not text or text.isspace():
+            return ExtractionResult(entities=[], relationships=[])
+
+        try:
+            spacy_doc = self.nlp(text)
+        except Exception as e:
+             logger.error(f"spaCy processing failed for text: {e}", exc_info=True)
+             return ExtractionResult(entities=[], relationships=[]) # Return empty on error
+
+        for ent in spacy_doc.ents:
+            normalized_text = self._normalize_entity_text(ent.text)
+            entity_id = f"{ent.label_}:{normalized_text}"
+            if entity_id not in entities:
+                entities[entity_id] = ExtractedEntity(
+                    id=entity_id,
+                    name=ent.text,
+                    text=ent.text,
+                    label=ent.label_,
+                    # Add context if provided
+                    metadata=context.copy() if context else {}
+                )
+
+        extracted_entities = list(entities.values())
+        logger.debug(f"Extracted {len(extracted_entities)} entities from text.")
+        return ExtractionResult(entities=extracted_entities, relationships=[]) # No relationship extraction
+
+    # Keep the old method but make it use the new one for consistency
+    # It might be removed later if not needed elsewhere
     def extract(self, document: Document) -> ProcessedDocument:
         """Extracts entities from all chunks in a document using spaCy NER.
+           Processes chunk by chunk using extract_from_text.
            Relationships are not extracted by this implementation.
         """
         if not self.nlp:
             logger.error(f"spaCy model '{self.model_name}' is not loaded. Cannot extract entities.")
+            # Return a ProcessedDocument with empty lists
             return ProcessedDocument(
                 id=document.id,
                 content=document.content,
                 metadata=document.metadata.copy(),
-                chunks=document.chunks,
+                chunks=document.chunks, # Keep original chunks
                 entities=[],
                 relationships=[]
             )
 
         all_entities: Dict[str, Entity] = {}
-        logger.info(f"Starting spaCy entity extraction for document {document.id} ({len(document.chunks)} chunks)")
-        
-        for i, chunk in enumerate(document.chunks):
-            logger.debug(f"Processing chunk {i+1}/{len(document.chunks)} (id: {chunk.id}) for entities.")
-            if not chunk.text or chunk.text.isspace():
-                continue
-            
-            try:
-                spacy_doc = self.nlp(chunk.text)
-            except Exception as e:
-                 logger.error(f"spaCy processing failed for chunk {chunk.id}: {e}", exc_info=True)
-                 continue # Skip chunk on error
+        # The original extract method expected document.chunks, ensure it exists or handle error
+        # For robustness, check if document has chunks attribute
+        if not hasattr(document, 'chunks') or not document.chunks:
+             logger.warning(f"Document {document.id} has no chunks attribute or empty chunks list. Cannot extract entities.")
+             return ProcessedDocument(
+                 id=document.id,
+                 content=document.content,
+                 metadata=document.metadata.copy(),
+                 chunks=[], # Return empty chunks list
+                 entities=[],
+                 relationships=[]
+             )
 
-            for ent in spacy_doc.ents:
-                # Use normalized text + label for a more stable (but not perfect) ID
-                normalized_text = self._normalize_entity_text(ent.text)
-                entity_id = f"{ent.label_}:{normalized_text}" 
-                # If the entity hasn't been seen before in this document, add it
+        logger.info(f"Starting spaCy entity extraction for document {document.id} ({len(document.chunks)} chunks)")
+
+        loop = asyncio.get_event_loop()
+        tasks = []
+        for i, chunk in enumerate(document.chunks):
+            logger.debug(f"Scheduling chunk {i+1}/{len(document.chunks)} (id: {chunk.id}) for entity extraction.")
+            if chunk.text and not chunk.text.isspace():
+                # Pass chunk ID as context
+                context = {"chunk_id": chunk.id, "doc_id": document.id}
+                tasks.append(self.extract_from_text(chunk.text, context))
+
+        # Run extraction tasks concurrently
+        extraction_results = loop.run_until_complete(asyncio.gather(*tasks))
+
+        # Collect unique entities from all results
+        for result in extraction_results:
+            for extracted_entity in result.entities:
+                # Convert ExtractedEntity back to domain Entity for ProcessedDocument
+                # Use the generated ID (label:normalized_text) from extract_from_text
+                entity_id = extracted_entity.id
                 if entity_id not in all_entities:
                     all_entities[entity_id] = Entity(
-                        id=entity_id, # Generate a more robust ID? Use UUID? Use hash?
-                                        # Using label:normalized_text for now
-                        name=ent.text, # Store original text as name
-                        type=ent.label_, 
-                        metadata={ # Add chunk info to metadata? Optional.
-                            # "found_in_chunk_id": chunk.id,
-                            # "start_char": ent.start_char,
-                            # "end_char": ent.end_char
-                        } 
+                        id=entity_id,
+                        name=extracted_entity.name,
+                        type=extracted_entity.label,
+                        properties=extracted_entity.metadata # Store context metadata
                     )
-                # else: Handle updates? Merge metadata?
 
-        extracted_entities = list(all_entities.values())
-        logger.info(f"Completed extraction for document {document.id}. Found {len(extracted_entities)} unique entities.")
-        
+        final_entities = list(all_entities.values())
+        logger.info(f"Completed extraction for document {document.id}. Found {len(final_entities)} unique entities.")
+
         # Create ProcessedDocument, keeping original doc info and adding entities
         processed_doc = ProcessedDocument(
             id=document.id,
             content=document.content,
             metadata=document.metadata.copy(),
             chunks=document.chunks,
-            entities=extracted_entities,
+            entities=final_entities,
             relationships=[] # No relationships extracted here
         )
         return processed_doc 

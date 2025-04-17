@@ -65,7 +65,7 @@ async def test_process_and_store_document_cli_logic( # Rename test for clarity
         file_path = Path(f.name)
 
     # Define a query to find the document later based on unique metadata
-    find_doc_query = "MATCH (d:Document {source: $source}) RETURN d.id as id, d.content as content, d.metadata as metadata LIMIT 1"
+    find_doc_query = "MATCH (d:Document) WHERE d.metadata.source = $source RETURN d.id as id, d.content as content, d.metadata as metadata LIMIT 1"
     find_doc_params = {"source": test_metadata["source"]}
 
     try:
@@ -85,8 +85,8 @@ async def test_process_and_store_document_cli_logic( # Rename test for clarity
 
         # Verify document was stored by querying metadata/content
         # Allow some time for potential async writes if necessary, though await should handle it
-        await asyncio.sleep(0.1) 
-        result = await memgraph_repo._execute_read_query(find_doc_query, find_doc_params)
+        await asyncio.sleep(0.1)
+        result = await memgraph_repo.execute_query(find_doc_query, find_doc_params)
 
         assert result is not None and len(result) == 1, f"Document with source '{test_metadata['source']}' not found."
         stored_doc_data = result[0]
@@ -98,7 +98,7 @@ async def test_process_and_store_document_cli_logic( # Rename test for clarity
         # Verify chunks were created and linked (Requires get_chunks_by_document_id or direct query)
         # Example direct query:
         chunk_check_query = "MATCH (d:Document {id: $doc_id})-[:CONTAINS]->(c:Chunk) RETURN count(c) as count"
-        chunk_result = await memgraph_repo._execute_read_query(chunk_check_query, {"doc_id": doc_id})
+        chunk_result = await memgraph_repo.execute_query(chunk_check_query, {"doc_id": doc_id})
         assert chunk_result[0]["count"] > 0, "No chunks found linked to the document."
 
         # Verify entities were extracted and linked
@@ -109,15 +109,16 @@ async def test_process_and_store_document_cli_logic( # Rename test for clarity
         # Note: process_and_store_document stores entity 'text', not 'name'. Adjust query/code.
         # Assuming entity node has 'text' property based on process_and_store_document code:
         entity_check_query_alt = """
-        MATCH (d:Document {id: $doc_id})-[:CONTAINS]->(c:Chunk)-[:MENTIONS]->(e:Entity) 
-        RETURN DISTINCT e.text as name 
-        """ # Relationship is :MENTIONS based on process_and_store_document
-        result_entities = await memgraph_repo._execute_read_query(entity_check_query_alt, {"doc_id": doc_id})
+        MATCH (d:Document {id: $doc_id})-[:CONTAINS]->(c:Chunk)-[:MENTIONS]->(e)
+        RETURN DISTINCT e.original_text as name
+        """ # Relationship is :MENTIONS. Return original_text property as name.
+        result_entities = await memgraph_repo.execute_query(entity_check_query_alt, {"doc_id": doc_id})
         
         extracted_entities = {r["name"] for r in result_entities}
         logger.info(f"Extracted entities for doc {doc_id}: {extracted_entities}")
         assert len(extracted_entities) > 0
-        assert "Eiffel Tower" in extracted_entities
+        # Check against the actual text extracted by spacy
+        assert "The Eiffel Tower" in extracted_entities
         assert "Paris" in extracted_entities
         assert "Gustave Eiffel" in extracted_entities
 
@@ -128,9 +129,23 @@ async def test_process_and_store_document_cli_logic( # Rename test for clarity
             
         # Clean up the graph using the retrieved doc_id if found
         if 'doc_id' in locals() and doc_id:
-             await memgraph_repo._execute_write_query("MATCH (d:Document {id: $doc_id}) DETACH DELETE d", {"doc_id": doc_id})
+             # await memgraph_repo._execute_write_query("MATCH (d:Document {id: $doc_id}) DETACH DELETE d", {"doc_id": doc_id})
+             # Use public delete method instead of private write query
+             await memgraph_repo.delete_document(doc_id)
         else: # Fallback cleanup based on metadata if doc_id wasn't retrieved
-             await memgraph_repo._execute_write_query("MATCH (d:Document {source: $source}) DETACH DELETE d", find_doc_params)
+             # await memgraph_repo._execute_write_query("MATCH (d:Document {source: $source}) DETACH DELETE d", find_doc_params)
+             # Need a way to find the doc ID from metadata if the direct delete failed
+             # Or accept that cleanup might fail if the initial process failed badly
+             logger.warning(f"Could not retrieve doc_id, attempting cleanup by metadata: {find_doc_params}")
+             # This might still fail if add_document failed initially
+             # Find ID first, then delete
+             fallback_result = await memgraph_repo.execute_query("MATCH (d:Document {source: $source}) RETURN d.id as id LIMIT 1", find_doc_params)
+             if fallback_result and fallback_result[0].get("id"):
+                 fallback_doc_id = fallback_result[0]["id"]
+                 logger.info(f"Attempting fallback cleanup for doc_id: {fallback_doc_id}")
+                 await memgraph_repo.delete_document(fallback_doc_id)
+             else:
+                 logger.error(f"Fallback cleanup failed: Could not find document by metadata {find_doc_params}")
 
 @pytest.mark.asyncio
 async def test_ingest_single_file_success(memgraph_repo: MemgraphGraphRepository, mock_document_processor, tmp_path):

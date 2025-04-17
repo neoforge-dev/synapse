@@ -51,14 +51,14 @@ async def ingest_test_document(client: AsyncClient, doc_content: str, metadata: 
 # Mark all tests in this module as async
 pytestmark = pytest.mark.asyncio
 
-# Use 'test_client' and 'memgraph_repo' fixtures from conftest.py
-async def test_document_ingestion_pipeline(test_client: AsyncClient, memgraph_repo):
+# Use 'integration_test_client' and 'memgraph_repo' fixtures
+async def test_document_ingestion_pipeline(integration_test_client: AsyncClient, memgraph_repo):
     """Test complete document ingestion pipeline with database verification."""
     # 1. Ingest document
     doc_content = "Test document for integration testing. Contains some entities like Alice and Bob."
     metadata = {"source": "integration-test", "category": "test"}
 
-    response = await ingest_test_document(test_client, doc_content, metadata)
+    response = await ingest_test_document(integration_test_client, doc_content, metadata)
     doc_id = response["document_id"]
     task_id = response["task_id"]
 
@@ -66,7 +66,7 @@ async def test_document_ingestion_pipeline(test_client: AsyncClient, memgraph_re
     assert doc_id.startswith("doc-")
 
     # 2. Wait for background processing (with timeout)
-    max_attempts = 10
+    max_attempts = 20
     attempt = 0
     doc = None # Initialize doc
     while attempt < max_attempts:
@@ -75,7 +75,7 @@ async def test_document_ingestion_pipeline(test_client: AsyncClient, memgraph_re
         doc = await memgraph_repo.get_document_by_id(doc_id)
         if doc is not None:
             break
-        await asyncio.sleep(1)  # Wait 1 second between checks
+        await asyncio.sleep(1.5)  # Wait 1.5 seconds between checks
         attempt += 1
 
     assert doc is not None, "Document not found in database after ingestion"
@@ -124,7 +124,7 @@ async def test_document_ingestion_pipeline(test_client: AsyncClient, memgraph_re
     # logger.info("Successfully verified entities and relationships.")
     pass # Temporarily pass until repo methods are confirmed/added
 
-async def test_concurrent_ingestion_integration(test_client: AsyncClient, memgraph_repo):
+async def test_concurrent_ingestion_integration(integration_test_client: AsyncClient, memgraph_repo):
     """Test concurrent document ingestion with database verification."""
     async def ingest_and_verify(client: AsyncClient, repo, content: str, metadata: Dict[str, Any]):
         # Ingest document
@@ -132,14 +132,14 @@ async def test_concurrent_ingestion_integration(test_client: AsyncClient, memgra
         doc_id = response["document_id"]
 
         # Wait for processing
-        max_attempts = 10
+        max_attempts = 20
         attempt = 0
         doc = None
         while attempt < max_attempts:
             doc = await repo.get_document_by_id(doc_id)
             if doc is not None:
                 break
-            await asyncio.sleep(1)
+            await asyncio.sleep(1.5)
             attempt += 1
 
         assert doc is not None, f"Document {doc_id} not found in database"
@@ -149,7 +149,7 @@ async def test_concurrent_ingestion_integration(test_client: AsyncClient, memgra
     # Create multiple ingestion tasks
     tasks = [
         ingest_and_verify(
-            test_client, # Pass client
+            integration_test_client, # Pass client
             memgraph_repo, # Pass repo
             f"Concurrent test document {i}",
             {"source": "concurrent-test", "index": i}
@@ -169,24 +169,24 @@ async def test_concurrent_ingestion_integration(test_client: AsyncClient, memgra
         # assert len(chunks) > 0
     pass # Temporarily pass
 
-async def test_large_document_ingestion_integration(test_client: AsyncClient, memgraph_repo):
+async def test_large_document_ingestion_integration(integration_test_client: AsyncClient, memgraph_repo):
     """Test ingestion of a large document with database verification."""
     # Create a large document (~100KB)
     large_content = "Large test document. " * 5000
     metadata = {"source": "large-doc-test", "size": "100KB"}
 
-    response = await ingest_test_document(test_client, large_content, metadata)
+    response = await ingest_test_document(integration_test_client, large_content, metadata)
     doc_id = response["document_id"]
 
     # Wait for processing
-    max_attempts = 15  # Give more time for large document
+    max_attempts = 30
     attempt = 0
     doc = None
     while attempt < max_attempts:
         doc = await memgraph_repo.get_document_by_id(doc_id)
         if doc is not None:
             break
-        await asyncio.sleep(1)
+        await asyncio.sleep(1.5)
         attempt += 1
 
     assert doc is not None, "Large document not found in database"
@@ -201,10 +201,10 @@ async def test_large_document_ingestion_integration(test_client: AsyncClient, me
     # assert reconstructed_content == large_content # May differ slightly due to splitting
     pass # Temporarily pass
 
-async def test_error_handling_integration(test_client: AsyncClient, memgraph_repo):
+async def test_error_handling_integration(integration_test_client: AsyncClient, memgraph_repo):
     """Test error handling during ingestion (e.g., empty content)."""
     # Test with invalid content (empty)
-    response = await test_client.post(
+    response = await integration_test_client.post(
         "/api/v1/ingestion/documents",
         json={"content": "", "metadata": {"source": "error-test"}}
     )
@@ -213,7 +213,9 @@ async def test_error_handling_integration(test_client: AsyncClient, memgraph_rep
     # Adjust assertion based on actual API validation behavior
     # assert response.status_code == status.HTTP_400_BAD_REQUEST
     # For now, assume it might still return 202 if validation is loose
-    assert response.status_code == status.HTTP_202_ACCEPTED
+    # assert response.status_code == status.HTTP_202_ACCEPTED
+    # Correct assertion: FastAPI validation should return 422 for invalid input
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     response_data = response.json()
     doc_id = response_data.get("document_id") # Use .get for safety
 

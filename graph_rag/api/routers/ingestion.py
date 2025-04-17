@@ -26,6 +26,7 @@ async def process_document_with_service(
     """Background task to process a document using the IngestionService."""
     try:
         await ingestion_service.ingest_document(
+            document_id=document_id,
             content=content,
             metadata=metadata,
             generate_embeddings=True

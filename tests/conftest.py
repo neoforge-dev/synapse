@@ -383,3 +383,49 @@ async def graph_debugger(memgraph_connection: AsyncDriver):
 def mock_entity_extractor() -> AsyncMock: # Add mock fixture for entity extractor
     """Provides a reusable AsyncMock for the EntityExtractor."""
     return AsyncMock() 
+
+# --- Integration Test Client Fixture ---
+
+@pytest_asyncio.fixture(scope="function")
+async def integration_test_client(
+    app: FastAPI, 
+    memgraph_repo: MemgraphGraphRepository # Use the real repo fixture
+    # Add other real dependencies if needed for integration flow
+) -> AsyncGenerator[AsyncClient, None]:
+    """Provides an async test client configured for INTEGRATION tests.
+    Uses the real Memgraph repository and potentially other real services,
+    ensuring that the application instance used by the client interacts
+    with the actual database and components under test.
+    """
+    
+    original_overrides = app.dependency_overrides.copy()
+    
+    # --- Override dependencies specifically needed for integration ---
+    # Ensure the app uses the REAL repository provided by the memgraph_repo fixture
+    app.dependency_overrides[get_graph_repository] = lambda: memgraph_repo
+    
+    # Example: If ingestion service needs to be real for these tests:
+    # Need to figure out how to construct the real IngestionService here
+    # It requires doc_processor, entity_extractor, embedding_service, chunk_splitter
+    # This might require creating real instances or dedicated integration fixtures for them.
+    # For now, let's comment out overriding the ingestion service, assuming
+    # the default dependency injection will pick up the real one if others are real.
+    # Or, perhaps the test directly uses the repo, not the service via API?
+    # ---> Let's assume for now the test interacts directly or the default DI works.
+    
+    # --- Mock specific external dependencies IF necessary for integration ---
+    # e.g., Mocking an external email service if it's called indirectly
+    # app.dependency_overrides[get_email_service] = lambda: AsyncMock()
+
+    # Create the client using ASGITransport against the configured app
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        yield client
+
+    # Restore original dependency overrides after the test
+    app.dependency_overrides = original_overrides
+
+@pytest.fixture(scope="function")
+def sync_test_client(app: FastAPI) -> TestClient:
+    """Create a synchronous test client for the FastAPI app."""
+    client = TestClient(app)
+    return client 
