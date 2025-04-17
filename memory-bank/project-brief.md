@@ -1,14 +1,16 @@
 # Project Brief
 
 ## Goal
-- GraphRAG MVP using Memgraph & Python (Clean Architecture).
+- Build a GraphRAG MVP using Memgraph and Python, following Clean Architecture principles.
 
 ## Scope
-- **Ingest:** Documents → Entities/Relationships → Graph DB.
-- **Retrieve:** Graph-enhanced context for queries.
-- **Interface:** FastAPI API + Typer CLI.
+- **Ingestion:** Process documents, extract entities/relationships, store in Memgraph.
+- **Retrieval:** Provide graph-enhanced context for user queries.
+- **Interfaces:** Implement a FastAPI API and a Typer CLI.
 
 ## Out of Scope (MVP)
-- UI, Authentication, Advanced Graph Features.
+- User Interface (UI)
+- Authentication
+- Advanced Graph Algorithms/Features
 
 *(Tech stack: `tech-context.md`)* 

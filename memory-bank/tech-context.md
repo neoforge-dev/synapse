@@ -1,22 +1,21 @@
-# Technical Stack
+# Technical Context
 
-## Core
-- Python 3.12+
-- FastAPI & Typer (API/CLI)
-- Memgraph DB (+ `pymgclient` driver)
-- NLP: `spacy`, `nltk`
-- Pydantic v2+ (Models, Settings)
-- `pytest` (+ `pytest-asyncio`, `unittest.mock`)
+## Core Stack
+- **Language:** Python 3.12+
+- **Frameworks:** FastAPI (API), Typer (CLI)
+- **Database:** Memgraph (via `pymgclient`)
+- **Data/Config:** Pydantic v2+ (Models, Settings via env vars)
+- **NLP:** `spacy`, `nltk`
+- **Testing:** `pytest` (`pytest-asyncio`, `unittest.mock`)
 
-## Development Env
-- `uv` (Package/Venv Management)
-- `Makefile` (install-dev, test, test-memgraph, download-nlp-data)
-- Docker (Memgraph instance)
+## Development Environment
+- **Package/Venv:** `uv`
+- **Orchestration:** `Makefile` (`install-dev`, `test`, `test-memgraph`, `download-nlp-data`)
+- **DB Instance:** Docker (Memgraph on ports 7687, 7444, 3000)
 
-## Key Requirements
-- Async I/O (DB, API)
-- Strict Typing
-- Env Var Config (Pydantic Settings)
-- Running Memgraph (Ports: 7687, 7444, 3000)
+## Key Technical Constraints/Requirements
+- Async I/O for DB and API interactions.
+- Strict type hinting enforced.
 
-*(Dependencies: `pyproject.toml`)* 
+## Dependencies
+- Managed via `pyproject.toml`. 
