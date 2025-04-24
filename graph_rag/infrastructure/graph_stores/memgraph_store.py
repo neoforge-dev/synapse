@@ -961,43 +961,60 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
         await self.add_node(entity)
 
     async def delete_document(self, document_id: str) -> bool:
-        """Deletes a document and its associated chunks.
-        
-        Returns:
-            bool: True if the document was found and deleted, False otherwise.
+        """Deletes a document and its associated chunks and relationships."""
+        # Query 1: Find chunks associated with the document
+        find_chunks_query = """
+        MATCH (d:Document {id: $doc_id})<-[:PART_OF]-(c:Chunk)
+        RETURN c.id AS chunkId
         """
-        logger.debug(f"Deleting document {document_id} and its chunks.")
-        # Use OPTIONAL MATCH, attempt delete, return explicit boolean based on existence before delete
-        query = """
-        OPTIONAL MATCH (d:Document {id: $id})
-        WITH d 
+        # Query 2: Delete the document and detach its relationships
+        delete_doc_query = """
+        MATCH (d:Document {id: $doc_id})
         DETACH DELETE d
-        RETURN d IS NOT NULL AS deleted
+        RETURN count(d) as deleted_doc_count
         """
-        params = {"id": document_id}
+        # Query 3: Delete the associated chunks and detach their relationships
+        delete_chunks_query = """
+        MATCH (c:Chunk) WHERE c.id IN $chunk_ids
+        DETACH DELETE c
+        RETURN count(c) as deleted_chunk_count
+        """
+        params = {"doc_id": document_id}
+        deleted_doc = False
+        deleted_chunks = False # Track chunk deletion separately if needed
+
         try:
-            results = await self.execute_query(query, params)
-            # Explicitly handle empty results (no row returned)
-            if not results:
-                logger.warning(f"Document {document_id} not found, nothing deleted (no result row).")
-                status_to_return = False
-                logger.debug(f"Repo delete_document returning: {status_to_return}")
-                return status_to_return
-            # Check if the query returned a result and the 'deleted' flag is True
-            if results[0].get('deleted') is True:
-                logger.info(f"Successfully deleted document {document_id}.")
-                status_to_return = True
-                logger.debug(f"Repo delete_document returning: {status_to_return}")
-                return status_to_return
+            # Step 1: Find associated chunk IDs
+            chunk_results = await self.execute_query(find_chunks_query, params)
+            chunk_ids_to_delete = [res["chunkId"] for res in chunk_results]
+            logger.info(f"Found {len(chunk_ids_to_delete)} chunks associated with document {document_id}.")
+
+            # Step 2: Delete the document itself
+            delete_doc_results = await self.execute_query(delete_doc_query, params)
+            if delete_doc_results and delete_doc_results[0]["deleted_doc_count"] > 0:
+                deleted_doc = True
+                logger.info(f"Successfully deleted document node {document_id}.")
             else:
-                # Handles document not found (d was null, deleted is false)
-                logger.warning(f"Document {document_id} not found, nothing deleted (deleted flag false).")
-                status_to_return = False
-                logger.debug(f"Repo delete_document returning: {status_to_return}")
-                return status_to_return
+                 logger.warning(f"Document node {document_id} not found or already deleted.")
+
+            # Step 3: Delete the associated chunks if any were found
+            if chunk_ids_to_delete:
+                chunk_params = {"chunk_ids": chunk_ids_to_delete}
+                delete_chunk_results = await self.execute_query(delete_chunks_query, chunk_params)
+                deleted_chunk_count = delete_chunk_results[0]["deleted_chunk_count"] if delete_chunk_results else 0
+                if deleted_chunk_count > 0:
+                     deleted_chunks = True # Mark chunks as deleted
+                     logger.info(f"Successfully deleted {deleted_chunk_count} associated chunk nodes.")
+                else:
+                    logger.warning(f"Could not delete associated chunks for doc {document_id}. IDs: {chunk_ids_to_delete}")
+
+            # Return True if the document was deleted, even if chunks failed.
+            # If successful chunk deletion is required, modify the return condition.
+            return deleted_doc
+
         except Exception as e:
-            logger.error(f"Failed to delete document {document_id}: {e}", exc_info=True)
-            raise
+            logger.error(f"Error during deletion process for document {document_id}: {e}", exc_info=True)
+            return False
 
     async def __aenter__(self):
         """Context manager entry."""

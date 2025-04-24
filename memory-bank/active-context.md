@@ -1,47 +1,36 @@
-# Active Context
+# Active Context - [Current Date]
 
-This document tracks the current focus of work, recent changes, next steps, and active decisions or considerations.
+## Focus
+- Resolved multiple test failures in `tests/core/test_graph_rag_engine.py` and `tests/core/test_graph_rag_engine_orchestrator.py`.
 
-## Current Focus
-
-*   **Status:** Fixed CLI ingest command tests in `tests/integration/test_ingest_command.py` by updating the repository type to use `MemgraphGraphRepository` instead of `MemgraphRepository`. All tests in this file are now passing.
-*   **Task:** Continue running tests to identify any remaining test failures.
-*   **Recent Activity:**
-    *   Fixed the CLI ingest command compatibility by updating the `process_and_store_document` function to use `MemgraphGraphRepository` instead of `MemgraphRepository`. 
-    *   Updated the `memgraph_repo` fixture in conftest.py to return a `MemgraphGraphRepository` instance.
-    *   Fixed `mock_document_processor` fixture to properly mock the `chunk_document` method.
-    *   Corrected imports in the test files.
-    *   Added previously missing `ChunkData` import in test_ingest_command.py.
-    *   Corrected import paths for `Settings`, `EmbeddingModel`, `VectorStore`, `ProcessedDocument`, and various API schemas.
-    *   Commented out unused imports (`NodeFactory`, `prompts`).
-    *   Added missing dependency `faiss-cpu`.
-    *   Standardized usage of the `GraphRepository` protocol from `interfaces.py` instead of `GraphStore` across core components, services, API routers, and tests.
-    *   Fixed `NameError: name 'MockerFixture' is not defined` in tests.
-    *   Refactored `graph_rag/api/dependencies.py` to centralize dependency creation using factory functions and a singleton cache pattern.
-    *   Corrected numerous import errors across the API layer, core components, and tests.
-    *   Refactored Memgraph data handling in `MemgraphGraphRepository` to correctly reconstruct Pydantic models from `mgclient` results (using node properties and labels).
-    *   Fixed `SimpleVectorStore` to use `EmbeddingService` dependency and added locking.
-    *   Updated test configurations (`conftest.py`) and individual test suites (`tests/`) to align with refactored dependencies and Memgraph data handling.
-    *   Fixed logic in API routers (e.g., search query, document deletion).
-    *   Fixed `GraphDebugger` queries and result parsing.
-    *   Fixed `IngestionService` to add chunks to the vector store.
-    *   Consolidated duplicate `SimpleVectorStore` implementations by removing the deprecated version in `graph_rag/stores/` and keeping the newer implementation in `graph_rag/infrastructure/vector_stores/`.
+## Recent Changes
+- **`SimpleGraphRAGEngine` (`graph_rag/core/graph_rag_engine.py`):**
+    - `_find_entities_in_graph_by_properties`: Corrected logic to use `entity.text` instead of `entity.name` for property lookups, as `ExtractedEntity` might not have `name` populated.
+    - `query`: Ensured `graph_context_tuple` is initialized to `([], [])` when graph context is enabled but no entities are extracted or found, instead of `None`.
+- **`MemgraphGraphRepository` (`graph_rag/infrastructure/graph_stores/memgraph_store.py`):**
+    - Refactored `delete_document` method for multi-step deletion (find chunks, delete doc, delete chunks) with improved logging.
+- **Tests (`tests/core/test_graph_rag_engine.py`):**
+    - Corrected `combined_text` calculation in assertions to use space (" ") as a separator, matching the engine's implementation.
+    - Replaced incorrect `assert_awaited_once_with` with `assert_called_once_with` for `AsyncMock` calls (`vector_store.search`).
+    - Fixed `search_entities_by_properties` assertions to check `call_count` and use `assert_any_call` for individual property lookups, reflecting the implementation's loop.
+    - Fixed `get_neighbors` mock logic to handle individual entity ID calls and updated assertions for call count (3 due to expansion) and final aggregated context (`([], [])` based on mock behavior).
+    - Fixed attribute access from `rag_engine.graph_store` to `rag_engine._graph_store`.
+    - Removed incorrect assertions checking for non-existent `result.extracted_entities` attribute.
+- **Tests (`tests/core/test_graph_rag_engine_orchestrator.py`):**
+    - Added missing import for `ExtractedEntity`, `ExtractionResult`.
+    - Corrected `mock_document_processor` fixture to return `ChunkData` objects (instead of `Chunk`) and dynamically use the `document_id` from the input `DocumentData`.
+    - Fixed `kg_builder.add_document` assertion to expect `DocumentData` with `ANY` id and check content/metadata.
+    - Corrected `kg_builder.add_chunk` assertion logic: Replaced `assert_has_awaits` with manual inspection of `await_args_list` to verify the passed `ChunkData` objects' attributes (id, text, document_id, embedding).
+    - Corrected `kg_builder.add_relationship` assertion to expect 0 calls, matching the mock `ExtractionResult` which had no relationships.
 
 ## Next Steps
+- Commit the recent fixes.
+- Review remaining skipped tests in `tests/core/test_graph_rag_engine.py` and address necessary refactoring.
+- Proceed with implementing further features or addressing other test failures based on project priorities.
 
-1.  **Run Tests:** Execute `poetry run pytest` to identify any remaining failing tests.
-2.  **Debug Failures:** Analyze the pytest output for any failing tests.
-3.  **Iterative Fixing:** Address runtime errors in component logic, dependency injection, or test assertions.
-4.  **Increase Test Coverage:** Work on improving the test coverage to reach the 80% target.
-5.  **Update Memory Bank:** Reflect fixes and new status in `progress.md` and `active-context.md`.
-6.  **Repeat:** Continue until all tests pass.
-
-## Active Decisions / Considerations
-
-*   **Debugging Protocol:** A new structured debugging protocol has been implemented to ensure consistent, thorough debugging practices across the project. This includes analysis phases, systematic investigation, implementation guidelines, and documentation requirements. See `debugging-protocol.md` for details.
-*   **Singleton Pattern:** The module-level cache in `dependencies.py` acts as a singleton store. Ensure this is thread-safe if concurrent requests modify shared state (though current dependencies seem mostly read-only after initialization). For now, it simplifies dependency management across API requests and lifespan events.
-*   **Memgraph Data Mapping:** The pattern of reconstructing Pydantic models from `mgclient` node properties and labels (see `system-patterns.md`) is critical. Ensure all necessary properties are captured and types are correctly handled.
-*   **Test Coverage:** Still needs to be addressed after core functionality is stable.
+## Active Decisions/Considerations
+- The mocking strategy for graph context retrieval (`get_neighbors`) in `test_simple_engine_query_with_graph_context` needed careful adjustment to match how the implementation calls the repository (individual IDs) and aggregates results.
+- Asserting calls on mocks involving complex Pydantic objects requires careful inspection of passed arguments rather than direct object comparison, especially when IDs are dynamically generated. Using `call_count` and inspecting `await_args` or `call_args` is more robust.
 
 ## Blockers
 - **Memgraph Query Error:** `mgclient.Column object is not subscriptable`. Investigation needed (library update/wrapper). - *This might be resolved by recent refactoring, needs confirmation.*
