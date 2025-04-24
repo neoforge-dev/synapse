@@ -1,13 +1,14 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Query
+from fastapi import APIRouter, HTTPException, status, Depends, Query, Response
 from fastapi.responses import StreamingResponse
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Annotated
 import json # Import json for NDJSON serialization
+import inspect
 
 from graph_rag.api import schemas
-from graph_rag.api.dependencies import GraphRAGEngineDep
-from graph_rag.core.interfaces import SearchResultData
-from graph_rag.api.dependencies import LLMServiceDep
+from graph_rag.api.dependencies import get_graph_rag_engine, get_graph_repository
+from graph_rag.core.interfaces import SearchResultData, GraphRAGEngine
+from graph_rag.core.graph_rag_engine import QueryResult # Import QueryResult
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -29,7 +30,7 @@ def create_search_router() -> APIRouter:
     )
     async def perform_search(
         request: schemas.SearchQueryRequest,
-        engine: GraphRAGEngineDep,
+        engine: Annotated[GraphRAGEngine, Depends(get_graph_rag_engine)],
     ) -> schemas.SearchQueryResponse:
         """Search for chunks based on the query and search type."""
         logger.info(f"Received search request: {request.model_dump()}")
@@ -91,69 +92,103 @@ def create_search_router() -> APIRouter:
     )
     async def unified_search(
         request: schemas.SearchQueryRequest,
-        engine: GraphRAGEngineDep,
+        engine: Annotated[GraphRAGEngine, Depends(get_graph_rag_engine)],
+        graph_store = Depends(get_graph_repository),
         stream: bool = Query(False, description="Whether to stream results as NDJSON")
     ):
         """Performs context retrieval using the GraphRAGEngine, supporting batch and streaming."""
         logger.info(f"Received search request: query='{request.query}', type='{request.search_type}', limit={request.limit}, stream={stream}")
 
-        async def format_result(r: SearchResultData) -> schemas.SearchResultSchema:
-            chunk_schema = schemas.ChunkResultSchema(
-                id=r.chunk.id,
-                text=r.chunk.text,
-                document_id=r.chunk.document_id
-            )
-            doc_schema = None
-            if r.document:
-                doc_schema = schemas.DocumentResultSchema(
-                    id=r.document.id,
-                    metadata=r.document.metadata
-                )
-            return schemas.SearchResultSchema(
-                chunk=chunk_schema,
-                score=r.score,
-                document=doc_schema
-            )
-
         try:
             if stream:
-                # Assume engine has a stream_context method that returns an async generator
-                async def stream_results():
+                # SimpleGraphRAGEngine doesn't support streaming currently
+                logger.warning(f"Streaming search requested for '{request.query}', but not implemented by the current engine.")
+                
+                # Set up streaming response
+                async def stream_search_results():
                     try:
-                        async for result in await engine.stream_context(
-                            query=request.query, 
-                            search_type=request.search_type,
-                            limit=request.limit
-                        ):
-                            formatted = await format_result(result)
-                            yield json.dumps(formatted.model_dump()) + "\n"
-                        logger.info(f"Streaming search completed for '{request.query}'.")
+                        # Use stream_context if available
+                        result_iter = engine.stream_context(request.query, request.search_type, request.limit)
+                        if inspect.iscoroutine(result_iter):
+                            result_iter = await result_iter
+                        async for chunk in result_iter:
+                            # Convert chunk to API schema
+                            chunk_schema = schemas.ChunkResultSchema(
+                                id=chunk.id,
+                                text=chunk.text,
+                                document_id=chunk.document_id
+                            )
+                            
+                            # Create search result
+                            result = schemas.SearchResultSchema(
+                                chunk=chunk_schema,
+                                score=chunk.score if hasattr(chunk, 'score') else 0.0,
+                                document=None  # Omit document for streaming responses
+                            ).model_dump()
+                            
+                            # Yield as JSON lines
+                            yield json.dumps(result) + "\n"
                     except Exception as e:
-                         logger.error(f"Error during search streaming for query '{request.query}': {e}", exc_info=True)
-                         # Yielding an error message might be complex with NDJSON, 
-                         # often connection is just closed. Logging is crucial.
-                         # Consider adding a specific error message format if needed.
-                         # yield json.dumps({"error": "Internal server error during streaming"}) + "\n" 
-                         # For now, just log and let the stream end.
-            
-                return StreamingResponse(stream_results(), media_type="application/x-ndjson")
+                        logger.error(f"Error in streaming response: {e}", exc_info=True)
+                        yield json.dumps({"error": str(e)}) + "\n"
+                
+                return StreamingResponse(
+                    stream_search_results(),
+                    media_type="application/x-ndjson"
+                )
             
             else: # Batch processing
-                results: List[SearchResultData] = await engine.retrieve_context(
-                    query=request.query, 
-                    search_type=request.search_type,
-                    limit=request.limit
+                # Call engine.query with positional query text and config
+                query_result: QueryResult = await engine.query(
+                    request.query,
+                    config={
+                        "k": request.limit,
+                        "search_type": request.search_type,
+                        "include_graph": False
+                    }
                 )
-                
+
+                # FIXED: Directly map domain Chunk objects to API schema objects
+                # This avoids the SearchResultData validation error
                 response_results = []
-                for r in results:
-                    response_results.append(await format_result(r))
+                for chunk in query_result.relevant_chunks:
+                    # Create ChunkResultSchema directly from Chunk properties
+                    chunk_schema = schemas.ChunkResultSchema(
+                        id=chunk.id,
+                        text=chunk.text,
+                        document_id=chunk.document_id
+                    )
+                    
+                    # Create SearchResultSchema with proper document information
+                    # Try to get the document from graph store to include its metadata
+                    try:
+                        document = await graph_store.get_document_by_id(chunk.document_id)
+                        doc_schema = schemas.DocumentResultSchema(
+                            id=document["id"],
+                            metadata=document["metadata"]
+                        ) if document else None
+                        # ---- START DEBUG LOGGING ----
+                        logger.info(f"DEBUG: Document ID {chunk.document_id} -> Fetched document: {document}")
+                        logger.info(f"DEBUG: Document ID {chunk.document_id} -> Created doc_schema: {doc_schema}")
+                        # ---- END DEBUG LOGGING ----
+                    except Exception as e:
+                        logger.warning(f"Failed to get document {chunk.document_id}: {e}")
+                        doc_schema = None
+                    
+                    search_result = schemas.SearchResultSchema(
+                        chunk=chunk_schema,
+                        score=chunk.score if hasattr(chunk, 'score') else 0.0,  # Use chunk score if available
+                        document=doc_schema  # Include document information if available
+                    )
+                    response_results.append(search_result)
                 
                 logger.info(f"Search for '{request.query}' ({request.search_type}) returned {len(response_results)} results.")
                 return schemas.SearchQueryResponse(
                     query=request.query, 
-                    search_type=request.search_type,
-                    results=response_results
+                    search_type=request.search_type, 
+                    results=response_results,
+                    llm_response=query_result.llm_response,
+                    graph_context=query_result.graph_context if isinstance(query_result.graph_context, str) else ""
                 )
             
         except ValueError as ve:
@@ -174,6 +209,104 @@ def create_search_router() -> APIRouter:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Search failed due to an internal server error."
             )
+
+    @router.post(
+        "/batch",
+        response_model=List[schemas.SearchQueryResponse],
+        summary="Batch Search Processing",
+        description="Process multiple search queries in a single request."
+    )
+    async def batch_search(
+        request: schemas.SearchBatchQueryRequest,
+        engine: Annotated[GraphRAGEngine, Depends(get_graph_rag_engine)],
+        response: Response,
+        graph_store = Depends(get_graph_repository),
+    ) -> List[schemas.SearchQueryResponse]:
+        """Process multiple search queries in a single batch request."""
+        logger.info(f"Received batch search request with {len(request.queries)} queries")
+        
+        results = []
+        any_failed = False
+        for query_request in request.queries:
+            status_code = status.HTTP_200_OK
+            error_detail = None
+            query_response = None
+            try:
+                # Use the engine's query method for each query in the batch
+                query_result: QueryResult = await engine.query(
+                    query_text=query_request.query,
+                    config={
+                        "k": query_request.limit,
+                        "search_type": query_request.search_type,
+                        "include_graph": False  # Default for batch endpoint
+                    }
+                )
+                
+                # Transform the query results into the expected response format
+                response_results = []
+                for chunk in query_result.relevant_chunks:
+                    # Create schema objects from chunk data
+                    chunk_schema = schemas.ChunkResultSchema(
+                        id=chunk.id,
+                        text=chunk.text,
+                        document_id=chunk.document_id
+                    )
+                    
+                    # Create search result with score from the chunk
+                    search_result = schemas.SearchResultSchema(
+                        chunk=chunk_schema,
+                        score=chunk.score if hasattr(chunk, 'score') else 0.0,
+                        document=None  # Document details not included in batch responses
+                    )
+                    response_results.append(search_result)
+                
+                # Create the response for this query
+                query_response = schemas.SearchQueryResponse(
+                    query=query_request.query,
+                    search_type=query_request.search_type,
+                    results=response_results,
+                    llm_response=query_result.llm_response,
+                    graph_context=query_result.graph_context if isinstance(query_result.graph_context, str) else ""
+                )
+                
+                
+            except Exception as e:
+                logger.error(f"Error processing query '{query_request.query}': {e}", exc_info=True)
+                # Add a failed response for this query and mark partial failure
+                any_failed = True
+                status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+                error_detail = schemas.ErrorDetail(message=str(e), type=type(e).__name__)
+                # Create a failed response object
+                query_response = schemas.SearchQueryResponse(
+                    query=query_request.query,
+                    search_type=query_request.search_type,
+                    results=[],
+                    llm_response="",
+                    graph_context=""
+                )
+                
+            # Add status_code and error to the response object
+            if query_response:
+                query_response.status_code = status_code
+                query_response.error = error_detail
+                results.append(query_response)
+            else:
+                # Handle unexpected case where query_response is None
+                logger.error(f"Unexpected error: query_response is None for query '{query_request.query}'")
+                results.append(schemas.SearchQueryResponse(
+                    query=query_request.query,
+                    search_type=query_request.search_type,
+                    results=[],
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    error=schemas.ErrorDetail(message="Internal server error: Failed to generate response.")
+                ))
+                any_failed = True # Ensure multi-status is set
+                
+        logger.info(f"Batch search completed with {len(results)} results")
+        # If any query failed, use 207 Multi-Status
+        if any_failed:
+            response.status_code = status.HTTP_207_MULTI_STATUS
+        return results
 
     return router # Return the configured router instance
 

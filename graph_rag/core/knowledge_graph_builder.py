@@ -29,7 +29,7 @@ class SimpleKnowledgeGraphBuilder(KnowledgeGraphBuilder):
         self._graph_store = graph_store
         logger.info(f"KnowledgeGraphBuilder initialized with graph store: {type(graph_store).__name__}")
 
-    def build(self, processed_document: ProcessedDocument):
+    async def build(self, processed_document: ProcessedDocument):
         """Adds the document's entities and relationships to the graph store."""
         doc_id = processed_document.id
         entities = processed_document.entities
@@ -43,7 +43,7 @@ class SimpleKnowledgeGraphBuilder(KnowledgeGraphBuilder):
         
         try:
             # Use the bulk add method for efficiency
-            self._graph_store.add_entities_and_relationships(entities, relationships)
+            await self._graph_store.add_entities_and_relationships(entities, relationships)
             logger.info(f"Successfully added entities/relationships from document {doc_id} to graph store.")
         except Exception as e:
             logger.error(f"Failed to add entities/relationships from document {doc_id} to graph store: {e}", exc_info=True)

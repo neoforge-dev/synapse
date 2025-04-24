@@ -79,7 +79,7 @@ test-memgraph: ## Run Memgraph integration tests (requires Memgraph running)
 test-integration:
 	@echo "Running integration tests..."
 	# Set the env var to allow memgraph_connection fixture to run
-	RUNNING_INTEGRATION_TESTS=true pytest -m integration -vv
+	RUNNING_INTEGRATION_TESTS=true $(UV) run pytest -m integration -vv
 
 test-all: test test-memgraph ## Run all tests (unit + integration, requires Memgraph running)
 	@echo "INFO: All tests passed (assuming Memgraph was running for integration tests)."

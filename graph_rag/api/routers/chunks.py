@@ -4,7 +4,8 @@ from graph_rag.domain.models import Chunk, Entity, Relationship
 from graph_rag.api.schemas import (
     ChunkResultSchema, CreateResponse, ErrorDetail
 )
-from graph_rag.api.dependencies import GraphRepositoryDep # This uses MemgraphRepository now
+from graph_rag.api.dependencies import get_graph_repository
+from graph_rag.core.interfaces import GraphRepository
 import logging
 import uuid
 
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 )
 async def create_chunk(
     chunk_in: ChunkResultSchema,
-    repo: GraphRepositoryDep
+    repo: Annotated[GraphRepository, Depends(get_graph_repository)]
 ):
     """Create a new chunk node in the graph."""
     chunk_id = chunk_in.id
@@ -46,7 +47,7 @@ async def create_chunk(
 @router.get("/by_document/{document_id}", response_model=List[ChunkResultSchema])
 async def get_chunks_by_document(
     document_id: str,
-    repo: GraphRepositoryDep
+    repo: Annotated[GraphRepository, Depends(get_graph_repository)]
 ):
     """Retrieve all chunks associated with a specific document ID."""
     logger.info(f"Attempting to retrieve chunks for document {document_id}")
@@ -75,7 +76,7 @@ async def get_chunks_by_document(
     description="Retrieves all chunk nodes from the graph. Warning: potentially large response."
 )
 async def list_all_chunks(
-    repo: GraphRepositoryDep,
+    repo: Annotated[GraphRepository, Depends(get_graph_repository)],
     limit: Optional[int] = Query(100, description="Limit the number of chunks returned", ge=1, le=1000)
 ):
     """Fetches all chunks, potentially paginated or limited."""
@@ -97,7 +98,7 @@ async def list_all_chunks(
 )
 async def get_chunk(
     chunk_id: str,
-    repo: GraphRepositoryDep
+    repo: Annotated[GraphRepository, Depends(get_graph_repository)]
 ):
     """Retrieve a specific chunk by its unique ID."""
     chunk_entity = await repo.get_entity_by_id(chunk_id)

@@ -2,6 +2,7 @@ import pytest
 import uuid
 from typing import List, Dict, Any
 from unittest.mock import MagicMock, AsyncMock, patch, call
+from pytest_mock import MockerFixture
 
 # Domain Models
 from graph_rag.domain.models import Document, Chunk, Relationship, Entity, Edge
@@ -9,22 +10,18 @@ from graph_rag.domain.models import Document, Chunk, Relationship, Entity, Edge
 # Core Components
 from graph_rag.core.document_processor import DocumentProcessor, ChunkSplitter
 from graph_rag.core.entity_extractor import EntityExtractor
-from graph_rag.core.graph_store import GraphStore
-from graph_rag.services.embedding import EmbeddingService
+from graph_rag.core.interfaces import EmbeddingService, VectorStore, GraphRepository
+from graph_rag.core.document_processor import SimpleDocumentProcessor
 
 # Service Under Test
 from graph_rag.services.ingestion import IngestionService, IngestionResult
-
-# Default implementation for chunk splitting (if needed for some tests)
-from graph_rag.core.document_processor import SimpleDocumentProcessor
 
 # -- Fixtures --
 
 @pytest.fixture
 def mock_graph_repository() -> AsyncMock:
-    # """Mock GraphStore (repository)."""
-    "Mock GraphStore (repository)."
-    mock = AsyncMock(spec=GraphStore)
+    """Mock GraphRepository."""
+    mock = AsyncMock(spec=GraphRepository)
     
     # Configure add_document to return an awaitable None
     async def mock_add_document(document: Document) -> None:
@@ -52,12 +49,18 @@ def mock_graph_repository() -> AsyncMock:
 @pytest.fixture
 def mock_embedding_service() -> MagicMock:
     "Mock EmbeddingService."
-    mock = MagicMock(spec=EmbeddingService)
+    # mock = MagicMock(spec=EmbeddingService)
     # Configure the mock object to have an 'encode' method
-    encode_mock = MagicMock()
+    # encode_mock = MagicMock()
     # Simulate returning embeddings based on input text length for simplicity
-    encode_mock.side_effect = lambda texts: [[0.1 * len(text)] * 5 for text in texts]
-    mock.encode = encode_mock # Assign the configured mock method
+    # encode_mock.side_effect = lambda texts: [[0.1 * len(text)] * 5 for text in texts]
+    # mock.encode = encode_mock # Assign the configured mock method
+    # Use AsyncMock for the encode method as it's awaited
+    mock = AsyncMock(spec=EmbeddingService)
+    async def mock_encode(texts: List[str]) -> List[List[float]]:
+        # Simple mock: return dummy embeddings
+        return [[0.1 * len(text)] * 5 for text in texts]
+    mock.encode = mock_encode
     return mock
 
 @pytest.fixture
@@ -99,6 +102,15 @@ def mock_entity_extractor() -> MagicMock:
 def sample_text() -> str:
     return "Alice lives in Wonderland. Bob works at OpenAI."
 
+@pytest.fixture
+def mock_vector_store(mocker: MockerFixture):
+    """Fixture for a mocked VectorStore."""
+    mock = mocker.Mock(spec=VectorStore)
+    # Add any necessary default mock behaviors here if needed, e.g.:
+    # mock.add_chunks = mocker.AsyncMock()
+    # mock.search = mocker.AsyncMock(return_value=[]) 
+    return mock
+
 # -- Tests --
 
 @pytest.mark.asyncio
@@ -108,6 +120,7 @@ async def test_ingest_document_creates_document(
     mock_chunk_splitter: MagicMock,
     mock_document_processor: MagicMock, # Add necessary mocks
     mock_entity_extractor: MagicMock, # Add necessary mocks
+    mock_vector_store: MagicMock, # Add vector store mock
     sample_text: str
 ):
     # """Test that ingestion creates a document node with the right content."""
@@ -118,7 +131,8 @@ async def test_ingest_document_creates_document(
         entity_extractor=mock_entity_extractor, # Pass the mock
         graph_store=mock_graph_repository, 
         embedding_service=mock_embedding_service, 
-        chunk_splitter=mock_chunk_splitter
+        chunk_splitter=mock_chunk_splitter,
+        vector_store=mock_vector_store # Pass vector store mock
     )
     document_id = str(uuid.uuid4())
     metadata = {"source": "test_doc"}
@@ -145,6 +159,7 @@ async def test_ingest_document_creates_chunks_with_embeddings(
     mock_chunk_splitter: MagicMock, 
     mock_document_processor: MagicMock,
     mock_entity_extractor: MagicMock,
+    mock_vector_store: MagicMock, # Add vector store mock
     sample_text: str
 ):
     # """Test that ingestion creates chunks with embeddings by default."""
@@ -155,7 +170,8 @@ async def test_ingest_document_creates_chunks_with_embeddings(
         entity_extractor=mock_entity_extractor,
         graph_store=mock_graph_repository, 
         embedding_service=mock_embedding_service, 
-        chunk_splitter=mock_chunk_splitter
+        chunk_splitter=mock_chunk_splitter,
+        vector_store=mock_vector_store # Pass vector store mock
     )
     document_id = str(uuid.uuid4())
     metadata = {"source": "test_chunks_embed"}
@@ -182,6 +198,7 @@ async def test_ingest_document_skips_embeddings(
     mock_chunk_splitter: MagicMock, 
     mock_document_processor: MagicMock,
     mock_entity_extractor: MagicMock,
+    mock_vector_store: MagicMock, # Add vector store mock
     sample_text: str
 ):
     # """Test that ingestion skips embedding generation when flag is False."""
@@ -192,7 +209,8 @@ async def test_ingest_document_skips_embeddings(
         entity_extractor=mock_entity_extractor,
         graph_store=mock_graph_repository, 
         embedding_service=mock_embedding_service, 
-        chunk_splitter=mock_chunk_splitter
+        chunk_splitter=mock_chunk_splitter,
+        vector_store=mock_vector_store # Pass vector store mock
     )
     document_id = str(uuid.uuid4())
     metadata = {"source": "test_skip_embed"}
@@ -217,6 +235,7 @@ async def test_ingest_document_creates_relationships(
     mock_chunk_splitter: MagicMock, 
     mock_document_processor: MagicMock,
     mock_entity_extractor: MagicMock,
+    mock_vector_store: MagicMock, # Add vector store mock
     sample_text: str
 ):
     # """Test that ingestion creates relationships between the document and its chunks."""
@@ -227,7 +246,8 @@ async def test_ingest_document_creates_relationships(
         entity_extractor=mock_entity_extractor,
         graph_store=mock_graph_repository, 
         embedding_service=mock_embedding_service, 
-        chunk_splitter=mock_chunk_splitter
+        chunk_splitter=mock_chunk_splitter,
+        vector_store=mock_vector_store # Pass vector store mock
     )
     document_id = str(uuid.uuid4())
     metadata = {"source": "test_rels"}
@@ -251,7 +271,8 @@ async def test_ingest_document_returns_ingestion_result(
     mock_embedding_service: MagicMock, 
     mock_chunk_splitter: MagicMock,
     mock_document_processor: MagicMock,
-    mock_entity_extractor: MagicMock
+    mock_entity_extractor: MagicMock,
+    mock_vector_store: MagicMock # Add vector store mock
 ):
     # """Test that the service returns a proper IngestionResult with counts."""
     "Test that the service returns a proper IngestionResult with counts."
@@ -261,7 +282,8 @@ async def test_ingest_document_returns_ingestion_result(
         entity_extractor=mock_entity_extractor,
         graph_store=mock_graph_repository, 
         embedding_service=mock_embedding_service, 
-        chunk_splitter=mock_chunk_splitter
+        chunk_splitter=mock_chunk_splitter,
+        vector_store=mock_vector_store # Pass vector store mock
     )
     document_id = str(uuid.uuid4())
     content = "Test content for result."
@@ -292,7 +314,8 @@ async def test_ingest_handles_custom_chunk_size(
     # We need a real splitter or a better mock to test this properly
     # mock_chunk_splitter: MagicMock, 
     mock_document_processor: MagicMock,
-    mock_entity_extractor: MagicMock
+    mock_entity_extractor: MagicMock,
+    mock_vector_store: MagicMock # Add vector store mock
 ):
     # """Test that ingestion respects custom chunk size parameter ( conceptual - needs better splitter mock )."""
     "Test that ingestion respects custom chunk size parameter ( conceptual - needs better splitter mock )."
@@ -305,7 +328,8 @@ async def test_ingest_handles_custom_chunk_size(
         entity_extractor=mock_entity_extractor,
         graph_store=mock_graph_repository, 
         embedding_service=mock_embedding_service, 
-        chunk_splitter=real_splitter # Use the real splitter
+        chunk_splitter=real_splitter, # Use the real splitter
+        vector_store=mock_vector_store # Pass vector store mock
     )
     document_id = str(uuid.uuid4())
     long_text = "word " * 100  # 100 words
@@ -328,20 +352,21 @@ async def test_ingest_handles_custom_chunk_size(
 # Test fixture for IngestionService instance (optional, can use mocks directly)
 @pytest.fixture
 def ingestion_service(
-    mock_document_processor: MagicMock,
-    mock_entity_extractor: MagicMock,
-    mock_graph_repository: AsyncMock,
-    mock_embedding_service: MagicMock,
-    mock_chunk_splitter: MagicMock
-) -> IngestionService:
-    # """Provides an IngestionService instance with standard mocks."""
-    "Provides an IngestionService instance with standard mocks."
+    mock_document_processor,
+    mock_entity_extractor,
+    mock_graph_repository, # Use repo mock
+    mock_embedding_service,
+    mock_chunk_splitter,
+    mock_vector_store
+):
+    """Fixture to create an IngestionService instance with mock dependencies."""
     return IngestionService(
         document_processor=mock_document_processor,
         entity_extractor=mock_entity_extractor,
-        graph_store=mock_graph_repository,
+        graph_store=mock_graph_repository, # Use repo mock
         embedding_service=mock_embedding_service,
-        chunk_splitter=mock_chunk_splitter
+        chunk_splitter=mock_chunk_splitter,
+        vector_store=mock_vector_store
     )
 
 # Tests using the ingestion_service fixture

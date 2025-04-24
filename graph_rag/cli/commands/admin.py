@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 def check_health(
     api_url: str = typer.Option(HEALTH_URL, help="URL of the health check API endpoint.")
 ):
-    """Check the health status of the GraphRAG API."""
+    """Check the health status of the Synapse API."""
     logger.info(f"Checking API health at {api_url}...")
     
     try:

@@ -18,7 +18,7 @@ class SentenceTransformerEmbeddingService(EmbeddingService): # Implement the pro
     _model: SentenceTransformer
     _model_name: str
 
-    def __init__(self, model_name: str = settings.EMBEDDING_MODEL):
+    def __init__(self, model_name: str = settings.vector_store_embedding_model):
         self._model_name = model_name
         self._load_model() # Load model on initialization
 

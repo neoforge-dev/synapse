@@ -3,6 +3,7 @@ from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock # Import patch
 import json
 from pathlib import Path # Import Path
+from unittest.mock import AsyncMock
 
 # Import the Typer app instance
 from graph_rag.cli.main import app
@@ -12,47 +13,60 @@ runner = CliRunner()
 # --- Ingest Command Tests ---
 
 # Mock the function directly called by the CLI command
-@patch('graph_rag.cli.commands.ingest.process_and_store_document')
-@patch('graph_rag.cli.commands.ingest.typer.Exit')  # Mock typer.Exit
-@patch('graph_rag.cli.commands.ingest.MemgraphRepository') # <<< ADD THIS PATCH
-def test_ingest_document_file_success(mock_memgraph_repo, mock_exit, mock_process_and_store, tmp_path):
-    """Test successful ingestion via file path argument."""
+@patch("graph_rag.cli.commands.ingest.process_and_store_document", new_callable=AsyncMock)
+@patch("graph_rag.cli.commands.ingest.SimpleDocumentProcessor")
+@patch("graph_rag.cli.commands.ingest.SpacyEntityExtractor")
+@patch("graph_rag.cli.commands.ingest.MemgraphGraphRepository")  # Corrected class name
+@patch('graph_rag.cli.commands.ingest.typer.echo') # Mock echo to check output
+def test_ingest_document_file_success(
+    mock_echo,
+    mock_repo,
+    mock_extractor,
+    mock_processor,
+    mock_process_and_store,
+    tmp_path
+):
+    """Test successful ingestion via file path argument using CliRunner."""
     # Create temporary file
     test_file = tmp_path / "test_doc.txt"
     test_file.write_text("Content from file.")
     metadata_dict = {"source": "cli-test"}
     metadata_json = json.dumps(metadata_dict)
 
-    # Configure the mock to simulate successful processing
-    mock_process_and_store.return_value = None # Assume it returns None on success
+    # Configure the mock IngestionResult object
+    mock_result = MagicMock()
+    mock_result.document_id = str(test_file)
+    mock_result.num_chunks = 5
+    mock_process_and_store.return_value = mock_result
 
-    # Optional: Configure the patched MemgraphRepository mock if needed
-    # mock_memgraph_repo.return_value = AsyncMock() # Example
+    # Run the command using CliRunner
+    result = runner.invoke(
+        app,
+        [
+            "ingest",
+            str(test_file), # Pass path as string argument
+            "--metadata",
+            metadata_json,
+        ],
+    )
 
-    try:
-        # Run the command directly
-        from graph_rag.cli.commands.ingest import ingest
-        ingest(file_path=str(test_file), metadata=metadata_json)
-        
-        # Verify mocks were called as expected
-        mock_exit.assert_not_called()
-        mock_process_and_store.assert_called_once()
-        # Access the actual arguments passed to the mocked process_and_store_document
-        call_args_list = mock_process_and_store.call_args_list
-        assert len(call_args_list) == 1
-        args, kwargs = call_args_list[0]
-        
-        assert isinstance(args[0], Path) and str(args[0]) == str(test_file) # Check Path object
-        assert args[1] == metadata_dict # Check parsed metadata dict
-        # Check the other args (repo, processor, extractor) if necessary, 
-        # though they are instantiated within the (patched) ingest command context
-        # assert isinstance(args[2], MagicMock) # Should be the mock_memgraph_repo instance
+    # Print result for debugging
+    print(f"CLI Runner Result (Success Test):\nExit Code: {result.exit_code}\nOutput:\n{result.stdout}\nException:\n{result.exception}")
 
-    except Exception as e:
-        pytest.fail(f"Test failed with exception: {e}")
+    # Verify mocks were called as expected
+    assert result.exit_code == 0, f"CLI command failed unexpectedly: {result.stdout}"
+    mock_process_and_store.assert_called_once()
 
-# Remove the old test_ingest_document_content_success as --content is gone
-# The old test_ingest_document_file_success is adapted above.
+    # Check arguments passed to process_and_store_document
+    call_args, call_kwargs = mock_process_and_store.call_args
+    assert isinstance(call_args[0], Path) and str(call_args[0]) == str(test_file)
+    assert call_args[1] == metadata_dict
+
+    # Check output message
+    mock_echo.assert_called_with(f"Successfully ingested {test_file} (document ID: {mock_result.document_id}, chunks: {mock_result.num_chunks})")
+
+    # Mock exit should not be called in success case
+    # mock_exit is removed
 
 def test_ingest_document_no_input():
     """Test calling ingest without the required file_path argument."""
@@ -63,33 +77,45 @@ def test_ingest_document_no_input():
 
 # Remove the old test_ingest_document_both_inputs as it's no longer relevant
 
-@patch('graph_rag.cli.commands.ingest.typer.Exit') # Mock typer.Exit
-def test_ingest_document_invalid_metadata(mock_exit, tmp_path):
-    """Test calling ingest with invalid JSON in metadata."""
+@patch("graph_rag.cli.commands.ingest.process_and_store_document", new_callable=AsyncMock)
+@patch('graph_rag.cli.commands.ingest.typer.echo') # Mock echo to check error output
+def test_ingest_document_invalid_metadata(mock_echo, mock_process_and_store, tmp_path):
+    """Test calling ingest with invalid JSON in metadata using CliRunner."""
     # Create a dummy file as it's required
     test_file = tmp_path / "dummy.txt"
     test_file.touch()
+    invalid_metadata = "{invalid-json"
 
-    try:
-        # Run the command directly
-        from graph_rag.cli.commands.ingest import ingest
-        ingest(file_path=str(test_file), metadata="{invalid-json")
-        pytest.fail("Expected the command to fail with invalid JSON")
-    except Exception:
-        # Should have tried to exit with non-zero code
-        mock_exit.assert_called_once()
-        assert mock_exit.call_args[0][0] != 0
+    # Run the command using CliRunner
+    result = runner.invoke(
+        app,
+        [
+            "ingest",
+            str(test_file),
+            "--metadata",
+            invalid_metadata,
+        ],
+    )
+
+    # Print result for debugging
+    print(f"CLI Runner Result (Invalid Metadata Test):\nExit Code: {result.exit_code}\nOutput:\n{result.stdout}\nException:\n{result.exception}")
+
+    # Check exit code and error message
+    assert result.exit_code != 0, "Command should have failed with invalid JSON"
+    mock_echo.assert_any_call("Error: Invalid JSON in metadata")
+    # process_and_store should not be called if metadata parsing fails
+    mock_process_and_store.assert_not_called()
 
 # --- Search Command Tests ---
 
-@patch('graph_rag.cli.commands.search.httpx.Client')
-@patch('graph_rag.cli.commands.search.typer.Exit')  # Mock typer.Exit
-def test_search_batch_success(mock_exit, mock_httpx_client):
-    """Test successful batch search."""
+@patch('graph_rag.cli.commands.search.HTTPClient')
+@patch('graph_rag.cli.commands.search.typer.echo') # Mock echo for output check
+def test_search_batch_success(mock_echo, mock_httpx_client):
+    """Test successful batch search using CliRunner."""
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
-        "query": "test query", "search_type": "vector", "results": [{"chunk": {"id": "c1", "text": "chunk1", "metadata":{}}, "score": 0.9}] # Added score/text/metadata for validation
+        "query": "test query", "search_type": "vector", "results": [{"chunk": {"id": "c1", "text": "chunk1", "metadata":{}}, "score": 0.9}]
     }
     mock_response.raise_for_status.return_value = None
     mock_client_instance = MagicMock()
@@ -99,24 +125,36 @@ def test_search_batch_success(mock_exit, mock_httpx_client):
     mock_context_manager.__exit__.return_value = None
     mock_httpx_client.return_value = mock_context_manager
 
-    try:
-        # Run the command directly with explicit URL (bypassing typer.Option)
-        from graph_rag.cli.commands.search import search_query
-        search_query(
-            query="test query", 
-            search_type="vector", 
-            limit=5, 
-            stream=False,
-            api_url="http://localhost:8000/api/v1/search/query"
-        )
-        
-        # Verify expected behavior
-        mock_exit.assert_not_called()
-        mock_client_instance.post.assert_called_once()
-        call_args = mock_client_instance.post.call_args
-        assert "http://localhost:8000/api/v1/search/query?stream=false" in str(call_args)
-    except Exception as e:
-        pytest.fail(f"Test failed with exception: {e}")
+    # Use CliRunner to invoke the search command
+    result = runner.invoke(
+        app,
+        [
+            "search",
+            "test query",
+            "--type",
+            "vector",
+            "--limit",
+            "5"
+            # Use default API URL from the command definition
+        ]
+    )
+
+    # Print result for debugging
+    print(f"CLI Runner Result (Search Batch Success Test):\nExit Code: {result.exit_code}\nOutput:\n{result.stdout}\nException:\n{result.exception}")
+
+    # Verify expected behavior
+    assert result.exit_code == 0, f"CLI command failed unexpectedly: {result.stdout}"
+    mock_client_instance.post.assert_called_once()
+    call_args, call_kwargs = mock_client_instance.post.call_args
+    # Check URL and payload
+    assert call_args[0].startswith("http://localhost:8000/api/v1/search/query")
+    assert "stream=false" in call_args[0]
+    expected_payload = {"query": "test query", "search_type": "vector", "limit": 5}
+    assert call_kwargs["json"] == expected_payload
+    # Check that the JSON output was printed (mocking typer.echo or print needed)
+    # Instead of mocking print, we check stdout contains the expected JSON structure
+    assert '"query": "test query"' in result.stdout
+    assert '"results":' in result.stdout
 
 @patch('graph_rag.cli.commands.search.httpx.stream') # Mock stream function
 @patch('graph_rag.cli.commands.search.typer.Exit')  # Mock typer.Exit
@@ -139,24 +177,109 @@ def test_search_stream_success(mock_exit, mock_httpx_stream):
     mock_stream_context_manager.__exit__.return_value = None
     mock_httpx_stream.return_value = mock_stream_context_manager
 
-    try:
-        # Run the command directly with explicit URL (bypassing typer.Option)
-        from graph_rag.cli.commands.search import search_query
-        search_query(
-            query="stream test", 
-            search_type="vector", 
-            limit=10, 
-            stream=True,
-            api_url="http://localhost:8000/api/v1/search/query"
-        )
-        
-        # Verify expected behavior
-        mock_exit.assert_not_called()
-        mock_httpx_stream.assert_called_once()
-        call_args = mock_httpx_stream.call_args
-        assert "http://localhost:8000/api/v1/search/query?stream=true" in str(call_args)
-    except Exception as e:
-        pytest.fail(f"Test failed with exception: {e}")
+    # Use CliRunner to invoke the search command
+    result = runner.invoke(
+        app,
+        [
+            "search",
+            "stream test",
+            "--type",
+            "vector",
+            "--limit",
+            "10",
+            "--stream" # Add the stream flag
+        ]
+    )
+
+    # Print result for debugging
+    print(f"CLI Runner Result (Search Stream Success Test):\nExit Code: {result.exit_code}\nOutput:\n{result.stdout}\nException:\n{result.exception}")
+
+    # Verify expected behavior
+    assert result.exit_code == 0, f"CLI command failed unexpectedly: {result.stdout}"
+    mock_exit.assert_not_called()
+    mock_httpx_stream.assert_called_once()
+    call_args, call_kwargs = mock_httpx_stream.call_args
+    # Check URL and payload
+    assert call_args[0] == "POST"
+    assert call_args[1].startswith("http://localhost:8000/api/v1/search/query")
+    assert "stream=true" in call_args[1]
+    expected_payload = {"query": "stream test", "search_type": "vector", "limit": 10}
+    assert call_kwargs["json"] == expected_payload
+    # Check stdout contains the streamed lines
+    assert '{"chunk": {"id": "s1", "text": "stream1"' in result.stdout
+    assert '{"chunk": {"id": "s2", "text": "stream2"' in result.stdout
+
+# Note: The search batch tests were using a non-existent `search batch` subcommand.
+# The actual command is `search query`. We will adapt the tests below.
+# If a distinct `search batch` command is needed later, these tests would need further changes.
+
+@patch('graph_rag.cli.commands.search.HTTPClient')
+@patch('graph_rag.cli.commands.search.typer.echo') # Mock echo to check output
+def test_search_batch_partial_failure(mock_echo, mock_httpx_client):
+    """Test search command (non-stream) with partial failure status in response."""
+    mock_response = MagicMock()
+    mock_response.status_code = 207 # Multi-Status indicates partial success/failure
+    mock_response.json.return_value = {
+        "query": "partial fail query",
+        "search_type": "vector",
+        "results": [
+            {"chunk": {"id": "ok1", "text": "ok chunk"}, "score": 0.9},
+            {"error": "Failed to process chunk xyz", "score": 0.0} # Simulate an error for one part
+        ]
+    }
+    mock_response.raise_for_status.side_effect = None # Don't raise on 207
+    mock_client_instance = MagicMock()
+    mock_client_instance.post.return_value = mock_response
+    mock_context_manager = MagicMock()
+    mock_context_manager.__enter__.return_value = mock_client_instance
+    mock_context_manager.__exit__.return_value = None
+    mock_httpx_client.return_value = mock_context_manager
+
+    # Run the command using CliRunner
+    result = runner.invoke(
+        app,
+        [
+            "search",
+            "partial fail query",
+            "--type", "vector"
+            # Use default limit and non-stream
+        ],
+    )
+
+    # Print result for debugging
+    print(f"CLI Runner Result (Search Partial Fail Test):\nExit Code: {result.exit_code}\nOutput:\n{result.stdout}\nException:\n{result.exception}")
+
+    # Check that command succeeded (exit code 0) because API call itself was okay (207)
+    # The CLI currently just prints the JSON, including errors within the results list.
+    assert result.exit_code == 0
+    # Check the output contains the JSON with the error detail
+    assert '"query": "partial fail query"' in result.stdout
+    assert '"error": "Failed to process chunk xyz"' in result.stdout
+    mock_client_instance.post.assert_called_once()
+
+@patch('graph_rag.cli.commands.search.HTTPClient')
+@patch('graph_rag.cli.commands.search.typer.Exit') # Mock Exit again
+@patch('graph_rag.cli.commands.search.typer.echo') # Mock echo
+def test_search_batch_empty_request(mock_echo, mock_exit, mock_httpx_client):
+    """Test search query command with an empty query string."""
+    # Run the command with an empty query
+    result = runner.invoke(
+        app,
+        [
+            "search",
+            "" # Empty query argument
+        ]
+    )
+
+    # Print result for debugging
+    print(f"CLI Runner Result (Search Empty Query Test):\nExit Code: {result.exit_code}\nOutput:\n{result.stdout}\nException:\n{result.exception}")
+
+    # Check that the command exited due to validation
+    mock_exit.assert_called_once_with(code=1)
+    # HTTP client should not have been called
+    mock_httpx_client.assert_not_called()
+    # echo should not have been called for printing results
+    # mock_echo.assert_not_called() # Might be called by Typer for errors, safer to not assert this
 
 # --- Admin Command Tests ---
 

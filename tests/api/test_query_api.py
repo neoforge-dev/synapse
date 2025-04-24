@@ -61,8 +61,9 @@ async def test_query_success(test_client: AsyncClient, mock_graph_rag_engine: As
     }
     
     # Configure the mock engine from conftest fixture for this test
-    async def mock_query_specific(query_text, k):
-         return DomainQueryResult(
+    async def mock_query_specific(query_text, k=None, config=None):
+        actual_k = k if k is not None else (config.get('k') if config else 5) # Handle both ways k might be passed
+        return DomainQueryResult(
             answer=f"Mocked answer about {query_text}",
             relevant_chunks=[
                 Chunk(id="alice_c1", text="Alice lives here.", document_id="doc_alice", properties={"score": 0.9}),
@@ -95,7 +96,8 @@ async def test_query_success_with_graph_context(test_client: AsyncClient, mock_g
     # Configure mock engine to return graph context
     mock_entities = [Entity(id="bob", type="Person", metadata={"name": "Bob"}), Entity(id="carol", type="Person", metadata={"name": "Carol"})]
     mock_relationships = [Relationship(id="rel1", type="FRIENDS", source_id="bob", target_id="carol")]
-    async def mock_query_with_graph(query_text, k):
+    async def mock_query_with_graph(query_text, k=None, config=None):
+        actual_k = k if k is not None else (config.get('k') if config else 2) # Handle both ways k might be passed
         return DomainQueryResult(
             answer=f"Mocked answer about {query_text} graph.",
             relevant_chunks=[Chunk(id="bob_c1", text="Bob info", document_id="d_bob", properties={"score": 0.85})],
@@ -134,9 +136,11 @@ async def test_query_engine_error(test_client: AsyncClient, mock_graph_rag_engin
     
     # Configure mock engine to raise an exception
     error_message = "Simulated engine failure"
-    mock_graph_rag_engine.query.side_effect = Exception(error_message)
+    async def raise_exception(*args, **kwargs):
+        raise Exception(error_message)
+    mock_graph_rag_engine.query.side_effect = raise_exception
     mock_graph_rag_engine.reset_mock() # Reset before call
-    mock_graph_rag_engine.query.side_effect = Exception(error_message)
+    mock_graph_rag_engine.query.side_effect = raise_exception
 
     response = await test_client.post("/api/v1/query", json=payload)
 
@@ -190,7 +194,8 @@ async def test_query_no_entities(test_client: AsyncClient, mock_graph_rag_engine
     }
 
     # Configure mock engine to return a result indicating no entities were relevant
-    async def mock_query_no_entities(query_text, k):
+    async def mock_query_no_entities(query_text, k=None, config=None):
+        actual_k = k if k is not None else (config.get('k') if config else 5)
         return DomainQueryResult(
             answer="Could not find relevant information based on entities.",
             relevant_chunks=[], # No chunks if no entities were used

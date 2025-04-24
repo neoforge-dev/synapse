@@ -42,10 +42,23 @@ class SearchQueryRequest(BaseModel):
     search_type: str = Field("vector", pattern="^(vector|keyword)$") # Enforce allowed types
     limit: int = Field(10, gt=0, le=50) # Sensible limits for results
 
+class ErrorDetail(BaseModel):
+    """Standard error response detail."""
+    message: str
+    type: Optional[str] = None
+
 class SearchQueryResponse(BaseModel):
     query: str
     search_type: str
-    results: List[SearchResultSchema]
+    results: List[SearchResultSchema] = []
+    llm_response: Optional[str] = None
+    graph_context: Optional[str] = None
+    # Fields specifically for batch responses
+    status_code: Optional[int] = None
+    error: Optional[ErrorDetail] = None
+
+class SearchBatchQueryRequest(BaseModel):
+    queries: List[SearchQueryRequest] = Field(..., min_items=1, max_items=10)  # Require at least one query, cap at 10
 
 # --- Update Schemas --- 
 # (Keep DocumentUpdateMetadata if PATCH endpoint is still planned)
@@ -93,8 +106,4 @@ class DocumentResponse(BaseModel):
 
 class DocumentMetadataUpdate(BaseModel):
     """Request model for updating document metadata. Allows arbitrary key-value pairs."""
-    properties: dict[str, Any] = Field(..., description="Metadata key-value pairs to update.")
-
-class ErrorDetail(BaseModel):
-    """Standard error response detail."""
-    detail: str 
+    properties: dict[str, Any] = Field(..., description="Metadata key-value pairs to update.") 

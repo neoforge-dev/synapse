@@ -47,9 +47,16 @@ class Settings(BaseSettings):
     # embedding_model: str = Field("mock", description="Identifier for the text embedding model/service.") # This might be redundant now
     # relationship_extractor_model: Optional[str] = Field(None, ...)
     
+    # --- Embedding Provider --- 
+    embedding_provider: str = Field("sentencetransformers", description="Provider for embedding models ('mock', 'sentencetransformers', 'openai', 'ollama'). Default: sentencetransformers")
+    
     # --- Document Processor Settings --- 
     chunk_splitter_type: str = Field("sentence", description="Type of chunk splitter to use (e.g., 'sentence', 'token').")
-    # Add specific splitter settings if needed, e.g., chunk_size, chunk_overlap
+    ingestion_chunk_size: int = Field(200, ge=50, description="Target chunk size (e.g., in tokens or sentences depending on splitter) for ingestion.")
+    ingestion_chunk_overlap: int = Field(20, ge=0, description="Number of tokens to overlap between chunks during ingestion.")
+
+    # --- Retrieval/RAG Settings ---
+    graph_context_max_tokens: int = Field(1500, ge=100, description="Maximum number of tokens for the context retrieved from the graph.")
 
     # Add other settings as needed...
 

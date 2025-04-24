@@ -43,6 +43,7 @@ class Entity(Node):
     type: str = "Entity"
     # Entities might have specific common properties, like 'name'
     # Add them here if needed, otherwise inherits properties dict from Node
+    name: Optional[str] = Field(None, description="Canonical name of the entity")
 
 
 # Type alias for clarity where Relationship is expected

@@ -1,7 +1,7 @@
 """Optimized Memgraph graph store implementation."""
 
 import logging
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, runtime_checkable
 from datetime import datetime, timezone
 import asyncio
 import uuid
@@ -24,8 +24,9 @@ from tenacity import (
 )
 
 from graph_rag.core.graph_store import GraphStore
+from graph_rag.core.interfaces import GraphRepository  # Import GraphRepository protocol
 from graph_rag.domain.models import Document, Chunk, Entity, Relationship, Node
-from graph_rag.config import get_settings
+from graph_rag.config import get_settings, Settings
 
 import mgclient
 # Import specific exceptions if needed, or catch the base mgclient.Error
@@ -65,16 +66,14 @@ class MemgraphConnectionConfig:
         self.max_retries = settings_obj.MEMGRAPH_MAX_RETRIES
         self.retry_delay = settings_obj.MEMGRAPH_RETRY_WAIT_SECONDS
 
-class MemgraphGraphRepository(GraphStore):
-    """Optimized Memgraph implementation of the GraphStore interface."""
+class MemgraphGraphRepository(GraphStore, GraphRepository):
+    """Optimized Memgraph implementation of both GraphStore and GraphRepository interfaces."""
 
-    def __init__(self, config: Optional[MemgraphConnectionConfig] = None):
+    def __init__(self, settings_obj: Optional[Settings] = None):
         """Initializes the repository, establishing connection parameters."""
-        if config is None:
-            self.config = MemgraphConnectionConfig(settings) # Use global settings if no config provided
-        else:
-            self.config = config
-        
+        if settings_obj is None:
+            settings_obj = settings # Use global settings if no settings provided
+        self.config = MemgraphConnectionConfig(settings_obj)
         self._connection: Optional[mgclient.Connection] = None # Added connection attribute
         # mgclient uses synchronous connect, connection pooling is handled internally or needs manual management
         # We don't store a persistent driver/connection object here in this sync implementation
@@ -165,8 +164,16 @@ class MemgraphGraphRepository(GraphStore):
             
             column_names = [desc.name for desc in cursor.description] if cursor.description else []
             results_raw = await loop.run_in_executor(None, cursor.fetchall)
-            dict_results = [dict(zip(column_names, row)) for row in results_raw]
-            
+            logger.debug(f"Raw results type: {type(results_raw)}, Content: {results_raw}")
+            dict_results = []
+            for row in results_raw:
+                try:
+                    logger.debug(f"Processing row type: {type(row)}, Content: {row}")
+                    dict_results.append(dict(zip(column_names, row)))
+                except TypeError as te:
+                    logger.error(f"TypeError processing row: {row}. Error: {te}", exc_info=True)
+                    raise 
+
             # Restore automatic commit
             await loop.run_in_executor(None, conn_to_use.commit) 
             logger.debug(f"Query executed and committed successfully, {len(dict_results)} results fetched. Temp: {is_temporary_connection}")
@@ -329,35 +336,34 @@ class MemgraphGraphRepository(GraphStore):
     async def add_node(self, node: Node):
         """Adds or updates a generic node to the graph using its type as the label."""
         logger.debug(f"Adding/updating node {node.id} ({node.type})")
-        # Access properties directly from the Node model instance
-        props_to_set = node.properties.copy() if node.properties else {} 
         
-        # Add/update timestamps, ensuring timezone awareness
-        created_at = node.created_at
-        if isinstance(created_at, datetime) and created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
-        # Only set created_at on create
-        # props_to_set["created_at"] = created_at 
+        # Prepare properties map
+        props_to_set = node.model_dump(exclude={'id', 'created_at', 'updated_at', 'properties'}, exclude_none=True)
+        if node.properties:
+            props_to_set.update(node.properties)
 
-        updated_at = datetime.now(timezone.utc)
-        props_to_set["updated_at"] = updated_at # Always set updated_at on match
-        
-        # Dynamically create/update node with label from node.type
+        # Timestamps
+        created_at_dt = node.created_at or datetime.now(timezone.utc)
+        if isinstance(created_at_dt, datetime) and created_at_dt.tzinfo is None:
+            created_at_dt = created_at_dt.replace(tzinfo=timezone.utc)
+        updated_at_dt = datetime.now(timezone.utc)
+        props_to_set["updated_at"] = updated_at_dt # Add/update timestamp in props
+
+        # Use SET n = props, n.created_at = $created_at, n.id = $id
         query = f"""
         MERGE (n:{escape_cypher_string(node.type)} {{id: $id}})
-        ON CREATE SET n += $props, n.created_at = $created_at
-        ON MATCH SET n += $props, n.updated_at = $updated_at
-        RETURN n
+        ON CREATE SET n = $props, n.created_at = $created_at, n.id = $id
+        ON MATCH SET n += $props
         """
         params = {
-            "id": node.id, 
+            "id": node.id,
             "props": props_to_set,
-            "created_at": created_at, # Pass explicitly for ON CREATE
-            "updated_at": updated_at  # Pass explicitly for ON MATCH
-            }
+            "created_at": created_at_dt,
+        }
+        
         try:
             await self.execute_query(query, params)
-            logger.info(f"Successfully added/updated node {node.id} with type {node.type}")
+            logger.info(f"Successfully added/updated node {node.id} ({node.type})")
         except Exception as e:
             logger.error(f"Failed to add node {node.id}: {e}", exc_info=True)
             raise
@@ -412,62 +418,96 @@ class MemgraphGraphRepository(GraphStore):
             raise
 
     async def get_node_by_id(self, node_id: str) -> Optional[Node]:
-        """Retrieves a node by its ID, reconstructing the Node model."""
-        logger.debug(f"Getting node by ID: {node_id}")
-        # Query now returns the node object itself, not just properties
-        query = "MATCH (n {id: $id}) RETURN n" 
-        params = {"id": node_id}
+        """Retrieves a node by its ID, determining its type (Document, Chunk, or Entity)."""
+        query = """
+        MATCH (n {id: $node_id})
+        RETURN n, labels(n) as labels
+        """
+        params = {"node_id": node_id}
         try:
-            result = await self.execute_query(query, params)
-            if not result:
+            results = await self.execute_query(query, params)
+            if not results:
+                logger.debug(f"Node with ID {node_id} not found.")
                 return None
-            
-            # Assuming execute_query returns [{'n': <mgclient_node>}]
-            node_obj = result[0].get("n") 
+
+            node_obj = results[0].get('n')
+            labels = results[0].get('labels', [])
+
             if not node_obj:
-                 logger.warning(f"Node object not found in query result for ID {node_id}")
+                 logger.error(f"Node object 'n' not found in query result for ID {node_id}.")
                  return None
 
-            # Extract properties and labels directly from the mgclient.Node object
-            # Use node_obj.properties and node_obj.labels
-            node_props = node_obj.properties if hasattr(node_obj, 'properties') else {}
-            labels = node_obj.labels if hasattr(node_obj, 'labels') else set()
+            node_properties = node_obj.properties.copy() if hasattr(node_obj, 'properties') else {}
+            logger.debug(f"Node {node_id} found. Raw Props from DB: {node_properties}, Labels: {labels}")
+
+            # Keep a copy of all properties before popping standard fields
+            all_properties = node_properties.copy() 
+
+            retrieved_id = node_properties.pop("id", node_id) 
+            created_at_str = node_properties.pop("created_at", None) # Pop before potential conversion
+            updated_at_str = node_properties.pop("updated_at", None) # Pop before potential conversion
+
+            # Apply type conversions (if needed, potentially using _convert_neo4j_temporal_types)
+            # For now, just parse the date strings we popped
+            created_at, updated_at = None, None
+            try:
+                created_at = isoparse(created_at_str) if isinstance(created_at_str, str) else created_at_str # Handle non-string cases
+            except (ValueError, TypeError): 
+                logger.warning(f"Could not parse created_at: {created_at_str}")
+                created_at = None # Fallback
+            try:
+                updated_at = isoparse(updated_at_str) if isinstance(updated_at_str, str) else updated_at_str # Handle non-string cases
+            except (ValueError, TypeError): 
+                logger.warning(f"Could not parse updated_at: {updated_at_str}")
+                updated_at = None # Fallback
             
-            # Find the most specific label (excluding base labels like _Node if any)
-            # Convert set to list to access by index, or iterate
-            labels_list = list(labels)
-            node_type = labels_list[0] if labels_list else "Unknown" # Simple approach
-            if len(labels_list) > 1:
-                 # Prioritize non-internal labels if needed
-                 specific_labels = [l for l in labels_list if not l.startswith('_')]
-                 if specific_labels:
-                     node_type = specific_labels[0]
-            
-            # Convert temporal types before creating Node model
-            # Apply conversion directly to the extracted properties
-            converted_props = _convert_neo4j_temporal_types(node_props) 
-            
-            # Pop base fields from props to avoid passing them to properties dict
-            node_id_prop = converted_props.pop("id", node_id) # Use ID from query param if not in props
-            created_at = converted_props.pop("created_at", None)
-            updated_at = converted_props.pop("updated_at", None)
-            # Name might be top-level or in properties, handle potential inconsistency
-            name_prop = converted_props.pop("name", None) 
-            if name_prop and "name" not in converted_props:
-                converted_props["name"] = name_prop # Put it back if it was only top-level
-                
-            # Reconstruct the Node object
-            return Node(
-                id=node_id_prop, 
-                type=node_type, 
-                properties=converted_props, # Remaining items are node-specific properties
-                created_at=created_at,
-                updated_at=updated_at
-            )
+            # Also remove popped standard fields from the all_properties dict that will be passed to the model constructor
+            all_properties.pop("id", None)
+            all_properties.pop("created_at", None)
+            all_properties.pop("updated_at", None)
+
+            # Determine type
+            node_model_type = None
+            specific_entity_type = None
+            base_labels = {"Node", "Entity", "_Node", "_Entity"}
+            if "Document" in labels: node_model_type = "Document"
+            elif "Chunk" in labels: node_model_type = "Chunk"
+            else:
+                for label in labels:
+                    if label not in base_labels:
+                        specific_entity_type = label
+                        node_model_type = "Entity"
+                        break 
+                if node_model_type is None and labels: node_model_type = "Node" 
+
+            # Pass the full 'all_properties' dict to the 'properties' argument
+            if node_model_type == "Document":
+                 # Extract specific fields needed for constructor args from the original dict
+                 content = node_properties.get('content', None) # Use get instead of pop
+                 metadata = node_properties.get('metadata', {}) # Use get instead of pop
+                 return Document(id=retrieved_id, content=content, metadata=metadata, created_at=created_at, updated_at=updated_at, properties=all_properties)
+            elif node_model_type == "Chunk":
+                 text = node_properties.get('text', None) # Use get instead of pop
+                 doc_id = node_properties.get('document_id', None) # Use get instead of pop
+                 embedding = node_properties.get('embedding', None) # Use get instead of pop
+                 return Chunk(id=retrieved_id, text=text, document_id=doc_id, embedding=embedding, created_at=created_at, updated_at=updated_at, properties=all_properties)
+            elif node_model_type == "Entity":
+                 entity_name = node_properties.get('name', None) # Use get instead of pop
+                 entity_type = specific_entity_type or "UnknownEntity"
+                 return Entity(id=retrieved_id, name=entity_name, type=entity_type, properties=all_properties, created_at=created_at, updated_at=updated_at)
+            elif node_model_type == "Node": 
+                 node_name = node_properties.get('name', None) # Use get instead of pop
+                 node_type = specific_entity_type or next((l for l in labels if l not in base_labels), None) or (labels[0] if labels else "Node")
+                 return Node(id=retrieved_id, name=node_name, type=node_type, properties=all_properties, created_at=created_at, updated_at=updated_at)
+            else:
+                 logger.warning(f"Node {retrieved_id} has no determinable type. Returning generic Node.")
+                 # Pass the original properties even for unknown types
+                 return Node(id=retrieved_id, type="Node", properties=all_properties, created_at=created_at, updated_at=updated_at)
+
         except Exception as e:
-            logger.error(f"Failed to get node by ID {node_id}: {e}", exc_info=True)
-            raise
-            
+            logger.error(f"Failed to retrieve node {node_id}: {e}", exc_info=True)
+            return None
+
     async def search_nodes_by_properties(self, properties: Dict[str, Any], node_type: Optional[str] = None, limit: int = 10) -> List[Node]:
         """Searches for nodes matching given properties, optionally filtering by type."""
         logger.debug(f"Searching nodes by properties: {properties}, type: {node_type}, limit: {limit}")
@@ -512,13 +552,12 @@ class MemgraphGraphRepository(GraphStore):
                 node_id_prop = converted_props.pop("id", None)
                 if not node_id_prop: continue # Skip nodes without ID?
                 
-                # Determine type
-                found_node_type = labels[0] if labels else "Unknown"
-                if len(labels) > 1:
-                     specific_labels = [l for l in labels if not l.startswith('_')]
-                     if specific_labels:
-                         found_node_type = specific_labels[0]
-                
+                # Determine type - Safely handle the set of labels
+                # Option 1: Get the first label if it exists
+                found_node_type = next(iter(labels), "Unknown") if labels else "Unknown"
+                # Option 2: Join labels if multiple are possible (adjust Node model if needed)
+                # found_node_type = ":".join(sorted(list(labels))) if labels else "Unknown"
+
                 created_at = converted_props.pop("created_at", None)
                 updated_at = converted_props.pop("updated_at", None)
                 name_prop = converted_props.pop("name", None) 
@@ -687,14 +726,16 @@ class MemgraphGraphRepository(GraphStore):
                 try:
                     # Ensure properties is a dict even if None initially
                     node_properties = node.properties if node.properties else {}
-                    # Extract name, default to id. Use pop to remove from dict.
-                    name = node_properties.pop("name", node.id)
-                    # Remaining items in node_properties are metadata
+                    # Extract name using get, default to id. DO NOT pop from original dict.
+                    name = node_properties.get("name", node.id)
+                    # Remaining items in node_properties are the additional properties
+                    # We should pass the full properties dict (which still includes name if present)
+                    # to the properties argument inherited from Node.
                     entity = Entity(
                         id=node.id,
-                        name=name, 
+                        name=name, # Set the direct name attribute
                         type=node.type, # Use the actual type retrieved from the node
-                        metadata=node_properties, # Pass remaining properties as metadata
+                        properties=node_properties, # Pass the full properties dict here
                         created_at=node.created_at,
                         updated_at=node.updated_at
                     )
@@ -716,119 +757,147 @@ class MemgraphGraphRepository(GraphStore):
         relationship_types: Optional[List[str]] = None,
         direction: str = "both"
     ) -> Tuple[List[Entity], List[Relationship]]:
-        """Retrieves direct neighbors of a given entity."""
-        # Build relationship pattern
-        rel_pattern = ""
-        if relationship_types:
-            # Escape each type individually before joining
-            escaped_types = [escape_cypher_string(rt) for rt in relationship_types]
-            rel_types = "|".join(escaped_types)
-            rel_pattern = f":`{rel_types}`" # Use backticks for safety with potentially special chars in types
-        
-        # Build direction pattern
-        if direction == "outgoing":
-            pattern = f"-[r{rel_pattern}]->"
-        elif direction == "incoming":
-            pattern = f"<-[r{rel_pattern}]-"
-        else:  # both
-            pattern = f"-[r{rel_pattern}]-"
+        """Retrieves neighbors and relationships for a given entity ID."""
+        logger.debug(f"Getting neighbors for entity {entity_id}, direction: {direction}, types: {relationship_types}")
 
-        # Query returns the nodes and relationship objects directly
+        # Build relationship type filter string
+        rel_type_filter = ""
+        if relationship_types:
+            # Escape and format types for the query
+            formatted_types = [f":`{t}`" for t in relationship_types]
+            rel_type_filter = "|".join(formatted_types)
+
+        # Build match clause based on direction
+        if direction == "outgoing":
+            match_clause = f"-[r{rel_type_filter}]->(neighbor)"
+        elif direction == "incoming":
+            match_clause = f"<-[r{rel_type_filter}]-(neighbor)"
+        else: # both
+            match_clause = f"-[r{rel_type_filter}]-(neighbor)"
+
+        # Query to get neighbor nodes, relationships, and necessary details
+        # Ensure we get elementId for relationships if needed for unique ID
         query = f"""
-        MATCH (e {{id: $id}}){pattern}(n)
-        RETURN n, r, e
+        MATCH (start_node {{id: $entity_id}}){match_clause}
+        WHERE start_node <> neighbor  // Avoid self-loops unless specifically desired
+        RETURN \
+            neighbor, \
+            labels(neighbor) as neighbor_labels, \
+            r as relationship, \
+            type(r) as relationship_type, \
+            id(r) as relationship_internal_id, // Use id(r) for internal ID
+            startNode(r).id as source_node_id, // Explicitly get source ID
+            endNode(r).id as target_node_id    // Explicitly get target ID
         """
-        params = {"id": entity_id}
-        
-        entities: List[Entity] = []
-        relationships: List[Relationship] = []
-        processed_node_ids = set()
-        processed_rel_ids = set() # Use internal mgclient ID for deduplication during processing
+        params = {"entity_id": entity_id}
 
         try:
-            # Execute query and get list of dictionaries [{ 'n': node, 'r': rel, 'e': source_node }, ...]
             results = await self.execute_query(query, params)
-            
+            logger.debug(f"Neighbor query for {entity_id} returned {len(results)} results.")
+
+            neighbors = []
+            relationships = []
+            processed_neighbor_ids = set()
+            processed_rel_ids = set()
+
             for record in results:
-                # Extract objects from the result dictionary using .get()
-                neighbor_node_obj = record.get("n")
-                rel_obj = record.get("r")
-                source_node_obj = record.get("e")
-                
-                # Basic validation: ensure all parts are present
-                if not all([neighbor_node_obj, rel_obj, source_node_obj]):
-                    logger.warning(f"Skipping incomplete neighbor record for entity {entity_id}")
-                    continue
+                # Extract raw mgclient objects 
+                neighbor_node_obj = record.get('neighbor')
+                neighbor_labels = record.get('neighbor_labels', [])
+                rel_obj = record.get('relationship')
+                rel_type = record.get('relationship_type')
+                rel_internal_id = record.get('relationship_internal_id') 
+                source_id = record.get('source_node_id')
+                target_id = record.get('target_node_id')
 
-                # --- Process Neighbor Node --- 
-                neighbor_props = neighbor_node_obj.properties
-                neighbor_labels = neighbor_node_obj.labels
-                neighbor_id = neighbor_props.get('id') # Get ID from properties
+                if not neighbor_node_obj:
+                     logger.warning(f"Neighbor node object missing in record: {record}")
+                     continue 
 
-                if neighbor_id and neighbor_id not in processed_node_ids:
-                     # Determine type, prioritize specific labels
-                     neighbor_type = 'Entity' # Default
-                     specific_labels = [l for l in neighbor_labels if not l.startswith('_')]
-                     if specific_labels:
-                         neighbor_type = specific_labels[0]
-                     
-                     # Convert temporal types & pop base fields
-                     converted_neighbor_props = _convert_neo4j_temporal_types(neighbor_props)
-                     created_at = converted_neighbor_props.pop("created_at", None)
-                     updated_at = converted_neighbor_props.pop("updated_at", None)
-                     # Remove internal id if present in props
-                     converted_neighbor_props.pop("id", None) 
-                     # Extract name if present, else use ID
-                     name = converted_neighbor_props.pop("name", neighbor_id) 
-                     
-                     # Construct Entity object
-                     neighbor_entity = Entity(
-                         id=neighbor_id,
-                         name=name,
-                         type=neighbor_type,
-                         metadata=converted_neighbor_props, # Remaining props are metadata
-                         created_at=created_at,
-                         updated_at=updated_at
-                     )
-                     entities.append(neighbor_entity)
-                     processed_node_ids.add(neighbor_id)
+                # Get properties from the neighbor node object
+                neighbor_props = neighbor_node_obj.properties.copy() if hasattr(neighbor_node_obj, 'properties') else {}
+                neighbor_id = neighbor_props.get("id") 
+                if not neighbor_id:
+                     logger.warning(f"Neighbor node data missing 'id' property: {neighbor_props}")
+                     continue 
+
+                if neighbor_id not in processed_neighbor_ids:
+                    # Pop known fields, pass rest to properties
+                    created_at_n = neighbor_props.pop("created_at", None)
+                    updated_at_n = neighbor_props.pop("updated_at", None)
+                    # Parse dates if necessary (add parsing logic here if needed)
                     
-                # --- Process Relationship --- 
-                # Use internal id for deduplication during this processing step
-                rel_internal_id = rel_obj.id # mgclient uses .id for internal id
-                if rel_internal_id not in processed_rel_ids:
-                    rel_props = rel_obj.properties
-                    converted_rel_props = _convert_neo4j_temporal_types(rel_props)
-                    created_at = converted_rel_props.pop("created_at", None)
-                    updated_at = converted_rel_props.pop("updated_at", None)
-                    rel_type = rel_obj.type
-                    
-                    # Get start/end node IDs directly from the relationship object
-                    actual_source_node_id = rel_obj.start_node.properties.get('id')
-                    actual_target_node_id = rel_obj.end_node.properties.get('id')
-                    
-                    # Validate we have the IDs needed
-                    if not actual_source_node_id or not actual_target_node_id:
-                        logger.warning(f"Skipping relationship processing due to missing start/end node ID. Rel internal ID: {rel_internal_id}")
-                        continue
-                        
-                    rel_model = Relationship(
-                        id=str(uuid.uuid4()), # Generate app-level ID
-                        source_id=actual_source_node_id,
-                        target_id=actual_target_node_id,
+                    # Determine neighbor type robustly
+                    neighbor_node_model_type = "Node"
+                    neighbor_entity_type = None
+                    base_labels = {"Node", "Entity", "_Node", "_Entity"}
+                    if "Document" in neighbor_labels: neighbor_node_model_type = "Document"
+                    elif "Chunk" in neighbor_labels: neighbor_node_model_type = "Chunk"
+                    else:
+                         specific_labels = [l for l in neighbor_labels if l not in base_labels]
+                         if specific_labels:
+                              neighbor_entity_type = specific_labels[0]
+                              neighbor_node_model_type = "Entity"
+                         elif neighbor_labels: 
+                              neighbor_entity_type = neighbor_labels[0] # Fallback
+                              neighbor_node_model_type = "Entity"
+
+                    # Create the appropriate model instance
+                    neighbor_node = None
+                    if neighbor_node_model_type == "Document":
+                         content = neighbor_props.pop('content', None)
+                         metadata = neighbor_props.pop('metadata', {})
+                         neighbor_node = Document(id=neighbor_id, content=content, metadata=metadata, properties=neighbor_props, created_at=created_at_n, updated_at=updated_at_n)
+                    elif neighbor_node_model_type == "Chunk":
+                         text = neighbor_props.pop('text', None)
+                         doc_id = neighbor_props.pop('document_id', None)
+                         embedding = neighbor_props.pop('embedding', None)
+                         neighbor_node = Chunk(id=neighbor_id, text=text, document_id=doc_id, embedding=embedding, properties=neighbor_props, created_at=created_at_n, updated_at=updated_at_n)
+                    elif neighbor_node_model_type == "Entity":
+                         name = neighbor_props.pop('name', None)
+                         neighbor_node = Entity(id=neighbor_id, name=name, type=neighbor_entity_type or "UnknownEntity", properties=neighbor_props, created_at=created_at_n, updated_at=updated_at_n)
+                    else: # Generic Node
+                         name = neighbor_props.pop('name', None)
+                         node_type = neighbor_entity_type or next((l for l in neighbor_labels if l not in base_labels), None) or (neighbor_labels[0] if neighbor_labels else "Node")
+                         neighbor_node = Node(id=neighbor_id, name=name, type=node_type, properties=neighbor_props, created_at=created_at_n, updated_at=updated_at_n)
+
+                    if neighbor_node: 
+                         neighbors.append(neighbor_node)
+                         processed_neighbor_ids.add(neighbor_id)
+
+                # Reconstruct Relationship (if not already processed)
+                if rel_internal_id and rel_internal_id not in processed_rel_ids:
+                    if not rel_obj:
+                         logger.warning(f"Relationship object missing in record for internal id {rel_internal_id}")
+                         continue
+
+                    # Get properties from the relationship object
+                    rel_props = rel_obj.properties.copy() if hasattr(rel_obj, 'properties') else {}
+                    # Retrieve the user_id property we stored
+                    relationship_user_id = rel_props.pop("user_id", None) 
+                    created_at_r = rel_props.pop("created_at", None)
+                    updated_at_r = rel_props.pop("updated_at", None)
+                    # Parse dates if necessary
+
+                    relationship = Relationship(
+                        # Use the user_id stored as a property, fallback to internal id
+                        id=str(relationship_user_id) if relationship_user_id else str(rel_internal_id), 
+                        source_id=source_id,
+                        target_id=target_id,
                         type=rel_type,
-                        properties=converted_rel_props,
-                        created_at=created_at,
-                        updated_at=updated_at
+                        properties=rel_props, # Remaining properties
+                        created_at=created_at_r,
+                        updated_at=updated_at_r
                     )
-                    relationships.append(rel_model)
+                    relationships.append(relationship)
                     processed_rel_ids.add(rel_internal_id)
-                
+
+            logger.debug(f"Found {len(neighbors)} unique neighbors and {len(relationships)} unique relationships for {entity_id}.")
+            return neighbors, relationships
+
         except Exception as e:
             logger.error(f"Failed to get neighbors for entity {entity_id}: {e}", exc_info=True)
-            raise # Re-raise after logging
-            
-        return entities, relationships
+            return [], [] # Return empty lists on error
 
     async def search_entities_by_properties(
         self,
@@ -836,76 +905,54 @@ class MemgraphGraphRepository(GraphStore):
         limit: Optional[int] = None
     ) -> List[Entity]:
         """Searches for entities matching specific properties."""
-        # Reuse search_nodes_by_properties logic
-        # We expect Entity nodes to have a label matching their type
-        # For now, assume a generic search and then filter/convert
-        # A more optimized approach might filter by label in the query if possible
-        logger.debug(f"Searching entities by properties: {properties}, limit: {limit}")
-
-        # Parameterize properties for safety
+        # Check if 'type' is specified to use as a label constraint
+        node_type = None
+        if 'type' in properties:
+            node_type = properties.pop('type')  # Remove 'type' from properties to avoid using it as a property filter
+        
+        # Build the label filter
+        label_filter = f":`{node_type}`" if node_type else ""
+        
+        # Build property filters
         where_clauses = []
         params = {}
-        prop_index = 0
-        for key, value in properties.items():
-            param_name = f"prop_{prop_index}"
-            where_clauses.append(f"n.`{escape_cypher_string(key)}` = ${param_name}")
+        for i, (key, value) in enumerate(properties.items()):
+            param_name = f"prop_val_{i}"
+            # Escape key if needed
+            safe_key = key
+            where_clauses.append(f"e.`{safe_key}` = ${param_name}")
             params[param_name] = value
-            prop_index += 1
 
-        where_clause = " AND ".join(where_clauses) if where_clauses else ""
-        if where_clause:
-            where_clause = f"WHERE {where_clause}"
-
-        # Query returns the node object directly
-        query = f"""
-        MATCH (n) {where_clause} 
-        RETURN n
-        """ # Removed LIMIT here, apply later if needed
+        # Build the WHERE clause
+        where_clause = " AND ".join(where_clauses)
+        where_part = f"WHERE {where_clause}" if where_clauses else ""
         
-        if limit:
-            query += f" LIMIT $limit"
-            params["limit"] = limit
+        # Build the LIMIT clause
+        limit_clause = f"LIMIT {int(limit)}" if limit is not None and limit > 0 else ""
 
-        entities_found = []
-        try:
-            results = await self.execute_query(query, params)
-            for record in results: # Process each record dictionary
-                 node_obj = record.get("n") # Extract node object
-                 if not node_obj: continue
+        # Query to use the label filter
+        query = f"""
+        MATCH (e{label_filter})
+        {where_part}
+        RETURN e
+        {limit_clause}
+        """
 
-                 node_props = node_obj.properties if hasattr(node_obj, 'properties') else {}
-                 labels = node_obj.labels if hasattr(node_obj, 'labels') else set()
-                 converted_data = _convert_neo4j_temporal_types(node_props)
-                 entity_id = converted_data.pop('id', None)
-                 if not entity_id: continue
-                 
-                 # Determine type, prioritize specific labels
-                 entity_type = 'Entity' # Default
-                 specific_labels = [l for l in labels if not l.startswith('_')]
-                 if specific_labels:
-                     entity_type = specific_labels[0]
-                     
-                 created_at = converted_data.pop("created_at", None)
-                 updated_at = converted_data.pop("updated_at", None)
-                 # Extract name if present, else use ID
-                 name = converted_data.pop("name", entity_id) 
-                 
-                 # Remaining properties go into metadata
-                 metadata = converted_data
-                 
-                 entities_found.append(Entity(
-                     id=entity_id,
-                     name=name,
-                     type=entity_type,
-                     metadata=metadata,
-                     created_at=created_at,
-                     updated_at=updated_at
-                     ))
-        except Exception as e:
-             logger.error(f"Failed during entity search: {e}", exc_info=True)
-             raise # Re-raise the error
-             
-        return entities_found
+        results = await self.execute_query(query, params)
+        entities = []
+        
+        for result in results:
+            if 'e' in result:
+                node_data = result['e']
+                # Convert node data to Entity
+                entity = Entity(
+                    id=str(node_data.get('id', '')),
+                    type=node_type or "Unknown",
+                    properties={k: v for k, v in node_data.items() if k not in ['id', 'type']}
+                )
+                entities.append(entity)
+                
+        return entities
 
     async def add_entity(self, entity: Entity):
         """Adds or updates an Entity node to the graph."""
@@ -962,44 +1009,211 @@ class MemgraphGraphRepository(GraphStore):
         pass
 
     async def get_chunks_by_document_id(self, document_id: str) -> list[Chunk]:
-        """Retrieve all chunks linked to a given document by its id."""
-        logger.debug(f"Retrieving chunks for document {document_id}")
-        query = (
-            "MATCH (d:Document {id: $doc_id})-[:CONTAINS]->(c:Chunk) "
-            "RETURN c"
-        )
-        params = {"doc_id": document_id}
+        """Get all chunks associated with a document."""
+        query = """
+        MATCH (d:Document {id: $document_id})<-[:PART_OF]-(c:Chunk)
+        RETURN c
+        """
+        params = {"document_id": document_id}
+        
+        chunks = []
         try:
             results = await self.execute_query(query, params)
-            chunks = []
             for record in results:
-                node_obj = record.get("c")
-                if not node_obj:
-                    continue
-                node_props = node_obj.properties if hasattr(node_obj, 'properties') else {}
-                # Convert temporal types if needed
-                created_at = node_props.get("created_at")
-                updated_at = node_props.get("updated_at")
-                # Ensure embedding is a list of floats
-                embedding = node_props.get("embedding")
-                if embedding is not None and not isinstance(embedding, list):
-                    try:
-                        embedding = list(embedding)
-                    except Exception:
-                        embedding = None
-                chunk = Chunk(
-                    id=node_props.get("id"),
-                    text=node_props.get("text", ""),
-                    document_id=node_props.get("document_id"),
-                    embedding=embedding,
-                    created_at=created_at,
-                    updated_at=updated_at
-                )
-                chunks.append(chunk)
+                chunk_data = record.get('c', {})
+                if chunk_data:
+                    chunk = Chunk(
+                        id=chunk_data.get('id', ''),
+                        text=chunk_data.get('text', ''),
+                        document_id=document_id,
+                        properties=chunk_data
+                    )
+                    chunks.append(chunk)
             return chunks
         except Exception as e:
-            logger.error(f"Failed to retrieve chunks for document {document_id}: {e}", exc_info=True)
-            raise
+            logger.error(f"Error retrieving chunks for document {document_id}: {e}", exc_info=True)
+            return []
+    
+    async def add_chunks(self, chunks: List[Chunk]) -> None:
+        """Adds multiple chunk nodes."""
+        for chunk in chunks:
+            await self.add_chunk(chunk)
+        logger.info(f"Added {len(chunks)} chunks to graph store")
+    
+    async def get_chunk_by_id(self, chunk_id: str) -> Optional[Chunk]:
+        """Retrieves a chunk by its ID."""
+        query = """
+        MATCH (c:Chunk {id: $id})
+        RETURN c
+        """
+        params = {"id": chunk_id}
+        results = await self.execute_query(query, params)
+        if results and len(results) > 0:
+            # Convert result to Chunk object
+            chunk_data = results[0].get('c', {})
+            if chunk_data:
+                return Chunk(
+                    id=chunk_data.get('id', ''),
+                    text=chunk_data.get('text', ''),
+                    document_id=chunk_data.get('document_id', ''),
+                    properties=chunk_data
+                )
+        return None
+    
+    async def update_node_properties(self, node_id: str, properties: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Updates properties of an existing node."""
+        query = """
+        MATCH (n {id: $id})
+        SET n += $properties
+        RETURN n
+        """
+        params = {"id": node_id, "properties": properties}
+        results = await self.execute_query(query, params)
+        if results and len(results) > 0:
+            return results[0].get('n', {})
+        return None
+        
+    async def apply_schema_constraints(self) -> None:
+        """Applies predefined schema constraints (e.g., uniqueness)."""
+        # Define constraints for key entity types
+        constraints = [
+            "CREATE CONSTRAINT ON (d:Document) ASSERT d.id IS UNIQUE",
+            "CREATE CONSTRAINT ON (c:Chunk) ASSERT c.id IS UNIQUE",
+            "CREATE CONSTRAINT ON (e:Entity) ASSERT e.id IS UNIQUE",
+            "CREATE CONSTRAINT ON (r:Relationship) ASSERT r.id IS UNIQUE"
+        ]
+        
+        for constraint in constraints:
+            try:
+                await self.execute_query(constraint)
+                logger.info(f"Applied schema constraint: {constraint}")
+            except Exception as e:
+                # Skip if constraint already exists or other issues
+                logger.warning(f"Failed to apply constraint '{constraint}': {e}")
+                continue
+                
+    async def detect_communities(
+        self, 
+        algorithm: str = "louvain", 
+        write_property: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Runs a community detection algorithm (requires MAGE).
+           Returns list of nodes with their community IDs.
+           Optionally writes community ID back to nodes.
+        """
+        # Check if MAGE algorithms are available
+        check_query = "CALL mg.procedures() YIELD name WHERE name CONTAINS 'community' RETURN count(*) as count"
+        try:
+            result = await self.execute_query(check_query)
+            if not result or result[0].get('count', 0) == 0:
+                logger.warning("MAGE community detection algorithms not available. Install MAGE for this feature.")
+                return []
+        except Exception as e:
+            logger.error(f"Error checking for MAGE algorithms: {e}")
+            return []
+            
+        # Select appropriate algorithm query
+        if algorithm.lower() == "louvain":
+            algo_query = """
+            CALL community.louvain() 
+            YIELD node, community
+            """
+        elif algorithm.lower() == "label_propagation":
+            algo_query = """
+            CALL community.label_propagation() 
+            YIELD node, community
+            """
+        else:
+            logger.error(f"Unsupported community detection algorithm: {algorithm}")
+            return []
+            
+        # Add write clause if requested
+        if write_property:
+            algo_query += f"\nSET node.{write_property} = community"
+            
+        algo_query += "\nRETURN node.id as id, labels(node) as labels, community"
+        
+        try:
+            results = await self.execute_query(algo_query)
+            community_data = []
+            
+            for record in results:
+                community_data.append({
+                    "id": record.get('id'),
+                    "labels": record.get('labels', []),
+                    "community": record.get('community')
+                })
+                
+            logger.info(f"Detected {len(set(r.get('community') for r in community_data))} communities across {len(community_data)} nodes")
+            return community_data
+            
+        except Exception as e:
+            logger.error(f"Failed to detect communities using {algorithm}: {e}")
+            return []
+
+    async def query_subgraph(
+        self, 
+        start_node_id: str, 
+        max_depth: int = 1,
+        relationship_types: Optional[List[str]] = None
+    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """Queries a subgraph starting from a node."""
+        # Build relationship type filter if specified
+        rel_filter = ""
+        if relationship_types and len(relationship_types) > 0:
+            safe_types = [escape_cypher_string(rt) for rt in relationship_types]
+            rel_types = '|'.join([f'`{t}`' for t in safe_types])
+            rel_filter = f":{rel_types}"
+            
+        # Query to extract the subgraph
+        query = f"""
+        MATCH path = (start {{id: $start_id}})-[{rel_filter}*1..{max_depth}]-(n)
+        WITH COLLECT(DISTINCT start) + COLLECT(DISTINCT n) AS nodes,
+             COLLECT(DISTINCT relationships(path)) AS path_rels
+        UNWIND nodes AS node
+        WITH COLLECT(DISTINCT {{
+            id: node.id,
+            labels: labels(node),
+            properties: properties(node)
+        }}) AS unique_nodes, path_rels
+        UNWIND path_rels AS rels
+        UNWIND rels AS rel
+        WITH unique_nodes, COLLECT(DISTINCT {{
+            id: id(rel),
+            source: startNode(rel).id,
+            target: endNode(rel).id,
+            type: type(rel),
+            properties: properties(rel)
+        }}) AS unique_rels
+        RETURN unique_nodes AS nodes, unique_rels AS relationships
+        """
+        
+        params = {"start_id": start_node_id}
+        
+        try:
+            results = await self.execute_query(query, params)
+            if not results or len(results) == 0:
+                return [], []
+                
+            nodes = results[0].get('nodes', [])
+            relationships = results[0].get('relationships', [])
+            
+            logger.info(f"Query subgraph starting from {start_node_id} (depth={max_depth}): {len(nodes)} nodes, {len(relationships)} relationships")
+            return nodes, relationships
+            
+        except Exception as e:
+            logger.error(f"Failed to query subgraph for node {start_node_id}: {e}")
+            return [], []
+            
+    async def execute_read(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Any]:
+        """Executes a read-only Cypher query."""
+        # For this implementation, we use the same execute_query method
+        return await self.execute_query(query, parameters)
+        
+    async def execute_write(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> Any:
+        """Executes a write Cypher query."""
+        # For this implementation, we use the same execute_query method
+        return await self.execute_query(query, parameters)
 
 def escape_cypher_string(value: str) -> str:
     """Escapes characters in a string for safe use in Cypher labels/types."""

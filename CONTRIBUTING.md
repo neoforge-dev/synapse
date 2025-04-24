@@ -1,6 +1,6 @@
-# Contributing to GraphRAG MCP
+# Contributing to Synapse MCP
 
-Thank you for considering contributing to the GraphRAG MCP project!
+Thank you for considering contributing to the Synapse MCP project!
 
 ## How to Contribute
 

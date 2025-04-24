@@ -1,35 +1,16 @@
-import logging
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Dict, Any
 
-from graph_rag.models import Chunk # Assuming Chunks have optional embeddings
+from loguru import logger
 
-logger = logging.getLogger(__name__)
+from graph_rag.models import Chunk # Assuming Chunks have optional embeddings
 
 # Type alias for embedding vector
 EmbeddingVector = List[float]
 # Type alias for search result (e.g., chunk ID and score)
 SearchResult = Tuple[str, float]
 
-class VectorStore(ABC):
-    """Abstract base class for storing and searching vector embeddings."""
-
-    @abstractmethod
-    def add_chunks(self, chunks: List[Chunk]):
-        """Adds chunks (potentially with embeddings) to the vector store."""
-        pass
-
-    @abstractmethod
-    def search(self, query_embedding: EmbeddingVector, top_k: int = 5) -> List[SearchResult]:
-        """Searches for chunks with embeddings similar to the query embedding."""
-        pass
-        
-    # Optional: Method to get embeddings for text
-    # @abstractmethod
-    # def get_embedding(self, text: str) -> EmbeddingVector:
-    #    pass
-
-class MockVectorStore(VectorStore):
+class MockVectorStore:
     """In-memory mock implementation of VectorStore for testing."""
     
     def __init__(self):

@@ -14,12 +14,15 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from httpx import ASGITransport
 
+# Import BASE_URL from conftest
+from tests.conftest import BASE_URL
+
 # <<< ADD LOGGER INSTANCE >>>
 logger = logging.getLogger(__name__)
 
 # Base URL for the running API service
 # Assumes it's running on localhost:8000 as per docker-compose
-BASE_URL = os.getenv("INTEGRATION_TEST_BASE_URL", "http://localhost:8000/api/v1")
+# BASE_URL = os.getenv("INTEGRATION_TEST_BASE_URL", "http://localhost:8000/api/v1") # Moved to conftest.py
 
 # --- Helper Functions ---
 
@@ -41,7 +44,7 @@ async def wait_for_service(url: str, timeout: int = 30):
 async def ingest_test_document(client: httpx.AsyncClient, doc_content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
     """Helper to ingest a document."""
     response = await client.post(
-        f"{BASE_URL}/ingestion/documents",
+        f"{BASE_URL}/api/v1/ingestion/documents",
         json={"content": doc_content, "metadata": metadata, "generate_embeddings": True}
     )
     response.raise_for_status() # Raise exception for non-2xx status
@@ -50,7 +53,7 @@ async def ingest_test_document(client: httpx.AsyncClient, doc_content: str, meta
 async def search_keyword(client: httpx.AsyncClient, query: str, limit: int = 5) -> Dict[str, Any]:
     """Helper for keyword search."""
     response = await client.post(
-        f"{BASE_URL}/search/chunks/keyword",
+        f"{BASE_URL}/api/v1/search/chunks/keyword",
         json={"query": query, "limit": limit}
     )
     response.raise_for_status()
@@ -59,7 +62,7 @@ async def search_keyword(client: httpx.AsyncClient, query: str, limit: int = 5) 
 async def search_vector(client: httpx.AsyncClient, query: str, limit: int = 5) -> Dict[str, Any]:
     """Helper for vector search."""
     response = await client.post(
-        f"{BASE_URL}/search/chunks/vector",
+        f"{BASE_URL}/api/v1/search/chunks/vector",
         json={"query": query, "limit": limit}
     )
     response.raise_for_status()
@@ -120,14 +123,14 @@ async def e2e_test_client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_ingest_and_keyword_search(e2e_test_client: httpx.AsyncClient):
+async def test_ingest_and_keyword_search(integration_test_client: httpx.AsyncClient):
     """Verify ingestion and subsequent keyword search."""
     doc_content = "Integration testing involves blue widgets."
     metadata = {"source": "integration_test", "color": "blue"}
     
     # Ingest directly using test_client
-    ingest_response = await e2e_test_client.post(
-        f"{BASE_URL}/ingestion/documents",
+    ingest_response = await integration_test_client.post(
+        f"{BASE_URL}/api/v1/ingestion/documents",
         json={"content": doc_content, "metadata": metadata, "generate_embeddings": True}
     )
     if ingest_response.status_code != status.HTTP_202_ACCEPTED:
@@ -146,8 +149,8 @@ async def test_ingest_and_keyword_search(e2e_test_client: httpx.AsyncClient):
     # Keyword Search directly using test_client
     search_query = "widgets"
     limit = 5
-    search_response = await e2e_test_client.post(
-        f"{BASE_URL}/search/query",
+    search_response = await integration_test_client.post(
+        f"{BASE_URL}/api/v1/search/query",
         json={"search_type": "keyword", "query": search_query, "limit": limit}
     )
     if search_response.status_code != status.HTTP_200_OK:
@@ -163,7 +166,7 @@ async def test_ingest_and_keyword_search(e2e_test_client: httpx.AsyncClient):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_ingest_and_vector_search(e2e_test_client: httpx.AsyncClient):
+async def test_ingest_and_vector_search(integration_test_client: httpx.AsyncClient):
     """Verify ingestion and subsequent vector similarity search."""
     doc_content = "Semantic search looks for meaning, like finding vehicles when asked about cars."
     metadata = {"source": "integration_test", "topic": "search"}
@@ -171,8 +174,8 @@ async def test_ingest_and_vector_search(e2e_test_client: httpx.AsyncClient):
     limit = 3
     
     # Ingest directly using test_client
-    ingest_response = await e2e_test_client.post(
-        f"{BASE_URL}/ingestion/documents",
+    ingest_response = await integration_test_client.post(
+        f"{BASE_URL}/api/v1/ingestion/documents",
         json={"content": doc_content, "metadata": metadata, "generate_embeddings": True}
     )
     if ingest_response.status_code != status.HTTP_202_ACCEPTED:
@@ -186,8 +189,8 @@ async def test_ingest_and_vector_search(e2e_test_client: httpx.AsyncClient):
     await asyncio.sleep(15)
     
     # Vector Search directly using test_client
-    search_response = await e2e_test_client.post(
-        f"{BASE_URL}/search/query",
+    search_response = await integration_test_client.post(
+        f"{BASE_URL}/api/v1/search/query",
         json={"search_type": "vector", "query": query, "limit": limit}
     )
     if search_response.status_code != status.HTTP_200_OK:
@@ -206,14 +209,14 @@ async def test_ingest_and_vector_search(e2e_test_client: httpx.AsyncClient):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_search_nonexistent_term(e2e_test_client: httpx.AsyncClient):
+async def test_search_nonexistent_term(integration_test_client: httpx.AsyncClient):
     """Verify searches for unlikely terms return empty results."""
     query = "zzzyyyxxx_nonexistent_term_qwerty"
     limit = 5
     
     # Keyword Search directly using test_client
-    keyword_response = await e2e_test_client.post(
-        f"{BASE_URL}/search/query",
+    keyword_response = await integration_test_client.post(
+        f"{BASE_URL}/api/v1/search/query",
         json={"search_type": "keyword", "query": query, "limit": limit}
     )
     if keyword_response.status_code != status.HTTP_200_OK:
@@ -224,8 +227,8 @@ async def test_search_nonexistent_term(e2e_test_client: httpx.AsyncClient):
     assert len(keyword_results["results"]) == 0
 
     # Vector Search directly using test_client
-    vector_response = await e2e_test_client.post(
-        f"{BASE_URL}/search/query",
+    vector_response = await integration_test_client.post(
+        f"{BASE_URL}/api/v1/search/query",
         json={"search_type": "vector", "query": query, "limit": limit}
     )
     if vector_response.status_code != status.HTTP_200_OK:
@@ -237,14 +240,14 @@ async def test_search_nonexistent_term(e2e_test_client: httpx.AsyncClient):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_ingest_and_delete(e2e_test_client: httpx.AsyncClient):
+async def test_ingest_and_delete(integration_test_client: httpx.AsyncClient):
     """Verify ingestion and subsequent deletion."""
     doc_content = "This document is created solely for deletion testing."
     metadata = {"source": "integration_test_delete"}
     
     # 1. Ingest directly using test_client
-    ingest_response = await e2e_test_client.post(
-        f"{BASE_URL}/ingestion/documents",
+    ingest_response = await integration_test_client.post(
+        f"{BASE_URL}/api/v1/ingestion/documents",
         json={"content": doc_content, "metadata": metadata, "generate_embeddings": False} # No embedding needed
     )
     if ingest_response.status_code != status.HTTP_202_ACCEPTED:
@@ -261,7 +264,7 @@ async def test_ingest_and_delete(e2e_test_client: httpx.AsyncClient):
     # assert get_response.status_code == status.HTTP_200_OK
 
     # 3. Delete directly using test_client
-    delete_response = await e2e_test_client.delete(f"{BASE_URL}/documents/{doc_id}")
+    delete_response = await integration_test_client.delete(f"{BASE_URL}/api/v1/documents/{doc_id}")
     if delete_response.status_code != status.HTTP_204_NO_CONTENT:
         print(f"Delete response status: {delete_response.status_code}, body: {delete_response.text}")
     assert delete_response.status_code == status.HTTP_204_NO_CONTENT
@@ -271,8 +274,8 @@ async def test_ingest_and_delete(e2e_test_client: httpx.AsyncClient):
     # assert get_response_after_delete.status_code == status.HTTP_404_NOT_FOUND
 
     # 5. Verify searching for it yields no results
-    keyword_response = await e2e_test_client.post(
-        f"{BASE_URL}/search/query",
+    keyword_response = await integration_test_client.post(
+        f"{BASE_URL}/api/v1/search/query",
         json={"search_type": "keyword", "query": "deletion testing", "limit": 1}
     )
     if keyword_response.status_code != status.HTTP_200_OK:
@@ -283,10 +286,10 @@ async def test_ingest_and_delete(e2e_test_client: httpx.AsyncClient):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_delete_nonexistent(e2e_test_client: httpx.AsyncClient):
+async def test_delete_nonexistent(integration_test_client: httpx.AsyncClient):
     """Test deleting a non-existent document ID."""
     non_existent_id = f"non-existent-id-{uuid.uuid4()}"
-    delete_response = await e2e_test_client.delete(f"{BASE_URL}/documents/{non_existent_id}") # Adjust endpoint if needed
+    delete_response = await integration_test_client.delete(f"{BASE_URL}/api/v1/documents/{non_existent_id}") # Adjust endpoint if needed
     if delete_response.status_code != status.HTTP_404_NOT_FOUND:
         print(f"Delete response status: {delete_response.status_code}, body: {delete_response.text}")
     assert delete_response.status_code == status.HTTP_404_NOT_FOUND 

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from neo4j import GraphDatabase
 from pydantic import BaseModel
+import aiofiles
 
 from graph_rag.core.senior_debug_protocol import (
     SeniorDebugProtocol,
@@ -53,12 +54,14 @@ class GraphDebugger:
     async def capture_system_state(self) -> SystemState:
         """Capture current state of the graph database."""
         async with self.driver.session() as session:
-            # Get node counts by label
+            # Get node counts by label (Reverted to original query)
             result = await session.run("""
                 MATCH (n)
                 RETURN labels(n) as label, count(*) as count
             """)
-            node_counts = await result.data()
+            node_counts_raw = await result.data()
+            # Revert dict comprehension - use first label if multiple exist
+            node_counts = {item['label'][0]: item['count'] for item in node_counts_raw if item.get('label')}
 
             # Get relationship counts by type
             result = await session.run("""
@@ -79,22 +82,24 @@ class GraphDebugger:
             result = await session.run("SHOW TRANSACTIONS")
             active_queries = await result.data()
 
-            # Get performance metrics
-            result = await session.run("""
-                CALL db.stats.retrieve("ALL")
-                YIELD section, map
-                RETURN section, map
-            """)
-            performance = await result.data()
+            # Get performance metrics (basic counts for Memgraph compatibility)
+            node_count_result = await session.run("MATCH (n) RETURN count(n) AS node_count")
+            node_count_data = await node_count_result.single()
+            rel_count_result = await session.run("MATCH ()-[r]->() RETURN count(r) AS relationship_count")
+            rel_count_data = await rel_count_result.single()
+            performance_metrics = {
+                "nodes": node_count_data["node_count"] if node_count_data else 0,
+                "relationships": rel_count_data["relationship_count"] if rel_count_data else 0
+            }
 
             return SystemState(
                 timestamp=datetime.utcnow(),
-                node_counts={item['label'][0]: item['count'] for item in node_counts},
+                node_counts=node_counts,
                 relationship_counts={item['type']: item['count'] for item in rel_counts},
                 indexes=indexes,
                 constraints=constraints,
                 active_queries=active_queries,
-                performance_metrics={item['section']: item['map'] for item in performance}
+                performance_metrics=performance_metrics
             )
 
     async def analyze_query_performance(self, query: str) -> Dict[str, Any]:
@@ -102,34 +107,35 @@ class GraphDebugger:
         async with self.driver.session() as session:
             result = await session.run(f"PROFILE {query}")
             profile = await result.consume()
+            counters_dict = {
+                key: getattr(profile.counters, key)
+                for key in dir(profile.counters)
+                if not key.startswith('_') and not callable(getattr(profile.counters, key))
+            }
             return {
                 "query": f"PROFILE {query}",
                 "plan": profile.profile,
-                "stats": profile.counters
+                "stats": counters_dict
             }
 
     async def validate_graph_structure(self) -> Dict[str, Any]:
         """Validate the structure of the graph database."""
         async with self.driver.session() as session:
-            # Check for orphaned nodes
+            # Check for orphaned nodes (nodes with no relationships) - Return node properties
             result = await session.run("""
                 MATCH (n)
-                WHERE NOT (n)--()
-                RETURN labels(n) as label, count(*) as count
+                OPTIONAL MATCH (n)-[r]-()
+                WITH n, count(r) as degree
+                WHERE degree = 0
+                RETURN id(n) as elementId, labels(n) as labels, properties(n) as properties
             """)
-            orphaned = await result.data()
+            orphaned_nodes_data = await result.data() # List of {'elementId': ..., 'labels': ['L1'], 'properties': {...}}
 
-            # Check for disconnected components
-            result = await session.run("""
-                CALL gds.wcc.stream('myGraph')
-                YIELD nodeId, componentId
-                RETURN componentId, count(*) as size
-                ORDER BY size DESC
-            """)
-            components = await result.data()
+            # Check for disconnected components (Requires GDS plugin, commented out for now)
+            components = [{"info": "Component check requires GDS plugin, skipped."}]
 
             return {
-                "orphaned_nodes": orphaned,
+                "orphaned_nodes": orphaned_nodes_data, # Return the list of node data
                 "connected_components": components
             }
 
@@ -163,14 +169,15 @@ class GraphDebugger:
             resolution=None
         )
 
-    async def save_debug_context(self, context: DebugContext, path: Path) -> None:
-        """Save debugging context to a file."""
-        with open(path, 'w') as f:
-            f.write(context.json(indent=2))
+    async def save_debug_context(self, context: DebugContext, file_path: Path) -> None:
+        """Save the debug context to a JSON file."""
+        async with aiofiles.open(file_path, mode="w") as f:
+            await f.write(context.model_dump_json(indent=2))
+        logger.info(f"Debug context saved to {file_path}")
 
-    async def load_debug_context(self, path: Path) -> DebugContext:
+    async def load_debug_context(self, file_path: Path) -> DebugContext:
         """Load debugging context from a file."""
-        with open(path, 'r') as f:
+        with open(file_path, 'r') as f:
             return DebugContext.parse_raw(f.read())
 
     async def debug_test_failure(
@@ -194,7 +201,7 @@ class GraphDebugger:
         investigation.hypotheses = hypotheses
         
         # Create graph-specific debug context
-        debug_context = self.create_debug_context(
+        debug_context = await self.create_debug_context(
             error_type=type(error).__name__,
             test_file=test_file,
             test_function=test_function,

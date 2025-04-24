@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional
+from typing import Optional, Literal
 import os
 from pydantic import SecretStr
 
@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     # Embedding settings
     EMBEDDING_MODEL: str = "text-embedding-ada-002"
     EMBEDDING_DIMENSION: int = 1536
+    embedding_provider: str = "openai"
 
     # Search settings
     SEARCH_TOP_K: int = 5
@@ -50,7 +51,14 @@ class Settings(BaseSettings):
     vector_store_embedding_model: str = "all-MiniLM-L6-v2"
 
     # Cache settings
-    cache_type: str = "memory"
+    cache_type: Literal["redis", "memory"] = "memory"
+
+    # Ingestion settings
+    ingestion_chunk_size: int = 1024
+    ingestion_chunk_overlap: int = 100
+
+    # Async worker settings
+    # TODO: Add settings for Redis queue, etc. if needed
 
     def get_memgraph_uri(self) -> str:
         if self.MEMGRAPH_URI:

@@ -471,6 +471,59 @@ class MemgraphRepository(GraphStore):
             # Sticking with original raise: signals DB/query error vs simple 'not found'
             raise ValueError(f"Failed to delete document {document_id} during query execution: {e}")
 
+    async def add_document(self, document: Document):
+        """Adds or updates a document node in the graph."""
+        # Placeholder implementation
+        logger.info(f"[Placeholder] Adding/updating document {document.id}")
+        # In a real implementation, you'd use MERGE/SET like add_entity
+        # Ensure you handle document properties and timestamps correctly
+        # MERGE (d:Document {id: $id}) SET d = $properties_map
+        # await self._driver.execute_query(query, params)
+        await self.add_entity(document) # Reuse add_entity for now
+
+    async def add_chunk(self, chunk: Chunk):
+        """Adds or updates a chunk node and links it to its document."""
+        # Placeholder implementation
+        logger.info(f"[Placeholder] Adding/updating chunk {chunk.id} for document {chunk.document_id}")
+        # In a real implementation:
+        # 1. Add/Update the chunk node (MERGE (c:Chunk {id: $id}) SET c = $chunk_props)
+        # 2. Find the document node (MATCH (d:Document {id: $doc_id}))
+        # 3. Create the relationship (MERGE (d)-[:HAS_CHUNK]->(c))
+        # Ensure transactional consistency
+        await self.add_entity(chunk) # Reuse add_entity for the node for now
+        # Add relationship logic (placeholder)
+        query = """
+        MATCH (d:Document {id: $doc_id})
+        MATCH (c:Chunk {id: $chunk_id})
+        MERGE (d)-[:HAS_CHUNK]->(c)
+        """
+        params = {"doc_id": chunk.document_id, "chunk_id": chunk.id}
+        try:
+            await self._driver.execute_query(query, params)
+            logger.debug(f"Linked chunk {chunk.id} to document {chunk.document_id}")
+        except Exception as e:
+             logger.error(f"Failed to link chunk {chunk.id} to document {chunk.document_id}: {e}", exc_info=True)
+             # Decide if this should raise an error
+
+    async def get_document_by_id(self, document_id: str) -> Optional[Document]:
+        """Retrieves a document by its ID."""
+        # Placeholder implementation
+        logger.info(f"[Placeholder] Getting document by ID {document_id}")
+        # Real implementation would query the graph:
+        # query = "MATCH (d:Document {id: $id}) RETURN d"
+        # result, _, _ = await self._driver.execute_query(query, {"id": document_id})
+        # if result and result[0]:
+        #     node_data = result[0]['d']
+        #     # Map node_data to Document object (similar to _map_node_to_entity)
+        #     # return Document(...)
+        # return None
+        entity = await self.get_entity_by_id(document_id)
+        if entity and isinstance(entity, Document):
+            return entity
+        elif entity:
+             logger.warning(f"Found entity {document_id}, but it is not a Document instance (type: {type(entity)})")
+        return None # Return None if not found or not a Document
+
     # --- Deprecated / Old Methods (to be removed or refactored) ---
 
     # Keep add_document/add_chunk? Or handle via generic add_entity?

@@ -7,6 +7,7 @@ from graph_rag.core.interfaces import ExtractionResult, ExtractedEntity, Extract
 from graph_rag.core.entity_extractor import SpacyEntityExtractor
 from graph_rag.models import Document, Chunk, Entity, Relationship, ProcessedDocument
 from graph_rag.core.entity_extractor import EntityExtractor, MockEntityExtractor
+import uuid
 
 # --- Mock spaCy --- 
 
@@ -214,3 +215,69 @@ async def test_mock_extractor_empty_document(empty_doc_for_extraction):
     assert processed_doc.id == empty_doc_for_extraction.id
     assert len(processed_doc.entities) == 0
     assert len(processed_doc.relationships) == 0 
+
+# Fixtures
+@pytest.fixture
+def mock_doc_with_entities() -> Document:
+    chunk1 = Chunk(id="chunk-1", text="Alice knows Bob.", document_id="doc-mock")
+    chunk2 = Chunk(id="chunk-2", text="GraphRAG is a system.", document_id="doc-mock")
+    return Document(
+        id="doc-mock",
+        content="Alice knows Bob. GraphRAG is a system.",
+        metadata={"source": "mock test"},
+        chunks=[chunk1, chunk2]
+    )
+
+@pytest.fixture
+def mock_doc_no_entities() -> Document:
+    chunk1 = Chunk(id="chunk-3", text="Hello world.", document_id="doc-mock-none")
+    return Document(
+        id="doc-mock-none",
+        content="Hello world.",
+        metadata={"source": "mock test none"},
+        chunks=[chunk1]
+    )
+
+# Test Cases for MockEntityExtractor
+@pytest.mark.asyncio
+async def test_mock_extractor_finds_entities(mock_doc_with_entities: Document):
+    """Test that the mock extractor returns predefined entities and relationships."""
+    extractor = MockEntityExtractor()
+    processed_doc: ProcessedDocument = await extractor.extract(mock_doc_with_entities)
+
+    assert processed_doc.id == mock_doc_with_entities.id
+    assert processed_doc.content == mock_doc_with_entities.content
+    assert processed_doc.metadata == mock_doc_with_entities.metadata
+    assert processed_doc.chunks == mock_doc_with_entities.chunks
+
+    assert len(processed_doc.entities) == 3
+    assert len(processed_doc.relationships) == 1
+
+    entity_names = {e.name for e in processed_doc.entities}
+    assert "Alice" in entity_names
+    assert "Bob" in entity_names
+    assert "GraphRAG" in entity_names
+
+    relationship = processed_doc.relationships[0]
+    assert relationship.type == "KNOWS"
+    # Assuming Relationship model has source/target attributes that are Entity objects
+    assert relationship.source.name == "Alice"
+    assert relationship.target.name == "Bob"
+
+@pytest.mark.asyncio
+async def test_mock_extractor_no_entities(mock_doc_no_entities: Document):
+    """Test that the mock extractor returns empty lists when no entities match."""
+    extractor = MockEntityExtractor()
+    processed_doc: ProcessedDocument = await extractor.extract(mock_doc_no_entities)
+
+    assert processed_doc.id == mock_doc_no_entities.id
+    assert processed_doc.content == mock_doc_no_entities.content
+    assert len(processed_doc.entities) == 0
+    assert len(processed_doc.relationships) == 0
+
+# TODO: Add tests for SpacyEntityExtractor if/when implemented
+# - Test `extract_from_text`
+# - Test `extract` (which uses `extract_from_text`)
+# - Test normalization
+# - Test handling of spaCy loading errors
+# - Test handling of empty/whitespace text 

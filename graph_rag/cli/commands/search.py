@@ -12,6 +12,9 @@ SEARCH_URL = f"{API_BASE_URL}/search/query"
 
 logger = logging.getLogger(__name__)
 
+# Create a global HTTP client for reuse
+HTTPClient = httpx.Client
+
 # app = typer.Typer(help="Commands for searching the graph.")
 
 def search_query(
@@ -21,8 +24,14 @@ def search_query(
     stream: bool = typer.Option(False, "--stream", "-s", help="Stream results as JSON Lines."),
     api_url: str = typer.Option(SEARCH_URL, help="URL of the search API endpoint.")
 ):
-    """Query the GraphRAG system for relevant context chunks."""
+    """Query the Synapse system for relevant context chunks."""
     
+    # Add validation for empty query string
+    if not query or query.isspace():
+        logger.error("Search query cannot be empty.")
+        # Use typer.Exit for clean CLI exit with error code
+        raise typer.Exit(code=1)
+
     if search_type not in ["vector", "keyword"]:
         logger.error(f"Invalid search type: {search_type}. Must be 'vector' or 'keyword'.")
         raise typer.Exit(code=1)
@@ -56,7 +65,7 @@ def search_query(
         else:
             # Handle batch response
             logger.info(f"Requesting batch search from {request_url}...")
-            with httpx.Client() as client:
+            with HTTPClient() as client:
                 response = client.post(request_url, json=payload, timeout=60.0) # Longer timeout for potentially large batch
                 response.raise_for_status()
                 response_data = response.json()

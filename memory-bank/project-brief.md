@@ -1,7 +1,7 @@
 # Project Brief
 
 ## Goal
-- Build a GraphRAG MVP using Memgraph and Python, following Clean Architecture principles.
+- Build a Synapse MVP using Memgraph and Python, following Clean Architecture principles.
 
 ## Scope
 - **Ingestion:** Process documents, extract entities/relationships, store in Memgraph.

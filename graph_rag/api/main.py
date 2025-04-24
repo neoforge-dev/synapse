@@ -1,43 +1,62 @@
-from fastapi import FastAPI, APIRouter, Request, HTTPException, status, Depends
+import asyncio
 import logging
-import sys
-from contextlib import asynccontextmanager
-from graph_rag.config import get_settings
-from graph_rag.api.routers import documents, chunks, ingestion, search, query
-from graph_rag.api import dependencies as deps
-from graph_rag.core.interfaces import GraphRAGEngine
-from graph_rag.data_stores.memgraph_store import MemgraphStore, MemgraphStoreError
-from graph_rag.core.document_processor import SimpleDocumentProcessor, DocumentProcessor, SentenceSplitter
-from graph_rag.core.entity_extractor import SpacyEntityExtractor, EntityExtractor, MockEntityExtractor
-from graph_rag.core.persistent_kg_builder import PersistentKnowledgeGraphBuilder
-from graph_rag.core.graph_rag_engine import SimpleGraphRAGEngine
-from graph_rag.core.knowledge_graph_builder import KnowledgeGraphBuilder, SimpleKnowledgeGraphBuilder
-from graph_rag.core.graph_store import GraphStore, MockGraphStore
-from graph_rag.core.vector_store import VectorStore, MockVectorStore
-from graph_rag.infrastructure.vector_stores import SimpleVectorStore
-from graph_rag.api.models import IngestRequest, IngestResponse
-from graph_rag.services.ingestion import IngestionService
+import time
 import uuid
-from fastapi.responses import JSONResponse, RedirectResponse
+from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING, Optional, Dict, Any, List
+
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
-from neo4j import AsyncGraphDatabase, AsyncDriver
-from neo4j.exceptions import Neo4jError
-from graph_rag.api.dependencies import get_graph_rag_engine
-from typing import Annotated
+from fastapi.routing import APIRouter
+from fastapi.responses import JSONResponse, RedirectResponse
+from neo4j import AsyncDriver, AsyncGraphDatabase
 
-# --- Logging Configuration ---
-# Remove default handlers to prevent duplicate logs in some environments
-# (like containers sending stdout/stderr directly)
-logging.getLogger().handlers.clear()
+# Local application imports
+from graph_rag.config.settings import Settings, get_settings
+from graph_rag.api.routers import documents, ingestion, search, query
+from graph_rag.api import schemas
+from graph_rag.api import dependencies as deps # Alias for dependencies
 
-# Call factory to get settings for logger setup
-local_settings = get_settings()
-logging.basicConfig(level=local_settings.api_log_level.upper(), # Use local_settings
-                      format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                      handlers=[logging.StreamHandler(sys.stdout)])
+# Import Core Interfaces/Base Classes directly from their modules
+from graph_rag.core.interfaces import (
+    GraphRAGEngine,
+    KnowledgeGraphBuilder,
+    EntityExtractor,
+    DocumentProcessor,
+    VectorStore,
+    GraphRepository,
+    EmbeddingService
+)
 
-logger = logging.getLogger(__name__) # Logger for this module
+# Import Factory Functions from dependencies module
+from graph_rag.api.dependencies import (
+    create_ingestion_service,
+    create_entity_extractor,
+    create_vector_store,
+    create_embedding_service,
+    create_document_processor,
+    create_knowledge_graph_builder,
+    create_graph_repository, 
+    get_settings_dep
+)
+
+# Import Concrete Implementations needed for lifespan setup
+from graph_rag.core.graph_rag_engine import SimpleGraphRAGEngine
+from graph_rag.infrastructure.cache.memory_cache import MemoryCache
+from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
+from graph_rag.core.vector_store import MockVectorStore
+from graph_rag.core.entity_extractor import MockEntityExtractor, SpacyEntityExtractor
+from graph_rag.core.document_processor import SimpleDocumentProcessor
+from graph_rag.core.knowledge_graph_builder import SimpleKnowledgeGraphBuilder
+from graph_rag.services.ingestion import IngestionService # Needed for type hint
+from graph_rag.services.embedding import SentenceTransformerEmbeddingService
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+# --- Application State ---
+app_state = {} # Use a dictionary for app state
 
 # --- Lifespan Management for Resources --- 
 @asynccontextmanager
@@ -48,7 +67,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"Starting API... Config: {current_settings.model_dump(exclude={'memgraph_password'})}") # Use current_settings
     app.state.settings = current_settings # Store in state
     app.state.neo4j_driver: Optional[AsyncDriver] = None
-    app.state.graph_repository: Optional[MemgraphRepository] = None
+    app.state.graph_repository: Optional[MemgraphGraphRepository] = None
     app.state.vector_store = None
     app.state.entity_extractor = None
     app.state.doc_processor = None
@@ -71,18 +90,16 @@ async def lifespan(app: FastAPI):
 
     # 2. Initialize MemgraphGraphRepository (using the driver)
     if not hasattr(app.state, 'graph_repository') or app.state.graph_repository is None:
-        if app.state.neo4j_driver:
-            app.state.graph_repository = MemgraphRepository(driver=app.state.neo4j_driver)
-            logger.info("MemgraphGraphRepository initialized successfully.")
-        else:
-            logger.error("Cannot initialize MemgraphGraphRepository: Neo4j driver not available.")
-            raise RuntimeError("Failed to initialize graph repository due to missing driver")
+        app.state.graph_repository = MemgraphGraphRepository()
+        logger.info(f"Initialized Graph Repository: {type(app.state.graph_repository)}")
 
     # 3. Initialize VectorStore based on settings
     if not hasattr(app.state, 'vector_store') or app.state.vector_store is None:
         try:
             if current_settings.vector_store_type.lower() == 'simple':
-                vector_store = SimpleVectorStore(embedding_model_name=current_settings.vector_store_embedding_model)
+                # First create the embedding service
+                embedding_service = SentenceTransformerEmbeddingService(model_name=current_settings.vector_store_embedding_model)
+                vector_store = SimpleVectorStore(embedding_service=embedding_service)
                 app.state.vector_store = vector_store
                 logger.info(f"Using SimpleVectorStore with model '{current_settings.vector_store_embedding_model}'.")
             elif current_settings.vector_store_type.lower() == 'mock':
@@ -113,8 +130,8 @@ async def lifespan(app: FastAPI):
 
     # 5. Initialize DocumentProcessor
     if not hasattr(app.state, 'doc_processor') or app.state.doc_processor is None:
-        app.state.doc_processor = SimpleDocumentProcessor(splitter=SentenceSplitter())
-        logger.info("Using SimpleDocumentProcessor with SentenceSplitter.")
+        app.state.doc_processor = SimpleDocumentProcessor()
+        logger.info("Using SimpleDocumentProcessor.")
 
     # 6. Initialize KG Builder
     if not hasattr(app.state, 'kg_builder') or app.state.kg_builder is None:
@@ -126,37 +143,32 @@ async def lifespan(app: FastAPI):
 
     # 7. Initialize GraphRAGEngine
     if not hasattr(app.state, 'graph_rag_engine') or app.state.graph_rag_engine is None:
-        if (
-            app.state.graph_repository and
-            app.state.vector_store and
-            app.state.entity_extractor
-        ):
-            try:
-                app.state.graph_rag_engine = SimpleGraphRAGEngine(
-                    graph_store=app.state.graph_repository,
-                    vector_store=app.state.vector_store,
-                    entity_extractor=app.state.entity_extractor
-                )
-                logger.info("SimpleGraphRAGEngine initialized successfully.")
-            except Exception as e:
-                logger.error(f"Failed to initialize SimpleGraphRAGEngine: {e}", exc_info=True)
-        else:
-            missing = []
-            if not app.state.graph_repository: missing.append("GraphRepository")
-            if not app.state.vector_store: missing.append("VectorStore")
-            if not app.state.entity_extractor: missing.append("EntityExtractor")
-            logger.error(f"Cannot initialize SimpleGraphRAGEngine due to missing dependencies: {missing}")
+        try:
+            app.state.graph_rag_engine = SimpleGraphRAGEngine(
+                graph_store=app.state.graph_repository,
+                vector_store=app.state.vector_store,
+                entity_extractor=app.state.entity_extractor
+            )
+            logger.info("SimpleGraphRAGEngine initialized.")
+        except Exception as e:
+            logger.error(f"Failed to initialize SimpleGraphRAGEngine: {e}", exc_info=True)
+            raise
 
     # 8. Initialize ingestion service
     if not hasattr(app.state, 'ingestion_service') or app.state.ingestion_service is None:
-        if app.state.graph_repository:
-            try:
-                app.state.ingestion_service = IngestionService(repository=app.state.graph_repository)
-                logger.info("IngestionService initialized successfully.")
-            except Exception as e:
-                logger.error(f"Failed to initialize IngestionService: {e}", exc_info=True)
-        else:
-            logger.error("Cannot initialize IngestionService: Graph Repository not available.")
+        try:
+            app.state.ingestion_service = IngestionService(
+                document_processor=app.state.doc_processor,
+                entity_extractor=app.state.entity_extractor,
+                graph_store=app.state.graph_repository,
+                embedding_service=embedding_service,
+                chunk_splitter=app.state.doc_processor.chunk_splitter,
+                vector_store=app.state.vector_store
+            )
+            logger.info("IngestionService initialized.")
+        except Exception as e:
+            logger.error(f"Failed to initialize IngestionService: {e}", exc_info=True)
+            raise
 
     logger.info("Application startup dependencies initialized.")
     yield # Application runs here
@@ -183,7 +195,7 @@ async def lifespan(app: FastAPI):
     logger.info("Application shutdown complete.")
 
 # Dependency Getters (Now rely solely on app state)
-def get_graph_repository(request: Request) -> "MemgraphRepository":
+def get_graph_repository(request: Request) -> "MemgraphGraphRepository":
     if not hasattr(request.app.state, 'graph_repository') or request.app.state.graph_repository is None:
         raise HTTPException(status_code=503, detail="Graph repository not initialized")
     return request.app.state.graph_repository

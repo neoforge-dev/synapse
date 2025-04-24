@@ -1,4 +1,4 @@
-# GraphRAG MCP
+# Synapse MCP
 
 Minimal Chain Platform for Graph Retrieval-Augmented Generation.
 

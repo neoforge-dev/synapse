@@ -1,4 +1,4 @@
-from typing import Protocol, List, Dict, Any, Optional, Tuple
+from typing import Protocol, List, Dict, Any, Optional, Tuple, runtime_checkable
 from pydantic import BaseModel
 
 class NodeData(BaseModel):
@@ -10,6 +10,7 @@ class RelationshipData(BaseModel):
     type: str
     properties: Dict[str, Any]
 
+@runtime_checkable
 class GraphStore(Protocol):
     """Interface for interacting with a graph database."""
 

@@ -4,6 +4,9 @@ import uuid
 from graph_rag.models import Document, Chunk
 from graph_rag.core.document_processor import SentenceSplitter
 from unittest.mock import MagicMock
+from graph_rag.core.interfaces import DocumentData, ChunkData
+from graph_rag.core.document_processor import SimpleDocumentProcessor
+from typing import List
 
 @pytest.fixture
 def simple_document() -> Document:
@@ -70,3 +73,89 @@ def test_sentence_splitter_preserves_metadata(simple_document):
         assert "source" in chunk.metadata
         assert chunk.metadata["source"] == "test"
         assert "sentence_index" in chunk.metadata # Ensure splitter adds its own meta 
+
+# Sample data for testing
+TEST_DOC_ID = str(uuid.uuid4())
+SIMPLE_CONTENT = "This is the first paragraph.\n\nThis is the second.\n   \nThis is the third one."
+EXPECTED_PARA_CHUNKS = [
+    "This is the first paragraph.",
+    "This is the second.",
+    "This is the third one."
+]
+
+TOKEN_CONTENT = "Word1 word2 word3 word4 word5 word6 word7 word8 word9 word10"
+EXPECTED_TOKEN_CHUNKS_5 = [
+    "Word1 word2 word3 word4 word5",
+    "word6 word7 word8 word9 word10"
+]
+
+EMPTY_CONTENT = "  \n  \t \n "
+
+@pytest.fixture
+def sample_document() -> DocumentData:
+    """Provides a sample DocumentData object."""
+    return DocumentData(id=TEST_DOC_ID, content=SIMPLE_CONTENT, metadata={"source": "test"})
+
+@pytest.fixture
+def token_document() -> DocumentData:
+    """Provides a sample DocumentData object for token testing."""
+    return DocumentData(id=TEST_DOC_ID, content=TOKEN_CONTENT, metadata={"source": "test_token"})
+
+@pytest.fixture
+def empty_document_data() -> DocumentData:
+    """Provides a sample DocumentData object with empty content."""
+    return DocumentData(id=TEST_DOC_ID, content=EMPTY_CONTENT, metadata={"source": "test_empty"})
+
+@pytest.mark.asyncio
+async def test_simple_processor_paragraph_chunking(sample_document: DocumentData):
+    """Tests paragraph chunking with SimpleDocumentProcessor."""
+    processor = SimpleDocumentProcessor(chunk_strategy="paragraph")
+    chunks: List[ChunkData] = await processor.chunk_document(sample_document)
+
+    assert len(chunks) == len(EXPECTED_PARA_CHUNKS)
+    chunk_texts = [chunk.text for chunk in chunks]
+    assert chunk_texts == EXPECTED_PARA_CHUNKS
+    for i, chunk in enumerate(chunks):
+        assert chunk.id == f"{TEST_DOC_ID}-chunk-{i}"
+        assert chunk.document_id == TEST_DOC_ID
+
+@pytest.mark.asyncio
+async def test_simple_processor_token_chunking(token_document: DocumentData):
+    """Tests token chunking with SimpleDocumentProcessor."""
+    processor = SimpleDocumentProcessor(chunk_strategy="token", tokens_per_chunk=5)
+    chunks: List[ChunkData] = await processor.chunk_document(token_document)
+
+    assert len(chunks) == len(EXPECTED_TOKEN_CHUNKS_5)
+    chunk_texts = [chunk.text for chunk in chunks]
+    assert chunk_texts == EXPECTED_TOKEN_CHUNKS_5
+    for i, chunk in enumerate(chunks):
+        assert chunk.id == f"{TEST_DOC_ID}-chunk-{i}"
+        assert chunk.document_id == TEST_DOC_ID
+
+@pytest.mark.asyncio
+async def test_simple_processor_empty_content(empty_document_data: DocumentData):
+    """Tests chunking with empty or whitespace-only content."""
+    processor_para = SimpleDocumentProcessor(chunk_strategy="paragraph")
+    chunks_para: List[ChunkData] = await processor_para.chunk_document(empty_document_data)
+    assert len(chunks_para) == 0
+
+    processor_token = SimpleDocumentProcessor(chunk_strategy="token", tokens_per_chunk=10)
+    chunks_token: List[ChunkData] = await processor_token.chunk_document(empty_document_data)
+    assert len(chunks_token) == 0
+
+def test_invalid_chunk_strategy():
+    """Tests that an invalid chunk strategy raises ValueError."""
+    with pytest.raises(ValueError, match="Invalid chunk_strategy"):
+        SimpleDocumentProcessor(chunk_strategy="invalid_strategy") # type: ignore
+
+def test_invalid_token_chunk_size():
+    """Tests that a non-positive token chunk size raises ValueError."""
+    with pytest.raises(ValueError, match="tokens_per_chunk must be positive"):
+        SimpleDocumentProcessor(chunk_strategy="token", tokens_per_chunk=0)
+    with pytest.raises(ValueError, match="tokens_per_chunk must be positive"):
+        SimpleDocumentProcessor(chunk_strategy="token", tokens_per_chunk=-5)
+
+# Add more tests for edge cases:
+# - Content with only newlines
+# - Very large documents (might need mocking/different setup)
+# - Different tokens_per_chunk values 

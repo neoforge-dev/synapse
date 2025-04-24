@@ -2,12 +2,20 @@ from fastapi import APIRouter, HTTPException, status, Response, Depends, Query, 
 from typing import List, Dict, Any, Optional, Annotated
 import logging # Import logging
 import uuid
+# Import GraphRepository interface for type hinting
+from graph_rag.core.interfaces import GraphRepository
+from graph_rag.core.interfaces import VectorStore
 
 # Defer schema import
 # from graph_rag.api import schemas 
 from graph_rag.api import schemas # Restore top-level import
 from graph_rag.domain.models import Document, Entity, Relationship
-from graph_rag.api.dependencies import GraphRepositoryDep
+from graph_rag.api.dependencies import get_graph_repository, get_vector_store
+from graph_rag.api.schemas import DocumentCreate, DocumentResponse, DocumentMetadataUpdate, ChunkResultSchema
+from graph_rag.domain.models import Document, Chunk # Assuming domain models are used
+# from graph_rag.core.graph_store import GraphStore # Remove incorrect import
+# from graph_rag.core.vector_store import VectorStore # Incorrect import
+from graph_rag.services.ingestion import IngestionService
 
 # router = APIRouter(prefix="/documents", tags=["Documents"]) # REMOVE direct creation
 logger = logging.getLogger(__name__) # Logger for this module
@@ -27,7 +35,7 @@ def create_documents_router() -> APIRouter:
     async def add_document(
         # doc_in: 'schemas.DocumentCreate', # Use forward reference string
         doc_in: schemas.DocumentCreate, # Restore type hint
-        repo: GraphRepositoryDep
+        repo: Annotated[GraphRepository, Depends(get_graph_repository)] # Correct dependency injection
     ):
         # from graph_rag.api import schemas # Import locally - REMOVE
         """Creates a new document entity in the graph."""
@@ -55,7 +63,7 @@ def create_documents_router() -> APIRouter:
         description="Retrieves all document nodes from the graph. Warning: potentially large response."
     )
     async def list_all_documents(
-        repo: GraphRepositoryDep,
+        repo: Annotated[GraphRepository, Depends(get_graph_repository)], # Correct dependency injection
         limit: Optional[int] = Query(100, description="Limit the number of documents returned", ge=1, le=1000)
     # ) -> List['schemas.DocumentResponse']: # Use forward reference string in type hint - REMOVE
     ):
@@ -87,7 +95,7 @@ def create_documents_router() -> APIRouter:
     )
     async def get_document(
         document_id: str,
-        repo: GraphRepositoryDep
+        repo: Annotated[GraphRepository, Depends(get_graph_repository)] # Correct dependency injection
     # ) -> 'schemas.DocumentResponse': # Use forward reference string in type hint - REMOVE
     ):
         # from graph_rag.api import schemas # Import locally - REMOVE
@@ -112,11 +120,12 @@ def create_documents_router() -> APIRouter:
     )
     async def delete_document(
         document_id: str,
-        repo: GraphRepositoryDep,
+        repo: Annotated[GraphRepository, Depends(get_graph_repository)], # Correct dependency injection
+        vector_store: Annotated[VectorStore, Depends(get_vector_store)], # Add vector store dependency
         response: Response # Inject Response object for status code setting
     ):
         """
-        Delete a document and all chunks directly associated with it.
+        Delete a document and all chunks directly associated with it from both the graph and vector store.
         
         Returns:
         - 204 No Content: If deletion is successful.
@@ -125,6 +134,23 @@ def create_documents_router() -> APIRouter:
         """
         logger.info(f"Attempting to delete document {document_id} and its chunks.")
         try:
+            # First, get all chunks belonging to this document
+            try:
+                chunks = await repo.get_chunks_by_document_id(document_id)
+                chunk_ids = [chunk.id for chunk in chunks]
+                logger.info(f"Found {len(chunk_ids)} chunks to delete from vector store for document {document_id}")
+                
+                # Remove chunks from vector store
+                if chunk_ids:
+                    try:
+                        vector_store.delete_chunks(chunk_ids)
+                        logger.info(f"Deleted {len(chunk_ids)} chunks from vector store")
+                    except Exception as vs_e:
+                        logger.warning(f"Failed to delete chunks from vector store: {vs_e}. Continuing with graph deletion.")
+            except Exception as e:
+                logger.warning(f"Failed to retrieve chunks for document {document_id}: {e}. Continuing with document deletion.")
+                
+            # Then delete the document (and its chunks) from the graph
             deleted = await repo.delete_document(document_id)
             if not deleted:
                 logger.warning(f"Document {document_id} not found for deletion.")
@@ -165,7 +191,7 @@ def create_documents_router() -> APIRouter:
     async def update_document_metadata(
         document_id: str,
         metadata_update: schemas.DocumentMetadataUpdate,
-        graph_repo: GraphRepositoryDep,
+        graph_repo: Annotated[GraphRepository, Depends(get_graph_repository)], # Correct dependency injection (use graph_repo variable name)
     ):
         try:
             existing_entity = await graph_repo.get_entity_by_id(document_id)

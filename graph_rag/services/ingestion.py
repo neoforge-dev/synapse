@@ -7,9 +7,10 @@ import logging
 from graph_rag.domain.models import Document, Chunk, Edge, Entity, Relationship
 from graph_rag.core.document_processor import DocumentProcessor
 from graph_rag.core.entity_extractor import EntityExtractor
-from graph_rag.core.graph_store import GraphStore
-from graph_rag.services.embedding import EmbeddingService
+from graph_rag.core.interfaces import VectorStore, EmbeddingService, GraphRepository
 from graph_rag.core.document_processor import ChunkSplitter
+from graph_rag.core.knowledge_graph_builder import KnowledgeGraphBuilder
+from graph_rag.models import ProcessedDocument
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +32,10 @@ class IngestionService:
         self,
         document_processor: DocumentProcessor,
         entity_extractor: EntityExtractor,
-        graph_store: GraphStore,
+        graph_store: GraphRepository,
         embedding_service: EmbeddingService,
-        chunk_splitter: ChunkSplitter
+        chunk_splitter: ChunkSplitter,
+        vector_store: VectorStore
     ):
         """
         Initializes the IngestionService.
@@ -41,18 +43,21 @@ class IngestionService:
         Args:
             document_processor: An instance of DocumentProcessor for processing documents.
             entity_extractor: An instance of EntityExtractor for extracting entities from documents.
-            graph_store: An instance of GraphStore for storing entities and relationships.
+            graph_store: An instance of GraphRepository for storing entities and relationships.
             embedding_service: An instance of EmbeddingService for generating embeddings.
             chunk_splitter: An instance of a ChunkSplitter implementation.
+            vector_store: An instance of VectorStore for storing chunk vectors.
         """
         self.document_processor = document_processor
         self.entity_extractor = entity_extractor
         self.graph_store = graph_store
         self.embedding_service = embedding_service
         self.chunk_splitter = chunk_splitter
+        self.vector_store = vector_store
         logger.info(
             f"IngestionService initialized with processor: {type(document_processor).__name__}, \
-            extractor: {type(entity_extractor).__name__}, store: {type(graph_store).__name__}"
+            extractor: {type(entity_extractor).__name__}, store: {type(graph_store).__name__}, \
+            vector_store: {type(vector_store).__name__}"
         )
     
     async def ingest_document(
@@ -100,29 +105,37 @@ class IngestionService:
         logger.info(f"Split document {document_id} into {len(chunk_objects)} chunks.")
         
         # 3. Generate embeddings (if requested)
-        if generate_embeddings:
+        if self.embedding_service and generate_embeddings:
+            logger.info(f"Generating embeddings for {len(chunk_objects)} chunks...")
+            chunk_texts = [c.text for c in chunk_objects]
             try:
-                chunk_texts = [chunk.text for chunk in chunk_objects]
-                if chunk_texts:
-                    logger.info(f"Generating embeddings for {len(chunk_texts)} chunks...")
-                    embeddings = self.embedding_service.encode(chunk_texts)
-                    if len(embeddings) == len(chunk_objects):
-                        for i, chunk in enumerate(chunk_objects):
-                            chunk.embedding = embeddings[i]
-                        logger.info(f"Embeddings generated successfully.")
-                    else:
-                        logger.error("Mismatch between number of chunks and generated embeddings.")
-                        # Decide how to handle: raise error, skip embeddings?
-                        # For now, log error and proceed without embeddings for this batch
-                        generate_embeddings = False 
+                # Ensure the call to encode is awaited
+                embeddings = await self.embedding_service.encode(chunk_texts)
+                # Check if the lengths match before assigning embeddings
+                if embeddings and len(embeddings) == len(chunk_objects):
+                    for i, chunk in enumerate(chunk_objects):
+                        chunk.embedding = embeddings[i]
+                    logger.info("Embeddings generated successfully.")
+                    
+                    # Add chunks to vector store *after* embeddings are assigned (if generated)
+                    try:
+                        await self.vector_store.add_chunks(chunk_objects)
+                        logger.info(f"Added {len(chunk_objects)} chunks to vector store.")
+                    except Exception as vs_e:
+                        logger.error(f"Failed to add chunks to vector store: {vs_e}", exc_info=True)
+                        # Decide handling: maybe continue without vector store addition?
+                        # For now, log and continue.
+                        
                 else:
-                    logger.info("No chunk text found to generate embeddings.")
-                    generate_embeddings = False # Ensure flag is false if no text
+                    logger.error(f"Mismatch between number of chunks ({len(chunk_objects)}) and generated embeddings ({len(embeddings) if embeddings else 0}). Skipping embedding assignment.")
+            except AttributeError as ae:
+                logger.error(f"Failed to generate embeddings for document {document_id}: Embedding service missing 'encode' method or similar error: {ae}", exc_info=True)
+                # Decide how to handle: skip embeddings, raise error?
+                # For now, log error and continue without embeddings
             except Exception as e:
                 logger.error(f"Failed to generate embeddings for document {document_id}: {e}", exc_info=True)
-                # Decide how to handle: raise error, proceed without embeddings?
-                # For now, log error and proceed without embeddings
-                generate_embeddings = False # Ensure flag is false on error
+                # Decide how to handle: skip embeddings, raise error?
+                # For now, log error and continue without embeddings
         
         # 4. Save chunks and create relationships
         chunk_ids = []
