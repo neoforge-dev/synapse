@@ -108,45 +108,76 @@ class SimpleDocumentProcessor(DocumentProcessor):
         # Return a default splitter for compatibility with tests
         return SentenceSplitter()
 
-    async def chunk_document(self, doc: DocumentData) -> List[ChunkData]:
+    async def chunk_document(
+        self, 
+        content: str, 
+        document_id: str, 
+        metadata: dict | None = None, 
+        max_tokens_per_chunk: int | None = None # Add max_tokens_per_chunk if needed by token strategy
+    ) -> list[Chunk]:
         """Splits document content based on the configured strategy."""
-        logger.debug(f"Chunking document {doc.id} using strategy: {self.chunk_strategy}")
+        
+        # Use passed document_id and content directly
+        logger.debug(f"Chunking document {document_id} using strategy: {self.chunk_strategy}")
         chunks = []
-        content = doc.content.strip() # Remove leading/trailing whitespace
+        processed_content = content.strip() # Remove leading/trailing whitespace
+        
+        # Handle potential None metadata
+        base_metadata = metadata.copy() if metadata else {}
 
-        if not content:
-            logger.debug(f"Document {doc.id} has no content after stripping whitespace, returning 0 chunks.")
+        if not processed_content:
+            logger.debug(f"Document {document_id} has no content after stripping whitespace, returning 0 chunks.")
             return []
 
         if self.chunk_strategy == "paragraph":
-            # Split by one or more newline characters, potentially surrounded by whitespace
-            paragraphs = re.split(r'\s*\n\s*', content)
+            paragraphs = re.split(r'\s*\n\s*\n+', processed_content) # Split by one or more blank lines
             current_chunk_index = 0
-            for paragraph in paragraphs:
+            for i, paragraph in enumerate(paragraphs):
                 paragraph_text = paragraph.strip()
                 if paragraph_text: # Ignore empty paragraphs
-                    chunk_id = f"{doc.id}-chunk-{current_chunk_index}"
-                    chunks.append(ChunkData(
-                        id=chunk_id,
+                    chunk_id = f"{document_id}-p{i}" # Use paragraph index for ID
+                    # Create Chunk object with metadata
+                    chunk_metadata = base_metadata.copy()
+                    chunk_metadata["paragraph_index"] = i # Add specific metadata
+                    chunks.append(Chunk(
+                        id=str(uuid.uuid4()), # Generate unique UUID
                         text=paragraph_text,
-                        document_id=doc.id
+                        document_id=document_id,
+                        metadata=chunk_metadata # Assign metadata
                     ))
-                    current_chunk_index += 1
-                    
+                    logger.debug(f"Created chunk {chunk_id} (UUID: {chunks[-1].id}) for doc {document_id}")
+                    current_chunk_index += 1 # Keep track if needed, though UUID is primary ID
+
         elif self.chunk_strategy == "token":
-            # Simple whitespace splitting for "tokens" (words)
-            words = content.split()
-            current_chunk_index = 0
-            for i in range(0, len(words), self.tokens_per_chunk):
-                chunk_text = " ".join(words[i:i + self.tokens_per_chunk])
-                if chunk_text:
-                    chunk_id = f"{doc.id}-chunk-{current_chunk_index}"
-                    chunks.append(ChunkData(
-                        id=chunk_id,
-                        text=chunk_text,
-                        document_id=doc.id
-                    ))
-                    current_chunk_index += 1
+            # Use provided max_tokens_per_chunk or default from __init__
+            split_token_count = max_tokens_per_chunk if max_tokens_per_chunk is not None else self.tokens_per_chunk
+            if split_token_count <= 0:
+                 logger.warning(f"Invalid tokens_per_chunk ({split_token_count}) for doc {document_id}, falling back to paragraph strategy.")
+                 # Fallback or raise error - for now, let's just log and skip token chunking for this doc
+                 # Alternatively, could implement paragraph splitting here as fallback
+                 pass # Or implement fallback logic
+            else:
+                 # Simple whitespace splitting for "tokens" (words)
+                 words = processed_content.split()
+                 current_chunk_index = 0
+                 for i in range(0, len(words), split_token_count):
+                     chunk_text = " ".join(words[i:i + split_token_count])
+                     if chunk_text:
+                         chunk_id = f"{document_id}-t{current_chunk_index}" # Use token chunk index
+                         # Create Chunk object with metadata
+                         chunk_metadata = base_metadata.copy()
+                         chunk_metadata["token_chunk_index"] = current_chunk_index
+                         chunk_metadata["start_word_index"] = i
+                         chunk_metadata["end_word_index"] = i + split_token_count -1
+                         
+                         chunks.append(Chunk(
+                             id=str(uuid.uuid4()), # Generate unique UUID
+                             text=chunk_text,
+                             document_id=document_id,
+                             metadata=chunk_metadata # Assign metadata
+                         ))
+                         logger.debug(f"Created chunk {chunk_id} (UUID: {chunks[-1].id}) for doc {document_id}")
+                         current_chunk_index += 1
         
-        logger.debug(f"Generated {len(chunks)} chunks for document {doc.id}")
+        logger.info(f"Generated {len(chunks)} chunks for document {document_id} using {self.chunk_strategy} strategy.")
         return chunks 

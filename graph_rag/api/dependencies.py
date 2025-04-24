@@ -317,22 +317,23 @@ def create_ingestion_service(
     logger.debug("Creating IngestionService instance")
     
     # Get chunk splitter from the document processor's property
-    try:
-        chunk_splitter = document_processor.chunk_splitter
-        if not isinstance(chunk_splitter, ChunkSplitter):
-            raise TypeError(f"document_processor.chunk_splitter is not a ChunkSplitter instance, got {type(chunk_splitter)}")
-    except AttributeError:
-        logger.error(f"DocumentProcessor of type {type(document_processor)} does not have a chunk_splitter property.")
-        # Handle error appropriately, maybe raise an HTTPException or return a default/mock service
-        # For now, raising an error to make the problem explicit
-        raise ValueError("Configured DocumentProcessor lacks a required chunk_splitter property.")
+    # try:
+    #     chunk_splitter = document_processor.chunk_splitter
+    #     if not isinstance(chunk_splitter, ChunkSplitter):
+    #         raise TypeError(f"document_processor.chunk_splitter is not a ChunkSplitter instance, got {type(chunk_splitter)}")
+    # except AttributeError:
+    #     logger.error(f"DocumentProcessor of type {type(document_processor)} does not have a chunk_splitter property.")
+    #     # Handle error appropriately, maybe raise an HTTPException or return a default/mock service
+    #     # For now, raising an error to make the problem explicit
+    #     raise ValueError("Configured DocumentProcessor lacks a required chunk_splitter property.")
+    # Removed chunk_splitter logic above
     
     return IngestionService(
         document_processor=document_processor,
         entity_extractor=entity_extractor,
         graph_store=graph_repo,
         embedding_service=embedding_service,
-        chunk_splitter=chunk_splitter,
+        # Removed chunk_splitter=chunk_splitter,
         vector_store=vector_store  # Pass vector_store argument
     )
 

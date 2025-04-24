@@ -34,7 +34,6 @@ class IngestionService:
         entity_extractor: EntityExtractor,
         graph_store: GraphRepository,
         embedding_service: EmbeddingService,
-        chunk_splitter: ChunkSplitter,
         vector_store: VectorStore
     ):
         """
@@ -45,14 +44,12 @@ class IngestionService:
             entity_extractor: An instance of EntityExtractor for extracting entities from documents.
             graph_store: An instance of GraphRepository for storing entities and relationships.
             embedding_service: An instance of EmbeddingService for generating embeddings.
-            chunk_splitter: An instance of a ChunkSplitter implementation.
             vector_store: An instance of VectorStore for storing chunk vectors.
         """
         self.document_processor = document_processor
         self.entity_extractor = entity_extractor
         self.graph_store = graph_store
         self.embedding_service = embedding_service
-        self.chunk_splitter = chunk_splitter
         self.vector_store = vector_store
         logger.info(
             f"IngestionService initialized with processor: {type(document_processor).__name__}, \
@@ -101,7 +98,7 @@ class IngestionService:
             raise # Re-raise to signal failure
         
         # 2. Split content into chunks
-        chunk_objects = self._split_into_chunks(document)  # Use our internal method instead of async one
+        chunk_objects = await self._split_into_chunks(document, max_tokens_per_chunk)
         logger.info(f"Split document {document_id} into {len(chunk_objects)} chunks.")
         
         # 3. Generate embeddings (if requested)
@@ -179,15 +176,21 @@ class IngestionService:
             chunk_ids=chunk_ids
         )
     
-    def _split_into_chunks(self, document: Document) -> List[Chunk]:
-        """Splits the document content into chunks using the configured splitter."""
-        logger.debug(f"Splitting document {document.id} using {type(self.chunk_splitter).__name__}")
+    async def _split_into_chunks(self, document: Document, max_tokens_per_chunk: int | None = None) -> list[Chunk]:
+        """Helper method to split document content into chunks."""
         try:
-            chunks = self.chunk_splitter.split(document)
-            logger.info(f"Document {document.id} split into {len(chunks)} chunks.")
+            chunks: list[Chunk] = await self.document_processor.chunk_document( # Await here
+                document.content,
+                document_id=document.id,
+                metadata=document.metadata,
+                max_tokens_per_chunk=max_tokens_per_chunk # Pass the override
+            )
+            # logger.info(f"Document {document.id} split into {len(chunks)} chunks.") # This line caused the error
+            logger.info(f"Document {document.id} split into {len(chunks)} chunks.") # Log after awaiting
             return chunks
         except Exception as e:
-            logger.error(f"Error splitting document {document.id}: {e}", exc_info=True)
+            logger.error(f"Error splitting document {document.id}: {e}")
+            # Depending on desired behavior, might re-raise or return empty list
             return []
     
     def _split_into_chunks_old(

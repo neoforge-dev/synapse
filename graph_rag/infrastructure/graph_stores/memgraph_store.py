@@ -300,37 +300,51 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
             return None
 
     async def add_chunk(self, chunk: Chunk) -> None:
-        """Adds a chunk node and links it to its parent document.
-           Ensures the parent document exists before creating the chunk.
+        """Adds or updates a chunk node and connects it to its document."""
+        logger.debug(f"Adding/updating chunk {chunk.id} for document {chunk.document_id}")
+        created_at_dt = chunk.created_at or datetime.now(timezone.utc)
+        if isinstance(created_at_dt, datetime) and created_at_dt.tzinfo is None:
+            created_at_dt = created_at_dt.replace(tzinfo=timezone.utc)
+        updated_at_dt = datetime.now(timezone.utc)
+
+        query = """
+        MERGE (c:Chunk {id: $id})
+        ON CREATE SET
+            c.document_id = $document_id,
+            c.text = $text,
+            c.embedding = $embedding,
+            c.metadata = $metadata,
+            c.created_at = $created_at,
+            c.updated_at = $updated_at
+        ON MATCH SET
+            c.text = $text,
+            c.embedding = $embedding,
+            c.metadata = $metadata,
+            c.updated_at = $updated_at
+        WITH c
+        MATCH (d:Document {id: $document_id})
+        MERGE (d)-[:CONTAINS]->(c)
         """
-        logger.debug(f"Attempting to add chunk {chunk.id} for document {chunk.document_id}")
-        query = (
-            "MATCH (d:Document {id: $doc_id}) "
-            "WITH d " # Pass the matched document (or null if no match)
-            "WHERE d IS NOT NULL " # Proceed only if document was found
-            "MERGE (c:Chunk {id: $chunk_id}) "
-            "ON CREATE SET c.id = $chunk_id, c.document_id = $doc_id, c.text = $text, c.embedding = $embedding, c.created_at = $created_at, c.updated_at = $updated_at "
-            "ON MATCH SET c.text = $text, c.embedding = $embedding, c.updated_at = $updated_at "
-            "MERGE (d)-[:CONTAINS]->(c) "
-            "RETURN count(c) > 0 AS chunk_created_or_updated"
-        )
+
+        # Explicitly create metadata dict, default to {} if None
+        metadata_param = chunk.metadata if chunk.metadata is not None else {}
+
+        # Construct params dictionary using primitive types or explicitly handled types
         params = {
-            "doc_id": chunk.document_id,
-            "chunk_id": chunk.id,
+            "id": chunk.id,
+            "document_id": chunk.document_id,
             "text": chunk.text,
-            "embedding": chunk.embedding,
-            "created_at": chunk.created_at or datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "embedding": chunk.embedding, # Pass embedding list directly (or None)
+            "metadata": metadata_param, # Use the guaranteed dict
+            "created_at": created_at_dt,
+            "updated_at": updated_at_dt
         }
+
         try:
-            results = await self.execute_query(query, params)
-            if results and results[0].get('chunk_created_or_updated'):
-                logger.info(f"Successfully added/updated chunk {chunk.id} for document {chunk.document_id}")
-            else:
-                logger.warning(f"Failed to add chunk {chunk.id}: Document {chunk.document_id} not found.")
-                raise ValueError(f"Document {chunk.document_id} not found, cannot add chunk {chunk.id}.")
+            await self.execute_query(query, params)
+            logger.info(f"Successfully added/updated chunk {chunk.id} for document {chunk.document_id}")
         except Exception as e:
-            logger.error(f"Failed to add chunk {chunk.id}: {e}", exc_info=True)
+            logger.error(f"Failed to add chunk {chunk.id} or relationship: {e}", exc_info=True)
             raise
 
     async def add_node(self, node: Node):
@@ -962,10 +976,10 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
 
     async def delete_document(self, document_id: str) -> bool:
         """Deletes a document and its associated chunks and relationships."""
-        # Query 1: Find chunks associated with the document
+        # Query 1: Find chunk IDs linked to the document
         find_chunks_query = """
-        MATCH (d:Document {id: $doc_id})<-[:PART_OF]-(c:Chunk)
-        RETURN c.id AS chunkId
+        MATCH (c:Chunk)-[:BELONGS_TO]->(d:Document {id: $doc_id})
+        RETURN c.id as chunkId
         """
         # Query 2: Delete the document and detach its relationships
         delete_doc_query = """

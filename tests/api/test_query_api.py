@@ -83,10 +83,10 @@ async def test_query_success(test_client: AsyncClient, mock_graph_rag_engine: As
     assert len(response_data["relevant_chunks"]) == 1
     assert response_data["relevant_chunks"][0]["id"] == "alice_c1"
     assert response_data["relevant_chunks"][0]["text"] == "Alice lives here."
-    assert response_data["relevant_chunks"][0]["metadata"]["score"] == 0.9
-    # API model QueryResultGraphContext should be None if domain graph_context is None
-    assert response_data["graph_context"] is None 
-    mock_graph_rag_engine.query.assert_awaited_once_with("Tell me about Alice.", k=5)
+    assert "score" in response_data["relevant_chunks"][0]["properties"]
+    assert response_data["relevant_chunks"][0]["properties"]["score"] == 0.9
+    assert response_data["graph_context"] is None
+    mock_graph_rag_engine.query.assert_awaited_once_with(payload["query_text"], config={"k": payload["k"]})
 
 @pytest.mark.asyncio
 async def test_query_success_with_graph_context(test_client: AsyncClient, mock_graph_rag_engine: AsyncMock):
@@ -94,7 +94,10 @@ async def test_query_success_with_graph_context(test_client: AsyncClient, mock_g
     payload = {"query_text": "Who is connected to Bob?", "k": 2}
 
     # Configure mock engine to return graph context
-    mock_entities = [Entity(id="bob", type="Person", metadata={"name": "Bob"}), Entity(id="carol", type="Person", metadata={"name": "Carol"})]
+    mock_entities = [
+        Entity(id="bob", type="Person", properties={"name": "Bob"}), 
+        Entity(id="carol", type="Person", properties={"name": "Carol"})
+    ]
     mock_relationships = [Relationship(id="rel1", type="FRIENDS", source_id="bob", target_id="carol")]
     async def mock_query_with_graph(query_text, k=None, config=None):
         actual_k = k if k is not None else (config.get('k') if config else 2) # Handle both ways k might be passed
@@ -115,7 +118,8 @@ async def test_query_success_with_graph_context(test_client: AsyncClient, mock_g
     assert response_data["answer"] == "Mocked answer about Who is connected to Bob? graph."
     assert len(response_data["relevant_chunks"]) == 1
     assert response_data["relevant_chunks"][0]["id"] == "bob_c1"
-    assert response_data["relevant_chunks"][0]["metadata"]["score"] == 0.85
+    assert "score" in response_data["relevant_chunks"][0]["properties"]
+    assert response_data["relevant_chunks"][0]["properties"]["score"] == 0.85
     assert response_data["graph_context"] is not None
     assert isinstance(response_data["graph_context"], dict) # API model is a dict
     assert len(response_data["graph_context"].get("entities", [])) == 2
@@ -124,7 +128,7 @@ async def test_query_success_with_graph_context(test_client: AsyncClient, mock_g
     assert response_data["graph_context"]["entities"][0]["id"] == "bob"
     assert response_data["graph_context"]["relationships"][0]["id"] == "rel1"
 
-    mock_graph_rag_engine.query.assert_awaited_once_with("Who is connected to Bob?", k=2)
+    mock_graph_rag_engine.query.assert_awaited_once_with(payload["query_text"], config={"k": payload["k"]})
 
 @pytest.mark.asyncio
 async def test_query_engine_error(test_client: AsyncClient, mock_graph_rag_engine: AsyncMock):
@@ -148,7 +152,7 @@ async def test_query_engine_error(test_client: AsyncClient, mock_graph_rag_engin
     response_data = response.json()
     assert "detail" in response_data
     assert error_message in response_data["detail"]
-    mock_graph_rag_engine.query.assert_awaited_once_with("Query that causes error.", k=3)
+    mock_graph_rag_engine.query.assert_awaited_once_with(payload["query_text"], config={"k": payload["k"]})
 
 @pytest.mark.asyncio
 async def test_query_invalid_request_missing_text(test_client: AsyncClient):
@@ -213,7 +217,7 @@ async def test_query_no_entities(test_client: AsyncClient, mock_graph_rag_engine
     assert "Could not find relevant information" in response_data["answer"]
     assert len(response_data["relevant_chunks"]) == 0
     assert response_data["graph_context"] is None
-    mock_graph_rag_engine.query.assert_awaited_once_with(payload["query_text"], k=payload["k"])
+    mock_graph_rag_engine.query.assert_awaited_once_with(payload["query_text"], config={"k": payload["k"]})
 
 # TODO: Add test for query with graph context returned
 # TODO: Add test for different config parameters (e.g., testing 'k') 

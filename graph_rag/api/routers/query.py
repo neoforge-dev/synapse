@@ -28,8 +28,9 @@ def create_query_router() -> APIRouter:
         """Endpoint to handle user queries."""
         logger.info(f"Received query: {query_request.query_text[:100]}... (k={query_request.k})")
         try:
-            # Call the engine's query method
-            query_result: DomainQueryResult = await engine.query(query_request.query_text, k=query_request.k)
+            # FIX: Pass k within a config dictionary
+            config = {"k": query_request.k} # Create config dict
+            query_result: DomainQueryResult = await engine.query(query_request.query_text, config=config)
             logger.info(f"Query successful. Found {len(query_result.relevant_chunks)} chunks.")
             
             # Adapt the domain QueryResult to the API QueryResponse model

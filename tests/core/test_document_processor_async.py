@@ -31,7 +31,11 @@ async def test_minimal_async():
 async def test_simple_chunking_by_paragraph(sample_doc_data):
     """Test chunking by paragraph with SimpleDocumentProcessor."""
     processor = SimpleDocumentProcessor(chunk_strategy="paragraph")
-    chunks = await processor.chunk_document(sample_doc_data)
+    chunks = await processor.chunk_document(
+        content=sample_doc_data.content,
+        document_id=sample_doc_data.id,
+        metadata=sample_doc_data.metadata
+    )
     
     assert len(chunks) == 4
     assert chunks[0].text == "First paragraph."
@@ -42,12 +46,19 @@ async def test_simple_chunking_by_paragraph(sample_doc_data):
         assert chunk.document_id == "doc-123"
         assert isinstance(chunk.id, str)
         assert chunk.embedding is None # Embeddings not handled here
+        assert chunk.metadata["source"] == "test"
+        assert chunk.metadata["paragraph_index"] == chunks.index(chunk)
 
 @pytest.mark.asyncio
 async def test_simple_chunking_fixed_tokens(sample_doc_data):
     """Test chunking by fixed token count with SimpleDocumentProcessor."""
     processor = SimpleDocumentProcessor(chunk_strategy="token", tokens_per_chunk=5)
-    chunks = await processor.chunk_document(sample_doc_data)
+    chunks = await processor.chunk_document(
+        content=sample_doc_data.content,
+        document_id=sample_doc_data.id,
+        metadata=sample_doc_data.metadata,
+        max_tokens_per_chunk=5 # Pass override
+    )
     
     # Based on the implementation:
     # words = ['First', 'paragraph.', 'Second', 'paragraph,', 'slightly', 'longer.', 'Third', 'paragraph.', 'Fourth.']
@@ -58,6 +69,8 @@ async def test_simple_chunking_fixed_tokens(sample_doc_data):
     assert chunks[1].text == "longer. Third paragraph. Fourth."
     for chunk in chunks:
         assert chunk.document_id == "doc-123"
+        assert chunk.metadata["source"] == "test"
+        assert chunk.metadata["token_chunk_index"] == chunks.index(chunk)
 
 @pytest.mark.asyncio
 async def test_simple_chunking_invalid_strategy():
@@ -70,7 +83,11 @@ async def test_simple_chunking_empty_doc():
     """Test chunking an empty document."""
     doc = DocumentData(id="empty-doc", content="", metadata={})
     processor = SimpleDocumentProcessor()
-    chunks = await processor.chunk_document(doc)
+    chunks = await processor.chunk_document(
+        content=doc.content,
+        document_id=doc.id,
+        metadata=doc.metadata
+    )
     assert len(chunks) == 0
 
 @pytest.mark.asyncio
@@ -78,5 +95,9 @@ async def test_simple_chunking_whitespace_doc():
     """Test chunking a document with only whitespace."""
     doc = DocumentData(id="ws-doc", content="  \n\n   \t ", metadata={})
     processor = SimpleDocumentProcessor()
-    chunks = await processor.chunk_document(doc)
+    chunks = await processor.chunk_document(
+        content=doc.content,
+        document_id=doc.id,
+        metadata=doc.metadata
+    )
     assert len(chunks) == 0 

@@ -439,7 +439,7 @@ async def test_simple_engine_query_vector_only(
     )
     
     # FIX: Configure the mock to return the sample_chunk_list directly
-    mock_vector_store.search.return_value = sample_chunk_list
+    mock_vector_store.search = AsyncMock(return_value=sample_chunk_list)
 
     # Act (use k=3)
     result = await engine.query(query, config={"include_graph": False, "k": 3})
@@ -472,7 +472,7 @@ async def test_simple_engine_query_with_graph_context(
 
     # Configure mocks
     # FIX: Use the fixture directly
-    mock_vector_store.search.return_value = sample_chunk_list
+    mock_vector_store.search = AsyncMock(return_value=sample_chunk_list)
 
     # Mock entity extraction: combine chunk texts for extraction
     combined_text = " ".join([sr.chunk.text for sr in sample_chunk_list])
@@ -583,7 +583,7 @@ async def test_simple_engine_query_graph_no_entities_extracted(
     
     # Configure mocks
     # FIX: Use the sample_chunk_list directly
-    mock_vector_store.search.return_value = sample_chunk_list
+    mock_vector_store.search = AsyncMock(return_value=sample_chunk_list)
     
     # Mock entity extraction to return no entities
     mock_entity_extractor.extract.return_value = ExtractionResult(entities=[], relationships=[])

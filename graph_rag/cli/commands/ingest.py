@@ -11,6 +11,10 @@ from graph_rag.core.entity_extractor import SpacyEntityExtractor
 from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 from graph_rag.services.ingestion import IngestionService
 
+# Import necessary for creating dependencies
+from graph_rag.api.dependencies import MockEmbeddingService
+from graph_rag.infrastructure.vector_stores import SimpleVectorStore
+
 async def process_and_store_document(
     file_path: Path,
     metadata: Optional[dict] = None
@@ -27,19 +31,23 @@ async def process_and_store_document(
     repo = MemgraphGraphRepository(settings)
     processor = SimpleDocumentProcessor()
     extractor = SpacyEntityExtractor()
+    # Create required dependencies (using mocks/simple versions for CLI)
+    # Use settings to get embedding dimension
+    embedding_service = MockEmbeddingService(dimension=settings.EMBEDDING_DIMENSION) 
+    vector_store = SimpleVectorStore(embedding_service=embedding_service)
 
     try:
         # Connect to database
         await repo.connect()
 
-        # Create ingestion service
+        # Create ingestion service - Corrected signature
         service = IngestionService(
             document_processor=processor,
             entity_extractor=extractor,
             graph_store=repo,
-            embedding_service=None,  # We'll handle embeddings separately
-            chunk_splitter=processor,  # SimpleDocumentProcessor implements ChunkSplitter
-            vector_store=None  # We'll handle vector store separately
+            embedding_service=embedding_service, # Provide the created service
+            # chunk_splitter=processor,  # Removed incorrect argument
+            vector_store=vector_store # Provide the created store
         )
 
         # Read file content

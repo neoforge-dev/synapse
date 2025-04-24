@@ -223,11 +223,11 @@ class SimpleVectorStore(VectorStore):
         chunk_ids = [chunk.id for chunk in chunks]
 
         # Check if embedding service requires async
-        if asyncio.iscoroutinefunction(self.embedding_service.get_embeddings):
-            embeddings = await self.embedding_service.get_embeddings(texts)
+        if asyncio.iscoroutinefunction(self.embedding_service.encode):
+            embeddings = await self.embedding_service.encode(texts)
         else:
             # Run synchronous embedding function in a thread pool
-            embeddings = await run_in_threadpool(self.embedding_service.get_embeddings, texts)
+            embeddings = await run_in_threadpool(self.embedding_service.encode, texts)
 
         async with self.lock:
             for i, chunk in enumerate(chunks):
@@ -257,10 +257,10 @@ class SimpleVectorStore(VectorStore):
             return []
 
         # Get query embedding
-        if asyncio.iscoroutinefunction(self.embedding_service.get_embeddings):
-            query_embedding_list = await self.embedding_service.get_embeddings([query])
+        if asyncio.iscoroutinefunction(self.embedding_service.encode):
+            query_embedding_list = await self.embedding_service.encode([query])
         else:
-            query_embedding_list = await run_in_threadpool(self.embedding_service.get_embeddings, [query])
+            query_embedding_list = await run_in_threadpool(self.embedding_service.encode, [query])
         
         if not query_embedding_list or query_embedding_list[0] is None:
             logger.error("Failed to generate embedding for the query.")

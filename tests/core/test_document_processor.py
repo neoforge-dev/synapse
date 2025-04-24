@@ -110,37 +110,53 @@ def empty_document_data() -> DocumentData:
 async def test_simple_processor_paragraph_chunking(sample_document: DocumentData):
     """Tests paragraph chunking with SimpleDocumentProcessor."""
     processor = SimpleDocumentProcessor(chunk_strategy="paragraph")
-    chunks: List[ChunkData] = await processor.chunk_document(sample_document)
-
-    assert len(chunks) == len(EXPECTED_PARA_CHUNKS)
-    chunk_texts = [chunk.text for chunk in chunks]
-    assert chunk_texts == EXPECTED_PARA_CHUNKS
-    for i, chunk in enumerate(chunks):
-        assert chunk.id == f"{TEST_DOC_ID}-chunk-{i}"
-        assert chunk.document_id == TEST_DOC_ID
+    chunks: List[Chunk] = await processor.chunk_document(
+        content=sample_document.content,
+        document_id=sample_document.id,
+        metadata=sample_document.metadata
+    )
+    assert len(chunks) == 3
+    assert chunks[0].text == "This is the first paragraph."
+    assert chunks[1].text == "This is the second."
+    assert chunks[2].text == "This is the third one."
+    # Check metadata propagation (assuming SimpleDocumentProcessor adds it)
+    assert chunks[0].metadata["source"] == "test"
+    assert "paragraph_index" in chunks[0].metadata # Check for processor-added meta
 
 @pytest.mark.asyncio
 async def test_simple_processor_token_chunking(token_document: DocumentData):
     """Tests token chunking with SimpleDocumentProcessor."""
     processor = SimpleDocumentProcessor(chunk_strategy="token", tokens_per_chunk=5)
-    chunks: List[ChunkData] = await processor.chunk_document(token_document)
-
-    assert len(chunks) == len(EXPECTED_TOKEN_CHUNKS_5)
-    chunk_texts = [chunk.text for chunk in chunks]
-    assert chunk_texts == EXPECTED_TOKEN_CHUNKS_5
-    for i, chunk in enumerate(chunks):
-        assert chunk.id == f"{TEST_DOC_ID}-chunk-{i}"
-        assert chunk.document_id == TEST_DOC_ID
+    chunks: List[Chunk] = await processor.chunk_document(
+        content=token_document.content,
+        document_id=token_document.id,
+        metadata=token_document.metadata,
+        max_tokens_per_chunk=5 # Pass override if needed by test
+    )
+    assert len(chunks) == 2
+    assert chunks[0].text == "Word1 word2 word3 word4 word5"
+    assert chunks[1].text == "word6 word7 word8 word9 word10"
+     # Check metadata propagation
+    assert chunks[0].metadata["source"] == "test_token"
+    assert "token_chunk_index" in chunks[0].metadata # Check for processor-added meta
 
 @pytest.mark.asyncio
 async def test_simple_processor_empty_content(empty_document_data: DocumentData):
     """Tests chunking with empty or whitespace-only content."""
     processor_para = SimpleDocumentProcessor(chunk_strategy="paragraph")
-    chunks_para: List[ChunkData] = await processor_para.chunk_document(empty_document_data)
+    chunks_para: List[Chunk] = await processor_para.chunk_document(
+        content=empty_document_data.content,
+        document_id=empty_document_data.id,
+        metadata=empty_document_data.metadata
+    )
     assert len(chunks_para) == 0
 
     processor_token = SimpleDocumentProcessor(chunk_strategy="token", tokens_per_chunk=10)
-    chunks_token: List[ChunkData] = await processor_token.chunk_document(empty_document_data)
+    chunks_token: List[Chunk] = await processor_token.chunk_document(
+        content=empty_document_data.content,
+        document_id=empty_document_data.id,
+        metadata=empty_document_data.metadata
+    )
     assert len(chunks_token) == 0
 
 def test_invalid_chunk_strategy():

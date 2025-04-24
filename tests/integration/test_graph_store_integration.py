@@ -7,6 +7,7 @@ import logging
 import uuid
 import mgclient
 import asyncio
+import numpy as np
 
 from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 from graph_rag.domain.models import Document, Chunk, Entity, Relationship
@@ -85,12 +86,36 @@ class TestMemgraphGraphRepositoryIntegration:
 
         # Add chunk using the data factory
         chunk_data = create_test_chunk_data(document_id=doc.id)
-        chunk = Chunk(**chunk_data.model_dump())
+        # FIX: Add metadata=None when creating Chunk from data factory output
+        chunk_data_dict = chunk_data.model_dump()
+        chunk_data_dict["metadata"] = chunk_data_dict.get("metadata", None) # Ensure metadata exists
+        chunk = Chunk(**chunk_data_dict)
         await repo.add_chunk(chunk)
-        # TODO: Add verification for chunk retrieval and relationship if needed
-        # retrieved_chunk = await repo.get_node_by_id(chunk.id) # Assuming get_node_by_id works for chunks
-        # assert retrieved_chunk is not None
-        # assert retrieved_chunk.properties['document_id'] == doc.id
+
+        # Verify chunk creation
+        # Use get_node_by_id and check type/properties, or use a specific get_chunk_by_id if implemented
+        # retrieved_chunk = await repo.get_chunk_by_id(chunk.id) # Assuming get_chunk_by_id exists
+        retrieved_node = await repo.get_node_by_id(chunk.id) # Using get_node_by_id
+        assert retrieved_node is not None, f"Chunk {chunk.id} not found using get_node_by_id"
+        assert isinstance(retrieved_node, Chunk), f"Node {chunk.id} is not a Chunk object"
+        assert retrieved_node.id == chunk.id
+        assert retrieved_node.text == chunk.text
+        # Compare embeddings if they are stored and retrieved correctly
+        # assert retrieved_node.embedding == chunk.embedding # Might fail due to float precision
+        if chunk.embedding:
+            assert np.allclose(retrieved_node.embedding, chunk.embedding), "Chunk embeddings do not match"
+
+        # Delete document
+        # await repo.begin_transaction() # REMOVE
+        success = await repo.delete_document(doc.id)
+        # await repo.commit_transaction() # REMOVE
+        assert success is True
+
+        # Verify deletion
+        # await asyncio.sleep(0.1) # Small delay just in case
+        assert await repo.get_document_by_id(doc.id) is None
+        # Verify chunk is also deleted (due to DETACH DELETE)
+        assert await repo.get_node_by_id(chunk.id) is None
 
     @pytest.mark.asyncio
     async def test_entity_operations(self, repo):
@@ -145,7 +170,10 @@ class TestMemgraphGraphRepositoryIntegration:
         for chunk_data_dict in SAMPLE_CHUNKS:
             # Use the data factory
             chunk_data_obj = create_test_chunk_data(**chunk_data_dict)
-            chunks_to_add.append(Chunk(**chunk_data_obj.model_dump()))
+            # FIX: Add metadata=None when creating Chunk from data factory output
+            chunk_model_dict = chunk_data_obj.model_dump()
+            chunk_model_dict["metadata"] = chunk_model_dict.get("metadata", None) # Ensure metadata exists
+            chunks_to_add.append(Chunk(**chunk_model_dict))
         
         # Add chunks individually (bulk method needs review/implementation)
         for chunk in chunks_to_add:
@@ -153,7 +181,6 @@ class TestMemgraphGraphRepositoryIntegration:
             parent_doc = await repo.get_document_by_id(chunk.document_id)
             if parent_doc:
                 await repo.add_chunk(chunk)
-                # await repo.commit_transaction() # REMOVE: Method no longer exists
             else:
                  logger.warning(f"Skipping chunk {chunk.id} because parent doc {chunk.document_id} not found")
 
@@ -167,6 +194,16 @@ class TestMemgraphGraphRepositoryIntegration:
         # await repo.commit_transaction() # REMOVE: Method no longer exists
         assert await repo.get_document_by_id(SAMPLE_DOCUMENTS[0]['id']) is not None
         # Add more checks as needed
+
+        # Add a small delay
+        await asyncio.sleep(0.1)
+
+        # Verify chunks exist
+        for chunk in chunks_to_add:
+            retrieved_chunk = await repo.get_node_by_id(chunk.id)
+            assert retrieved_chunk is not None, f"Chunk {chunk.id} not retrieved after bulk add."
+            assert isinstance(retrieved_chunk, Chunk)
+            assert retrieved_chunk.text == chunk.text
 
     @pytest.mark.asyncio
     async def test_error_handling(self, repo):

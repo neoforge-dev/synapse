@@ -12,7 +12,8 @@ async def test_delete_document(memgraph_repo: MemgraphGraphRepository, sample_do
         id="chunk_for_delete",
         text="This chunk belongs to the document to be deleted.",
         document_id=doc.id,
-        embedding=[0.1] * 10
+        embedding=[0.1] * 10,
+        metadata=None
     )
     await memgraph_repo.add_document(doc)
     await memgraph_repo.add_chunk(chunk)

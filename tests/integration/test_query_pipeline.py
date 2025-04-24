@@ -90,20 +90,6 @@ async def ingested_doc_id(test_client: AsyncClient, mock_graph_repo: AsyncMock) 
     pytest.fail(f"Mock Ingestion did not call add_document on mock_graph_repo for {doc_id} after {max_attempts * wait_seconds} seconds.")
     return ""
 
-# Fixture to provide the mock graph rag engine (potentially overridden in specific tests)
-@pytest.fixture(scope="function")
-async def mock_graph_rag_engine() -> AsyncMock:
-    # Basic setup, can be overridden by test functions
-    mock = AsyncMock(spec=SimpleGraphRAGEngine) # Use spec
-    default_result = QueryResult(
-        answer="Default fallback answer",
-        relevant_chunks=[],
-        graph_context=None,
-        metadata={'source': 'mock_pipeline_fixture'}
-    )
-    mock.query.return_value = default_result
-    return mock
-
 # --- Integration Test --- 
 pytestmark = pytest.mark.asyncio
 
@@ -115,15 +101,14 @@ async def test_query_pipeline(test_client: AsyncClient, ingested_doc_id: str, mo
         # Simulate returning specific results based on the query
         if "Eiffel Tower" in query_text:
             return QueryResult(
-                query=query_text,
                 answer="The Eiffel Tower is a wrought-iron lattice tower on the Champ de Mars in Paris, France.",
-                context=["Mock context 1", "Mock context 2"],
-                nodes=["node1", "node2"], # Sample node IDs
-                llm_info={"model": "mock_llm", "tokens_used": 50}
+                relevant_chunks=[Chunk(id="mock_chunk_1", document_id="doc1", text="Mock context 1")],
+                graph_context=None,
+                metadata={"query_used": query_text, "model": "mock_llm", "tokens_used": 50}
             )
-        return QueryResult(query=query_text, answer="No specific result found.", context=[], nodes=[], llm_info={})
+        return QueryResult(answer="No specific result found.", metadata={"query_used": query_text})
 
-    mock_graph_rag_engine.query.side_effect = mock_specific_query # Assign the async function directly
+    mock_graph_rag_engine.query.side_effect = mock_specific_query
 
     # Send a request to the endpoint
     response = await test_client.post("/api/v1/query", json={"query_text": "Tell me about the Eiffel Tower", "k": 5})
@@ -131,25 +116,20 @@ async def test_query_pipeline(test_client: AsyncClient, ingested_doc_id: str, mo
     # Assertions
     assert response.status_code == 200
     data = response.json()
-    assert data["query"] == "Tell me about the Eiffel Tower"
     assert "Eiffel Tower" in data["answer"]
-    assert isinstance(data["context"], list)
-    assert isinstance(data["nodes"], list)
-    assert data["llm_info"]["model"] == "mock_llm"
-
-    # Verify the mock was called correctly (using await for async mock)
-    mock_graph_rag_engine.query.assert_awaited_once_with("Tell me about the Eiffel Tower", k=5)
+    assert isinstance(data["relevant_chunks"], list)
+    assert data["relevant_chunks"][0]["text"] == "Mock context 1"
+    mock_graph_rag_engine.query.assert_awaited_once_with("Tell me about the Eiffel Tower", config={"k": 5})
 
 @pytest.mark.asyncio
 async def test_basic_query(test_client: AsyncClient, mock_graph_rag_engine: AsyncMock):
     """Test a basic query without complex entity extraction."""
     async def mock_eiffel_query(query_text: str, k: int | None = None, config: dict | None = None) -> QueryResult:
         return QueryResult(
-            query=query_text,
             answer="Mock answer for Eiffel Tower query.",
-            context=["Mock context: Eiffel Tower"],
-            nodes=["eiffel_node"],
-            llm_info={"model": "mock_basic", "tokens_used": 20}
+            relevant_chunks=[Chunk(id="eiffel_chunk", document_id="doc_eiffel", text="Mock context: Eiffel Tower")],
+            graph_context=None,
+            metadata={"query_used": query_text, "model": "mock_basic", "tokens_used": 20}
         )
 
     mock_graph_rag_engine.query.side_effect = mock_eiffel_query
@@ -158,20 +138,23 @@ async def test_basic_query(test_client: AsyncClient, mock_graph_rag_engine: Asyn
 
     assert response.status_code == 200
     data = response.json()
-    assert data["query"] == "What is the Eiffel Tower?"
     assert "Mock answer" in data["answer"]
-    mock_graph_rag_engine.query.assert_awaited_once_with("What is the Eiffel Tower?", k=3)
+    assert len(data["relevant_chunks"]) == 1
+    assert data["relevant_chunks"][0]["text"] == "Mock context: Eiffel Tower"
+    mock_graph_rag_engine.query.assert_awaited_once_with("What is the Eiffel Tower?", config={"k": 3})
 
 @pytest.mark.asyncio
 async def test_query_no_entities(test_client: AsyncClient, mock_graph_rag_engine: AsyncMock):
     """Test a query that might not yield specific entities or graph results."""
     async def mock_no_entity_query(query_text: str, k: int | None = None, config: dict | None = None) -> QueryResult:
         return QueryResult(
-            query=query_text,
             answer="No specific graph entities found, providing general info.",
-            context=["General context 1", "General context 2"],
-            nodes=[],
-            llm_info={"model": "mock_general", "tokens_used": 30}
+            relevant_chunks=[
+                Chunk(id="gen_chunk_1", document_id="doc_gen", text="General context 1"),
+                Chunk(id="gen_chunk_2", document_id="doc_gen", text="General context 2"),
+                ],
+            graph_context=None,
+            metadata={"query_used": query_text, "model": "mock_general", "tokens_used": 30}
         )
 
     mock_graph_rag_engine.query.side_effect = mock_no_entity_query
@@ -180,10 +163,9 @@ async def test_query_no_entities(test_client: AsyncClient, mock_graph_rag_engine
 
     assert response.status_code == 200
     data = response.json()
-    assert data["query"] == "What is the weather like?"
     assert "No specific graph entities found" in data["answer"]
-    assert data["nodes"] == []
-    mock_graph_rag_engine.query.assert_awaited_once_with("What is the weather like?", k=10)
+    assert len(data["relevant_chunks"]) == 2
+    mock_graph_rag_engine.query.assert_awaited_once_with("What is the weather like?", config={"k": 10})
 
 @pytest.mark.asyncio
 async def test_query_invalid_request(test_client: AsyncClient):
