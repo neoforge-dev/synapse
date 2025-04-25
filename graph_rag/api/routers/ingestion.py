@@ -1,16 +1,16 @@
 import logging
 import uuid
 from typing import Callable, Any
-from fastapi import APIRouter, Depends, HTTPException, Body, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Body, status, BackgroundTasks, UploadFile, File
 
 from graph_rag.api.models import IngestRequest, IngestResponse
 from graph_rag.domain.models import Document # Import core model
-from graph_rag.core.document_processor import DocumentProcessor
+from graph_rag.core.interfaces import DocumentProcessor
 from graph_rag.core.entity_extractor import EntityExtractor
 from graph_rag.core.knowledge_graph_builder import KnowledgeGraphBuilder
 from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
-from graph_rag.api.dependencies import get_ingestion_service
-from graph_rag.services.ingestion import IngestionService
+from graph_rag.api.dependencies import get_ingestion_service, get_document_processor
+from graph_rag.services.ingestion import IngestionService, IngestionResult
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,9 @@ async def process_document_with_service(
     ingestion_service: IngestionService
 ):
     """Background task to process a document using the IngestionService."""
+    print(f"DEBUG: process_document_with_service called for doc {document_id}")
     try:
+        print(f"DEBUG: Calling ingestion_service.ingest_document for doc {document_id}")
         await ingestion_service.ingest_document(
             document_id=document_id,
             content=content,
@@ -33,7 +35,8 @@ async def process_document_with_service(
         )
         logger.info(f"Document {document_id} processed successfully.")
     except Exception as e:
-        logger.error(f"Background processing failed for document {document_id}: {e}", exc_info=True)
+        logger.error(f"Processing failed for document {document_id}: {e}", exc_info=True)
+        raise
 
 def create_ingestion_router(
     doc_processor_dep: DependencyFactory,
@@ -48,12 +51,12 @@ def create_ingestion_router(
     @router.post(
         "/documents",
         response_model=IngestResponse,
-        status_code=status.HTTP_202_ACCEPTED, # Use 202 Accepted for async/long tasks
+        status_code=status.HTTP_202_ACCEPTED, # Revert to 202 Accepted for async
         summary="Ingest a Single Document",
         description="Accepts text content and metadata, processes it, extracts entities/relationships, and adds them to the knowledge graph."
     )
     async def ingest_document(
-        background_tasks: BackgroundTasks,
+        background_tasks: BackgroundTasks, # Re-enable BackgroundTasks dependency
         payload: IngestRequest = Body(...),
         ingestion_service: IngestionService = Depends(get_ingestion_service)
     ):
@@ -75,7 +78,8 @@ def create_ingestion_router(
         doc_id = payload.document_id or f"doc-{uuid.uuid4()}"
         logger.debug(f"[Req ID: {request_id}] Using document ID: {doc_id}")
         
-        # Add background task
+        # Schedule background task
+        logger.info(f"[Req ID: {request_id}] Scheduling background ingestion task for document {doc_id}.")
         background_tasks.add_task(
             process_document_with_service,
             document_id=doc_id,
@@ -83,12 +87,20 @@ def create_ingestion_router(
             metadata=payload.metadata or {},
             ingestion_service=ingestion_service
         )
+        # logger.info(f"[Req ID: {request_id}] Running ingestion synchronously for test...") # Remove synchronous call
+        # await process_document_with_service(
+        #     document_id=doc_id,
+        #     content=payload.content,
+        #     metadata=payload.metadata or {},
+        #     ingestion_service=ingestion_service
+        # )
+        # logger.info(f"[Req ID: {request_id}] Synchronous ingestion complete for test.") # Remove synchronous call log
         
         return IngestResponse(
-            message="Document ingestion started",
+            message="Document ingestion accepted for background processing.", # Update message
             document_id=doc_id,
             task_id=request_id,
-            status="processing"
+            status="processing" # Keep status as processing
         )
             
     return router 

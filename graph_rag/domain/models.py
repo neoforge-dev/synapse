@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 
 
@@ -36,6 +36,7 @@ class Chunk(Node):
     text: str = Field(..., description="Chunk text content")
     document_id: str = Field(..., description="Reference to parent document")
     embedding: Optional[list[float]] = Field(None, description="Vector embedding of the chunk")
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Optional metadata associated with the chunk.")
 
 
 class Entity(Node):

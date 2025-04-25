@@ -37,7 +37,8 @@ from graph_rag.api.dependencies import (
     create_document_processor,
     create_knowledge_graph_builder,
     create_graph_repository, 
-    get_settings_dep
+    get_settings_dep,
+    get_settings, close_graph_repository, get_graph_repository, get_llm, get_embedding_service, get_vector_store, get_entity_extractor
 )
 
 # Import Concrete Implementations needed for lifespan setup
@@ -47,7 +48,7 @@ from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRe
 from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
 from graph_rag.core.vector_store import MockVectorStore
 from graph_rag.core.entity_extractor import MockEntityExtractor, SpacyEntityExtractor
-from graph_rag.core.document_processor import SimpleDocumentProcessor
+from graph_rag.infrastructure.document_processor.simple_processor import SimpleDocumentProcessor
 from graph_rag.core.knowledge_graph_builder import SimpleKnowledgeGraphBuilder
 from graph_rag.services.ingestion import IngestionService # Needed for type hint
 from graph_rag.services.embedding import SentenceTransformerEmbeddingService

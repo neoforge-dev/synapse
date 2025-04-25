@@ -138,17 +138,25 @@ class TestMemgraphGraphRepositoryIntegration:
         # Add relationship (assuming create_test_relationship works)
         # Use direct instantiation for now
         relationship = Relationship(
-             id=str(uuid.uuid4()), 
-             source_id=entity1.id, 
-             target_id=entity2.id, 
+             id=str(uuid.uuid4()),
+             source_id=entity1.id,
+             target_id=entity2.id,
              type="RELATED_TO"
         )
         await repo.add_relationship(relationship)
-        # TODO: Add verification for relationship retrieval
+
+        # Verify relationship retrieval using get_neighbors
+        neighbors, relationships = await repo.get_neighbors(entity1.id, relationship_types=["RELATED_TO"], direction="outgoing")
+        assert len(neighbors) == 1, "Expected one neighbor"
+        assert neighbors[0].id == entity2.id, "Neighbor ID does not match entity2"
+        assert len(relationships) == 1, "Expected one relationship"
+        assert relationships[0].type == "RELATED_TO", "Relationship type does not match"
+        assert relationships[0].source_id == entity1.id
+        assert relationships[0].target_id == entity2.id
 
     @pytest.mark.asyncio
-    async def test_bulk_operations(self, repo):
-        """Tests bulk operations with a real database."""
+    async def test_multiple_operations(self, repo):
+        """Tests multiple operations sequentially with a real database."""
         # Verify initial state (handled by fixture)
         # await verify_graph_state(repo._get_driver, expected_nodes=0, expected_relationships=0)
 
@@ -216,9 +224,8 @@ class TestMemgraphGraphRepositoryIntegration:
             "metadata": {"type": "orphan"}
         }
         chunk = Chunk(**chunk_data)
-        with pytest.raises(Exception): # Expecting mgclient.DatabaseError or similar
+        with pytest.raises(ValueError, match=f"Document with ID nonexistent_doc not found."):
             await repo.add_chunk(chunk)
-            pytest.fail("Adding chunk with non-existent document ID should have failed")
 
         # Try to add a relationship with nonexistent entities - THIS WON'T FAIL in Cypher
         entity1 = Entity(id="nonexistent_1", name="Nonexistent One", type="TEST")

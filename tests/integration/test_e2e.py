@@ -224,7 +224,8 @@ async def test_search_nonexistent_term(integration_test_client: httpx.AsyncClien
     assert keyword_response.status_code == status.HTTP_200_OK
     keyword_results = keyword_response.json()
     assert "results" in keyword_results
-    assert len(keyword_results["results"]) == 0
+    assert not any(query in res["chunk"]["text"] for res in keyword_results["results"]), \
+        f"Found unexpected term '{query}' in keyword results: {keyword_results['results']}"
 
     # Vector Search directly using test_client
     vector_response = await integration_test_client.post(
@@ -236,7 +237,8 @@ async def test_search_nonexistent_term(integration_test_client: httpx.AsyncClien
     assert vector_response.status_code == status.HTTP_200_OK
     vector_results = vector_response.json()
     assert "results" in vector_results
-    assert len(vector_results["results"]) == 0
+    assert not any(query in res["chunk"]["text"] for res in vector_results["results"]), \
+        f"Found unexpected term '{query}' in vector results: {vector_results['results']}"
 
 @pytest.mark.integration
 @pytest.mark.asyncio

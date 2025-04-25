@@ -1,8 +1,9 @@
 import pytest
 import uuid
+from typing import List, Dict, Any, Optional
 
+from graph_rag.infrastructure.document_processor.simple_processor import SimpleDocumentProcessor
 from graph_rag.core.interfaces import DocumentData, ChunkData
-from graph_rag.core.document_processor import SimpleDocumentProcessor
 
 # Apply asyncio marker to the whole module
 # pytestmark = pytest.mark.asyncio # Removed module-level marker

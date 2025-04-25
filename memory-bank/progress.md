@@ -7,7 +7,7 @@ This document tracks project progress, identifies what works, what remains to be
 *   **Dependency Management:** Poetry setup is complete and managing dependencies.
 *   **Configuration:** Centralized configuration (`graph_rag/config.py`) is in place.
 *   **Core Models:** Pydantic models for documents, nodes, relationships, chunks are defined.
-*   **Memgraph Integration:** `MemgraphGraphRepository` can connect, perform CRUD operations (add, get, delete nodes/relationships), and reconstruct Pydantic models from query results.
+*   **Memgraph Integration:** `MemgraphGraphRepository` can connect, perform CRUD operations (add, get, delete nodes/relationships), and reconstruct Pydantic models from query results. **Refactored `get_document_by_id`, `get_chunk_by_id`, `get_chunks_by_document_id`, and `add_chunk` to correctly handle `mgclient.Node.properties` access, use the correct relationship (`CONTAINS`), and improve error handling.**
 *   **Vector Store:** `SimpleVectorStore` provides basic add/search functionality with locking.
 *   **Dependency Injection:** Centralized factories and cache in `graph_rag/api/dependencies.py` handle component instantiation.
 *   **API Structure:** FastAPI application (`main.py`) with routers for ingestion, query, debug is set up.
@@ -35,7 +35,7 @@ This document tracks project progress, identifies what works, what remains to be
 ## Known Issues / Bugs
 
 *   **Runtime Test Failures:** Specific failures need to be identified by running `poetry run pytest`.
-*   **Memgraph Client Issue:** Potential `mgclient.Column object is not subscriptable` error needs verification after recent changes.
+*   **ModuleNotFoundError:** `graph_rag/core/graph_rag_engine.py` imports a non-existent module `graph_rag.llm.mock_llm`. Needs fixing.
 *   Potential race conditions or concurrency issues, especially around shared resources like the vector store (mitigated partially by locking in `SimpleVectorStore`).
 *   LLM interaction and response synthesis logic is likely incomplete or untested.
 
@@ -48,6 +48,7 @@ This document tracks project progress, identifies what works, what remains to be
 - **Fixes:** 
     - Resolved `IngestionService` init params, LLM_TYPE handling, Memgraph chunk property persistence issues.
     - Fixed CLI ingest command tests in `tests/integration/test_ingest_command.py` by updating the repository type to use `MemgraphGraphRepository` instead of `MemgraphRepository`.
+    - **Resolved Memgraph client property access issue (`mgclient.Node` vs `dict`) by refactoring `MemgraphGraphRepository` methods.**
 - **Tests:** 
     - Query pipeline integration tests (`tests/integration/test_query_pipeline.py`) are now passing (using mocked engine).
     - CLI ingest command tests (`tests/integration/test_ingest_command.py`) are now passing.
@@ -62,13 +63,15 @@ This document tracks project progress, identifies what works, what remains to be
 - **Low Test Coverage:** Current coverage (~27%) is significantly below target (e.g., 80%).
 - **Operational:** Memgraph Docker setup sometimes requires manual restart.
 - **Enhancements:** Embedding model needs production optimization, finalize Query Engine API, define entity/relationship extraction edge cases.
+- **ModuleNotFoundError:** `graph_rag/core/graph_rag_engine.py` imports a non-existent module `graph_rag.llm.mock_llm`. Needs fixing.
 
 ## Next Steps (Priority Order)
-1.  Verify status of other test suites (CLI, Memgraph store, Entity Extractor).
-2.  Increase Test Coverage significantly.
-3.  Implement and fix NLP integration tests.
-4.  Implement Ingestion Pipeline core logic.
-5.  Implement Query Engine core logic.
-6.  (Post-MVP) Begin Web UI implementation.
+1.  **Fix `ModuleNotFoundError` in `graph_rag/core/graph_rag_engine.py`.**
+2.  Verify status of other test suites (CLI, Memgraph store, Entity Extractor).
+3.  Increase Test Coverage significantly.
+4.  Implement and fix NLP integration tests.
+5.  Implement Ingestion Pipeline core logic.
+6.  Implement Query Engine core logic.
+7.  (Post-MVP) Begin Web UI implementation.
 
 All MemgraphGraphRepository CRUD tests now pass after fixing chunk property persistence (id/document_id always set). 

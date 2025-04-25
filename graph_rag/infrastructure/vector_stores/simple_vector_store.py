@@ -71,6 +71,8 @@ class SimpleVectorStore(VectorStore):
                 
             # Calculate cosine similarities
             vector_matrix = np.array(self.vectors)
+            if vector_matrix.size == 0:
+                return [] # Handle empty store explicitly
             if vector_matrix.ndim == 1:
                 vector_matrix = vector_matrix.reshape(1, -1)
             elif vector_matrix.ndim != 2:
@@ -181,34 +183,49 @@ class SimpleVectorStore(VectorStore):
     async def delete_store(self) -> None:
         """
         Deletes the entire vector store collection.
-        Implementation of the VectorStore protocol method (optional).
+        Implementation of the VectorStore protocol method.
         """
         logger.info("Deleting entire vector store")
         await self.clear_vector_store()
 
-    async def search(self, query_text: str, top_k: int = 5, search_type: str = "vector") -> List[ChunkData]:
+    async def search(self, query_text: str, top_k: int = 5, search_type: str = "vector") -> List[SearchResultData]:
         """
-        Compatibility adapter method to maintain backward compatibility with older API.
-        Calls either vector_search or keyword_search based on search_type parameter.
+        Performs a search based on the query text and search type.
         
         Args:
             query_text: The search query text
             top_k: Number of results to return
-            search_type: Either "vector" or "keyword" to determine search method
+            search_type: Either "vector" or "keyword" to determine search method (default: vector)
             
         Returns:
-            List of ChunkData objects
+            List of SearchResultData objects containing chunks and their scores.
         """
-        logger.debug(f"Search adapter called with search_type={search_type}, query='{query_text[:50]}...'")
+        logger.debug(f"Search called with search_type={search_type}, query='{query_text[:50]}...'")
         
+        results_with_scores: List[tuple[ChunkData, float]] = []
         if search_type.lower() == "keyword":
-            search_results = await self.keyword_search(query_text, k=top_k)
-        else:  # Default to vector search for any other value
-            search_results = await self.vector_search(query_text, k=top_k)
-            
-        # Convert result tuples (ChunkData, score) to just ChunkData objects
-        # Note that the score is stored in each ChunkData object's score field
-        return [result[0] for result in search_results]
+            # Keyword search implementation might need adjustment if it doesn't return scores
+            results_with_scores = await self.keyword_search(query_text, k=top_k)
+        else:  # Default to vector search
+            query_embedding = await self.embedding_service.encode_query(query_text)
+            if query_embedding:
+                 # Vector search now directly returns List[SearchResultData]
+                 # We need to call the specific vector search method which returns List[tuple[ChunkData, float]]
+                 # Let's assume self.vector_search returns List[tuple[ChunkData, float]]
+                 results_with_scores = await self.vector_search(query_text, k=top_k)
+                 # results_with_scores = await self.search_similar_chunks(query_embedding, limit=top_k)
+            else:
+                 logger.error(f"Failed to generate embedding for query: '{query_text}'")
+                 return []
+
+        # Convert (ChunkData, score) tuples to SearchResultData objects
+        search_results = [
+            SearchResultData(chunk=chunk_data, score=score)
+            for chunk_data, score in results_with_scores
+        ]
+        
+        logger.debug(f"Search returned {len(search_results)} results.")
+        return search_results
 
     async def ingest_chunks(self, chunks: List[ChunkData]):
         """Ingests chunks into the vector store."""
@@ -279,8 +296,9 @@ class SimpleVectorStore(VectorStore):
             # Calculate cosine similarities
             # Ensure vectors is a 2D array
             vector_matrix = np.array(self.vectors)
+            if vector_matrix.size == 0:
+                return [] # Handle empty store explicitly
             if vector_matrix.ndim == 1:
-                # This might happen if only one vector exists and wasn't properly nested
                 vector_matrix = vector_matrix.reshape(1, -1)
             elif vector_matrix.ndim != 2:
                 logger.error(f"Unexpected vector matrix dimensions: {vector_matrix.ndim}")

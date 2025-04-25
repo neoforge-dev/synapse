@@ -8,7 +8,8 @@
     - `_find_entities_in_graph_by_properties`: Corrected logic to use `entity.text` instead of `entity.name` for property lookups, as `ExtractedEntity` might not have `name` populated.
     - `query`: Ensured `graph_context_tuple` is initialized to `([], [])` when graph context is enabled but no entities are extracted or found, instead of `None`.
 - **`MemgraphGraphRepository` (`graph_rag/infrastructure/graph_stores/memgraph_store.py`):**
-    - Refactored `delete_document` method for multi-step deletion (find chunks, delete doc, delete chunks) with improved logging.
+    - **Review Complete:** Verified changes for `get_document_by_id`, `add_chunk`, `get_chunks_by_document_id`, and `get_chunk_by_id`. Changes correctly address `mgclient.Node.properties` access, use the correct relationship (`CONTAINS`), and improve error handling (e.g., `add_chunk` checks for document existence).
+    - Removed the old `delete_document` multi-step logic as it's likely superseded or incorporated into other methods. *(Self-correction: Previous note about `delete_document` was from an earlier context, the relevant changes reviewed were the property access fixes.)*
 - **Tests (`tests/core/test_graph_rag_engine.py`):**
     - Corrected `combined_text` calculation in assertions to use space (" ") as a separator, matching the engine's implementation.
     - Replaced incorrect `assert_awaited_once_with` with `assert_called_once_with` for `AsyncMock` calls (`vector_store.search`).
@@ -33,12 +34,34 @@
 - Asserting calls on mocks involving complex Pydantic objects requires careful inspection of passed arguments rather than direct object comparison, especially when IDs are dynamically generated. Using `call_count` and inspecting `await_args` or `call_args` is more robust.
 
 ## Blockers
-- **Memgraph Query Error:** `mgclient.Column object is not subscriptable`. Investigation needed (library update/wrapper). - *This might be resolved by recent refactoring, needs confirmation.*
-- **Failing Integration Tests:** API/CLI and NLP processing tests need fixing. - *Previous failures were during collection, need to check runtime failures now.*
+- **ModuleNotFoundError:** `graph_rag/core/graph_rag_engine.py` imports a non-existent module `graph_rag.llm.mock_llm`. Needs fixing.
+- **Failing Integration Tests:** API/CLI and NLP processing tests may still have runtime failures.
 
 ## Next Steps
-1.  **Run Tests:** Verify test collection passes.
-2.  **Resolve Memgraph Client Issue (if still present):** Update library or add wrapper.
-3.  **Fix Runtime Test Failures:** Address any tests failing during execution.
-4.  **Implement/Test:** Complete Ingestion Pipeline.
-5.  **Implement:** Query Engine. 
+1.  **Fix `ModuleNotFoundError` in `graph_rag/core/graph_rag_engine.py`.**
+2.  **Run Integration Tests:** Specifically target API/CLI and NLP suites to identify and fix runtime failures.
+3.  Verify status of other test suites (CLI, Memgraph store, Entity Extractor).
+4.  Increase Test Coverage significantly.
+5.  Implement and fix NLP integration tests (if different from step 2).
+6.  Implement Ingestion Pipeline core logic.
+7.  Implement Query Engine core logic.
+
+## Current Focus
+
+The immediate focus was reviewing and correcting property access issues in `graph_rag/infrastructure/graph_stores/memgraph_store.py` due to the `mgclient` driver returning `Node` objects. This review is now complete.
+
+## Recent Changes & Decisions
+
+- Confirmed that `MemgraphGraphRepository` methods (`get_chunks_by_document_id`, `get_chunk_by_id`, `get_document_by_id`) now correctly access node properties using `.properties`.
+- Updated `progress.md` to reflect the successful refactoring and testing of `MemgraphGraphRepository`.
+- Identified remaining issues: `ModuleNotFoundError` in tests and low test coverage.
+
+## Next Steps
+
+1.  **Fix `ModuleNotFoundError`**: Investigate and resolve the import error related to `graph_rag.llm.mock_llm` appearing in tests.
+2.  **Verify Test Suites**: Check the status of all test suites to ensure no other failures were missed.
+3.  **Increase Test Coverage**: Prioritize writing additional tests to improve the overall coverage, currently around 27%.
+
+## Active Considerations / Blockers
+
+- Low test coverage poses a risk for future refactoring and stability. 

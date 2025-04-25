@@ -63,7 +63,7 @@ def test_ingest_document_file_success(
     assert call_args[1] == metadata_dict
 
     # Check output message
-    mock_echo.assert_called_with(f"Successfully ingested {test_file} (document ID: {mock_result.document_id}, chunks: {mock_result.num_chunks})")
+    mock_echo.assert_called_with(f"Successfully processed and stored {test_file} including graph links.")
 
     # Mock exit should not be called in success case
     # mock_exit is removed

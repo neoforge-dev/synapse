@@ -5,11 +5,15 @@ from pydantic import BaseModel
 import logging
 
 from graph_rag.domain.models import Document, Chunk, Edge, Entity, Relationship
-from graph_rag.core.document_processor import DocumentProcessor
-from graph_rag.core.entity_extractor import EntityExtractor
-from graph_rag.core.interfaces import VectorStore, EmbeddingService, GraphRepository
-from graph_rag.core.document_processor import ChunkSplitter
-from graph_rag.core.knowledge_graph_builder import KnowledgeGraphBuilder
+from graph_rag.core.interfaces import (
+    GraphRepository,
+    VectorStore,
+    EntityExtractor,
+    DocumentProcessor,
+    EmbeddingService,
+    KnowledgeGraphBuilder
+)
+from graph_rag.infrastructure.document_processor.simple_processor import ChunkSplitter
 from graph_rag.models import ProcessedDocument
 
 logger = logging.getLogger(__name__)
@@ -78,6 +82,7 @@ class IngestionService:
         Returns:
             IngestionResult with document and chunk IDs
         """
+        print(f"DEBUG: IngestionService.ingest_document called for doc {document_id}")
         logger.info(f"Starting ingestion for document {document_id} with metadata: {metadata}")
         # 1. Create and save document using the provided ID
         document = Document(
@@ -87,7 +92,9 @@ class IngestionService:
         )
         try:
             # Use the specific add_document method for Document objects
+            print(f"DEBUG: About to call graph_store.add_document for doc {document_id}")
             await self.graph_store.add_document(document) 
+            print(f"DEBUG: Finished graph_store.add_document for doc {document_id}")
             # add_document doesn't return the ID, we already have it
             # if saved_doc_id != document_id:
             #      # Log a warning if the returned ID is different (unexpected)
@@ -112,6 +119,10 @@ class IngestionService:
                 if embeddings and len(embeddings) == len(chunk_objects):
                     for i, chunk in enumerate(chunk_objects):
                         chunk.embedding = embeddings[i]
+                        # Ensure metadata exists and add document_id to it safely
+                        if not hasattr(chunk, 'metadata') or chunk.metadata is None:
+                            chunk.metadata = {}
+                        chunk.metadata["document_id"] = document_id
                     logger.info("Embeddings generated successfully.")
                     
                     # Add chunks to vector store *after* embeddings are assigned (if generated)

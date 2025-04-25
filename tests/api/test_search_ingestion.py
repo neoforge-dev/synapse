@@ -42,10 +42,11 @@ from graph_rag.api.schemas import SearchBatchQueryRequest, SearchQueryRequest # 
 # --- Ingestion Tests --- 
 @pytest.mark.asyncio
 async def test_ingest_document_success(test_client: AsyncClient):
+    """Test successful document ingestion (check status)."""
     payload = {"content": "Test document content.", "metadata": {"source": "test"}}
     response = await test_client.post("/api/v1/ingestion/documents", json=payload)
     
-    assert response.status_code == status.HTTP_202_ACCEPTED
+    assert response.status_code == status.HTTP_202_ACCEPTED # Expect 202
     assert response.json()["status"] == "processing"
     
     # Assertions removed in previous step - no need to assert mock call here anymore

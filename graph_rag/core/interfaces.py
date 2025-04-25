@@ -1,11 +1,11 @@
-from typing import Protocol, List, Dict, Any, Tuple, AsyncGenerator, Optional, runtime_checkable
+from __future__ import annotations # Ensure forward references work
+from typing import Protocol, List, Dict, Any, Tuple, AsyncGenerator, Optional, runtime_checkable, TYPE_CHECKING
 from pydantic import BaseModel, Field
+from abc import ABC, abstractmethod
 
 # Use TYPE_CHECKING to avoid runtime circular imports
-# Using string forward references instead now
-# from typing import TYPE_CHECKING
-# if TYPE_CHECKING:
-#     from graph_rag.domain.models import Document, ProcessedDocument
+if TYPE_CHECKING:
+    from graph_rag.domain.models import Document, Chunk, Entity, Relationship
 
 # --- Data Structures ---
 
@@ -14,6 +14,7 @@ class ChunkData(BaseModel):
     text: str
     document_id: str
     embedding: Optional[List[float]] = None
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Optional metadata associated with the chunk.")
     score: float = 0.0  # Add score field with default value
     # Add other relevant chunk metadata if needed
 
@@ -202,7 +203,8 @@ class GraphRepository(Protocol):
         """Adds or updates a relationship edge between nodes."""
         ...
         
-    async def get_neighbors(self, node_id: str, relationship_type: Optional[str] = None, direction: str = "out") -> List[Dict]:
+    @abstractmethod
+    async def get_neighbors(self, entity_id: str, depth: int = 1) -> Tuple[List['Entity'], List['Relationship']]:
         """Retrieves neighbor nodes for a given node."""
         ...
         
@@ -217,6 +219,11 @@ class GraphRepository(Protocol):
     async def close(self) -> None:
         """Closes any open connections or resources."""
         ...
+
+    @abstractmethod
+    async def link_chunk_to_entities(self, chunk_id: str, entity_ids: List[str]) -> None:
+        """Creates relationships (e.g., MENTIONS) between a chunk and a list of entities."""
+        pass
 
     # Add other necessary graph operations as needed...
 

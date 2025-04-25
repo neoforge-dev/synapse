@@ -52,8 +52,8 @@ async def test_unified_search_keyword(
     assert first_result["chunk"]["document_id"] == "doc_key1" # From conftest mock_query
     # Check document from mock_get_document in conftest.py
     assert first_result["document"] is not None
-    assert first_result["document"]["id"] == "mock_doc_id"
-    assert first_result["document"]["metadata"] == {"source": "mock"}
+    assert first_result["document"]["id"] == "doc_key1"
+    assert first_result["document"]["metadata"] == {"topic": "keyword"}
 
     # Validate LLM response and graph context from conftest mock_query
     assert response_data["llm_response"] == "Mock keyword response"
@@ -104,8 +104,8 @@ async def test_unified_search_vector(
     assert first_result["chunk"]["document_id"] == "doc_vec1" # From conftest mock_query
     # Check document from mock_get_document in conftest.py
     assert first_result["document"] is not None
-    assert first_result["document"]["id"] == "mock_doc_id"
-    assert first_result["document"]["metadata"] == {"source": "mock"}
+    assert first_result["document"]["id"] == "doc_vec1"
+    assert first_result["document"]["metadata"] == {"topic": "vector"}
 
     # Validate LLM response and graph context from conftest mock_query
     assert response_data["llm_response"] == "Mock vector response"

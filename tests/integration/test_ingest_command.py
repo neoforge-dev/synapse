@@ -13,7 +13,8 @@ from typer.testing import CliRunner
 from graph_rag.cli.commands.ingest import ingest
 # Use the Memgraph repo fixture
 from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
-from graph_rag.core.document_processor import SimpleDocumentProcessor, SentenceSplitter # Use concrete splitter
+# Correct import paths
+from graph_rag.infrastructure.document_processor.simple_processor import SimpleDocumentProcessor, SentenceSplitter
 from graph_rag.core.entity_extractor import SpacyEntityExtractor
 from graph_rag.core.interfaces import ChunkData # Add ChunkData import
 # Import the domain model for assertion checks if needed
@@ -22,6 +23,11 @@ from graph_rag.domain.models import Document
 from graph_rag.cli.main import app as cli_app # Assuming the Typer app is named 'app' in main.py
 from graph_rag.config import get_settings # Import factory
 from unittest.mock import patch
+from graph_rag.config import Settings
+from graph_rag.core.knowledge_graph_builder import SimpleKnowledgeGraphBuilder
+from graph_rag.api.dependencies import MockEmbeddingService
+from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
+from graph_rag.services.ingestion import IngestionService
 
 settings = get_settings() # Get settings instance
 
@@ -56,6 +62,10 @@ def mock_document_processor(mocker): # Corrected fixture name
         ChunkData(id="test-chunk-3", text="The tower is 330 meters tall and is the most-visited paid monument in the world.", document_id="test-doc")
     ]
     return mock
+
+@pytest.fixture
+def mock_settings():
+    return Settings(EMBEDDING_DIMENSION=10) # Provide necessary mock settings
 
 @pytest.mark.asyncio
 async def test_ingest_document_cli_logic( # Rename test for clarity

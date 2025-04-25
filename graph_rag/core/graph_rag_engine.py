@@ -24,6 +24,8 @@ from graph_rag.config import get_settings
 from graph_rag.domain.models import Context # Added Context
 # from graph_rag.core.node_factory import NodeFactory
 from graph_rag.services.embedding import SentenceTransformerEmbeddingService
+from graph_rag.llm.protocols import LLMService # Add LLMService import
+from graph_rag.llm.llm_service import MockLLMService # Corrected import path
 # from graph_rag.core.prompts import (
 #     GRAPH_EXTRACTION_PROMPT,
 #     GRAPH_REPORT_PROMPT,
@@ -60,8 +62,8 @@ class GraphRAGEngine(ABC):
 class SimpleGraphRAGEngine(GraphRAGEngine):
     """A basic implementation combining graph and vector retrieval."""
 
-    def __init__(self, graph_store: GraphRepository, vector_store: VectorStore, entity_extractor: EntityExtractor):
-        """Requires GraphRepository, VectorStore, and EntityExtractor."""
+    def __init__(self, graph_store: GraphRepository, vector_store: VectorStore, entity_extractor: EntityExtractor, llm_service: LLMService = None):
+        """Requires GraphRepository, VectorStore, EntityExtractor, and optionally LLMService."""
         if not isinstance(graph_store, GraphRepository):
              raise TypeError("graph_store must implement the GraphRepository protocol")
         if not isinstance(vector_store, VectorStore):
@@ -69,29 +71,30 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         # if not isinstance(entity_extractor, EntityExtractor):
         #     raise TypeError("entity_extractor must be an instance of EntityExtractor")
             
+        # Use provided LLMService or default to MockLLMService
+        self._llm_service = llm_service if llm_service else MockLLMService()
+
         self._graph_store = graph_store
         self._vector_store = vector_store
         self._entity_extractor = entity_extractor # Store the extractor
-        logger.info(f"SimpleGraphRAGEngine initialized with GraphRepository: {type(graph_store).__name__}, VectorStore: {type(vector_store).__name__}, EntityExtractor: {type(entity_extractor).__name__}")
+        logger.info(f"SimpleGraphRAGEngine initialized with GraphRepository: {type(graph_store).__name__}, VectorStore: {type(vector_store).__name__}, EntityExtractor: {type(entity_extractor).__name__}, LLMService: {type(self._llm_service).__name__}")
 
     async def _extract_entities_from_chunks(self, chunks: List[SearchResultData]) -> List[Entity]:
-        """Extracts entities from a list of search result chunks using the configured EntityExtractor."""
+        """Extracts entities from a list of chunk data using the configured EntityExtractor."""
         if not chunks:
             return []
             
         logger.debug(f"Extracting entities from {len(chunks)} chunks...")
-        # Combine text from chunks, ensuring chunk exists
-        # TODO: Handle potentially large combined text size? Maybe process in batches?
-        combined_text = " ".join([c.chunk.text for c in chunks if c.chunk]) # Access c.chunk.text
+        # Combine text from chunks
+        combined_text = " ".join([c.chunk.text for c in chunks if c.chunk])
         
         if not combined_text.strip():
             logger.warning("No text found in chunks to extract entities from.")
             return []
 
         try:
-            # Use the entity extractor
-            # Assuming the extractor takes a single string of text
-            extracted_data = await self._entity_extractor.extract(combined_text)
+            # Use the entity extractor's async method for text
+            extracted_data: ExtractionResult = await self._entity_extractor.extract_from_text(combined_text)
             
             entities_list: List[Entity] = []
             if isinstance(extracted_data, ExtractionResult):
@@ -211,7 +214,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         return list(all_neighbor_entities.values()), list(all_relationships.values())
 
     async def query(self, query_text: str, config: Optional[Dict[str, Any]] = None) -> QueryResult:
-        """Processes a query using vector search and graph context retrieval."""
+        """Processes a query using vector search, graph context retrieval, and LLM synthesis."""
         logger.info(f"Received query: '{query_text}' with config: {config}")
         config = config or {}
         k = config.get("k", 3)
@@ -220,84 +223,120 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         final_entities: List[Entity] = []
         final_relationships: List[Relationship] = []
         graph_context_tuple: Optional[Tuple[List[Entity], List[Relationship]]] = None
-        
+        relevant_chunk_texts: List[str] = []
+        retrieved_chunks_full: List[SearchResultData] = [] # Store full SearchResultData
+
         try:
             # 1. Vector Search
             logger.debug(f"Performing vector search for: '{query_text}' (k={k})")
-            relevant_chunks = await self._vector_store.search(query_text, top_k=k)
-            if not relevant_chunks:
+            retrieved_chunks_full = await self._vector_store.search(query_text, top_k=k)
+            if not retrieved_chunks_full:
                 logger.warning(f"Vector search returned no relevant chunks for query: '{query_text}'")
-                return QueryResult(answer="Could not find relevant information for your query.", metadata={"query": query_text, "config": config})
-                
-            logger.info(f"Found {len(relevant_chunks)} relevant chunks via vector search.")
+                # Still try graph search if requested, but prepare for no context
+            else:
+                # Assume retrieved_chunks_full is List[SearchResultData]
+                # relevant_chunk_texts = [c.text for c in retrieved_chunks_full]
+                relevant_chunk_texts = [c.chunk.text for c in retrieved_chunks_full if c.chunk] # Corrected access to c.chunk.text
+                logger.info(f"Found {len(relevant_chunk_texts)} relevant chunks via vector search.")
 
-            # 2. Graph Retrieval (if requested)
-            if include_graph_context:
+            # 2. Graph Retrieval (if requested and chunks were found)
+            if include_graph_context and retrieved_chunks_full:
                 logger.debug("Attempting to retrieve graph context...")
-                # a. Extract entities from chunks using the configured EntityExtractor
-                extracted_entities = await self._extract_entities_from_chunks(relevant_chunks)
-                
+                # a. Extract entities from chunks
+                extracted_entities = await self._extract_entities_from_chunks(retrieved_chunks_full)
+
                 if extracted_entities:
-                    # b. Find these entities in the graph using properties (name, type)
+                    # b. Find these entities in the graph
                     seed_entities = await self._find_entities_in_graph_by_properties(extracted_entities)
-                    
+
                     if seed_entities:
-                        # c. Get neighborhood graph context for seed entities found in graph
+                        # c. Get neighborhood graph context
                         final_entities, final_relationships = await self._get_graph_context(seed_entities)
                         graph_context_tuple = (final_entities, final_relationships)
                         logger.info(f"Retrieved graph context with {len(final_entities)} entities and {len(final_relationships)} relationships.")
                     else:
-                        logger.info(f"No matching seed entities found in graph using property search.")
-                        # Set graph_context_tuple to empty lists if graph context was requested but no entities were extracted
-                        graph_context_tuple = ([], [])
+                        logger.info("No matching seed entities found in graph using property search.")
                 else:
-                     logger.info("No entities extracted from chunks for graph lookup.")
-                     # Set graph_context_tuple to empty lists if graph context was requested but no entities were extracted
-                     graph_context_tuple = ([], [])
-            else:
-                 logger.info("Graph context retrieval skipped by config.")
+                    logger.info("No entities extracted from retrieved chunks.")
+            elif include_graph_context and not retrieved_chunks_full:
+                 logger.info("Skipping graph context retrieval as no relevant chunks were found.")
 
-            # 3. Synthesize Answer (Placeholder - Needs integration with an LLM)
-            # For now, combine chunk text and mention graph context if available
-            # Correctly access text via the 'chunk' attribute of SearchResultData
-            # Handle cases where relevant_chunks might contain ChunkData directly (less likely)
-            context_parts = []
-            for c in relevant_chunks:
-                if isinstance(c, SearchResultData):
-                    if c.chunk: # Ensure chunk is not None
-                        context_parts.append(c.chunk.text)
-                elif hasattr(c, 'text'): # Fallback for ChunkData-like objects
-                    context_parts.append(c.text)
-                # Else: logger.warning("Item in relevant_chunks lacks expected text source.")
-            context_str = " ".join(context_parts)
-            answer = f"Based on retrieved text: {context_str[:300]}..." 
-            if graph_context_tuple:
-                 graph_entities, graph_rels = graph_context_tuple
-                 if graph_entities:
-                     entity_names = [e.name for e in graph_entities[:5]] # Show first 5
-                     answer += f" | Graph context includes entities like: {', '.join(entity_names)}{'...' if len(graph_entities) > 5 else ''}."
-                     if graph_rels:
-                         answer += f" Found {len(graph_rels)} relationships connecting them."
+            # 3. Answer Synthesis (if any context was found)
+            synthesized_answer = "Could not generate an answer based on the available information."
+            llm_metadata = {}
+
+            if relevant_chunk_texts or graph_context_tuple:
+                 # Prepare context string
+                 context_str = "\n\nRelevant Text Chunks:\n"
+                 context_str += "\n---\n\n".join(relevant_chunk_texts) if relevant_chunk_texts else "None"
+
+                 if graph_context_tuple:
+                     entities, relationships = graph_context_tuple
+                     context_str += "\n\nRelated Graph Entities:\n"
+                     context_str += "\n".join([f"- {e.id} ({e.type}): {getattr(e, 'name', 'N/A')}" for e in entities])
+                     context_str += "\n\nRelated Graph Relationships:\n"
+                     context_str += "\n".join([f"- ({r.source.id}) -[{r.type}]-> ({r.target.id})" for r in relationships if r.source and r.target])
+
+                 # Create prompt
+                 prompt = f"Based on the following context, answer the query.\n\nQuery: {query_text}\n\nContext:{context_str}\n\nAnswer:"
+
+                 logger.debug(f"Sending prompt to LLM (first 100 chars): {prompt[:100]}...")
+                 # Call LLMService
+                 llm_response = await self._llm_service.generate_response(prompt)
+                 # Handle both object response (ideal) and str response (mock)
+                 if hasattr(llm_response, 'text'):
+                     synthesized_answer = llm_response.text
+                     llm_metadata = llm_response.metadata if hasattr(llm_response, 'metadata') else {}
+                 elif isinstance(llm_response, str):
+                     synthesized_answer = llm_response # Mock returns string directly
+                     llm_metadata = {"warning": "LLM response was a string, not an object."}
                  else:
-                     # This branch is now hit when graph was searched but no seed entities were found
-                     answer += " | No specific graph context found for related entities."
-            else:
-                 # This branch is hit if include_graph=False OR if no entities were extracted
-                 answer += " | Graph context was not retrieved or was empty."
+                     synthesized_answer = "Error: Unexpected LLM response type."
+                     llm_metadata = {"error": f"Unexpected type: {type(llm_response)}"}
+                     logger.error(f"Unexpected LLM response type: {type(llm_response)}")
                  
-            logger.info("Synthesized basic answer.")
+                 logger.info("Received synthesized answer from LLM.")
+            else:
+                logger.warning(f"No context (chunks or graph) found for query: '{query_text}'. Returning default answer.")
 
+            # Map SearchResultData to domain Chunk objects for the final QueryResult
+            final_relevant_chunks = []
+            for search_result in retrieved_chunks_full:
+                if search_result and search_result.chunk: # Ensure we have valid data
+                    chunk_data = search_result.chunk # Get the inner ChunkData
+                    try:
+                        metadata_with_score = {**(chunk_data.metadata or {}), "score": search_result.score}
+                        chunk_obj = Chunk(
+                            id=chunk_data.id,
+                            text=chunk_data.text,
+                            document_id=chunk_data.document_id,
+                            metadata=metadata_with_score,
+                            embedding=chunk_data.embedding
+                        )
+                        final_relevant_chunks.append(chunk_obj)
+                    except Exception as mapping_err:
+                        logger.error(f"Error mapping chunk {getattr(chunk_data, 'id', '?')} to domain model: {mapping_err}", exc_info=True)
+
+            # 4. Return Result (potentially partial if error occurred)
             return QueryResult(
-                answer=answer,
-                relevant_chunks=relevant_chunks,
+                answer=synthesized_answer, # Could be error message if LLM failed
+                relevant_chunks=final_relevant_chunks, # Use the correctly mapped chunks
                 graph_context=graph_context_tuple,
-                metadata={"query": query_text, "config": config, "vector_k": k, "used_graph": include_graph_context}
+                metadata={
+                    "query": query_text,
+                    "config": config,
+                    # Add error info if an exception was caught
+                    **({"error": str(e)} if 'e' in locals() else {})
+                }
             )
 
         except Exception as e:
-            logger.error(f"Error processing query '{query_text}': {e}", exc_info=True)
-            # Provide a safe error response
-            return QueryResult(answer=f"An error occurred while processing your query. Please check logs.", metadata={"query": query_text, "config": config, "error": str(e)})
+            logger.error(f"Error during query processing for '{query_text}': {e}", exc_info=True)
+            # Return an error state QueryResult
+            return QueryResult(
+                answer=f"An error occurred while processing your query: {e}",
+                metadata={"query": query_text, "config": config, "error": str(e)}
+            )
 
 # Renaming this class to avoid conflict with the ABC above
 class GraphRAGEngineOrchestrator(GraphRAGEngine):

@@ -2,7 +2,7 @@
 
 import logging
 from typing import List, Dict, Any, Optional, Tuple, runtime_checkable
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 import asyncio
 import uuid
 import pytest
@@ -254,49 +254,105 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
             raise
 
     async def get_document_by_id(self, document_id: str) -> Optional[Document]:
-        """Retrieves a document by its ID."""
+        """Retrieves a document by its ID, returning a Document object or None."""
         logger.debug(f"Attempting to retrieve document with ID: {document_id}")
-        query = (
-            "MATCH (d:Document {id: $doc_id}) "
-            "RETURN d.id as id, d.content as content, d.metadata as metadata, "
-            "d.created_at as created_at, d.updated_at as updated_at"
-        )
-        params = {"doc_id": document_id}
-        try:
-            results = await self.execute_query(query, params)
-            if results and results[0]:
-                doc_data = results[0]
-                # Convert datetime strings to datetime objects if necessary
-                if isinstance(doc_data.get('created_at'), str):
-                    doc_data['created_at'] = isoparse(doc_data['created_at'])
-                if isinstance(doc_data.get('updated_at'), str):
-                    doc_data['updated_at'] = isoparse(doc_data['updated_at'])
+        query = """
+            MATCH (doc:Document {id: $document_id})
+            RETURN doc
+        """
+        result = await self.execute_query(query, {"document_id": document_id})
 
-                # Ensure metadata is a dictionary
-                metadata = doc_data.get('metadata')
+        if not result:
+            logger.warning(f"Document with ID '{document_id}' not found.")
+            return None
+
+        record = result[0]
+        doc_node = record.get("doc")
+        if doc_node is None:
+            logger.error(f"Query for document {document_id} returned a record but no 'doc' field: {record}")
+            return None
+            
+        # Process properties (assuming execute_query returns processed dicts)
+        if hasattr(doc_node, 'properties') and isinstance(doc_node.properties, dict):
+             doc_properties = doc_node.properties
+        elif isinstance(doc_node, dict):
+             doc_properties = doc_node
+        else:
+            logger.error(f"Unexpected type for doc_node: {type(doc_node)} for document {document_id}")
+            return None
+
+        # Directly use metadata if it's a dict, handle potential errors
+        metadata = doc_properties.get("metadata")
+        if not isinstance(metadata, dict):
+            if metadata is not None:
+                # If it's not a dict but not None, log a warning and default to empty dict
+                # This handles cases where it might unexpectedly be a string or other type
+                logging.warning(
+                    f"Metadata for document {document_id} is not a dictionary (Type: {type(metadata)}). Attempting to parse if string, else defaulting to empty dict."
+                )
                 if isinstance(metadata, str):
                     try:
                         metadata = json.loads(metadata)
+                        if not isinstance(metadata, dict):
+                            logging.warning(f"Parsed metadata string for {document_id} did not result in a dict. Defaulting to empty dict.")
+                            metadata = {}
                     except json.JSONDecodeError:
-                        logger.warning(f"Could not parse metadata for document {document_id}: {metadata}")
+                        logging.error(f"Failed to parse metadata string for {document_id}. Defaulting to empty dict.")
                         metadata = {}
-                elif not isinstance(metadata, dict):
+                    except Exception as e:
+                        logging.error(f"Unexpected error parsing metadata string for {document_id}: {e}")
+                        metadata = {}
+                else:
+                    # If it's not a string (and not None, not a dict), default to empty dict
                     metadata = {}
-
-                document = Document(
-                    id=doc_data['id'],
-                    content=doc_data.get('content', ''),
-                    metadata=metadata,
-                    created_at=doc_data.get('created_at'),
-                    updated_at=doc_data.get('updated_at'),
-                )
-                logger.debug(f"Successfully retrieved document: {document_id}")
-                return document
             else:
-                logger.warning(f"Document not found with ID: {document_id}")
-                return None
+                # If metadata is None, default to empty dict
+                metadata = {}
+
+        # Convert timestamps (handle potential string or datetime objects)
+        created_at = self._parse_datetime(doc_properties.get("created_at"), document_id, "created_at")
+        updated_at = self._parse_datetime(doc_properties.get("updated_at"), document_id, "updated_at")
+        
+        try:
+            # Instantiate and return the Document object
+            return Document(
+                id=doc_properties.get("id"),
+                content=doc_properties.get("content"), # Ensure content is retrieved
+                metadata=metadata, # Use the processed metadata
+                created_at=created_at,
+                updated_at=updated_at
+            )
         except Exception as e:
-            logger.error(f"Error retrieving document {document_id}: {e}", exc_info=True)
+            logger.error(f"Failed to instantiate Document object for ID {document_id}: {e}", exc_info=True)
+            return None
+
+    # Helper method for robust datetime parsing
+    def _parse_datetime(self, value: Any, obj_id: str, field_name: str) -> Optional[datetime]:
+        if value is None:
+            return None
+        try:
+            if isinstance(value, str):
+                # Handle potential timezone 'Z' suffix
+                dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            elif isinstance(value, datetime):
+                dt = value
+            elif isinstance(value, date):
+                # Convert date to datetime (midnight)
+                dt = datetime.combine(value, datetime.min.time())
+            else:
+                logging.warning(f"Unexpected type for {field_name} for object {obj_id}: {type(value)}. Returning None.")
+                return None
+
+            # Ensure timezone-aware (assume UTC if naive)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+
+        except ValueError as e:
+            logging.error(f"Error parsing {field_name} string for object {obj_id}: '{value}'. Error: {e}")
+            return None
+        except Exception as e:
+            logging.error(f"Unexpected error converting {field_name} for object {obj_id}: {e}")
             return None
 
     async def add_chunk(self, chunk: Chunk) -> None:
@@ -323,11 +379,14 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
             c.updated_at = $updated_at
         WITH c
         MATCH (d:Document {id: $document_id})
+        WHERE d IS NOT NULL  // Ensure the document node exists
         MERGE (d)-[:CONTAINS]->(c)
+        RETURN count(d) as doc_count // Return count to check if match succeeded
         """
 
-        # Explicitly create metadata dict, default to {} if None
-        metadata_param = chunk.metadata if chunk.metadata is not None else {}
+        # Ensure metadata is handled correctly (empty dict if None or missing)
+        metadata_param = getattr(chunk, 'metadata', None)
+        metadata_param = metadata_param if metadata_param is not None else {}
 
         # Construct params dictionary using primitive types or explicitly handled types
         params = {
@@ -341,11 +400,19 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
         }
 
         try:
-            await self.execute_query(query, params)
-            logger.info(f"Successfully added/updated chunk {chunk.id} for document {chunk.document_id}")
+            results = await self.execute_query(query, params)
+            if results and results[0].get("doc_count", 0) == 1:
+                logger.info(f"Successfully added/updated chunk {chunk.id} for document {chunk.document_id}")
+            else:
+                logger.error(f"Failed to add chunk {chunk.id}: Document {chunk.document_id} not found.")
+                raise ValueError(f"Document with ID {chunk.document_id} not found.") # Raise specific error
         except Exception as e:
-            logger.error(f"Failed to add chunk {chunk.id} or relationship: {e}", exc_info=True)
-            raise
+            # Avoid catching the ValueError we just raised
+            if not isinstance(e, ValueError) or "Document with ID" not in str(e):
+                 logger.error(f"Failed to add chunk {chunk.id} or relationship: {e}", exc_info=True)
+                 raise # Re-raise other exceptions
+            else:
+                raise # Re-raise the ValueError
 
     async def add_node(self, node: Node):
         """Adds or updates a generic node to the graph using its type as the label."""
@@ -976,55 +1043,24 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
 
     async def delete_document(self, document_id: str) -> bool:
         """Deletes a document and its associated chunks and relationships."""
-        # Query 1: Find chunk IDs linked to the document
-        find_chunks_query = """
-        MATCH (c:Chunk)-[:BELONGS_TO]->(d:Document {id: $doc_id})
-        RETURN c.id as chunkId
-        """
-        # Query 2: Delete the document and detach its relationships
-        delete_doc_query = """
+        # Query: Delete the document and detach/delete its associated CONTAINS chunks
+        query = """
         MATCH (d:Document {id: $doc_id})
-        DETACH DELETE d
+        OPTIONAL MATCH (d)-[:CONTAINS]->(c:Chunk) // Match chunks contained by the document
+        DETACH DELETE d, c // Delete document and associated chunks
         RETURN count(d) as deleted_doc_count
         """
-        # Query 3: Delete the associated chunks and detach their relationships
-        delete_chunks_query = """
-        MATCH (c:Chunk) WHERE c.id IN $chunk_ids
-        DETACH DELETE c
-        RETURN count(c) as deleted_chunk_count
-        """
         params = {"doc_id": document_id}
-        deleted_doc = False
-        deleted_chunks = False # Track chunk deletion separately if needed
 
         try:
-            # Step 1: Find associated chunk IDs
-            chunk_results = await self.execute_query(find_chunks_query, params)
-            chunk_ids_to_delete = [res["chunkId"] for res in chunk_results]
-            logger.info(f"Found {len(chunk_ids_to_delete)} chunks associated with document {document_id}.")
-
-            # Step 2: Delete the document itself
-            delete_doc_results = await self.execute_query(delete_doc_query, params)
-            if delete_doc_results and delete_doc_results[0]["deleted_doc_count"] > 0:
-                deleted_doc = True
-                logger.info(f"Successfully deleted document node {document_id}.")
+            delete_results = await self.execute_query(query, params)
+            # Check if the document itself was deleted (count(d) > 0)
+            if delete_results and delete_results[0].get("deleted_doc_count", 0) > 0:
+                logger.info(f"Successfully deleted document {document_id} and associated chunks.")
+                return True
             else:
-                 logger.warning(f"Document node {document_id} not found or already deleted.")
-
-            # Step 3: Delete the associated chunks if any were found
-            if chunk_ids_to_delete:
-                chunk_params = {"chunk_ids": chunk_ids_to_delete}
-                delete_chunk_results = await self.execute_query(delete_chunks_query, chunk_params)
-                deleted_chunk_count = delete_chunk_results[0]["deleted_chunk_count"] if delete_chunk_results else 0
-                if deleted_chunk_count > 0:
-                     deleted_chunks = True # Mark chunks as deleted
-                     logger.info(f"Successfully deleted {deleted_chunk_count} associated chunk nodes.")
-                else:
-                    logger.warning(f"Could not delete associated chunks for doc {document_id}. IDs: {chunk_ids_to_delete}")
-
-            # Return True if the document was deleted, even if chunks failed.
-            # If successful chunk deletion is required, modify the return condition.
-            return deleted_doc
+                 logger.warning(f"Document {document_id} not found or already deleted.")
+                 return False
 
         except Exception as e:
             logger.error(f"Error during deletion process for document {document_id}: {e}", exc_info=True)
@@ -1042,29 +1078,34 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
     async def get_chunks_by_document_id(self, document_id: str) -> list[Chunk]:
         """Get all chunks associated with a document."""
         query = """
-        MATCH (d:Document {id: $document_id})<-[:PART_OF]-(c:Chunk)
+        MATCH (d:Document {id: $document_id})-[:CONTAINS]->(c:Chunk)
         RETURN c
         """
         params = {"document_id": document_id}
-        
+
         chunks = []
         try:
             results = await self.execute_query(query, params)
             for record in results:
-                chunk_data = record.get('c', {})
-                if chunk_data:
+                chunk_node = record.get('c') # Get the mgclient.Node object
+                if chunk_node and hasattr(chunk_node, 'properties'):
+                    chunk_properties = chunk_node.properties # Access the properties dictionary
                     chunk = Chunk(
-                        id=chunk_data.get('id', ''),
-                        text=chunk_data.get('text', ''),
-                        document_id=document_id,
-                        properties=chunk_data
+                        id=chunk_properties.get('id', ''),
+                        text=chunk_properties.get('text', ''),
+                        document_id=document_id, # Already have this from the query/param
+                        embedding=chunk_properties.get('embedding'), # Assuming embedding is stored
+                        metadata=chunk_properties.get('metadata', {}), # Assuming metadata is stored
+                        created_at=chunk_properties.get('created_at'), # Assuming created_at is stored
+                        updated_at=chunk_properties.get('updated_at'), # Assuming updated_at is stored
+                        properties=chunk_properties # Store the properties dict
                     )
                     chunks.append(chunk)
             return chunks
         except Exception as e:
             logger.error(f"Error retrieving chunks for document {document_id}: {e}", exc_info=True)
             return []
-    
+
     async def add_chunks(self, chunks: List[Chunk]) -> None:
         """Adds multiple chunk nodes."""
         for chunk in chunks:
@@ -1080,14 +1121,18 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
         params = {"id": chunk_id}
         results = await self.execute_query(query, params)
         if results and len(results) > 0:
-            # Convert result to Chunk object
-            chunk_data = results[0].get('c', {})
-            if chunk_data:
+            chunk_node = results[0].get('c') # Get the mgclient.Node object
+            if chunk_node and hasattr(chunk_node, 'properties'):
+                chunk_properties = chunk_node.properties # Access the properties dictionary
                 return Chunk(
-                    id=chunk_data.get('id', ''),
-                    text=chunk_data.get('text', ''),
-                    document_id=chunk_data.get('document_id', ''),
-                    properties=chunk_data
+                    id=chunk_properties.get('id', ''),
+                    text=chunk_properties.get('text', ''),
+                    document_id=chunk_properties.get('document_id', ''), # Get from properties
+                    embedding=chunk_properties.get('embedding'), # Assuming embedding is stored
+                    metadata=chunk_properties.get('metadata', {}), # Assuming metadata is stored
+                    created_at=chunk_properties.get('created_at'), # Assuming created_at is stored
+                    updated_at=chunk_properties.get('updated_at'), # Assuming updated_at is stored
+                    properties=chunk_properties # Store the properties dict
                 )
         return None
     
@@ -1245,6 +1290,33 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
         """Executes a write Cypher query."""
         # For this implementation, we use the same execute_query method
         return await self.execute_query(query, parameters)
+
+    async def link_chunk_to_entities(self, chunk_id: str, entity_ids: List[str]) -> None:
+        """Creates MENTIONS relationships between a chunk and a list of entities."""
+        if not entity_ids:
+            logger.debug(f"No entity IDs provided to link to chunk {chunk_id}. Skipping.")
+            return
+
+        # Use UNWIND for batch creation of relationships
+        # Match chunk by its ID, Match entities by their IDs
+        # Create MENTIONS relationship if it doesn't already exist (MERGE)
+        query = """
+        MATCH (c:Chunk {id: $chunk_id})
+        UNWIND $entity_ids as entityId
+        MATCH (e {id: entityId}) // Match any node with the entity ID
+        MERGE (c)-[r:MENTIONS]->(e)
+        RETURN count(r) as created_count
+        """
+        params = {"chunk_id": chunk_id, "entity_ids": entity_ids}
+        
+        try:
+            results = await self.execute_query(query, params)
+            created_count = results[0]['created_count'] if results else 0
+            logger.info(f"Created/merged {created_count} MENTIONS relationships for chunk {chunk_id}.")
+        except Exception as e:
+            logger.error(f"Failed to link chunk {chunk_id} to entities {entity_ids}: {e}", exc_info=True)
+            # Consider how to handle partial failures if needed
+            raise
 
 def escape_cypher_string(value: str) -> str:
     """Escapes characters in a string for safe use in Cypher labels/types."""

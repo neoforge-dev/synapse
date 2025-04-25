@@ -1,12 +1,11 @@
 import pytest
 import uuid
+from typing import List, Dict, Any
 
 from graph_rag.models import Document, Chunk
-from graph_rag.core.document_processor import SentenceSplitter
+from graph_rag.infrastructure.document_processor.simple_processor import SentenceSplitter, SimpleDocumentProcessor
 from unittest.mock import MagicMock
 from graph_rag.core.interfaces import DocumentData, ChunkData
-from graph_rag.core.document_processor import SimpleDocumentProcessor
-from typing import List
 
 @pytest.fixture
 def simple_document() -> Document:
@@ -175,3 +174,14 @@ def test_invalid_token_chunk_size():
 # - Content with only newlines
 # - Very large documents (might need mocking/different setup)
 # - Different tokens_per_chunk values 
+
+# Mock DocumentData if needed for tests
+class MockDocumentData:
+    def __init__(self, content: str, metadata: Dict[str, Any] = None):
+        self.content = content
+        self.metadata = metadata or {} 
+
+@pytest.fixture
+def document_processor():
+    """Provides an instance of SimpleDocumentProcessor for testing."""
+    return SimpleDocumentProcessor() 

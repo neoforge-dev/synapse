@@ -37,6 +37,9 @@ async def ingested_doc_id(test_client: AsyncClient, mock_graph_repo: AsyncMock) 
     """Ingest a test document and return its ID. Waits for ingestion to complete (checks mock repo)."""
     doc_content = "Alice works at ACME Corp. Bob works at Beta Inc."
     metadata = {"source": "test_query_pipeline"}
+
+    # --- Debug: Reset call count explicitly before the call ---
+    mock_graph_repo.add_document.reset_mock()
     
     # Ingest the document
     response = await test_client.post(
@@ -45,7 +48,7 @@ async def ingested_doc_id(test_client: AsyncClient, mock_graph_repo: AsyncMock) 
     )
     
     # Check response status
-    if response.status_code != status.HTTP_202_ACCEPTED:
+    if response.status_code != status.HTTP_200_OK: 
         pytest.fail(f"Document ingestion failed with status {response.status_code}: {response.text}")
 
     response_data = response.json()
@@ -56,39 +59,29 @@ async def ingested_doc_id(test_client: AsyncClient, mock_graph_repo: AsyncMock) 
 
     logger.info(f"Document {doc_id} ingestion initiated for query pipeline test.")
 
-    # Wait for the MOCKED ingestion service to call add_document on the MOCKED repo
-    max_attempts = 15
-    wait_seconds = 1.5
-    attempt = 0
-    while attempt < max_attempts:
-        try:
-            # Check if mock_graph_repo.add_document was called with the correct ID
-            found_call = False
-            for call in mock_graph_repo.add_document.await_args_list:
-                # call[0][0] should be the first positional argument (the doc data)
-                if isinstance(call[0][0], dict) and call[0][0].get("id") == doc_id:
-                    found_call = True
-                    break
-                # Add check if Document object is passed
-                elif hasattr(call[0][0], 'id') and call[0][0].id == doc_id:
-                    found_call = True
-                    break
-
-            if found_call:
-                logger.info(f"Mock document {doc_id} found in mock_graph_repo calls (attempt {attempt + 1}).")
-                await asyncio.sleep(0.5) # Short delay for safety
-                return doc_id
-            else:
-                logger.debug(f"Mock document {doc_id} not yet added to mock_graph_repo (attempt {attempt + 1}). Calls: {mock_graph_repo.add_document.await_args_list}")
-
-        except Exception as e:
-            logger.warning(f"Error checking mock_graph_repo calls for doc {doc_id} (attempt {attempt + 1}): {e}")
+    # Check if mock_graph_repo.add_document was called (should happen synchronously now)
+    try:
+        # --- Debug: Print calls immediately after ingestion ---
+        actual_calls = mock_graph_repo.add_document.await_args_list
+        logger.info(f"DEBUG: Calls to mock_graph_repo.add_document after POST: {len(actual_calls)}")
+        for i, call in enumerate(actual_calls):
+            logger.info(f"DEBUG: Call {i+1} args: {call.args}")
             
-        await asyncio.sleep(wait_seconds)
-        attempt += 1
+        # Assert the call count
+        assert mock_graph_repo.add_document.await_count == 1, f"Expected 1 call, got {mock_graph_repo.add_document.await_count}"
+        # mock_graph_repo.add_document.assert_awaited_once() # Original assertion
         
-    pytest.fail(f"Mock Ingestion did not call add_document on mock_graph_repo for {doc_id} after {max_attempts * wait_seconds} seconds.")
-    return ""
+        # Optionally, inspect the call arguments if needed
+        call_args, _ = mock_graph_repo.add_document.call_args
+        passed_doc = call_args[0]
+        assert hasattr(passed_doc, 'id') and passed_doc.id == doc_id
+        logger.info(f"Verified mock_graph_repo.add_document was called for {doc_id}.")
+        return doc_id
+    except AssertionError as e:
+        logger.error(f"Assertion failed: mock_graph_repo.add_document was not called as expected. Error: {e}")
+        current_calls = mock_graph_repo.add_document.await_args_list # Get calls again for logging
+        logger.debug(f"Actual calls to mock_graph_repo.add_document in except block: {current_calls}")
+        pytest.fail(f"Mock Ingestion did not call add_document correctly on mock_graph_repo for {doc_id}. Error: {e}")
 
 # --- Integration Test --- 
 pytestmark = pytest.mark.asyncio

@@ -17,7 +17,7 @@ from typer.testing import CliRunner # <--- Add CliRunner import
 
 import asyncio
 from httpx import AsyncClient, ASGITransport # Import ASGITransport
-from fastapi import FastAPI, Request, HTTPException, status, Depends
+from fastapi import FastAPI, Request, HTTPException, status, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
@@ -172,12 +172,29 @@ def mock_graph_repo() -> AsyncMock:
     """Provides a reusable AsyncMock for the GraphRepository."""
     mock_repo = AsyncMock(spec=GraphRepository)
 
-    # Mock get_document_by_id to return a dictionary directly
-    mock_repo.get_document_by_id.return_value = {
-        "id": "mock_doc_id",
-        "metadata": {"source": "mock"}
-    }
-    
+    # Mock get_document_by_id to return an actual Document object
+    from graph_rag.domain.models import Document # Import inside fixture
+    mock_doc_instance = Document(
+        id="mock_doc_id",
+        content="Mock document content",
+        metadata={"source": "mock"}
+        # created_at and updated_at will default to None/Pydantic defaults
+    )
+    # Side effect to return different docs based on ID if needed, or just return the instance
+    async def get_doc_side_effect(doc_id):
+        if doc_id == "doc_key1":
+            return Document(id="doc_key1", content="Keyword Doc", metadata={"topic": "keyword"})
+        elif doc_id == "doc_vec1":
+            return Document(id="doc_vec1", content="Vector Doc", metadata={"topic": "vector"})
+        # Fallback to a default mock doc or None
+        elif doc_id == "mock_doc_id": 
+             return mock_doc_instance
+        else:
+             return None # Simulate document not found
+             
+    # mock_repo.get_document_by_id.return_value = mock_doc_instance # Old way
+    mock_repo.get_document_by_id.side_effect = get_doc_side_effect # Use side effect
+
     # Keep other mock method setups
     mock_repo.add_entity = AsyncMock(return_value=None)
     mock_repo.add_relationship = AsyncMock(return_value=None)
@@ -332,6 +349,12 @@ def mock_vector_store() -> AsyncMock: # Changed MagicMock to AsyncMock
 
     return mock_vs
 
+@pytest.fixture(scope="function")
+def mock_background_tasks():
+    """Provides a function-scoped MagicMock for BackgroundTasks."""
+    mock = MagicMock(spec=BackgroundTasks)
+    mock.add_task = MagicMock() # Mock the add_task method
+    return mock
 
 @pytest_asyncio.fixture(scope="function")
 async def test_client(
@@ -342,7 +365,8 @@ async def test_client(
     mock_vector_store: AsyncMock,
     mock_doc_processor: AsyncMock,
     mock_kg_builder: AsyncMock,
-    mock_entity_extractor: MockEntityExtractor
+    mock_entity_extractor: MockEntityExtractor,
+    mock_background_tasks: MagicMock # <--- Add mock_background_tasks
 ) -> AsyncGenerator[AsyncClient, None]:
     """
     Provides an asynchronous test client for the FastAPI application with mocked dependencies.
@@ -355,15 +379,16 @@ async def test_client(
     
     dependency_overrides = {
         deps.get_graph_repository: lambda: mock_graph_repo,
-        deps.get_ingestion_service: lambda: mock_ingestion_service,
+        # deps.get_ingestion_service: lambda: mock_ingestion_service, # Use real service for integration
         deps.get_graph_rag_engine: lambda: mock_graph_rag_engine,
         deps.get_vector_store: lambda: mock_vector_store,
         deps.get_document_processor: lambda: mock_doc_processor,
         deps.get_knowledge_graph_builder: lambda: mock_kg_builder,
-        deps.get_entity_extractor: lambda: mock_entity_extractor
+        deps.get_entity_extractor: lambda: mock_entity_extractor,
+        BackgroundTasks: lambda: mock_background_tasks # <--- Add BackgroundTasks override
     }
     
-    original_overrides = app.dependency_overrides
+    original_overrides = app.dependency_overrides.copy()
     app.dependency_overrides.update(dependency_overrides)
 
     # Use httpx.AsyncClient with ASGITransport for testing async FastAPI applications
@@ -376,7 +401,17 @@ async def test_client(
     # Optionally clear the state if needed, though app lifespan should handle setup/teardown
     if hasattr(app.state, 'graph_rag_engine'):
          del app.state.graph_rag_engine
-
+         
+    # --- Reset mocks after test --- # <--- Add reset for background tasks
+    mock_graph_repo.reset_mock()
+    mock_ingestion_service.reset_mock()
+    mock_graph_rag_engine.reset_mock()
+    mock_vector_store.reset_mock()
+    mock_doc_processor.reset_mock()
+    mock_kg_builder.reset_mock()
+    mock_background_tasks.reset_mock()
+    # mock_entity_extractor doesn't need reset if it's stateless
+    # app.dependency_overrides = {} # Clearing overrides might be better done by restoring original_overrides
 
 @pytest.fixture(scope="function")
 def sync_test_client(app: FastAPI) -> TestClient:

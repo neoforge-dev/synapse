@@ -37,7 +37,7 @@ def test_ingest_file_success(cli_runner: CliRunner, tmp_path: Path):
         assert isinstance(call_args[0], Path) and str(call_args[0]) == str(test_file)
         assert call_args[1] == {} # Default metadata is empty dict
         # Check successful output message
-        mock_echo.assert_any_call(f"Successfully ingested {test_file} (document ID: {mock_result.document_id}, chunks: {mock_result.num_chunks})")
+        mock_echo.assert_any_call(f"Successfully processed and stored {test_file} including graph links.")
 
 def test_ingest_file_not_found(cli_runner: CliRunner, tmp_path: Path):
     """Test file not found error using CliRunner synchronously."""
@@ -87,7 +87,8 @@ def test_ingest_directory_success(cli_runner: CliRunner, tmp_path: Path):
         assert result.exit_code == 0, f"CLI command failed for {file1}"
         # Check process_and_store was called for file1
         mock_process_and_store.assert_called_with(file1, {})
-        mock_echo.assert_any_call(f"Successfully ingested {file1} (document ID: {str(file1)}, chunks: 1)")
+        # Check successful output message
+        mock_echo.assert_any_call(f"Successfully processed and stored {file1} including graph links.")
 
         # If directory handling were implemented, we would check await_count == 2
         # and assert_has_calls for both files.

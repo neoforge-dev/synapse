@@ -10,17 +10,21 @@ import asyncio
 import uuid
 from httpx import AsyncClient, Timeout
 from fastapi import status
+from pathlib import Path
+import time
 
 from graph_rag.config import get_settings
 from graph_rag.stores.memgraph_store import MemgraphStore
 from graph_rag.infrastructure.vector_stores import SimpleVectorStore
 from graph_rag.core.entity_extractor import SpacyEntityExtractor, MockEntityExtractor
-from graph_rag.core.document_processor import SimpleDocumentProcessor, SentenceSplitter
+from graph_rag.infrastructure.document_processor.simple_processor import SimpleDocumentProcessor, SentenceSplitter
 from graph_rag.core.persistent_kg_builder import PersistentKnowledgeGraphBuilder
 from graph_rag.core.graph_rag_engine import SimpleGraphRAGEngine
 from graph_rag.models import Document, Chunk, Entity, Relationship
 from graph_rag.api.main import app
 from graph_rag.services.embedding import EmbeddingService
+from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+from graph_rag.core.interfaces import GraphRepository # Import protocol
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +182,6 @@ def test_mvp_ingest_and_query_flow(
         pytest.fail(f"E2E: Failed to add entities to graph store: {e}")
 
     # --- Wait briefly for potential indexing --- 
-    import time
     time.sleep(1) 
 
     # 2. Query

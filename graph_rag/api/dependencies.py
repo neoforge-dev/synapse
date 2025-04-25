@@ -11,13 +11,15 @@ from fastapi import Depends, HTTPException, status, Request
 from graph_rag.config import get_settings, Settings
 
 # Core Interfaces and Engine
+# from graph_rag.core.interfaces import (GraphRepository, VectorStore, EntityExtractor, EmbeddingService, CacheService, GraphDebugger, DocumentProcessor, LLMService)
+# from graph_rag.core.interfaces import (GraphRepository, VectorStore, EntityExtractor, EmbeddingService, CacheService, GraphDebugger, DocumentProcessor, LLMService)
+# from graph_rag.core.interfaces import (GraphRepository, VectorStore, EntityExtractor, EmbeddingService, CacheService, GraphDebugger, DocumentProcessor, LLMService)
 from graph_rag.core.interfaces import (
-    GraphRepository, VectorStore, EntityExtractor, DocumentProcessor,
-    KnowledgeGraphBuilder, VectorSearcher, KeywordSearcher, GraphSearcher,
-    EmbeddingService, GraphRAGEngine as AbstractGraphRAGEngine
+    GraphRepository, VectorStore, EntityExtractor, EmbeddingService, DocumentProcessor, GraphRAGEngine
 )
 # Import domain models
 from graph_rag.domain.models import Entity, Relationship, Document, Chunk, Node
+# from graph_rag.domain.models.chunk import Chunk # Remove this duplicate/incorrect import
 
 # Import SimpleGraphRAGEngine instead of the concrete GraphRAGEngine
 from graph_rag.core.graph_rag_engine import SimpleGraphRAGEngine
@@ -27,13 +29,20 @@ from graph_rag.llm.loader import load_llm
 
 # Concrete Implementations (adjust paths as needed)
 from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
-from graph_rag.infrastructure.vector_stores import SimpleVectorStore
-# Only import the existing service
-from graph_rag.services.embedding import SentenceTransformerEmbeddingService
-from graph_rag.core.document_processor import SimpleDocumentProcessor, ChunkSplitter
+# from graph_rag.infrastructure.graph_stores.neo4j_store import Neo4jGraphRepository # Remove this line
+from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
+# from graph_rag.infrastructure.entity_extractors.spacy_entity_extractor import SpacyEntityExtractor # Remove this line
+# from graph_rag.infrastructure.embedding.sentence_transformer_service import SentenceTransformerEmbeddingService # Remove this line
+# from graph_rag.infrastructure.cache.simple_cache import SimpleCache # Remove this line
+# from graph_rag.infrastructure.debug.graph_debugger import MemgraphGraphDebugger # Remove this line
+from graph_rag.infrastructure.document_processor.simple_processor import SimpleDocumentProcessor
 # Import MockEntityExtractor if needed for fallback
-from graph_rag.core.entity_extractor import SpacyEntityExtractor, MockEntityExtractor
-from graph_rag.core.knowledge_graph_builder import SimpleKnowledgeGraphBuilder
+from graph_rag.core.entity_extractor import MockEntityExtractor
+# Corrected import path for graph builders
+from graph_rag.core.interfaces import KnowledgeGraphBuilder
+from graph_rag.core.knowledge_graph_builder import (
+    SimpleKnowledgeGraphBuilder,
+)
 # Remove PersistentKnowledgeGraphBuilder import if not used elsewhere
 # from graph_rag.core.persistent_kg_builder import PersistentKnowledgeGraphBuilder
 # Service Import
@@ -48,6 +57,22 @@ from graph_rag.infrastructure.cache.memory_cache import MemoryCache
 # Import MockLLMService
 from graph_rag.llm import MockLLMService
 
+# Corrected import path for CacheService Protocol
+from graph_rag.infrastructure.cache.protocols import CacheService
+# Corrected import path for SimpleDocumentProcessor
+from graph_rag.infrastructure.document_processor.simple_processor import SimpleDocumentProcessor
+from graph_rag.core.entity_extractor import SpacyEntityExtractor
+# Commenting out Redis import as it's not implemented
+# from graph_rag.infrastructure.cache.redis_cache import RedisCacheService
+from graph_rag.infrastructure.document_processor.simple_processor import SentenceSplitter
+# Removed incorrect import for SpacyEntityExtractor
+# from graph_rag.infrastructure.entity_extractors.spacy_extractor import SpacyEntityExtractor
+from graph_rag.infrastructure.graph_stores.memgraph_store import (
+    MemgraphGraphRepository,
+)
+# Remove unnecessary import as OpenAILLMService is defined locally
+# from graph_rag.infrastructure.llm.openai_llm import OpenAILLMService 
+
 # Define a Mock Embedding Service
 class MockEmbeddingService(EmbeddingService):
     """Minimal implementation of a mock EmbeddingService."""
@@ -59,6 +84,12 @@ class MockEmbeddingService(EmbeddingService):
         logger.warning(f"MockEmbeddingService.encode called for {len(texts)} texts. Returning dummy vectors.")
         # Return dummy embeddings of the specified dimension
         return [[0.0] * self.dimension for _ in texts]
+
+    async def encode_query(self, text: str, **kwargs) -> List[float]:
+        """Encodes a single query text."""
+        logger.warning(f"MockEmbeddingService.encode_query called for text: '{text}'. Returning dummy vector.")
+        # Return a single dummy embedding of the specified dimension
+        return [0.0] * self.dimension
 
     def get_embedding_dimension(self) -> int:
         """Returns the configured embedding dimension."""
@@ -298,7 +329,7 @@ def create_graph_rag_engine(
     entity_extractor: EntityExtractor,
     llm_service: LLMService, # Added LLM service dependency
     settings: Settings # Keep settings for potential future use
-) -> AbstractGraphRAGEngine:
+) -> GraphRAGEngine:
     """Creates a SimpleGraphRAGEngine instance."""
     logger.debug("Creating SimpleGraphRAGEngine instance")
     return SimpleGraphRAGEngine(
@@ -394,7 +425,7 @@ async def get_graph_rag_engine(
     entity_extractor: EntityExtractor = Depends(get_entity_extractor),
     llm_service: LLMService = Depends(get_llm), # Add LLM dependency
     settings: Settings = Depends(get_settings_dep)
-) -> AbstractGraphRAGEngine:
+) -> GraphRAGEngine:
     """Dependency getter for the main Graph RAG Engine (SimpleGraphRAGEngine)."""
     # Engine is typically not a singleton unless state needs preservation across requests
     # Create a new instance per request or manage singleton if appropriate

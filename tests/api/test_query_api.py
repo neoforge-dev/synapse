@@ -83,8 +83,7 @@ async def test_query_success(test_client: AsyncClient, mock_graph_rag_engine: As
     assert len(response_data["relevant_chunks"]) == 1
     assert response_data["relevant_chunks"][0]["id"] == "alice_c1"
     assert response_data["relevant_chunks"][0]["text"] == "Alice lives here."
-    assert "score" in response_data["relevant_chunks"][0]["properties"]
-    assert response_data["relevant_chunks"][0]["properties"]["score"] == 0.9
+    assert response_data["relevant_chunks"][0]["score"] == 0.9
     assert response_data["graph_context"] is None
     mock_graph_rag_engine.query.assert_awaited_once_with(payload["query_text"], config={"k": payload["k"]})
 
@@ -118,8 +117,7 @@ async def test_query_success_with_graph_context(test_client: AsyncClient, mock_g
     assert response_data["answer"] == "Mocked answer about Who is connected to Bob? graph."
     assert len(response_data["relevant_chunks"]) == 1
     assert response_data["relevant_chunks"][0]["id"] == "bob_c1"
-    assert "score" in response_data["relevant_chunks"][0]["properties"]
-    assert response_data["relevant_chunks"][0]["properties"]["score"] == 0.85
+    assert response_data["relevant_chunks"][0]["score"] == 0.85
     assert response_data["graph_context"] is not None
     assert isinstance(response_data["graph_context"], dict) # API model is a dict
     assert len(response_data["graph_context"].get("entities", [])) == 2

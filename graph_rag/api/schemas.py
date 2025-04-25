@@ -9,8 +9,9 @@ import uuid
 class ChunkResultSchema(BaseModel):
     id: str
     text: str
-    document_id: str
-    # Exclude embedding by default in API response for brevity
+    document_id: str | None = "unknown"  # Allow None, default to unknown
+    score: float | None = None
+    properties: Dict[str, Any] | None = None  # Add properties field
 
 class DocumentResultSchema(BaseModel):
     id: str

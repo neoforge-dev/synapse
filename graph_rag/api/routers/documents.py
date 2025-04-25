@@ -143,7 +143,7 @@ def create_documents_router() -> APIRouter:
                 # Remove chunks from vector store
                 if chunk_ids:
                     try:
-                        vector_store.delete_chunks(chunk_ids)
+                        await vector_store.delete_chunks(chunk_ids)
                         logger.info(f"Deleted {len(chunk_ids)} chunks from vector store")
                     except Exception as vs_e:
                         logger.warning(f"Failed to delete chunks from vector store: {vs_e}. Continuing with graph deletion.")

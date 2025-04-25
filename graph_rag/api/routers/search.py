@@ -164,8 +164,8 @@ def create_search_router() -> APIRouter:
                     try:
                         document = await graph_store.get_document_by_id(chunk.document_id)
                         doc_schema = schemas.DocumentResultSchema(
-                            id=document["id"],
-                            metadata=document["metadata"]
+                            id=document.id,
+                            metadata=document.metadata
                         ) if document else None
                         # ---- START DEBUG LOGGING ----
                         logger.info(f"DEBUG: Document ID {chunk.document_id} -> Fetched document: {document}")

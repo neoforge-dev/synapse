@@ -8,10 +8,12 @@ from pytest_mock import MockerFixture
 from graph_rag.domain.models import Document, Chunk, Relationship, Entity, Edge
 
 # Core Components
-from graph_rag.core.document_processor import DocumentProcessor, ChunkSplitter
-from graph_rag.core.entity_extractor import EntityExtractor
-from graph_rag.core.interfaces import EmbeddingService, VectorStore, GraphRepository
-from graph_rag.core.document_processor import SimpleDocumentProcessor
+from graph_rag.core.interfaces import (
+    GraphRepository, VectorStore, EntityExtractor, EmbeddingService, 
+    DocumentProcessor, ChunkData # Correct interface import
+)
+# Correct implementation import
+from graph_rag.infrastructure.document_processor.simple_processor import ChunkSplitter 
 
 # Service Under Test
 from graph_rag.services.ingestion import IngestionService, IngestionResult
@@ -71,10 +73,13 @@ def mock_chunk_splitter() -> MagicMock:
 
 @pytest.fixture
 def mock_document_processor() -> MagicMock:
-    # """Mock DocumentProcessor (optional, if complex logic needs mocking)."""
-    "Mock DocumentProcessor (optional, if complex logic needs mocking)."
-    # For now, assume IngestionService uses ChunkSplitter directly
-    return MagicMock(spec=DocumentProcessor)
+    mock = AsyncMock(spec=DocumentProcessor)
+    # Example setup: return specific chunks when called
+    mock.chunk_document.return_value = [
+        ChunkData(id=str(uuid.uuid4()), text="Chunk 1 text.", document_id="doc1", embedding=None),
+        ChunkData(id=str(uuid.uuid4()), text="Chunk 2 text.", document_id="doc1", embedding=None)
+    ]
+    return mock
 
 @pytest.fixture
 def mock_entity_extractor() -> MagicMock:
@@ -99,10 +104,14 @@ def sample_text() -> str:
 @pytest.fixture
 def mock_vector_store(mocker: MockerFixture):
     """Fixture for a mocked VectorStore."""
-    mock = mocker.Mock(spec=VectorStore)
+    # Use AsyncMock directly or configure mocker.Mock properly for async methods
+    # mock = mocker.Mock(spec=VectorStore)
+    mock = mocker.AsyncMock(spec=VectorStore)
     # Add any necessary default mock behaviors here if needed, e.g.:
-    # mock.add_chunks = mocker.AsyncMock()
-    # mock.search = mocker.AsyncMock(return_value=[]) 
+    # mock.add_chunks = mocker.AsyncMock() # Explicitly mock async methods if not using AsyncMock for the base
+    mock.add_chunks = mocker.AsyncMock() # Ensure add_chunks is an AsyncMock
+    mock.search = mocker.AsyncMock(return_value=[]) 
+    # Mock other methods used by the service if any
     return mock
 
 # -- Tests --
@@ -174,8 +183,8 @@ async def test_ingest_document_creates_chunks_with_embeddings(
     
     # Mock document_processor.chunk_document
     mock_chunks = [
-        Chunk(id="chunk_embed_0", text="Chunk 0 for embedding.", document_id=document_id),
-        Chunk(id="chunk_embed_1", text="Chunk 1 for embedding.", document_id=document_id),
+        Chunk(id="chunk_embed_0", text="Chunk 0 for embedding.", document_id=document_id, metadata={}),
+        Chunk(id="chunk_embed_1", text="Chunk 1 for embedding.", document_id=document_id, metadata={}),
     ]
     mock_document_processor.chunk_document.return_value = mock_chunks
     
@@ -471,8 +480,8 @@ async def test_ingest_document_with_embeddings(
     
     # Mock the chunking call
     mock_chunks = [
-        Chunk(id="chunk_fixture_emb_0", text="Fixture chunk 0 with embedding.", document_id=document_id),
-        Chunk(id="chunk_fixture_emb_1", text="Fixture chunk 1 with embedding.", document_id=document_id),
+        Chunk(id="chunk_fixture_emb_0", text="Fixture chunk 0 with embedding.", document_id=document_id, metadata={}),
+        Chunk(id="chunk_fixture_emb_1", text="Fixture chunk 1 with embedding.", document_id=document_id, metadata={}),
     ]
     mock_document_processor.chunk_document.return_value = mock_chunks
 
