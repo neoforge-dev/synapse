@@ -402,5 +402,49 @@ async def test_delete_document(memgraph_repo: MemgraphGraphRepository):
     deleted_nonexistent = await memgraph_repo.delete_document(uid("nonexistent-doc"))
     assert deleted_nonexistent is False
 
+@pytest.mark.asyncio
+async def test_get_relationship_by_id(memgraph_repo: MemgraphGraphRepository):
+    """Test retrieving a relationship by its ID property."""
+    # 1. Setup: Create nodes and a relationship with a specific ID property
+    source_node = Entity(id="test_rel_source_node", type="TestEntity", name="Source Node Rel Test")
+    target_node = Entity(id="test_rel_target_node", type="TestEntity", name="Target Node Rel Test")
+    rel_id = f"rel-{uuid.uuid4()}"
+    rel_properties = {"weight": 0.75, "source": "test"}
+    relationship = Relationship(
+        id=rel_id, # Assign the ID here
+        source_id=source_node.id,
+        target_id=target_node.id,
+        type="CONNECTED_TO",
+        properties=rel_properties.copy() # Pass a copy
+    )
+    
+    # Add nodes first
+    await memgraph_repo.add_node(source_node)
+    await memgraph_repo.add_node(target_node)
+    
+    # Add relationship (crucially, add_relationship should store the ID property)
+    await memgraph_repo.add_relationship(relationship)
+    
+    # 2. Act: Retrieve the relationship using the new method
+    retrieved_rel = await memgraph_repo.get_relationship_by_id(rel_id)
+    
+    # 3. Assert: Check if the retrieved relationship matches the original
+    assert retrieved_rel is not None
+    assert retrieved_rel.id == rel_id
+    assert retrieved_rel.source_id == source_node.id
+    assert retrieved_rel.target_id == target_node.id
+    assert retrieved_rel.type == "CONNECTED_TO"
+    # Assert properties, excluding any automatically added ones like created/updated_at
+    assert retrieved_rel.properties == rel_properties 
+
+@pytest.mark.asyncio
+async def test_get_relationship_by_id_not_found(memgraph_repo: MemgraphGraphRepository):
+    """Test retrieving a non-existent relationship ID returns None."""
+    non_existent_id = f"rel-non-existent-{uuid.uuid4()}"
+    
+    retrieved_rel = await memgraph_repo.get_relationship_by_id(non_existent_id)
+    
+    assert retrieved_rel is None
+
 # TODO: Add tests for error handling (e.g., adding relationship with missing nodes)
 # TODO: Add tests for add_entities_and_relationships (bulk operations)

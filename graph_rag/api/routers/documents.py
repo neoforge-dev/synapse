@@ -25,7 +25,7 @@ def create_documents_router() -> APIRouter:
     router = APIRouter() # Create router inside factory
 
     @router.post(
-        "/",
+        "",
         # response_model=schemas.CreateResponse, # Deferred
         response_model=schemas.CreateResponse, # Restore
         status_code=status.HTTP_201_CREATED,
@@ -33,20 +33,23 @@ def create_documents_router() -> APIRouter:
         description="Adds a new document node to the graph."
     )
     async def add_document(
-        # doc_in: 'schemas.DocumentCreate', # Use forward reference string
         doc_in: schemas.DocumentCreate, # Restore type hint
         repo: Annotated[GraphRepository, Depends(get_graph_repository)] # Correct dependency injection
     ):
-        # from graph_rag.api import schemas # Import locally - REMOVE
-        """Creates a new document entity in the graph."""
+        """Creates a new document entity in the graph. Uses provided ID if available, otherwise generates one."""
         try:
-            # Assume doc_in.id is provided or generated if needed
+            # Use provided ID or generate a new one
+            document_id = doc_in.id if doc_in.id else str(uuid.uuid4())
+            
+            # Ensure metadata is a dict, even if None was provided
+            doc_metadata = doc_in.metadata or {}
+            
             # document_entity = Entity(id=doc_in.id, type="Document", properties=doc_in.metadata or {}) # Original has error if metadata is None
             # document_id = str(uuid.uuid4()) # Generate ID if not provided or handle optionality - REVERT TO ORIGINAL INTENT (use ID from request if available, or define how it's generated)
             # For now, assume DocumentCreate schema requires an ID or handles generation
             # Let's assume doc_in MUST provide metadata, or handle None
-            document_id = str(uuid.uuid4()) # Temporarily keep ID generation
-            document_entity = Entity(id=document_id, type="Document", properties=doc_in.metadata or {})
+            # document_id = str(uuid.uuid4()) # Temporarily keep ID generation
+            document_entity = Entity(id=document_id, type="Document", properties=doc_metadata)
             await repo.add_entity(document_entity)
             logger.info(f"Document added with ID: {document_id}")
             # Ensure response model matches the actual return type after local import
@@ -56,7 +59,7 @@ def create_documents_router() -> APIRouter:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to add document")
 
     @router.get(
-        "/",
+        "",
         # response_model=List[schemas.DocumentResponse], # Deferred
         response_model=List[schemas.DocumentResponse], # Restore
         summary="List all documents",
@@ -132,6 +135,7 @@ def create_documents_router() -> APIRouter:
         - 404 Not Found: If the document ID does not exist.
         - 500 Internal Server Error: If a database error occurs.
         """
+        logger.info(f"--- ENTERING delete_document HANDLER for doc_id: {document_id} ---") # ADDED LOG
         logger.info(f"Attempting to delete document {document_id} and its chunks.")
         try:
             # First, get all chunks belonging to this document

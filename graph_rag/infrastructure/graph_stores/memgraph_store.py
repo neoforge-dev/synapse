@@ -668,21 +668,22 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
                  created_at = created_at.replace(tzinfo=timezone.utc)
             updated_at = datetime.now(timezone.utc)
             props["updated_at"] = updated_at # Set updated_at on match/create
+            props["id"] = relationship.id # Ensure the relationship's ID is included in the properties to be set
             
             query = f"""
             MATCH (source {{id: $source_id}}), (target {{id: $target_id}})
             MERGE (source)-[r:{escape_cypher_string(relationship.type)}]->(target)
-            ON CREATE SET r += $props, r.created_at = $created_at
-            ON MATCH SET r += $props, r.updated_at = $updated_at
+            ON CREATE SET r = $props, r.created_at = $created_at
+            ON MATCH SET r += $props
             """
             await self.execute_query(
                 query,
                 {
-                    "source_id": relationship.source_id, # Use source_id from Edge model
-                    "target_id": relationship.target_id, # Use target_id from Edge model
-                    "props": props,
-                    "created_at": created_at,
-                    "updated_at": props["updated_at"]
+                    "source_id": relationship.source_id, 
+                    "target_id": relationship.target_id, 
+                    "props": props, # props now includes the 'id'
+                    "created_at": created_at
+                    # updated_at is handled within props
                 }
             )
             logger.debug(f"Added/Updated relationship: {relationship.source_id} -[{relationship.type}]-> {relationship.target_id}")
@@ -1043,10 +1044,12 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
 
     async def delete_document(self, document_id: str) -> bool:
         """Deletes a document and its associated chunks and relationships."""
-        # Query: Delete the document and detach/delete its associated CONTAINS chunks
+        # Query: Match the document by ID
+        # Optional Match: Match chunks by their document_id property
+        # Detach and delete both matched document and chunks
         query = """
         MATCH (d:Document {id: $doc_id})
-        OPTIONAL MATCH (d)-[:CONTAINS]->(c:Chunk) // Match chunks contained by the document
+        OPTIONAL MATCH (c:Chunk {document_id: $doc_id}) // Match chunks by property
         DETACH DELETE d, c // Delete document and associated chunks
         RETURN count(d) as deleted_doc_count
         """
@@ -1290,6 +1293,80 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
         """Executes a write Cypher query."""
         # For this implementation, we use the same execute_query method
         return await self.execute_query(query, parameters)
+
+    async def get_relationship_by_id(self, relationship_id: str) -> Optional[Relationship]:
+        """Retrieves a single relationship by its ID property."""
+        logger.debug(f"Attempting to retrieve relationship with ID: {relationship_id}")
+        
+        # Query matching the 'id' property on the relationship itself
+        query = f"""
+        MATCH (source)-[r]->(target)
+        WHERE r.id = $relationship_id OR id(r) = $relationship_id // Check both property and internal ID as fallback? Decide on one strategy. Let's prioritize property first.
+        MATCH (s) WHERE id(s) = id(source) // Re-match to get source properties if needed? Simpler: get IDs directly
+        MATCH (t) WHERE id(t) = id(target) // Re-match to get target properties if needed? Simpler: get IDs directly
+        
+        WITH r, s, t // Ensure s and t are in scope
+        RETURN r as relationship, 
+               type(r) as relationship_type, 
+               id(r) as relationship_internal_id,
+               s.id as source_node_id, // Get ID property from source node
+               t.id as target_node_id // Get ID property from target node
+        LIMIT 1 
+        """
+        # Simplified query focusing on relationship property 'id'
+        query_by_property = f"""
+        MATCH (source)-[r]->(target)
+        WHERE r.id = $relationship_id 
+        RETURN r as relationship, 
+               type(r) as relationship_type, 
+               id(r) as relationship_internal_id,
+               source.id as source_node_id, // Get source node ID property
+               target.id as target_node_id  // Get target node ID property
+        LIMIT 1
+        """
+        params = {"relationship_id": relationship_id}
+
+        try:
+            results = await self.execute_query(query_by_property, params)
+            if not results:
+                logger.debug(f"Relationship with ID '{relationship_id}' not found.")
+                return None
+
+            record = results[0]
+            rel_obj = record.get('relationship')
+            rel_type = record.get('relationship_type')
+            rel_internal_id = record.get('relationship_internal_id')
+            source_id = record.get('source_node_id')
+            target_id = record.get('target_node_id')
+
+            if not all([rel_obj, rel_type, source_id, target_id]):
+                logger.error(f"Query result for relationship {relationship_id} missing required fields: {record}")
+                return None
+
+            # Get properties from the relationship object
+            rel_props = rel_obj.properties.copy() if hasattr(rel_obj, 'properties') else {}
+            
+            # Pop standard fields, pass rest to properties
+            retrieved_id = rel_props.pop("id", relationship_id) # Should match input id
+            created_at_r = rel_props.pop("created_at", None)
+            updated_at_r = rel_props.pop("updated_at", None)
+            # Parse dates if necessary
+
+            relationship = Relationship(
+                id=str(retrieved_id), # Use the ID retrieved from properties
+                source_id=str(source_id),
+                target_id=str(target_id),
+                type=str(rel_type),
+                properties=rel_props, # Remaining properties
+                created_at=self._parse_datetime(created_at_r, retrieved_id, "created_at"), # Reuse parser
+                updated_at=self._parse_datetime(updated_at_r, retrieved_id, "updated_at")  # Reuse parser
+            )
+            logger.debug(f"Successfully retrieved relationship {relationship_id}")
+            return relationship
+
+        except Exception as e:
+            logger.error(f"Failed to retrieve relationship {relationship_id}: {e}", exc_info=True)
+            return None
 
     async def link_chunk_to_entities(self, chunk_id: str, entity_ids: List[str]) -> None:
         """Creates MENTIONS relationships between a chunk and a list of entities."""

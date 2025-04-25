@@ -6,8 +6,8 @@ import json # Import json for NDJSON serialization
 import inspect
 
 from graph_rag.api import schemas
-from graph_rag.api.dependencies import get_graph_rag_engine, get_graph_repository
-from graph_rag.core.interfaces import SearchResultData, GraphRAGEngine
+from graph_rag.api.dependencies import get_graph_rag_engine, get_graph_repository, get_vector_store
+from graph_rag.core.interfaces import SearchResultData, GraphRAGEngine, VectorStore
 from graph_rag.core.graph_rag_engine import QueryResult # Import QueryResult
 
 router = APIRouter()
@@ -30,25 +30,32 @@ def create_search_router() -> APIRouter:
     )
     async def perform_search(
         request: schemas.SearchQueryRequest,
-        engine: Annotated[GraphRAGEngine, Depends(get_graph_rag_engine)],
+        vector_store: Annotated[VectorStore, Depends(get_vector_store)] # Depend on VectorStore directly
     ) -> schemas.SearchQueryResponse:
         """Search for chunks based on the query and search type."""
         logger.info(f"Received search request: {request.model_dump()}")
         try:
-            if not engine:
-                logger.error("GraphRAGEngine dependency not available.")
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE, 
-                    detail="Search engine is not available."
-                )
-
             if request.search_type == "vector":
-                # Assume search returns a list of SearchResultSchema compatible objects
-                results = await engine.search(
-                    query=request.query, 
-                    search_type='vector', # Pass type explicitly
-                    limit=request.limit
-                ) # Pass limit
+                # Call vector_store directly
+                results_data: List[SearchResultData] = await vector_store.search(request.query, top_k=request.limit)
+                
+                # Adapt SearchResultData to schemas.SearchResultSchema
+                # TODO: Need to potentially fetch Document metadata if required by schema?
+                # For now, map directly, assuming SearchResultData has compatible fields or can be adapted.
+                # Assuming SearchResultData has chunk and score
+                results = [
+                    schemas.SearchResultSchema(
+                        chunk=schemas.ChunkResultSchema(
+                            id=data.chunk.id,
+                            text=data.chunk.text,
+                            document_id=data.chunk.document_id,
+                            metadata=data.chunk.metadata or {}
+                        ),
+                        score=data.score,
+                        document=None # Document info not readily available here
+                    )
+                    for data in results_data
+                ]
             elif request.search_type == "keyword":
                 # Keyword search might not be implemented yet
                 # results = await engine.search(query=request.query, search_type='keyword')

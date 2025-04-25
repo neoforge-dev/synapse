@@ -1,45 +1,61 @@
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from fastapi import status
-from unittest.mock import AsyncMock, patch # Keep AsyncMock if used elsewhere, remove if not
+from fastapi import status, FastAPI
+from unittest.mock import AsyncMock, patch, ANY, MagicMock
 import json
-import asyncio # Keep if needed for sleep or other async ops
+import asyncio
+import logging
+import uuid
+from typing import List, Dict, Any, Optional
 
 # Import Schemas and core data structures
 from graph_rag.api import schemas
-from graph_rag.core.interfaces import ChunkData # Removed SearchResultData, DocumentData
-from graph_rag.api import dependencies as deps # To override engine dependency
-from graph_rag.api.main import app # Import app for dependency override
-from graph_rag.services.ingestion import IngestionService # Import service to mock
-from graph_rag.core.graph_rag_engine import QueryResult # Added import
-from graph_rag.api.schemas import SearchBatchQueryRequest, SearchQueryRequest # Ensure these are imported
+from graph_rag.core.interfaces import ChunkData, GraphRepository, VectorStore
+from graph_rag.api import dependencies as deps
+from graph_rag.api.dependencies import get_graph_repository, get_vector_store
+from graph_rag.domain.models import Chunk, Document, Entity, Relationship
+from graph_rag.core.graph_rag_engine import QueryResult
+from graph_rag.api.schemas import CreateResponse, DocumentResponse, SearchQueryRequest, SearchBatchQueryRequest, DocumentIngestRequest
 
-# --- Mocks --- 
-# Remove engine override - it's not directly used by ingestion endpoint
-# @pytest_asyncio.fixture(autouse=True)
-# def override_engine_dependency(mock_graph_rag_engine):
-#     app.dependency_overrides[deps.get_graph_rag_engine] = lambda: mock_graph_rag_engine
-#     yield
-#     app.dependency_overrides = {}
+# Remove direct app import (should be already removed or commented out)
+# from graph_rag.api.main import app 
 
-# Remove local function-scoped fixtures causing ScopeMismatch
-# @pytest_asyncio.fixture
-# def mock_ingestion_service() -> AsyncMock:
-#     \"\"\"Provides a mock IngestionService.\"\"\"
-#     service_mock = AsyncMock(spec=IngestionService)
-#     service_mock.ingest_document = AsyncMock() # Ensure the method exists and is async
-#     return service_mock
-# 
-# @pytest_asyncio.fixture(autouse=True) # Apply automatically
-# def override_ingestion_service_dependency(mock_ingestion_service):
-#     \"\"\"Overrides the IngestionService dependency for tests in this module.\"\"\"
-#     app.dependency_overrides[deps.get_ingestion_service] = lambda: mock_ingestion_service
-#     yield
-#     # Clear overrides after tests in this module run
-#     app.dependency_overrides = {}
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
-# --- Ingestion Tests --- 
+# --- Test Helper --- 
+async def cleanup_document(graph_repo: GraphRepository, vector_store: VectorStore, doc_id: str):
+    """Helper function to clean up test document from graph and vector store."""
+    logger.debug(f"Attempting cleanup for document: {doc_id}")
+    try:
+        deleted_graph = await graph_repo.delete_document(doc_id)
+        logger.debug(f"Graph cleanup for {doc_id}: {deleted_graph}")
+    except Exception as e:
+        logger.warning(f"Graph cleanup failed for {doc_id}: {e}")
+    
+    try:
+        # Check if delete_document exists and is callable
+        if hasattr(vector_store, 'delete_document') and callable(getattr(vector_store, 'delete_document')):
+            await vector_store.delete_document(doc_id)
+            logger.debug(f"Vector store cleanup successful for {doc_id}")
+        else:
+            # Fallback: Try deleting chunks if delete_document not available/fails
+            logger.warning(f"Vector store delete_document not available/failed for {doc_id}. Attempting chunk deletion.")
+            try:
+                chunks = await graph_repo.get_chunks_by_document_id(doc_id)
+                chunk_ids = [c.id for c in chunks]
+                if chunk_ids:
+                    await vector_store.delete_chunks(chunk_ids)
+                    logger.debug(f"Deleted {len(chunk_ids)} chunks from vector store for doc {doc_id}")
+            except Exception as chunk_del_e:
+                logger.warning(f"Vector store chunk deletion failed for {doc_id}: {chunk_del_e}")
+    except NotImplementedError:
+        logger.warning(f"Vector store does not implement delete_document or delete_chunks for {doc_id}. Manual cleanup might be needed.")
+    except Exception as e:
+        logger.warning(f"Vector store cleanup failed for {doc_id}: {e}")
+
+# --- Tests --- 
 @pytest.mark.asyncio
 async def test_ingest_document_success(test_client: AsyncClient):
     """Test successful document ingestion (check status)."""
@@ -58,7 +74,6 @@ async def test_ingest_document_empty_content(test_client: AsyncClient):
     response = await test_client.post("/api/v1/ingestion/documents", json=payload)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-# --- Search Tests --- 
 @pytest.mark.asyncio
 async def test_search_batch_success(
     test_client: AsyncClient, mock_graph_rag_engine: AsyncMock
@@ -396,3 +411,89 @@ async def test_search_batch_empty_request(test_client: AsyncClient):
     assert error_detail["type"] == "too_short"
     assert error_detail["loc"] == ["body", "queries"] # Check the location of the error
     assert "List should have at least 1 item" in error_detail["msg"] # Check the error message 
+
+# --- Test combining search and ingestion --- 
+@pytest.mark.asyncio
+async def test_search_then_ingest_interaction(
+    integration_test_client: AsyncClient, 
+    memgraph_repo: 'graph_rag.infrastructure.graph_stores.memgraph_store.MemgraphGraphRepository', # Use real repo fixture
+    app: FastAPI # Inject app fixture
+):
+    """Test searching for non-existent, ingesting, then searching again."""
+    # Get vector store from app state (initialized during lifespan)
+    vector_store = app.state.vector_store 
+    assert vector_store is not None, "Vector store not initialized in app state"
+
+    test_content = f"Unique content for search and ingest test {uuid.uuid4()}." # Unique content per run
+    test_doc_id = f"search-ingest-doc-{uuid.uuid4()}" # Unique ID per run
+    
+    # --- 0. Cleanup --- 
+    logger.info(f"[Test Setup] Cleaning up potential old data for doc: {test_doc_id}")
+    await cleanup_document(memgraph_repo, vector_store, test_doc_id)
+
+    # --- 1. Search (Should Fail/Not find this specific doc) ---
+    logger.info(f"[Test Step 1] Searching for non-existent content in doc: {test_doc_id}")
+    search_payload = {"query": test_content, "limit": 1, "search_type": "vector"} # VALID PAYLOAD
+    # Correct search endpoint URL is /api/v1/search/
+    search_response = await integration_test_client.post("/api/v1/search/", json=search_payload)
+    assert search_response.status_code == 200
+    search_results = search_response.json()
+    # Verify the specific document ID is not in the results
+    found_doc_ids_before = {chunk['document_id'] for chunk in search_results.get('chunks', [])} # Use .get for safety
+    assert test_doc_id not in found_doc_ids_before, f"Document {test_doc_id} found before ingestion."
+    logger.info(f"[Test Step 1] Confirmed content not found initially.")
+
+    # --- 2. Ingest --- 
+    logger.info(f"[Test Step 2] Ingesting document: {test_doc_id}")
+    ingest_payload = {
+        "document_id": test_doc_id,
+        "content": test_content,
+        "metadata": {"source": "search_ingest_test"}
+    }
+    # Correct ingestion endpoint URL is /api/v1/ingestion/documents
+    ingest_response = await integration_test_client.post("/api/v1/ingestion/documents", json=ingest_payload)
+    assert ingest_response.status_code == status.HTTP_202_ACCEPTED
+    # Allow time for background ingestion? Depends on test setup.
+    # If using a real background task runner, might need a delay or check mechanism.
+    # Assuming for now the effect is immediate enough or handled by fixtures.
+    # A small delay might be prudent if tests become flaky.
+    await asyncio.sleep(0.1) # Add a small delay for background task
+
+    # --- 3. Wait & Verify Ingestion --- 
+    await asyncio.sleep(3) # Allow time for background task
+    logger.info(f"[Test Step 3] Checking persistence for {test_doc_id}...")
+    # Verify in graph
+    doc_node = await memgraph_repo.get_document_by_id(test_doc_id)
+    assert doc_node is not None, f"Document {test_doc_id} not found in graph after ingestion wait."
+    assert doc_node.id == test_doc_id
+    chunks = await memgraph_repo.get_chunks_by_document_id(test_doc_id)
+    assert len(chunks) > 0, f"No chunks found for document {test_doc_id} in graph."
+    logger.info(f"[Test Step 3] Verified {len(chunks)} chunks in graph for {test_doc_id}.")
+    # Verify via search endpoint (proxy for vector store check)
+    try:
+        search_response_check = await integration_test_client.post("/api/v1/search/", json=search_payload)
+        assert search_response_check.status_code == 200
+        search_results_check = search_response_check.json()
+        assert any(chunk['document_id'] == test_doc_id for chunk in search_results_check.get('chunks', [])), \
+               f"Document {test_doc_id} chunks not found via search after ingestion wait."
+        logger.info(f"[Test Step 3] Verified document {test_doc_id} searchable.")
+    except Exception as e:
+        pytest.fail(f"Could not perform vector store verification search: {e}")
+
+    # --- 4. Search Again (Should Succeed) --- 
+    logger.info(f"[Test Step 4] Searching again for content in doc: {test_doc_id}")
+    search_response_after = await integration_test_client.post("/api/v1/search/", json=search_payload)
+    assert search_response_after.status_code == 200
+    search_results_after = search_response_after.json()
+    assert len(search_results_after.get('chunks', [])) > 0, f"Search returned no chunks after ingestion for {test_doc_id}."
+    
+    found_doc_ids_after = {chunk['document_id'] for chunk in search_results_after.get('chunks', [])}
+    assert test_doc_id in found_doc_ids_after, f"Correct document {test_doc_id} not found in search results after ingestion."
+    # Check if the content is present in at least one of the returned chunks
+    assert any(test_content in chunk['text'] for chunk in search_results_after.get('chunks', []) if chunk['document_id'] == test_doc_id), \
+           f"Ingested content not found in relevant chunk text for {test_doc_id}."
+    logger.info(f"[Test Step 4] Search successful. Found chunk(s) for {test_doc_id}.")
+
+    # --- 5. Cleanup --- 
+    logger.info(f"[Test Cleanup] Cleaning up document: {test_doc_id}")
+    await cleanup_document(memgraph_repo, vector_store, test_doc_id) 

@@ -2,6 +2,7 @@ import logging
 from typing import AsyncGenerator, Annotated, Optional, List, Dict, Any, Tuple
 import asyncio
 from functools import lru_cache
+import numpy as np # Add numpy import
 
 from fastapi import Depends, HTTPException, status, Request
 # Remove if unused
@@ -78,20 +79,25 @@ class MockEmbeddingService(EmbeddingService):
     """Minimal implementation of a mock EmbeddingService."""
     def __init__(self, dimension: int = 10): # Add dimension
         self.dimension = dimension
-        logger.info(f"Minimal MockEmbeddingService initialized with dimension {dimension}")
+        # Create a constant normalized vector
+        self._dummy_vector = np.zeros(self.dimension)
+        if self.dimension > 0:
+            self._dummy_vector[0] = 1.0
+        self._dummy_vector_list = self._dummy_vector.tolist()
+        logger.info(f"Minimal MockEmbeddingService initialized with dimension {dimension} and constant normalized vector.")
 
     async def encode(self, texts: List[str], **kwargs) -> List[List[float]]:
-        logger.warning(f"MockEmbeddingService.encode called for {len(texts)} texts. Returning dummy vectors.")
-        # Return dummy embeddings of the specified dimension
-        return [[0.0] * self.dimension for _ in texts]
+        logger.warning(f"MockEmbeddingService.encode called for {len(texts)} texts. Returning constant normalized vector.")
+        # Return the same constant normalized vector for all texts
+        return [self._dummy_vector_list for _ in texts]
 
     async def encode_query(self, text: str, **kwargs) -> List[float]:
         """Encodes a single query text."""
-        logger.warning(f"MockEmbeddingService.encode_query called for text: '{text}'. Returning dummy vector.")
-        # Return a single dummy embedding of the specified dimension
-        return [0.0] * self.dimension
+        logger.warning(f"MockEmbeddingService.encode_query called for text: '{text}'. Returning constant normalized vector.")
+        # Return the constant normalized vector
+        return self._dummy_vector_list
 
-    def get_embedding_dimension(self) -> int:
+    def get_embedding_dimension(self) -> int: # Renamed from get_dimension for clarity
         """Returns the configured embedding dimension."""
         return self.dimension
 

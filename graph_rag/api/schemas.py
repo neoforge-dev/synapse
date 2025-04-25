@@ -94,7 +94,8 @@ class CreateResponse(BaseModel):
 
 class DocumentCreate(BaseModel):
     """Schema for creating a new document."""
-    content: str
+    id: Optional[str] = Field(default=None, description="Optional client-provided ID for the document.") # Add optional ID
+    content: str = Field(..., min_length=1, description="The text content of the document.") # Add validation
     metadata: Optional[Dict[str, Any]] = None
 
 class DocumentResponse(BaseModel):

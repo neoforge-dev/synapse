@@ -9,7 +9,7 @@ import numpy as np
 import asyncio
 import uuid
 from httpx import AsyncClient, Timeout
-from fastapi import status
+from fastapi import status, FastAPI
 from pathlib import Path
 import time
 
@@ -21,7 +21,6 @@ from graph_rag.infrastructure.document_processor.simple_processor import SimpleD
 from graph_rag.core.persistent_kg_builder import PersistentKnowledgeGraphBuilder
 from graph_rag.core.graph_rag_engine import SimpleGraphRAGEngine
 from graph_rag.models import Document, Chunk, Entity, Relationship
-from graph_rag.api.main import app
 from graph_rag.services.embedding import EmbeddingService
 from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 from graph_rag.core.interfaces import GraphRepository # Import protocol
@@ -399,3 +398,83 @@ async def test_e2e_mvp_pipeline(test_client: AsyncClient, memgraph_repo):
         assert "E2E_PERSON" in entity_names, "[E2E] E2E_PERSON not found in graph context entities."
 
     print(f"[E2E] MVP Pipeline Test Completed Successfully.") 
+
+async def cleanup_document(repo, doc_id):
+    """Helper function to delete a document and its chunks for cleanup."""
+    try:
+        deleted = await repo.delete_document(doc_id)
+        if deleted:
+            print(f"[Cleanup] Deleted document and associated chunks for ID: {doc_id}")
+        else:
+            print(f"[Cleanup] Document ID {doc_id} not found for deletion.")
+    except Exception as e:
+        print(f"[Cleanup] Error deleting document {doc_id}: {e}")
+
+@pytest.mark.asyncio
+async def test_e2e_ingest_search_query(
+    integration_test_client: AsyncClient, 
+    memgraph_repo: 'graph_rag.infrastructure.graph_stores.memgraph_store.MemgraphGraphRepository',
+    app: FastAPI # Add app: FastAPI fixture here
+):
+    """Performs an end-to-end test: ingest -> search -> query."""
+    
+    TEST_DOC_ID_E2E = f"e2e-test-doc-{uuid.uuid4()}" # Define local constant for this test
+    TEST_DOC_CONTENT_E2E = """
+        Albert Einstein was a German-born theoretical physicist who developed the theory of relativity, 
+        one of the two pillars of modern physics. His work is also known for its influence on the philosophy of science. 
+        He is best known to the general public for his mass–energy equivalence formula E = mc², which has been dubbed 
+        "the world's most famous equation". He received the 1921 Nobel Prize in Physics for his services to theoretical 
+        physics, and especially for his discovery of the law of the photoelectric effect, a pivotal step in the development of quantum theory.
+    """ # Terminate the multiline string properly
+    TEST_DOC_METADATA_E2E = {"source": "e2e_pytest_test", "topic": "physics"}
+
+    # --- 0. Cleanup (ensure clean state) ---
+    await cleanup_document(memgraph_repo, TEST_DOC_ID_E2E) 
+    
+    # --- 1. Ingest Document ---
+    logger.info(f"E2E Test (ingest_search_query): Ingesting document {TEST_DOC_ID_E2E}...")
+    ingest_payload = {
+        "document_id": TEST_DOC_ID_E2E,
+        "content": TEST_DOC_CONTENT_E2E,
+        "metadata": TEST_DOC_METADATA_E2E
+    }
+    # Use correct endpoint /api/v1/documents
+    ingest_response = await integration_test_client.post("/api/v1/documents", json=ingest_payload)
+    assert ingest_response.status_code == status.HTTP_202_ACCEPTED
+    ingest_data = ingest_response.json()
+    assert ingest_data["document_id"] == TEST_DOC_ID_E2E
+    logger.info(f"E2E Test: Ingestion request accepted. Waiting for processing...")
+    await asyncio.sleep(5) # Wait for background task
+
+    # --- Verification Step --- 
+    doc_node = await memgraph_repo.get_document_by_id(TEST_DOC_ID_E2E)
+    assert doc_node is not None, f"Document {TEST_DOC_ID_E2E} not found after wait."
+    logger.info(f"E2E Test: Verified document exists in graph.")
+    
+    # --- 2. Search for Related Content ---
+    logger.info(f"E2E Test: Searching for related content...")
+    search_query = "theory of relativity"
+    search_payload = {"query_text": search_query, "k": 2, "search_type": "hybrid"}
+    # Use correct endpoint /api/v1/search/
+    search_response = await integration_test_client.post("/api/v1/search/", json=search_payload)
+    assert search_response.status_code == status.HTTP_200_OK
+    search_results = search_response.json()
+    assert len(search_results.get('chunks', [])) > 0, "Search returned no chunks."
+    logger.info(f"E2E Test: Search returned chunks.")
+
+    # --- 3. Query using RAG Engine ---
+    logger.info(f"E2E Test: Querying with RAG engine...")
+    rag_query = "What did Einstein develop?"
+    # Use correct endpoint /api/v1/query/
+    query_payload = {"query_text": rag_query} # Config like k is optional in body
+    query_response = await integration_test_client.post("/api/v1/query/", json=query_payload)
+    assert query_response.status_code == status.HTTP_200_OK
+    query_data = query_response.json()
+    assert query_data["answer"] is not None
+    assert "relativity" in query_data["answer"]
+    logger.info(f"E2E Test: RAG query successful.")
+
+    # --- 4. Cleanup ---
+    logger.info(f"E2E Test: Cleaning up document {TEST_DOC_ID_E2E}...")
+    await cleanup_document(memgraph_repo, TEST_DOC_ID_E2E)
+    logger.info(f"E2E Test: Completed successfully (test_e2e_ingest_search_query).") 

@@ -44,8 +44,8 @@ async def test_create_document(test_client: AsyncClient, mock_graph_repo: AsyncM
     mock_graph_repo.add_entity.return_value = None # Ensure it doesn't raise error from other tests
     mock_graph_repo.add_entity.side_effect = None  # Clear any side effects like exceptions
 
-    response = await test_client.post("/api/v1/documents/", json=doc_data)
-    assert response.status_code == status.HTTP_201_CREATED
+    response = await test_client.post("/api/v1/documents", json=doc_data)
+    assert response.status_code == status.HTTP_201_CREATED, f"Expected 201, got {response.status_code}"
     response_data = response.json()
     assert "id" in response_data
     created_id = response_data["id"]

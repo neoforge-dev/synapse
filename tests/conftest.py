@@ -22,6 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock, patch # Add AsyncMock, MagicMock, patch
+from fastapi.routing import APIRoute
 
 # Imports for Memgraph setup
 from neo4j import AsyncGraphDatabase, AsyncDriver # Corrected: Use neo4j directly
@@ -41,7 +42,7 @@ from graph_rag.api.dependencies import (
     get_embedding_service,
     # get_cache_service, # Removed CacheService getter
 )
-from graph_rag.api.main import create_app
+from graph_rag.api.main import create_app, lifespan as app_lifespan
 from graph_rag.core.debug_tools import GraphDebugger
 import mgclient # Add correct import
 import neo4j
@@ -142,7 +143,7 @@ def spacy_model_downloader():
 
 # --- Application Fixture ---
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def app() -> FastAPI:
     """Returns a FastAPI app instance for testing."""
     # Ensure the factory creates the app with the lifespan manager
@@ -304,7 +305,7 @@ def mock_kg_builder() -> AsyncMock:
     """Provides a reusable AsyncMock for the KnowledgeGraphBuilder."""
     return AsyncMock()
 
-@pytest.fixture(scope="function") # Changed from @pytest.fixture
+@pytest.fixture(scope="function") # Removed autouse=True
 def mock_vector_store() -> AsyncMock: # Changed MagicMock to AsyncMock
     """Provides a function-scoped AsyncMock for the VectorStore."""
     mock_vs = AsyncMock(spec=VectorStore)
@@ -349,12 +350,12 @@ def mock_vector_store() -> AsyncMock: # Changed MagicMock to AsyncMock
 
     return mock_vs
 
-@pytest.fixture(scope="function")
-def mock_background_tasks():
-    """Provides a function-scoped MagicMock for BackgroundTasks."""
-    mock = MagicMock(spec=BackgroundTasks)
-    mock.add_task = MagicMock() # Mock the add_task method
-    return mock
+@pytest.fixture(scope="function") # Removed autouse=True
+def mock_background_tasks() -> Generator[AsyncMock, None, None]:
+    """Provides a function-scoped AsyncMock for BackgroundTasks."""
+    mock = AsyncMock(spec=BackgroundTasks)
+    yield mock
+    # No reset_mock needed here as the mock is function-scoped and recreated
 
 @pytest_asyncio.fixture(scope="function")
 async def test_client(
@@ -366,33 +367,44 @@ async def test_client(
     mock_doc_processor: AsyncMock,
     mock_kg_builder: AsyncMock,
     mock_entity_extractor: MockEntityExtractor,
-    mock_background_tasks: MagicMock # <--- Add mock_background_tasks
+    mock_background_tasks: AsyncMock # <--- Add mock_background_tasks
 ) -> AsyncGenerator[AsyncClient, None]:
-    """
-    Provides an asynchronous test client for the FastAPI application with mocked dependencies.
-    This fixture ensures that specific dependencies are replaced with mocks for isolated testing.
-    """
-    
-    # Set the mock engine on the app state *before* creating the client
-    # This ensures the lifespan event or dependencies pick up the mock
-    app.state.graph_rag_engine = mock_graph_rag_engine
-    
-    dependency_overrides = {
-        deps.get_graph_repository: lambda: mock_graph_repo,
-        # deps.get_ingestion_service: lambda: mock_ingestion_service, # Use real service for integration
-        deps.get_graph_rag_engine: lambda: mock_graph_rag_engine,
-        deps.get_vector_store: lambda: mock_vector_store,
-        deps.get_document_processor: lambda: mock_doc_processor,
-        deps.get_knowledge_graph_builder: lambda: mock_kg_builder,
-        deps.get_entity_extractor: lambda: mock_entity_extractor,
-        BackgroundTasks: lambda: mock_background_tasks # <--- Add BackgroundTasks override
-    }
-    
+    """Provides an AsyncClient with dependencies overridden by mocks."""
+    # Store original overrides to restore later
     original_overrides = app.dependency_overrides.copy()
-    app.dependency_overrides.update(dependency_overrides)
 
-    # Use httpx.AsyncClient with ASGITransport for testing async FastAPI applications
-    # The base_url is set to a dummy value as requests are handled in-memory via the transport
+    # Apply mock overrides
+    app.dependency_overrides[get_graph_repository] = lambda: mock_graph_repo
+    app.dependency_overrides[get_ingestion_service] = lambda: mock_ingestion_service
+    app.dependency_overrides[get_graph_rag_engine] = lambda: mock_graph_rag_engine
+    app.dependency_overrides[get_vector_store] = lambda: mock_vector_store
+    app.dependency_overrides[get_document_processor] = lambda: mock_doc_processor
+    app.dependency_overrides[get_knowledge_graph_builder] = lambda: mock_kg_builder
+    app.dependency_overrides[get_entity_extractor] = lambda: mock_entity_extractor
+    # Override BackgroundTasks dependency to use the mock
+    app.dependency_overrides[BackgroundTasks] = lambda: mock_background_tasks
+
+    logger.debug(f"Applied dependency overrides for test_client: {list(app.dependency_overrides.keys())}")
+
+    # --- DEBUG: Print routes before creating client --- 
+    print("\n--- App Routes Before Test Client Creation ---")
+    for route in app.routes:
+        if isinstance(route, APIRoute):
+            print(f"Path: {route.path}, Methods: {route.methods}, Name: {route.name}")
+        else:
+            # Handle other route types like Mount or WebSocketRoute if necessary
+            print(f"Route Type: {type(route)}, Path: {getattr(route, 'path', 'N/A')}") 
+            # For routers included within routers, recursively print sub-routes
+            if hasattr(route, 'routes'):
+                 for sub_route in route.routes:
+                     if isinstance(sub_route, APIRoute):
+                          print(f"  Sub-Path: {sub_route.path}, Methods: {sub_route.methods}, Name: {sub_route.name}")
+                     else:
+                          print(f"  Sub-Route Type: {type(sub_route)}, Path: {getattr(sub_route, 'path', 'N/A')}")
+    print("--- End App Routes ---\n")
+    # --- End DEBUG --- 
+
+    # Use the *same app instance* with overrides applied
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
         yield client
 
@@ -617,36 +629,50 @@ async def graph_debugger(memgraph_connection: AsyncDriver):
 @pytest_asyncio.fixture(scope="function")
 async def integration_test_client(
     app: FastAPI, 
-    setup_environment: None # Depends on environment setup
-    # memgraph_connection: AsyncDriver # Inject real dependencies if needed for integration tests
+    setup_environment: None # Depends on function-scoped environment setup
 ) -> AsyncGenerator[AsyncClient, None]:
     """
-    Provides an AsyncClient for integration tests, potentially using real dependencies.
+    Provides an AsyncClient for integration tests, ensuring lifespan events are run.
     It clears dependency overrides to use the actual implementations.
     """
     # Clear existing overrides to use real dependencies for integration tests
     original_overrides = app.dependency_overrides.copy()
     app.dependency_overrides.clear() 
     
-    # Reload settings to ensure integration test env vars are picked up
-    # Important: Ensure the app uses the reloaded settings. This might require
-    # careful app factory design or patching the settings getter used by the app.
-    # For now, assume the app picks up env vars on startup, or use override below.
-    
-    # Optional: Override settings getter to provide dynamically loaded test settings
+    # Override settings getter to provide dynamically loaded test settings
     integration_settings = get_reloaded_settings() 
+    # Ensure the app uses the reloaded settings when lifespan runs
+    app.state.settings = integration_settings # Explicitly set settings in state before lifespan
     app.dependency_overrides[get_settings_original] = lambda: integration_settings
-    logger.info(f"Integration test client using settings: {integration_settings.model_dump()}")
+    logger.info(f"Integration test client using settings: {integration_settings.model_dump(exclude={'memgraph_password'})}")
 
-    # Use ASGITransport for async app testing with httpx
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
-        # Optional: Wait for external services like Memgraph if not handled by fixtures
-        # await asyncio.sleep(1) # Simple wait, replace with proper health checks
-        yield client
+    # Manually manage lifespan context
+    async with app_lifespan(app): # Enter lifespan startup
+        logger.info("Integration test client: Lifespan startup completed.")
+        # Use ASGITransport for async app testing with httpx
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+            yield client # Lifespan is active while test runs
+        logger.info("Integration test client: Client context exited.")
+    # Lifespan shutdown runs automatically upon exiting the async with block
+    logger.info("Integration test client: Lifespan shutdown completed.")
 
     # Restore original overrides after the test finishes
     app.dependency_overrides = original_overrides
     
+    # Explicitly clear the dependency cache to ensure fresh instances for next test
+    try:
+        # Check if the cache exists before clearing
+        if hasattr(deps, '_dependency_cache') and isinstance(deps._dependency_cache, dict):
+            deps._dependency_cache.clear()
+            logger.debug("Cleared dependency cache in integration_test_client teardown.")
+        else:
+             logger.debug("Dependency cache not found or not a dict in dependencies module, skipping clear.")
+    except ImportError:
+        logger.error("Failed to import dependencies module for cleanup.")
+    except AttributeError:
+        # Catch if _dependency_cache doesn't exist on deps module
+        logger.error("Could not find _dependency_cache attribute in dependencies module.")
+
 # --- Settings Reloading Helper ---
 
 def get_reloaded_settings() -> Settings:

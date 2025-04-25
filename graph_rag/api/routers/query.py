@@ -16,7 +16,7 @@ def create_query_router() -> APIRouter:
     router = APIRouter()
 
     @router.post(
-        "", 
+        "",
         response_model=QueryResponse,
         summary="Submit a query to the GraphRAG engine",
         description="Processes a natural language query, retrieves relevant information from the graph and vector store, and generates an answer."
