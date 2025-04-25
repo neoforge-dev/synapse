@@ -26,8 +26,8 @@ from graph_rag.core.knowledge_graph_builder import KnowledgeGraphBuilder
 from graph_rag.services.embedding import EmbeddingService
 from graph_rag.services.search import SearchService, SearchResult # Import SearchResult
 from graph_rag.llm.protocols import LLMService # Remove LLMResponse import
+from graph_rag.llm.mock_llm import MockLLMService # Align import with engine
 from graph_rag.infrastructure.cache.protocols import CacheService
-from graph_rag.llm.llm_service import MockLLMService # Corrected import path
 
 # Configure logging for tests
 logger = logging.getLogger(__name__)

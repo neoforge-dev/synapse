@@ -839,3 +839,35 @@ def cleanup_chromadb(request):
 
     # Register the finalizer to run at the end of the session
     request.addfinalizer(finalizer) 
+
+# Add a new fixture to get the actual singleton vector store used by the app
+@pytest_asyncio.fixture(scope="function")
+async def singleton_vector_store(app: FastAPI) -> AsyncGenerator[VectorStore, None]:
+    """
+    Resolves and provides the actual singleton VectorStore instance
+    used by the FastAPI dependency injection system.
+    NOTE: This assumes the underlying dependency getter (get_vector_store)
+    correctly implements and uses a singleton cache.
+    """
+    # We need to simulate how FastAPI resolves the dependency.
+    # We can call the dependency getter function directly.
+    # Need to ensure settings are available if the getter needs them.
+    settings = get_settings_original() # Use original settings getter
+    dependency_getter = get_vector_store # The async function from dependencies.py
+
+    # The getter itself doesn't need Depends() when called like this,
+    # but the functions it calls internally might (like get_settings_dep).
+    # Let's manually provide the settings it needs.
+    # NOTE: This is slightly complex, might need refinement if get_vector_store's
+    # internal dependencies change significantly.
+
+    # A simpler way, assuming the instance is reliably cached by the getter:
+    # Call the getter - it should return the cached instance after the first call (e.g., by lifespan or another test)
+    try:
+        # The dependency is async, but we await it directly here.
+        instance = await dependency_getter(settings=settings) # Pass settings directly
+        logger.info(f"Retrieved singleton VectorStore instance: {type(instance).__name__}")
+        yield instance
+    except Exception as e:
+        logger.error(f"Failed to resolve singleton_vector_store fixture: {e}", exc_info=True)
+        pytest.fail(f"Could not resolve singleton_vector_store: {e}") 

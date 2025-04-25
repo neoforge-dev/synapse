@@ -228,43 +228,101 @@ class SimpleVectorStore(VectorStore):
         return search_results
 
     async def ingest_chunks(self, chunks: List[ChunkData]):
-        """Ingests chunks into the vector store."""
+        """Ingests chunks into the vector store, generating embeddings only if needed."""
         logger.info(f"Ingesting {len(chunks)} chunks...")
         if not chunks:
             logger.warning("No chunks provided for ingestion.")
             return
 
-        # Extract texts and metadata
-        texts = [chunk.text for chunk in chunks]
-        metadata_list = [{} if chunk.metadata is None else chunk.metadata for chunk in chunks]
-        chunk_ids = [chunk.id for chunk in chunks]
+        new_vectors = []
+        new_metadata = []
+        new_documents = []
+        new_chunk_ids = []
+        
+        texts_to_embed = []
+        indices_needing_embedding = [] # Store original index to map back generated embeddings
 
-        # Check if embedding service requires async
-        if asyncio.iscoroutinefunction(self.embedding_service.encode):
-            embeddings = await self.embedding_service.encode(texts)
+        # First pass: identify chunks needing embedding vs those with existing ones
+        for i, chunk in enumerate(chunks):
+            valid_embedding_present = False
+            if chunk.embedding and len(chunk.embedding) == self.dimension:
+                valid_embedding_present = True
+                
+            if valid_embedding_present:
+                 # Use existing embedding
+                 new_vectors.append(np.array(chunk.embedding))
+                 new_metadata.append({} if chunk.metadata is None else chunk.metadata)
+                 new_documents.append(chunk.text)
+                 new_chunk_ids.append(chunk.id)
+            else:
+                 # Mark for embedding generation
+                 texts_to_embed.append(chunk.text)
+                 indices_needing_embedding.append(i) # Store original index
+
+
+        # Generate embeddings only for those chunks that need it
+        generated_embeddings = []
+        if texts_to_embed:
+             logger.debug(f"Generating embeddings for {len(texts_to_embed)} chunks.")
+             if asyncio.iscoroutinefunction(self.embedding_service.encode):
+                 embeddings_list = await self.embedding_service.encode(texts_to_embed)
+             else:
+                 embeddings_list = await run_in_threadpool(self.embedding_service.encode, texts_to_embed)
+             
+             # Convert list of lists/tuples to list of numpy arrays
+             generated_embeddings = [np.array(emb) for emb in embeddings_list]
+
+             if len(generated_embeddings) != len(texts_to_embed):
+                logger.error("Mismatch between number of texts and generated embeddings.")
+                # Decide how to handle: raise error, log and skip, etc.
+                # For now, let's log and potentially skip adding these problematic chunks
+                # Or maybe better to raise an error to signal failure
+                raise ValueError("Embedding generation returned unexpected number of vectors.")
+
+        # Second pass: merge chunks with generated embeddings
+        generated_embedding_idx = 0
+        temp_generated_vectors = {} # Temporary dict to hold generated embeddings by original index
+        for original_idx in indices_needing_embedding:
+             if generated_embedding_idx < len(generated_embeddings):
+                 temp_generated_vectors[original_idx] = generated_embeddings[generated_embedding_idx]
+                 generated_embedding_idx += 1
+             else:
+                 # This case should ideally not happen if the check above works, but as a safeguard:
+                 logger.error(f"Missing generated embedding for chunk at original index {original_idx}")
+                 # Handle missing embedding (e.g., skip this chunk or raise error)
+
+        # Combine chunks with existing embeddings and newly generated ones
+        final_vectors = []
+        final_metadata = []
+        final_documents = []
+        final_chunk_ids = []
+
+        current_generated_idx = 0
+        for i, chunk in enumerate(chunks):
+            if i in temp_generated_vectors: # This chunk had its embedding generated
+                final_vectors.append(temp_generated_vectors[i])
+                final_metadata.append({} if chunk.metadata is None else chunk.metadata)
+                final_documents.append(chunk.text)
+                final_chunk_ids.append(chunk.id)
+                current_generated_idx += 1
+            elif chunk.embedding and len(chunk.embedding) == self.dimension: # This chunk had a valid existing embedding
+                final_vectors.append(np.array(chunk.embedding))
+                final_metadata.append({} if chunk.metadata is None else chunk.metadata)
+                final_documents.append(chunk.text)
+                final_chunk_ids.append(chunk.id)
+            # Else: Chunk had no embedding and failed generation (if error handling allows skipping) - skip it
+
+
+        # Update the store under lock
+        if final_vectors: # Proceed only if there's something to add
+            async with self.lock:
+                self.vectors.extend(final_vectors)
+                self.metadata.extend(final_metadata)
+                self.documents.extend(final_documents)
+                self.chunk_ids.extend(final_chunk_ids)
+            logger.info(f"Finished ingestion. Added {len(final_vectors)} vectors. Total vectors in store: {len(self.vectors)}")
         else:
-            # Run synchronous embedding function in a thread pool
-            embeddings = await run_in_threadpool(self.embedding_service.encode, texts)
-
-        async with self.lock:
-            for i, chunk in enumerate(chunks):
-                embedding = embeddings[i] if i < len(embeddings) else None
-                if embedding is not None:
-                    if len(embedding) != self.dimension:
-                        logger.error(
-                            f"Embedding dimension mismatch: Expected {self.dimension}, got {len(embedding)} for chunk {i}"
-                        )
-                        # Handle mismatch: Skip, pad, truncate, or raise error
-                        # For now, we'll skip this chunk
-                        continue
-                    self.vectors.append(np.array(embedding))
-                    self.metadata.append(metadata_list[i])
-                    self.documents.append(chunk.text)
-                    self.chunk_ids.append(chunk.id)
-                else:
-                    logger.warning(f"Failed to generate embedding for chunk {i}")
-
-        logger.info(f"Finished ingestion. Total vectors in store: {len(self.vectors)}")
+             logger.warning("No valid chunks or embeddings found to add after processing.")
 
     async def vector_search(self, query: str, k: int = 5) -> List[tuple[ChunkData, float]]:
         """Performs vector search using cosine similarity."""

@@ -25,7 +25,7 @@ from graph_rag.domain.models import Context # Added Context
 # from graph_rag.core.node_factory import NodeFactory
 from graph_rag.services.embedding import SentenceTransformerEmbeddingService
 from graph_rag.llm.protocols import LLMService # Add LLMService import
-from graph_rag.llm.llm_service import MockLLMService # Corrected import path
+from graph_rag.llm.mock_llm import MockLLMService # Corrected import: MockLLMService from mock_llm
 # from graph_rag.core.prompts import (
 #     GRAPH_EXTRACTION_PROMPT,
 #     GRAPH_REPORT_PROMPT,

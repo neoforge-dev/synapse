@@ -1,33 +1,30 @@
 # Active Context - [Current Date]
 
 ## Focus
-- Resolved multiple test failures in `tests/core/test_graph_rag_engine.py` and `tests/core/test_graph_rag_engine_orchestrator.py`.
+- Debugging and fixing the failing integration test `test_search_then_ingest_interaction` in `tests/api/test_search_ingestion.py`.
 
 ## Recent Changes
-- **`SimpleGraphRAGEngine` (`graph_rag/core/graph_rag_engine.py`):**
-    - `_find_entities_in_graph_by_properties`: Corrected logic to use `entity.text` instead of `entity.name` for property lookups, as `ExtractedEntity` might not have `name` populated.
-    - `query`: Ensured `graph_context_tuple` is initialized to `([], [])` when graph context is enabled but no entities are extracted or found, instead of `None`.
-- **`MemgraphGraphRepository` (`graph_rag/infrastructure/graph_stores/memgraph_store.py`):**
-    - **Review Complete:** Verified changes for `get_document_by_id`, `add_chunk`, `get_chunks_by_document_id`, and `get_chunk_by_id`. Changes correctly address `mgclient.Node.properties` access, use the correct relationship (`CONTAINS`), and improve error handling (e.g., `add_chunk` checks for document existence).
-    - Removed the old `delete_document` multi-step logic as it's likely superseded or incorporated into other methods. *(Self-correction: Previous note about `delete_document` was from an earlier context, the relevant changes reviewed were the property access fixes.)*
-- **Tests (`tests/core/test_graph_rag_engine.py`):**
-    - Corrected `combined_text` calculation in assertions to use space (" ") as a separator, matching the engine's implementation.
-    - Replaced incorrect `assert_awaited_once_with` with `assert_called_once_with` for `AsyncMock` calls (`vector_store.search`).
-    - Fixed `search_entities_by_properties` assertions to check `call_count` and use `assert_any_call` for individual property lookups, reflecting the implementation's loop.
-    - Fixed `get_neighbors` mock logic to handle individual entity ID calls and updated assertions for call count (3 due to expansion) and final aggregated context (`([], [])` based on mock behavior).
-    - Fixed attribute access from `rag_engine.graph_store` to `rag_engine._graph_store`.
-    - Removed incorrect assertions checking for non-existent `result.extracted_entities` attribute.
-- **Tests (`tests/core/test_graph_rag_engine_orchestrator.py`):**
-    - Added missing import for `ExtractedEntity`, `ExtractionResult`.
-    - Corrected `mock_document_processor` fixture to return `ChunkData` objects (instead of `Chunk`) and dynamically use the `document_id` from the input `DocumentData`.
-    - Fixed `kg_builder.add_document` assertion to expect `DocumentData` with `ANY` id and check content/metadata.
-    - Corrected `kg_builder.add_chunk` assertion logic: Replaced `assert_has_awaits` with manual inspection of `await_args_list` to verify the passed `ChunkData` objects' attributes (id, text, document_id, embedding).
-    - Corrected `kg_builder.add_relationship` assertion to expect 0 calls, matching the mock `ExtractionResult` which had no relationships.
+- **Previous:** Resolved multiple `ModuleNotFoundError` and `ImportError` issues in `tests/api/test_search_ingestion.py`.
+- **`test_search_then_ingest_interaction`:**
+    - Identified the root cause of the failure: The test was verifying against the `VectorStore` instance stored in `app.state` (created during lifespan startup), while the background ingestion task populated a *different*, cached singleton instance managed by the dependency injection system (`_singletons` cache in `dependencies.py`).
+    - **Fix:** Introduced a new fixture `singleton_vector_store` in `tests/conftest.py` to resolve and provide the actual cached `VectorStore` instance used by the application routes.
+    - **Fix:** Modified `test_search_then_ingest_interaction` to use the `singleton_vector_store` fixture instead of `app.state.vector_store` for verification.
+    - Added missing import for `MockEmbeddingService` in `tests/api/test_search_ingestion.py`.
+    - Updated assertions in the final search step of the test to correctly match the expected response schema (`results` list containing scored chunks).
 
 ## Next Steps
-- Commit the recent fixes.
-- Review remaining skipped tests in `tests/core/test_graph_rag_engine.py` and address necessary refactoring.
-- Proceed with implementing further features or addressing other test failures based on project priorities.
+1.  **Run All API Tests:** Execute `pytest tests/api/` to ensure no regressions were introduced and all API tests now pass.
+2.  **Address Coverage:** The test run revealed very low coverage (33%). Need to prioritize adding more tests, especially for API routers and core engine logic.
+3.  **Review Other Test Suites:** Check the status of other test suites (CLI, Memgraph store, Entity Extractor, etc.).
+4.  **Fix `SimpleVectorStore.ingest_chunks` Bug:** Although the test passes, the redundant embedding generation in `SimpleVectorStore.ingest_chunks` should be fixed to use the pre-computed embeddings if available in `ChunkData`.
+5.  **Update Memory Bank:** Reflect the successful fix and low coverage in `progress.md`.
+
+## Active Decisions/Considerations
+- The discrepancy between `app.state` initialization and dependency injection caching was the key issue for the integration test failure. Using fixtures that accurately reflect how the application resolves dependencies is crucial for reliable integration testing.
+- The low test coverage (33%) is a significant risk and needs immediate attention.
+
+## Blockers
+- Low test coverage.
 
 ## Active Decisions/Considerations
 - The mocking strategy for graph context retrieval (`get_neighbors`) in `test_simple_engine_query_with_graph_context` needed careful adjustment to match how the implementation calls the repository (individual IDs) and aggregates results.

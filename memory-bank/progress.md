@@ -29,41 +29,57 @@ This document tracks project progress, identifies what works, what remains to be
 
 ## Current Status
 
-*   **Overall:** Major refactoring complete. Core components (graph store, vector store, basic API structure, dependency injection) are implemented. Import errors and major inconsistencies (like GraphStore vs GraphRepository) have been resolved across the codebase and tests.
-*   **Testing:** Test collection should now pass. The next step is to run `poetry run pytest` to identify and address any *runtime* test failures.
+*   **Core Engine (`SimpleGraphRAGEngine`)**: Basic implementation exists. Tests partially fixed, but some skipped.
+*   **Knowledge Graph Builder (`SimpleKnowledgeGraphBuilder`)**: Basic implementation exists.
+*   **Graph Store (`MemgraphGraphRepository`)**: Implementation refactored to handle `mgclient` node properties correctly. Basic tests passing.
+*   **Vector Store (`SimpleVectorStore`)**: Basic implementation exists. **The bug causing unnecessary embedding regeneration in `ingest_chunks` has been fixed.** Test coverage remains low.
+*   **Entity Extractor (`SpacyEntityExtractor`, `MockEntityExtractor`)**: Implementations exist.
+*   **LLM Service (`MockLLMService`, `OpenAILLMService`)**: Basic mocks and placeholders exist.
+*   **API (`FastAPI`)**: Routers for ingestion, search, documents, chunks exist. Dependency injection uses singletons (mostly).
+    - `/api/v1/ingestion/documents`: Accepts requests, runs background tasks. Integration test fixed.
+    - `/api/v1/search/`, `/api/v1/search/batch`, `/api/v1/search/query`: Endpoints exist. Unit/Integration tests passing (using mocks or fixed singleton access).
+*   **Tests**:
+    - `tests/api/test_search_ingestion.py`: All tests now passing after fixing singleton dependency issue.
+    - `tests/core/test_graph_rag_engine.py`: Partially fixed, some tests skipped.
+    - `tests/core/test_graph_rag_engine_orchestrator.py`: Fixed.
+    - Overall coverage is **very low (33%)**.
+*   **Memory Bank**: Core files exist.
+
+## Completed & Working
+
+*   **Core:** Domain models, graph/vector store interfaces, Memgraph DB connection framework.
+*   **Infrastructure:**
+    - `MemgraphGraphRepository`: Implemented and passing integration tests.
+    - `SimpleVectorStore`: Implemented (in-memory, sentence-transformers `all-MiniLM-L6-v2`, cosine similarity). *Consolidated duplicate implementations*.
+*   **API/App:** FastAPI structure setup, initial endpoints defined.
+*   **Fixes:**
+    - Resolved `IngestionService` init params, LLM_TYPE handling, Memgraph chunk property persistence issues.
+    - Fixed CLI ingest command tests in `tests/integration/test_ingest_command.py` by updating the repository type to use `MemgraphGraphRepository` instead of `MemgraphRepository`.
+    - Resolved Memgraph client property access issue (`mgclient.Node` vs `dict`) by refactoring `MemgraphGraphRepository` methods.
+    - **Fixed redundant embedding generation in `SimpleVectorStore.ingest_chunks`.**
+    - Resolved import errors and dependency issues in `tests/api/test_search_ingestion.py`.
+*   **Tests:**
+    - Query pipeline integration tests (`tests/integration/test_query_pipeline.py`) are now passing (using mocked engine).
+    - CLI ingest command tests (`tests/integration/test_ingest_command.py`) are now passing.
+    - API tests in `tests/api/test_search_ingestion.py` are now passing.
+
+## What's Left / Needs Doing (Priority Order)
+
+1.  **Address Low Test Coverage (High Priority)**: Add unit and integration tests for API routers, services, core engine logic, document processing, entity extraction, graph building, storage interactions, and error handling.
+2.  **Fix/Unskip Remaining Core Engine Tests**: Address issues in `tests/core/test_graph_rag_engine.py`.
+3.  **Implement Core Logic**: Build out the main orchestration logic in `GraphRAGEngine` or services (query planning, context building, graph traversal, answer synthesis).
+4.  **Implement Real Services**: Flesh out `LLMService`, potentially add other `VectorStore` or `EntityExtractor` implementations.
+5.  **Refine Error Handling**: Improve error handling across API and services.
+6.  **Review Skipped Tests**: Address skipped tests in other suites (e.g., E2E MVP).
+7.  **Scalability & Performance**: Evaluate and optimize performance, especially for large datasets and complex graph queries.
+8.  **Deployment:** Define deployment strategy (e.g., Docker, K8s).
+9.  **Monitoring & Logging:** Implement proper logging and potentially monitoring.
 
 ## Known Issues / Bugs
 
-*   **Runtime Test Failures:** Specific failures need to be identified by running `poetry run pytest`.
-*   **ModuleNotFoundError:** `graph_rag/core/graph_rag_engine.py` imports a non-existent module `graph_rag.llm.mock_llm`. Needs fixing.
-*   Potential race conditions or concurrency issues, especially around shared resources like the vector store (mitigated partially by locking in `SimpleVectorStore`).
-*   LLM interaction and response synthesis logic is likely incomplete or untested.
-
-## Completed & Working
-- **Core:** Domain models, graph/vector store interfaces, Memgraph DB connection framework.
-- **Infrastructure:**
-    - `MemgraphGraphRepository`: Implemented and passing integration tests.
-    - `SimpleVectorStore`: Implemented (in-memory, sentence-transformers `all-MiniLM-L6-v2`, cosine similarity). *Consolidated duplicate implementations*.
-- **API/App:** FastAPI structure setup, initial endpoints defined.
-- **Fixes:** 
-    - Resolved `IngestionService` init params, LLM_TYPE handling, Memgraph chunk property persistence issues.
-    - Fixed CLI ingest command tests in `tests/integration/test_ingest_command.py` by updating the repository type to use `MemgraphGraphRepository` instead of `MemgraphRepository`.
-    - **Resolved Memgraph client property access issue (`mgclient.Node` vs `dict`) by refactoring `MemgraphGraphRepository` methods.**
-- **Tests:** 
-    - Query pipeline integration tests (`tests/integration/test_query_pipeline.py`) are now passing (using mocked engine).
-    - CLI ingest command tests (`tests/integration/test_ingest_command.py`) are now passing.
-
-## What's Left / Outstanding
-- **Core:** Implement ingestion pipeline, RAG query mechanism (actual logic, beyond mocks).
-- **Integrations:** Verify status of other test suites (CLI, Memgraph store, Entity Extractor, etc.).
-- **Test Coverage:** Significantly increase unit and integration test coverage.
-- **Features:** Expand CLI tools, add alternative vector stores, implement Web UI (post-MVP).
-
-## Known Issues & Blockers
-- **Low Test Coverage:** Current coverage (~27%) is significantly below target (e.g., 80%).
-- **Operational:** Memgraph Docker setup sometimes requires manual restart.
-- **Enhancements:** Embedding model needs production optimization, finalize Query Engine API, define entity/relationship extraction edge cases.
-- **ModuleNotFoundError:** `graph_rag/core/graph_rag_engine.py` imports a non-existent module `graph_rag.llm.mock_llm`. Needs fixing.
+*   **Low Test Coverage (33%)**: Major risk. Requires significant improvement across all components. Critical for identifying regressions and ensuring stability.
+*   Potential inconsistencies if services are ever initialized *without* using the singleton getters (e.g., direct instantiation).
+*   Some tests in `tests/core/test_graph_rag_engine.py` are still skipped or failing.
 
 ## Next Steps (Priority Order)
 1.  **Fix `ModuleNotFoundError` in `graph_rag/core/graph_rag_engine.py`.**

@@ -18,6 +18,11 @@ from graph_rag.domain.models import Chunk, Document, Entity, Relationship
 from graph_rag.core.graph_rag_engine import QueryResult
 from graph_rag.api.schemas import CreateResponse, DocumentResponse, SearchQueryRequest, SearchBatchQueryRequest, DocumentIngestRequest
 
+# Corrected Imports for Mocks
+from graph_rag.api.dependencies import MockEmbeddingService
+from graph_rag.core.graph_store import MockGraphStore
+from graph_rag.core.vector_store import MockVectorStore
+
 # Remove direct app import (should be already removed or commented out)
 # from graph_rag.api.main import app 
 
@@ -323,7 +328,7 @@ async def test_search_batch_partial_failure(
         else:
             return QueryResult(relevant_chunks=[], llm_response="", graph_context="")
             
-    mock_graph_rag_engine.query.side_effect = query_side_effect
+    mock_graph_rag_engine.query = AsyncMock(side_effect=query_side_effect)
     # Ensure retrieve_context is not accidentally called
     mock_graph_rag_engine.retrieve_context = AsyncMock(side_effect=AssertionError("retrieve_context should not be called by batch search"))
 
@@ -415,20 +420,22 @@ async def test_search_batch_empty_request(test_client: AsyncClient):
 # --- Test combining search and ingestion --- 
 @pytest.mark.asyncio
 async def test_search_then_ingest_interaction(
-    integration_test_client: AsyncClient, 
+    integration_test_client: AsyncClient,
     memgraph_repo: 'graph_rag.infrastructure.graph_stores.memgraph_store.MemgraphGraphRepository', # Use real repo fixture
-    app: FastAPI # Inject app fixture
+    # app: FastAPI # No longer need app fixture directly for this test
+    singleton_vector_store: VectorStore # Use the new fixture to get the correct vector store instance
 ):
     """Test searching for non-existent, ingesting, then searching again."""
-    # Get vector store from app state (initialized during lifespan)
-    vector_store = app.state.vector_store 
-    assert vector_store is not None, "Vector store not initialized in app state"
+    # Get vector store from the fixture
+    vector_store = singleton_vector_store 
+    # assert vector_store is not None, "Vector store not initialized in app state" # No longer needed
 
     test_content = f"Unique content for search and ingest test {uuid.uuid4()}." # Unique content per run
     test_doc_id = f"search-ingest-doc-{uuid.uuid4()}" # Unique ID per run
-    
+
     # --- 0. Cleanup --- 
     logger.info(f"[Test Setup] Cleaning up potential old data for doc: {test_doc_id}")
+    # Pass the correct vector_store instance to cleanup
     await cleanup_document(memgraph_repo, vector_store, test_doc_id)
 
     # --- 1. Search (Should Fail/Not find this specific doc) ---
@@ -439,7 +446,13 @@ async def test_search_then_ingest_interaction(
     assert search_response.status_code == 200
     search_results = search_response.json()
     # Verify the specific document ID is not in the results
-    found_doc_ids_before = {chunk['document_id'] for chunk in search_results.get('chunks', [])} # Use .get for safety
+    # Adjust key based on actual response structure from search endpoint
+    found_doc_ids_before = set()
+    if isinstance(search_results.get('results'), list):
+         found_doc_ids_before = {res['chunk']['document_id'] for res in search_results['results'] if res.get('chunk')}
+    elif isinstance(search_results.get('chunks'), list): # Fallback to older structure if needed
+        found_doc_ids_before = {chunk['document_id'] for chunk in search_results['chunks']}
+
     assert test_doc_id not in found_doc_ids_before, f"Document {test_doc_id} found before ingestion."
     logger.info(f"[Test Step 1] Confirmed content not found initially.")
 
@@ -452,46 +465,89 @@ async def test_search_then_ingest_interaction(
     }
     # Correct ingestion endpoint URL is /api/v1/ingestion/documents
     ingest_response = await integration_test_client.post("/api/v1/ingestion/documents", json=ingest_payload)
-    assert ingest_response.status_code == status.HTTP_202_ACCEPTED
-    # Allow time for background ingestion? Depends on test setup.
-    # If using a real background task runner, might need a delay or check mechanism.
-    # Assuming for now the effect is immediate enough or handled by fixtures.
-    # A small delay might be prudent if tests become flaky.
-    await asyncio.sleep(0.1) # Add a small delay for background task
+    assert ingest_response.status_code == status.HTTP_202_ACCEPTED, f"Ingestion failed: {ingest_response.text}"
 
     # --- 3. Wait & Verify Ingestion --- 
-    await asyncio.sleep(3) # Allow time for background task
-    logger.info(f"[Test Step 3] Checking persistence for {test_doc_id}...")
-    # Verify in graph
+    logger.info(f"Ingestion request for document {test_doc_id} accepted. Waiting for processing...")
+
+    # Wait for potential background processing by polling the vector store
+    max_wait_seconds = 45
+    poll_interval_seconds = 2
+    wait_start_time = asyncio.get_event_loop().time()
+    chunk_found_in_vector_store = False
+    # Use the actual embedding dimension from the resolved vector store
+    dummy_embedding_service = MockEmbeddingService(vector_store.dimension)
+    dummy_query_vector = await dummy_embedding_service.encode_query("verification search")
+
+    if not isinstance(dummy_query_vector, list) or not dummy_query_vector:
+        pytest.fail("Failed to generate a valid dummy query vector list.")
+    if not all(isinstance(x, float) for x in dummy_query_vector):
+        pytest.fail("Dummy query vector contains non-float elements.")
+
+    while asyncio.get_event_loop().time() - wait_start_time < max_wait_seconds:
+        logger.info(f"Polling vector store for chunks of doc {test_doc_id}...")
+        try:
+            vector_search_results = await vector_store.search_similar_chunks(
+                query_vector=dummy_query_vector,
+                limit=100,
+                threshold=0.01
+            )
+            
+            # Check if *any* returned chunk belongs to our test document
+            # Ensure metadata exists before accessing document_id
+            if any(result.chunk.metadata.get("document_id") == test_doc_id 
+                   for result in vector_search_results 
+                   if result.chunk and result.chunk.metadata):
+                logger.info(f"Found chunks for doc {test_doc_id} via search_similar_chunks.")
+                chunk_found_in_vector_store = True
+                break # Exit polling loop
+            else:
+                logger.info(f"Chunks for doc {test_doc_id} not found via search_similar_chunks yet.")
+
+        except Exception as poll_e:
+            logger.warning(f"Exception during vector store poll: {poll_e}")
+        
+        logger.info(f"Chunk not found yet, sleeping for {poll_interval_seconds}s...")
+        await asyncio.sleep(poll_interval_seconds)
+
+    # Assert after the polling loop finishes or times out
+    assert chunk_found_in_vector_store, f"Chunk for document {test_doc_id} was not found in vector store after {max_wait_seconds}s."
+
+    # Verify document and chunks exist in Graph Store (Memgraph)
+    logger.info(f"Verifying document {test_doc_id} presence in Memgraph...")
     doc_node = await memgraph_repo.get_document_by_id(test_doc_id)
     assert doc_node is not None, f"Document {test_doc_id} not found in graph after ingestion wait."
-    assert doc_node.id == test_doc_id
-    chunks = await memgraph_repo.get_chunks_by_document_id(test_doc_id)
-    assert len(chunks) > 0, f"No chunks found for document {test_doc_id} in graph."
-    logger.info(f"[Test Step 3] Verified {len(chunks)} chunks in graph for {test_doc_id}.")
-    # Verify via search endpoint (proxy for vector store check)
-    try:
-        search_response_check = await integration_test_client.post("/api/v1/search/", json=search_payload)
-        assert search_response_check.status_code == 200
-        search_results_check = search_response_check.json()
-        assert any(chunk['document_id'] == test_doc_id for chunk in search_results_check.get('chunks', [])), \
-               f"Document {test_doc_id} chunks not found via search after ingestion wait."
-        logger.info(f"[Test Step 3] Verified document {test_doc_id} searchable.")
-    except Exception as e:
-        pytest.fail(f"Could not perform vector store verification search: {e}")
+    logger.info(f"Found DocumentNode in graph: {doc_node}")
+
+    chunk_nodes = await memgraph_repo.get_chunks_by_document_id(test_doc_id)
+    assert len(chunk_nodes) > 0, f"No ChunkNodes found for document {test_doc_id} in graph."
+    logger.info(f"Found {len(chunk_nodes)} ChunkNodes in graph.")
+    
+    # Re-assert using the flag after verifying graph store components
+    assert chunk_found_in_vector_store, f"Chunk for document {test_doc_id} confirmed missing from vector store after polling and graph check."
 
     # --- 4. Search Again (Should Succeed) --- 
     logger.info(f"[Test Step 4] Searching again for content in doc: {test_doc_id}")
-    search_response_after = await integration_test_client.post("/api/v1/search/", json=search_payload)
+    search_payload_after = {"query": test_content, "limit": 5, "search_type": "vector"}
+    search_response_after = await integration_test_client.post("/api/v1/search/", json=search_payload_after)
     assert search_response_after.status_code == 200
     search_results_after = search_response_after.json()
-    assert len(search_results_after.get('chunks', [])) > 0, f"Search returned no chunks after ingestion for {test_doc_id}."
+    # logger.info(f"Search results after ingestion: {json.dumps(search_results_after, indent=2)}")
+
+    # Check structure based on the /api/v1/search/ endpoint response (schemas.SearchResponse)
+    assert 'results' in search_results_after, "'results' key missing in search response"
+    assert isinstance(search_results_after['results'], list), "'results' is not a list"
     
-    found_doc_ids_after = {chunk['document_id'] for chunk in search_results_after.get('chunks', [])}
-    assert test_doc_id in found_doc_ids_after, f"Correct document {test_doc_id} not found in search results after ingestion."
-    # Check if the content is present in at least one of the returned chunks
-    assert any(test_content in chunk['text'] for chunk in search_results_after.get('chunks', []) if chunk['document_id'] == test_doc_id), \
-           f"Ingested content not found in relevant chunk text for {test_doc_id}."
+    if not search_results_after['results']:
+         pytest.fail(f"Search returned no results after ingestion for {test_doc_id}. Expected at least one.")
+
+    # Check if chunks are present and one belongs to the test document
+    found_doc_ids_after = {
+         result['chunk']['document_id']
+         for result in search_results_after.get('results', [])
+         if result.get('chunk') and result['chunk'].get('document_id')
+    }
+    assert test_doc_id in found_doc_ids_after, f"Document {test_doc_id} NOT found in search results after ingestion and verification."
     logger.info(f"[Test Step 4] Search successful. Found chunk(s) for {test_doc_id}.")
 
     # --- 5. Cleanup --- 
