@@ -1,16 +1,17 @@
 # Project Brief
 
 ## Goal
-- Build a Synapse MVP using Memgraph and Python, following Clean Architecture principles.
+- Build a Synapse MVP using Memgraph and Python.
+- Follow Clean Architecture principles.
 
-## Scope
-- **Ingestion:** Process documents, extract entities/relationships, store in Memgraph.
-- **Retrieval:** Provide graph-enhanced context for user queries.
-- **Interfaces:** Implement a FastAPI API and a Typer CLI.
+## Core Features (MVP Scope)
+- **Ingestion:** Process docs, extract entities/relationships, store in Memgraph & Vector Store.
+- **Retrieval:** Graph-enhanced context retrieval API.
+- **Interfaces:** FastAPI API, Typer CLI.
 
 ## Out of Scope (MVP)
-- User Interface (UI)
-- Authentication
-- Advanced Graph Algorithms/Features
+- UI
+- Auth
+- Advanced Graph Algorithms
 
 *(Tech stack: `tech-context.md`)* 
