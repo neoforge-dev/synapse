@@ -44,6 +44,11 @@ logger = logging.getLogger(__name__)
 # Define exceptions to retry on using available mgclient errors
 _RETRY_EXCEPTIONS = (mgclient.Error, ConnectionRefusedError, ConnectionError)
 
+# Define retry parameters using the loaded settings
+# Add checks for attribute existence just in case
+_MAX_RETRIES = getattr(settings, 'memgraph_max_retries', 3)
+_RETRY_DELAY = getattr(settings, 'memgraph_retry_delay', 2) # Assuming memgraph_retry_delay is the correct name
+
 def _convert_neo4j_temporal_types(data: Dict[str, Any]) -> Dict[str, Any]:
     """Converts Neo4j temporal types to standard Python types."""
     converted_data = {}
@@ -106,8 +111,8 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
             finally:
                 self._connection = None
 
-    @retry(stop=stop_after_attempt(settings.MEMGRAPH_MAX_RETRIES), 
-           wait=wait_fixed(settings.MEMGRAPH_RETRY_WAIT_SECONDS),
+    @retry(stop=stop_after_attempt(_MAX_RETRIES),
+           wait=wait_fixed(_RETRY_DELAY),
            retry=retry_if_exception_type(_RETRY_EXCEPTIONS),
            reraise=True)
     def _get_connection(self) -> mgclient.Connection:
@@ -123,7 +128,6 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
                 port=self.config.port,
                 username=db_user,      # Use sanitized user
                 password=db_password,  # Use sanitized password
-                # sslmode is keyword-only if supported, or might need specific positioning
                 # sslmode=mgclient.SSLMODE.REQUIRE if self.config.use_ssl else mgclient.SSLMODE.DISABLE 
             )
             logger.debug("Connection successful.")
@@ -1290,86 +1294,67 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
         return await self.execute_query(query, parameters)
         
     async def execute_write(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> Any:
-        """Executes a write Cypher query."""
-        # For this implementation, we use the same execute_query method
+        """Executes a write query. Wraps execute_query for semantic clarity."""
         return await self.execute_query(query, parameters)
 
     async def get_relationship_by_id(self, relationship_id: str) -> Optional[Relationship]:
-        """Retrieves a single relationship by its ID property."""
-        logger.debug(f"Attempting to retrieve relationship with ID: {relationship_id}")
-        
-        # Query matching the 'id' property on the relationship itself
-        query = f"""
+        """Retrieves a relationship by its assigned ID property."""
+        logger.debug(f"Getting relationship by ID: {relationship_id}")
+        query = """
         MATCH (source)-[r]->(target)
-        WHERE r.id = $relationship_id OR id(r) = $relationship_id // Check both property and internal ID as fallback? Decide on one strategy. Let's prioritize property first.
-        MATCH (s) WHERE id(s) = id(source) // Re-match to get source properties if needed? Simpler: get IDs directly
-        MATCH (t) WHERE id(t) = id(target) // Re-match to get target properties if needed? Simpler: get IDs directly
-        
-        WITH r, s, t // Ensure s and t are in scope
-        RETURN r as relationship, 
-               type(r) as relationship_type, 
-               id(r) as relationship_internal_id,
-               s.id as source_node_id, // Get ID property from source node
-               t.id as target_node_id // Get ID property from target node
-        LIMIT 1 
-        """
-        # Simplified query focusing on relationship property 'id'
-        query_by_property = f"""
-        MATCH (source)-[r]->(target)
-        WHERE r.id = $relationship_id 
-        RETURN r as relationship, 
-               type(r) as relationship_type, 
-               id(r) as relationship_internal_id,
-               source.id as source_node_id, // Get source node ID property
-               target.id as target_node_id  // Get target node ID property
+        WHERE r.id = $rel_id
+        RETURN
+            r.id AS id, 
+            source.id AS source_id, 
+            target.id AS target_id, 
+            type(r) AS type,
+            properties(r) AS properties
         LIMIT 1
         """
-        params = {"relationship_id": relationship_id}
-
+        params = {"rel_id": relationship_id}
+        
         try:
-            results = await self.execute_query(query_by_property, params)
+            results = await self.execute_query(query, params)
             if not results:
-                logger.debug(f"Relationship with ID '{relationship_id}' not found.")
+                logger.warning(f"Relationship with ID {relationship_id} not found.")
                 return None
 
-            record = results[0]
-            rel_obj = record.get('relationship')
-            rel_type = record.get('relationship_type')
-            rel_internal_id = record.get('relationship_internal_id')
-            source_id = record.get('source_node_id')
-            target_id = record.get('target_node_id')
-
-            if not all([rel_obj, rel_type, source_id, target_id]):
-                logger.error(f"Query result for relationship {relationship_id} missing required fields: {record}")
-                return None
-
-            # Get properties from the relationship object
-            rel_props = rel_obj.properties.copy() if hasattr(rel_obj, 'properties') else {}
+            rel_data = results[0]
             
-            # Pop standard fields, pass rest to properties
-            retrieved_id = rel_props.pop("id", relationship_id) # Should match input id
-            created_at_r = rel_props.pop("created_at", None)
-            updated_at_r = rel_props.pop("updated_at", None)
-            # Parse dates if necessary
+            # Process properties, converting datetime strings if necessary
+            properties = rel_data.get('properties', {})
+            # Assuming properties stored might include datetime strings like in add_relationship
+            parsed_properties = {}
+            for key, value in properties.items():
+                 # Attempt to parse if string, handle potential errors
+                 if isinstance(value, str):
+                     try:
+                          # Use isoparse for ISO format datetime strings
+                          parsed_properties[key] = isoparse(value)
+                     except ValueError:
+                          # Keep original string if not a valid ISO datetime
+                          parsed_properties[key] = value 
+                 else:
+                      parsed_properties[key] = value
 
-            relationship = Relationship(
-                id=str(retrieved_id), # Use the ID retrieved from properties
-                source_id=str(source_id),
-                target_id=str(target_id),
-                type=str(rel_type),
-                properties=rel_props, # Remaining properties
-                created_at=self._parse_datetime(created_at_r, retrieved_id, "created_at"), # Reuse parser
-                updated_at=self._parse_datetime(updated_at_r, retrieved_id, "updated_at")  # Reuse parser
+            # Remove the 'id' property from the properties dict as it's part of the main object
+            if 'id' in parsed_properties:
+                del parsed_properties['id']
+
+            return Relationship(
+                id=rel_data['id'],
+                source_id=rel_data['source_id'],
+                target_id=rel_data['target_id'],
+                type=rel_data['type'],
+                properties=parsed_properties
             )
-            logger.debug(f"Successfully retrieved relationship {relationship_id}")
-            return relationship
 
         except Exception as e:
-            logger.error(f"Failed to retrieve relationship {relationship_id}: {e}", exc_info=True)
+            logger.error(f"Error getting relationship {relationship_id}: {e}", exc_info=True)
             return None
 
     async def link_chunk_to_entities(self, chunk_id: str, entity_ids: List[str]) -> None:
-        """Creates MENTIONS relationships between a chunk and a list of entities."""
+        """Creates CONTAINS relationships from a chunk node to multiple entity nodes."""
         if not entity_ids:
             logger.debug(f"No entity IDs provided to link to chunk {chunk_id}. Skipping.")
             return

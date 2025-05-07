@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
 # Local application imports
-from graph_rag.config.settings import Settings, get_settings
+from graph_rag.config import Settings, get_settings
 from graph_rag.api.routers import documents, ingestion, search, query
 from graph_rag.api import schemas
 from graph_rag.api import dependencies as deps # Alias for dependencies
