@@ -23,9 +23,14 @@ from graph_rag.services.search import SearchService, SearchResult # Import Searc
 from graph_rag.config import get_settings
 from graph_rag.domain.models import Context # Added Context
 # from graph_rag.core.node_factory import NodeFactory
-from graph_rag.services.embedding import SentenceTransformerEmbeddingService
+from graph_rag.services.embedding import SentenceTransformerEmbeddingService # Implementation
 from graph_rag.llm.protocols import LLMService # Add LLMService import
-from graph_rag.llm.mock_llm import MockLLMService # Corrected import: MockLLMService from mock_llm
+from graph_rag.services.search import SearchService # Corrected import - Keep this one
+# Remove incorrect/unused service imports that cause ModuleNotFound errors
+# from graph_rag.services.chunking import ChunkingService 
+# from graph_rag.services.embedding import EmbeddingService # Protocol is imported from interfaces
+# from graph_rag.services.entity_extraction import EntityExtractionService # Implementation likely from elsewhere
+from graph_rag.llm import MockLLMService # Corrected import: MockLLMService from llm package
 # from graph_rag.core.prompts import (
 #     GRAPH_EXTRACTION_PROMPT,
 #     GRAPH_REPORT_PROMPT,
@@ -198,27 +203,27 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                              processed_entity_ids.add(neighbor.id) # Add ID when queuing
                              
                 for rel in relationships:
-                    # Ensure both source and target are within our collected entities
-                    if rel.source.id in all_neighbor_entities and rel.target.id in all_neighbor_entities:
-                        rel_key = (rel.source.id, rel.type, rel.target.id)
-                        if rel_key not in all_relationships:
-                             all_relationships[rel_key] = rel
-                             
+                    # Ensure the relationship connects entities within the current context
+                    if rel.source_id in all_neighbor_entities and rel.target_id in all_neighbor_entities:
+                        # Optional: Attach full source/target entities if needed downstream, though might duplicate data
+                        # rel.source = all_neighbor_entities.get(rel.source_id)
+                        # rel.target = all_neighbor_entities.get(rel.target_id)
+                        filtered_relationships.append(rel)
             except Exception as e:
                  logger.error(f"Failed to get neighbors for entity {current_entity.id}: {e}", exc_info=True)
 
         if len(all_neighbor_entities) >= max_entities:
              logger.warning(f"Reached max entities ({max_entities}) for graph context expansion.")
              
-        logger.info(f"Aggregated graph context: {len(all_neighbor_entities)} entities, {len(all_relationships)} relationships.")
-        return list(all_neighbor_entities.values()), list(all_relationships.values())
+        logger.info(f"Aggregated graph context: {len(all_neighbor_entities)} entities, {len(filtered_relationships)} relationships.")
+        return list(all_neighbor_entities.values()), filtered_relationships
 
-    async def query(self, query_text: str, config: Optional[Dict[str, Any]] = None) -> QueryResult:
-        """Processes a query using vector search, graph context retrieval, and LLM synthesis."""
-        logger.info(f"Received query: '{query_text}' with config: {config}")
+    async def _retrieve_and_build_context(self, query_text: str, config: Optional[Dict[str, Any]] = None) -> Tuple[List[SearchResultData], Optional[Tuple[List[Entity], List[Relationship]]]]:
+        """Internal method to perform vector search and graph context retrieval. DOES NOT call LLM."""
+        logger.info(f"Retrieving context for: '{query_text}' with config: {config}")
         config = config or {}
         k = config.get("k", 3)
-        include_graph_context = config.get("include_graph", True)
+        include_graph = config.get("include_graph", True)
         
         final_entities: List[Entity] = []
         final_relationships: List[Relationship] = []
@@ -240,7 +245,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                 logger.info(f"Found {len(relevant_chunk_texts)} relevant chunks via vector search.")
 
             # 2. Graph Retrieval (if requested and chunks were found)
-            if include_graph_context and retrieved_chunks_full:
+            if include_graph and retrieved_chunks_full:
                 logger.debug("Attempting to retrieve graph context...")
                 # a. Extract entities from chunks
                 extracted_entities = await self._extract_entities_from_chunks(retrieved_chunks_full)
@@ -258,85 +263,153 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                         logger.info("No matching seed entities found in graph using property search.")
                 else:
                     logger.info("No entities extracted from retrieved chunks.")
-            elif include_graph_context and not retrieved_chunks_full:
+            elif include_graph and not retrieved_chunks_full:
                  logger.info("Skipping graph context retrieval as no relevant chunks were found.")
 
-            # 3. Answer Synthesis (if any context was found)
-            synthesized_answer = "Could not generate an answer based on the available information."
-            llm_metadata = {}
-
-            if relevant_chunk_texts or graph_context_tuple:
-                 # Prepare context string
-                 context_str = "\n\nRelevant Text Chunks:\n"
-                 context_str += "\n---\n\n".join(relevant_chunk_texts) if relevant_chunk_texts else "None"
-
-                 if graph_context_tuple:
-                     entities, relationships = graph_context_tuple
-                     context_str += "\n\nRelated Graph Entities:\n"
-                     context_str += "\n".join([f"- {e.id} ({e.type}): {getattr(e, 'name', 'N/A')}" for e in entities])
-                     context_str += "\n\nRelated Graph Relationships:\n"
-                     context_str += "\n".join([f"- ({r.source.id}) -[{r.type}]-> ({r.target.id})" for r in relationships if r.source and r.target])
-
-                 # Create prompt
-                 prompt = f"Based on the following context, answer the query.\n\nQuery: {query_text}\n\nContext:{context_str}\n\nAnswer:"
-
-                 logger.debug(f"Sending prompt to LLM (first 100 chars): {prompt[:100]}...")
-                 # Call LLMService
-                 llm_response = await self._llm_service.generate_response(prompt)
-                 # Handle both object response (ideal) and str response (mock)
-                 if hasattr(llm_response, 'text'):
-                     synthesized_answer = llm_response.text
-                     llm_metadata = llm_response.metadata if hasattr(llm_response, 'metadata') else {}
-                 elif isinstance(llm_response, str):
-                     synthesized_answer = llm_response # Mock returns string directly
-                     llm_metadata = {"warning": "LLM response was a string, not an object."}
-                 else:
-                     synthesized_answer = "Error: Unexpected LLM response type."
-                     llm_metadata = {"error": f"Unexpected type: {type(llm_response)}"}
-                     logger.error(f"Unexpected LLM response type: {type(llm_response)}")
-                 
-                 logger.info("Received synthesized answer from LLM.")
-            else:
-                logger.warning(f"No context (chunks or graph) found for query: '{query_text}'. Returning default answer.")
-
-            # Map SearchResultData to domain Chunk objects for the final QueryResult
-            final_relevant_chunks = []
-            for search_result in retrieved_chunks_full:
-                if search_result and search_result.chunk: # Ensure we have valid data
-                    chunk_data = search_result.chunk # Get the inner ChunkData
-                    try:
-                        metadata_with_score = {**(chunk_data.metadata or {}), "score": search_result.score}
-                        chunk_obj = Chunk(
-                            id=chunk_data.id,
-                            text=chunk_data.text,
-                            document_id=chunk_data.document_id,
-                            metadata=metadata_with_score,
-                            embedding=chunk_data.embedding
-                        )
-                        final_relevant_chunks.append(chunk_obj)
-                    except Exception as mapping_err:
-                        logger.error(f"Error mapping chunk {getattr(chunk_data, 'id', '?')} to domain model: {mapping_err}", exc_info=True)
-
-            # 4. Return Result (potentially partial if error occurred)
-            return QueryResult(
-                answer=synthesized_answer, # Could be error message if LLM failed
-                relevant_chunks=final_relevant_chunks, # Use the correctly mapped chunks
-                graph_context=graph_context_tuple,
-                metadata={
-                    "query": query_text,
-                    "config": config,
-                    # Add error info if an exception was caught
-                    **({"error": str(e)} if 'e' in locals() else {})
-                }
-            )
+            # 3. Return the retrieved context
+            logger.info(f"Context retrieval finished. Found {len(retrieved_chunks_full)} chunks and {len(final_entities) if graph_context_tuple else 0} graph entities.")
+            return retrieved_chunks_full, graph_context_tuple
 
         except Exception as e:
             logger.error(f"Error during query processing for '{query_text}': {e}", exc_info=True)
-            # Return an error state QueryResult
-            return QueryResult(
-                answer=f"An error occurred while processing your query: {e}",
-                metadata={"query": query_text, "config": config, "error": str(e)}
-            )
+            # Return an empty or error state
+            return retrieved_chunks_full, None # Indicate failure or no context
+
+    async def retrieve_context(self, query: str, search_type: str = 'vector', limit: int = 5) -> List[SearchResultData]:
+        """Retrieve relevant context chunks for a query. Does not call LLM."""
+        logger.info(f"Retrieving context via SimpleGraphRAGEngine for query: '{query}' (limit={limit})")
+        config = {"k": limit, "include_graph": False} # Exclude graph by default for simple context retrieval
+        retrieved_chunks, _ = await self._retrieve_and_build_context(query, config)
+        return retrieved_chunks
+
+    async def answer_query(
+        self, 
+        query_text: str, 
+        config: Optional[Dict[str, Any]] = None,
+        # Allow passing pre-fetched context
+        _retrieved_chunks_data: Optional[List[SearchResultData]] = None,
+        _graph_context_tuple: Optional[Tuple[List[Entity], List[Relationship]]] = None
+    ) -> str:
+        """Retrieve context (if not provided), format prompt, and generate an answer using the LLM."""
+        logger.info(f"Generating answer via SimpleGraphRAGEngine for query: '{query_text}'")
+        config = config or {}
+        
+        retrieved_chunks_data = _retrieved_chunks_data
+        graph_context_tuple = _graph_context_tuple
+
+        # 1. Retrieve context if not already provided
+        if retrieved_chunks_data is None and graph_context_tuple is None:
+            logger.debug("Context not provided to answer_query, retrieving it now.")
+            try:
+                retrieved_chunks_data, graph_context_tuple = await self._retrieve_and_build_context(query_text, config)
+            except Exception as context_err:
+                logger.error(f"Failed to retrieve context for answer_query: {context_err}", exc_info=True)
+                return f"Error retrieving context: {context_err}"
+        else:
+            logger.debug("Using pre-fetched context for answer_query.")
+        
+        # 2. Prepare context for LLM
+        context_str = ""
+        relevant_chunk_texts = []
+        if retrieved_chunks_data:
+            relevant_chunk_texts = [c.chunk.text for c in retrieved_chunks_data if c.chunk]
+            context_str += "\n\nRelevant Text Chunks:\n"
+            context_str += "\n---\n\n".join(relevant_chunk_texts)
+
+        if graph_context_tuple:
+            entities, relationships = graph_context_tuple
+            context_str += "\n\nRelated Graph Entities:\n"
+            context_str += "\n".join([f"- {e.id} ({e.type}): {getattr(e, 'name', 'N/A')}" for e in entities])
+            context_str += "\n\nRelated Graph Relationships:\n"
+            context_str += "\n".join([f"- ({r.source_id}) -[{r.type}]-> ({r.target_id})" for r in relationships]) # Use r.source_id and r.target_id
+            
+        if not context_str:
+            logger.warning(f"No context found for answer_query: '{query_text}'.")
+            return "Could not find relevant information to answer the query."
+
+        # 3. Create Prompt and Call LLM
+        prompt = f"Based on the following context, answer the query.\n\nQuery: {query_text}\n\nContext:{context_str}\n\nAnswer:"
+        logger.debug(f"Sending prompt to LLM (first 100 chars): {prompt[:100]}...")
+        try:
+            llm_response = await self._llm_service.generate_response(prompt)
+            if hasattr(llm_response, 'text'): answer_text = llm_response.text
+            elif isinstance(llm_response, str): answer_text = llm_response 
+            else: 
+                logger.error(f"Unexpected LLM response type: {type(llm_response)}")
+                answer_text = "Error: Could not process response from language model."
+            logger.info("Received synthesized answer from LLM.")
+            return answer_text
+        except Exception as llm_err:
+            logger.error(f"Error generating response from LLM: {llm_err}", exc_info=True)
+            return f"Error generating answer: {llm_err}"
+
+    async def query(self, query_text: str, config: Optional[Dict[str, Any]] = None) -> QueryResult:
+        """Processes query: retrieves context ONCE, generates answer ONCE, returns QueryResult."""
+        logger.info(f"Processing query via SimpleGraphRAGEngine.query: '{query_text}'")
+        config = config or {}
+        
+        retrieved_chunks_data: List[SearchResultData] = []
+        graph_context_tuple: Optional[Tuple[List[Entity], List[Relationship]]] = None
+        answer_text: str = "Failed to process query."
+        error_info: Optional[str] = None
+
+        # 1. Retrieve context ONCE
+        try:
+            retrieved_chunks_data, graph_context_tuple = await self._retrieve_and_build_context(query_text, config)
+        except Exception as context_err:
+            logger.error(f"Failed to retrieve context during query: {context_err}", exc_info=True)
+            error_info = f"Context retrieval failed: {context_err}"
+            answer_text = f"Error retrieving context: {context_err}" 
+            # Fall through to return QueryResult with error
+
+        # 2. Generate answer ONCE, passing the retrieved context
+        if error_info is None: # Only attempt to generate answer if context retrieval was successful
+            try:
+                answer_text = await self.answer_query(
+                    query_text, 
+                    config,
+                    _retrieved_chunks_data=retrieved_chunks_data, 
+                    _graph_context_tuple=graph_context_tuple
+                )
+            except Exception as answer_err:
+                 logger.error(f"Failed to generate answer during query: {answer_err}", exc_info=True)
+                 error_info = f"Answer generation failed: {answer_err}" # Overwrite or append?
+                 answer_text = f"Error generating answer: {answer_err}" # Ensure answer reflects error
+
+        # 3. Map SearchResultData to domain Chunk for QueryResult
+        final_relevant_chunks: List[Chunk] = []
+        if retrieved_chunks_data:
+            for search_result in retrieved_chunks_data:
+                 if search_result and search_result.chunk:
+                     chunk_data = search_result.chunk
+                     try:
+                         metadata_with_score = {**(chunk_data.metadata or {}), "score": search_result.score}
+                         chunk_obj = Chunk(
+                             id=chunk_data.id,
+                             text=chunk_data.text,
+                             document_id=chunk_data.document_id,
+                             metadata=metadata_with_score,
+                             embedding=chunk_data.embedding
+                         )
+                         final_relevant_chunks.append(chunk_obj)
+                     except Exception as mapping_err:
+                         logger.error(f"Error mapping chunk {getattr(chunk_data, 'id', '?')} to domain model: {mapping_err}", exc_info=True)
+
+        # 4. Construct and return QueryResult
+        final_metadata = {
+            "query": query_text,
+            "config": config,
+            "engine_type": self.__class__.__name__
+        }
+        if error_info:
+            final_metadata["error"] = error_info
+            
+        return QueryResult(
+            answer=answer_text,
+            relevant_chunks=final_relevant_chunks,
+            graph_context=graph_context_tuple,
+            metadata=final_metadata
+        )
 
 # Renaming this class to avoid conflict with the ABC above
 class GraphRAGEngineOrchestrator(GraphRAGEngine):
@@ -580,9 +653,8 @@ class GraphRAGEngineOrchestrator(GraphRAGEngine):
 
         # 2. Construct QueryResult
         return QueryResult(
-            relevant_chunks=relevant_chunks_model,
             answer=answer,
-            llm_response="", # Placeholder
+            relevant_chunks=relevant_chunks_model,
             graph_context=None, # Placeholder
             metadata={"query": query_text, "config": config, "retrieval_details": {"type": search_type, "limit": limit, "num_retrieved": len(relevant_chunks_model)}}
         )

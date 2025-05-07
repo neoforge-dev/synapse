@@ -16,23 +16,50 @@ from graph_rag.core.interfaces import (
 )
 from graph_rag.core.graph_rag_engine import SimpleGraphRAGEngine, QueryResult
 from graph_rag.models import Document, Chunk, Entity, Relationship, ProcessedDocument
-from graph_rag.domain.models import Node
-from graph_rag.core.graph_store import MockGraphStore
+from graph_rag.domain.models import Node, Edge
+from graph_rag.core.graph_store import MockGraphStore # Corrected location
 from graph_rag.core.interfaces import VectorStore # Import VectorStore interface
 from graph_rag.core.vector_store import MockVectorStore # Keep MockVectorStore import
 from graph_rag.core.interfaces import DocumentProcessor
-from graph_rag.core.entity_extractor import MockEntityExtractor
+from graph_rag.core.entity_extractor import MockEntityExtractor # Corrected location
 from graph_rag.core.knowledge_graph_builder import KnowledgeGraphBuilder
 from graph_rag.services.embedding import EmbeddingService
 from graph_rag.services.search import SearchService, SearchResult # Import SearchResult
 from graph_rag.llm.protocols import LLMService # Remove LLMResponse import
-from graph_rag.llm.mock_llm import MockLLMService # Align import with engine
+from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore # Corrected filename
+from graph_rag.api.dependencies import MockEmbeddingService # Corrected location
+from graph_rag.core.entity_extractor import MockEntityExtractor # Corrected location
+from graph_rag.llm import MockLLMService # Corrected import: MockLLMService from llm package
 from graph_rag.infrastructure.cache.protocols import CacheService
 
-# Configure logging for tests
+# Setup basic logging for tests if needed
 logger = logging.getLogger(__name__)
 
-# Add a default config fixture
+# --- Helper Functions (Moved Before Fixtures/Tests) ---
+
+def create_mock_chunk_data(id: str, text: str, doc_id: str = "d1", score: float = 0.0) -> ChunkData:
+    """Factory for creating ChunkData instances."""
+    return ChunkData(id=id, text=text, document_id=doc_id, embedding=[score]*10) # Simple embedding
+
+def create_mock_search_result(chunk_data: ChunkData, score: float) -> SearchResultData:
+    """Factory for creating SearchResultData instances."""
+    return SearchResultData(chunk=chunk_data, score=score)
+
+def create_mock_extracted_entity(id: str, label: str, text: str) -> ExtractedEntity:
+    """Factory for creating ExtractedEntity instances."""
+    return ExtractedEntity(id=id, label=label, text=text, name=text) # Use text as name
+
+def create_mock_graph_entity(id: str, type: str, name: str) -> Entity:
+    """Factory for creating domain Entity instances found in the graph."""
+    return Entity(id=id, type=type, name=name)
+
+def create_mock_graph_relationship(source_id: str, target_id: str, type: str) -> Edge:
+    """Factory for creating domain Edge instances found in the graph."""
+    edge_id = f"mock-edge-{uuid.uuid4()}"
+    return Edge(id=edge_id, type=type, source_id=source_id, target_id=target_id, properties={})
+
+# --- Fixtures ---
+
 @pytest.fixture
 def config() -> Dict[str, Any]:
     """Provides a default configuration dictionary for engine tests."""
@@ -158,14 +185,8 @@ def mock_graph_repository() -> AsyncMock:
 def mock_llm_service() -> AsyncMock:
     """Fixture for a mocked LLMService."""
     mock = AsyncMock(spec=LLMService)
-    # Configure generate_response to return a simple string
-    async def mock_generate_response(prompt: str, context: Optional[str] = None, history: Optional[List[Dict[str, str]]] = None) -> str: # Change type hint to str
-        # Simple response based on prompt content
-        answer_text = f"Synthesized answer for prompt: {prompt[:50]}..."
-        return answer_text # Return string directly
-        
-    # Point to the correct method name as defined in the protocol
-    mock.generate_response.side_effect = mock_generate_response 
+    # Configure generate_response to return a simple, settable string by default
+    mock.generate_response = AsyncMock(return_value="Default Mock LLM Answer") 
     
     # Ensure other methods from the protocol are mocked if needed by tests
     mock.generate_response_stream = AsyncMock()
@@ -194,17 +215,45 @@ def rag_engine(
 
 # --- Test Cases --- 
 
-@pytest.mark.asyncio
-async def test_process_and_store_document_flow(
-    rag_engine: SimpleGraphRAGEngine, # Use the fixture providing the engine instance
-    mock_graph_store: MockGraphStore, # Get the concrete mock store to spy on calls
-    mock_vector_store: AsyncMock, # Use AsyncMock vector store
-    mock_entity_extractor: AsyncMock, # Use AsyncMock
-):
-    """Tests the overall flow of processing and storing a document."""
-    # This test seems more appropriate for the IngestionService.
-    # SimpleGraphRAGEngine doesn't have a process_and_store_document method.
-    pytest.skip("Skipping test: process_and_store_document is not part of SimpleGraphRAGEngine. Test belongs in ingestion service tests.")
+# @pytest.mark.skip(reason="Skipping test: process_and_store_document is not part of SimpleGraphRAGEngine. Test belongs in ingestion service tests.")
+# @pytest.mark.asyncio
+# async def test_process_and_store_document_flow(
+#     simple_engine_with_mocks: SimpleGraphRAGEngine,
+#     mock_document_processor: AsyncMock,
+#     mock_entity_extractor: AsyncMock, # Use the correct fixture name
+#     mock_kg_builder: AsyncMock,
+#     mock_vector_store: AsyncMock, # Use the correct fixture name
+#     test_document_data: DocumentData
+# ):
+#     """Test the full process_and_store_document flow (mocked)."""
+#     engine = simple_engine_with_mocks
+#     logger.info(f"Testing process_and_store_document flow for engine: {type(engine).__name__}")
+
+#     # Configure mocks (adjust return values as needed)
+#     mock_document_processor.process.return_value = [ChunkData(id=f"chunk-{i}", text=f"Chunk {i} text", document_id=test_document_data.id) for i in range(2)]
+#     mock_entity_extractor.extract.return_value = ExtractionResult(
+#         entities=[ExtractedEntity(text="Entity1", label="ORG")], 
+#         relationships=[ExtractedRelationship(source="Entity1", target="Entity2", type="RELATED_TO")]
+#     )
+#     mock_kg_builder.build.return_value = ProcessedDocument(
+#         document=Document(id=test_document_data.id, text=test_document_data.content, metadata=test_document_data.metadata),
+#         chunks=[Chunk(id=f"chunk-{i}", text=f"Chunk {i} text", document_id=test_document_data.id, embedding=[0.1]*10) for i in range(2)],
+#         entities=[Entity(id="ent-1", text="Entity1", labels=["ORG"])],
+#         relationships=[Relationship(id="rel-1", source_id="ent-1", target_id="ent-2", type="RELATED_TO")]
+#     )
+    
+#     # Check if the method exists before calling
+#     if hasattr(engine, 'process_and_store_document'):
+#         await engine.process_and_store_document(test_document_data.content, test_document_data.metadata)
+#         logger.info("process_and_store_document called (if exists).")
+
+#         # Assertions (verify mocks were called as expected)
+#         mock_document_processor.process.assert_awaited_once()
+#         mock_entity_extractor.extract.assert_awaited_once()
+#         mock_kg_builder.build.assert_awaited_once()
+#         mock_vector_store.add_chunks.assert_awaited_once() # Check vector store call
+#     else:
+#         logger.warning("process_and_store_document method not found on engine, skipping call and assertions.")
 
 @pytest.mark.asyncio
 async def test_retrieve_context_vector(
@@ -244,7 +293,7 @@ async def test_retrieve_context_vector(
 
     # Assert Query Result
     assert isinstance(query_result, QueryResult)
-    assert query_result.answer.startswith("Synthesized answer") # Check mock LLM response
+    assert query_result.answer == "Default Mock LLM Answer" # Updated assertion
     assert len(query_result.relevant_chunks) == 1
     # Compare the actual Chunk object with the expected one
     assert query_result.relevant_chunks[0].id == expected_domain_chunk.id
@@ -302,7 +351,7 @@ async def test_simple_engine_query_uses_stores(
 
     # Result checks
     assert isinstance(result, QueryResult)
-    assert result.answer.startswith("Synthesized answer")
+    assert result.answer == "Default Mock LLM Answer" # Updated assertion
     assert len(result.relevant_chunks) == 1
     assert result.relevant_chunks[0].id == "c-key-1"
     assert result.relevant_chunks[0].text == mock_chunk_text
@@ -383,15 +432,40 @@ def sample_graph_entities() -> List[Entity]:
     ]
 
 @pytest.fixture
-def sample_graph_neighbors(sample_graph_entities: List[Entity]) -> Tuple[List[Entity], List[Relationship]]:
-    # Use metadata field according to graph_rag.models.Entity definition
-    neighbor_charlie = Entity(id="ent-graph-charlie", name="Charlie", type="PERSON", metadata={"name": "Charlie"})
-    # Use the @dataclass Relationship definition (no id, uses metadata)
-    rel_alice_bob = Relationship(source=sample_graph_entities[0], target=sample_graph_entities[1], type="KNOWS", metadata={})
-    rel_bob_charlie = Relationship(source=sample_graph_entities[1], target=neighbor_charlie, type="FRIEND_OF", metadata={})
-    all_entities = sample_graph_entities + [neighbor_charlie]
-    all_relationships = [rel_alice_bob, rel_bob_charlie]
-    return all_entities, all_relationships
+def sample_graph_neighbors(sample_graph_entities: List[Entity]) -> Tuple[List[Entity], List[Edge]]:
+    """Provides a list of entities and a list of domain.models.Edge relationships."""
+    if len(sample_graph_entities) < 3:
+        # Ensure enough entities for varied relationships if needed later
+        # For now, matching the old structure that produced Alice, Bob, Charlie
+        entities = [
+            Entity(id="ent-graph-alice", type="Person", name="Alice"),
+            Entity(id="ent-graph-bob", type="Person", name="Bob"),
+            Entity(id="ent-graph-charlie", type="Person", name="Charlie")
+        ]
+    else:
+        entities = sample_graph_entities[:3] # Use first 3 if available
+
+    # Create domain.models.Edge instances
+    # These should match what _get_graph_context would effectively return from graph_store.get_neighbors
+    # if it were to reconstruct Edge models from raw neighbor data.
+    # The key is that the prompt formatting expects .source_id, .target_id, .type
+    edge1 = Edge(id="mock-edge-1", type="KNOWS", source_id=entities[0].id, target_id=entities[1].id, properties={})
+    edge2 = Edge(id="mock-edge-2", type="FRIEND_OF", source_id=entities[1].id, target_id=entities[2].id, properties={})
+    
+    # The entities list should contain all unique entities involved in the relationships plus any others
+    all_entities_dict = {e.id: e for e in entities}
+    
+    return list(all_entities_dict.values()), [edge1, edge2]
+
+@pytest.fixture
+def sample_domain_edge_list(sample_graph_entities: List[Entity]) -> List[Edge]:
+    """Provides a list of domain.models.Edge instances for mocking."""
+    if len(sample_graph_entities) < 2:
+        return []
+    return [
+        Edge(id="edge1", type="KNOWS", source_id=sample_graph_entities[0].id, target_id=sample_graph_entities[1].id, properties={}),
+        # Add more if needed for specific tests
+    ]
 
 @pytest.mark.asyncio
 async def test_simple_engine_query_with_graph_context(
@@ -402,7 +476,7 @@ async def test_simple_engine_query_with_graph_context(
     sample_chunk_list: List[SearchResultData],
     sample_extracted_entities: List[ExtractedEntity],
     sample_graph_entities: List[Entity],
-    sample_graph_neighbors: Tuple[List[Entity], List[Relationship]],
+    sample_graph_neighbors: Tuple[List[Entity], List[Edge]],
     config: Dict # Use shared config fixture
 ):
     """Tests a query retrieving vector results, graph context, and synthesizing an answer."""
@@ -420,18 +494,17 @@ async def test_simple_engine_query_with_graph_context(
     combined_text = " ".join([sr.chunk.text for sr in sample_chunk_list if sr.chunk]) # Ensure chunk exists
     mock_entity_extractor.extract_from_text.return_value = ExtractionResult(entities=sample_extracted_entities, relationships=[])
 
-    # Mock graph search
-    async def mock_search_props(search_props: Dict, limit=None):
+    # Mock graph search for entities
+    async def mock_search_props_for_query_test(search_props: Dict, limit=None):
         name_to_match = search_props.get('name')
-        # Return the actual Entity object from sample_graph_entities
         return [e for e in sample_graph_entities if e.name == name_to_match]
-    mock_graph_repo.search_entities_by_properties.side_effect = mock_search_props
+    mock_graph_repo.search_entities_by_properties.side_effect = mock_search_props_for_query_test
 
-    # Mock neighbor retrieval
-    mock_graph_repo.get_neighbors.return_value = sample_graph_neighbors # Return the full tuple
+    # Mock neighbor retrieval (this provides entities and relationships for the graph context)
+    mock_graph_repo.get_neighbors.return_value = sample_graph_neighbors 
 
     # Act
-    result = await engine.query(query, config=config) # Use default config (include_graph=True)
+    result = await engine.query(query, config=config)
 
     # Assert
     # Vector search called
@@ -459,10 +532,10 @@ async def test_simple_engine_query_with_graph_context(
     assert query in prompt_arg
     assert sample_chunk_list[0].chunk.text in prompt_arg # Check chunk text
     assert sample_graph_entities[0].name in prompt_arg # Check entity name
-    assert sample_graph_neighbors[1][0].type in prompt_arg # Check relationship type
+    assert sample_graph_neighbors[1][0].type in prompt_arg # Check relationship type from sample_graph_neighbors
 
     # Check QueryResult
-    assert result.answer.startswith("Synthesized answer")
+    assert result.answer == "Default Mock LLM Answer" # Updated assertion
     assert len(result.relevant_chunks) == len(sample_chunk_list)
     # Check chunk mapping (basic)
     assert result.relevant_chunks[0].id == sample_chunk_list[0].chunk.id
@@ -509,7 +582,7 @@ async def test_simple_engine_query_graph_no_entities_extracted(
     prompt_arg = mock_llm_service.generate_response.call_args[0][0]
     assert "Graph Entities" not in prompt_arg # Section should be omitted if empty
     # Check result
-    assert result.answer.startswith("Synthesized answer")
+    assert result.answer == "Default Mock LLM Answer" # Updated assertion
     assert len(result.relevant_chunks) == len(sample_chunk_list)
     assert result.graph_context is None # No graph context was built
     logger.info("test_simple_engine_query_graph_no_entities_extracted assertions passed.")
@@ -551,7 +624,7 @@ async def test_simple_engine_query_graph_entities_not_found(
     prompt_arg = mock_llm_service.generate_response.call_args[0][0]
     assert "Graph Entities" not in prompt_arg # Section should be omitted if empty
     # Check result
-    assert result.answer.startswith("Synthesized answer")
+    assert result.answer == "Default Mock LLM Answer" # Updated assertion
     assert len(result.relevant_chunks) == len(sample_chunk_list)
     assert result.graph_context is None # No graph context built
     logger.info("test_simple_engine_query_graph_entities_not_found assertions passed.")
@@ -585,7 +658,190 @@ async def test_simple_engine_query_no_context_found(
     # LLM should NOT be called as there's no context
     mock_llm_service.generate_response.assert_not_called()
     # Check result
-    assert result.answer == "Could not generate an answer based on the available information." # Default answer when no context
+    assert result.answer == "Could not find relevant information to answer the query." # Updated assertion
     assert len(result.relevant_chunks) == 0
     assert result.graph_context is None
     logger.info("test_simple_engine_query_no_context_found assertions passed.") 
+
+@pytest.mark.asyncio
+async def test_retrieve_context_vector_only(
+    rag_engine: SimpleGraphRAGEngine, # Use correct fixture name
+    mock_vector_store: AsyncMock
+):
+    """Test retrieve_context focuses on vector store search and returns SearchResultData."""
+    query = "find information about project alpha"
+    limit = 3
+    
+    # Mock VectorStore search results
+    mock_chunk_data1 = create_mock_chunk_data(id="c1", text="Details about alpha project.", score=0.1)
+    mock_chunk_data2 = create_mock_chunk_data(id="c2", text="Alpha project updates.", score=0.2)
+    mock_search_results = [
+        create_mock_search_result(mock_chunk_data1, 0.9),
+        create_mock_search_result(mock_chunk_data2, 0.8)
+    ]
+    mock_vector_store.search.return_value = mock_search_results
+    
+    # Call the method under test
+    results = await rag_engine.retrieve_context(query=query, limit=limit)
+    
+    # Assertions
+    mock_vector_store.search.assert_awaited_once_with(query, top_k=limit)
+    assert results == mock_search_results
+    # Ensure graph/extraction methods weren't called unnecessarily by retrieve_context
+    # Note: _retrieve_and_build_context IS called, but its internal graph calls are skipped due to config
+    assert rag_engine._graph_store.search_entities_by_properties.call_count == 0
+    assert rag_engine._graph_store.get_neighbors.call_count == 0
+    assert rag_engine._entity_extractor.extract_from_text.call_count == 0
+    rag_engine._llm_service.generate_response.assert_not_awaited()
+
+@pytest.mark.asyncio
+async def test_answer_query_vector_only(
+    rag_engine: SimpleGraphRAGEngine, # Use correct fixture name
+    mock_vector_store: AsyncMock,
+    mock_llm_service: AsyncMock
+):
+    """Test answer_query with vector context only."""
+    query = "summarize alpha project"
+    limit = 2
+    expected_answer = "Alpha project is summarized here."
+    
+    # Mock VectorStore
+    mock_chunk_data1 = create_mock_chunk_data(id="c1", text="Alpha details.", score=0.1)
+    mock_chunk_data2 = create_mock_chunk_data(id="c2", text="More on Alpha.", score=0.2)
+    mock_search_results = [
+        create_mock_search_result(mock_chunk_data1, 0.95),
+        create_mock_search_result(mock_chunk_data2, 0.85)
+    ]
+    mock_vector_store.search.return_value = mock_search_results
+    
+    # Mock LLM
+    mock_llm_service.generate_response.return_value = expected_answer
+    
+    # Call method
+    answer = await rag_engine.answer_query(query, config={"k": limit, "include_graph": False})
+    
+    # Assertions
+    mock_vector_store.search.assert_awaited_once_with(query, top_k=limit)
+    # Check that LLM was called with expected prompt structure
+    mock_llm_service.generate_response.assert_awaited_once() 
+    call_args, _ = mock_llm_service.generate_response.await_args
+    prompt = call_args[0]
+    assert f"Query: {query}" in prompt
+    assert "Relevant Text Chunks:" in prompt
+    assert mock_chunk_data1.text in prompt
+    assert mock_chunk_data2.text in prompt
+    assert "Related Graph Entities:" not in prompt # Graph was excluded
+    
+    assert answer == expected_answer
+    # Ensure graph/extraction methods weren't called
+    assert rag_engine._graph_store.search_entities_by_properties.call_count == 0
+    assert rag_engine._graph_store.get_neighbors.call_count == 0
+    assert rag_engine._entity_extractor.extract_from_text.call_count == 0
+
+@pytest.mark.asyncio
+async def test_answer_query_with_graph(
+    rag_engine: SimpleGraphRAGEngine, # Use correct fixture name
+    mock_vector_store: AsyncMock,
+    mock_entity_extractor: AsyncMock,
+    mock_graph_repo: AsyncMock, # Keep this name as it matches the mock setup
+    mock_llm_service: AsyncMock
+):
+    """Test answer_query including graph context."""
+    query = "who works on project gamma?"
+    limit = 1
+    expected_answer = "Alice works on project gamma."
+    
+    # Mock VectorStore
+    mock_chunk_data = create_mock_chunk_data(id="c3", text="Project Gamma involves Alice.", score=0.3)
+    mock_search_results = [create_mock_search_result(mock_chunk_data, 0.9)]
+    mock_vector_store.search.return_value = mock_search_results
+    
+    # Mock Entity Extractor
+    extracted_entity_alice = create_mock_extracted_entity(id="alice", label="Person", text="Alice")
+    extracted_entity_gamma = create_mock_extracted_entity(id="gamma", label="Project", text="Project Gamma")
+    mock_entity_extractor.extract_from_text.return_value = ExtractionResult(
+        entities=[extracted_entity_alice, extracted_entity_gamma], relationships=[]
+    )
+    
+    # Mock Graph Repo - Finding entities
+    graph_entity_alice = create_mock_graph_entity(id="graph_alice_1", type="Person", name="Alice")
+    graph_entity_gamma = create_mock_graph_entity(id="graph_gamma_1", type="Project", name="Project Gamma")
+    
+    async def mock_search_props_for_answer_test(*args, **kwargs):
+        props = kwargs.get("search_props", args[0] if args else None)
+        if not props: return []
+        name_to_match = props.get("name")
+        type_to_match = props.get("type") # Also check type for more robustness
+        if name_to_match == "Alice" and type_to_match == "Person":
+            return [graph_entity_alice]
+        if name_to_match == "Project Gamma" and type_to_match == "Project": # Corrected entity type
+            return [graph_entity_gamma]
+        return []
+    mock_graph_repo.search_entities_by_properties.side_effect = mock_search_props_for_answer_test
+
+    # Mock Graph Repo - Getting neighbors
+    graph_rel = create_mock_graph_relationship(source_id=graph_entity_alice.id, target_id=graph_entity_gamma.id, type="WORKS_ON")
+    mock_graph_repo.get_neighbors.return_value = ([graph_entity_alice, graph_entity_gamma], [graph_rel])
+    
+    mock_llm_service.generate_response.return_value = expected_answer
+
+    # Call method
+    answer = await rag_engine.answer_query(query, config={"k": limit, "include_graph": True})
+
+    # Assertions
+    mock_vector_store.search.assert_awaited_once_with(query, top_k=limit)
+    mock_entity_extractor.extract_from_text.assert_awaited_once_with(mock_chunk_data.text)
+    
+    assert mock_graph_repo.search_entities_by_properties.call_count == 2 # Check CALL count
+    # Check specific calls with correct search_props structure
+    call_args_list = mock_graph_repo.search_entities_by_properties.call_args_list # Use call_args_list
+    # Expected search_props dictionaries
+    expected_search_props_alice = {"name": "Alice", "type": "Person"} 
+    expected_search_props_gamma = {"name": "Project Gamma", "type": "Project"}
+    
+    # Check if the calls were made with the expected search_props
+    # Note: order of calls might not be guaranteed, so check for presence
+    alice_called = any(call[1].get('search_props') == expected_search_props_alice for call in call_args_list)
+    gamma_called = any(call[1].get('search_props') == expected_search_props_gamma for call in call_args_list)
+    assert alice_called, "Search for Alice was not called with correct props"
+    assert gamma_called, "Search for Project Gamma was not called with correct props"
+
+    mock_graph_repo.get_neighbors.assert_awaited_once() # get_neighbors should be called if entities are found
+    mock_llm_service.generate_response.assert_awaited_once()
+    # Check LLM prompt structure
+    prompt_arg = mock_llm_service.generate_response.call_args[0][0]
+    assert f"Query: {query}" in prompt_arg
+    assert "Relevant Text Chunks:" in prompt_arg
+    assert mock_chunk_data.text in prompt_arg
+    # With the fixed search_props mock, graph context should now be found
+    assert "Related Graph Entities:" in prompt_arg 
+    assert graph_entity_alice.name in prompt_arg
+    # assert graph_entity_gamma.name in prompt_arg # Gamma might not be expanded depending on mock neighbors
+    assert "Related Graph Relationships:" in prompt_arg
+    assert f"({graph_rel.source_id}) -[{graph_rel.type}]-> ({graph_rel.target_id})" in prompt_arg
+
+    assert answer == expected_answer
+
+@pytest.mark.asyncio
+async def test_answer_query_no_context(
+    rag_engine: SimpleGraphRAGEngine, # Use correct fixture name
+    mock_vector_store: AsyncMock,
+    mock_llm_service: AsyncMock
+):
+    """Test answer_query returns default message when no context is found."""
+    query = "information about unknown topic"
+    
+    # Mock VectorStore returning nothing
+    mock_vector_store.search.return_value = []
+    
+    # Call method
+    answer = await rag_engine.answer_query(query)
+    
+    # Assertions
+    mock_vector_store.search.assert_awaited_once_with(query, top_k=3) # Default k=3
+    mock_llm_service.generate_response.assert_not_awaited() # LLM should not be called
+    assert answer == "Could not find relevant information to answer the query." # Updated assertion
+    # Ensure graph/extraction methods weren't called
+    assert rag_engine._graph_store.search_entities_by_properties.call_count == 0
+    assert rag_engine._graph_store.get_neighbors.call_count == 0
+    assert rag_engine._entity_extractor.extract_from_text.call_count == 0 
