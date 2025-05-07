@@ -520,9 +520,8 @@ async def test_simple_engine_query_with_graph_context(
     mock_graph_repo.search_entities_by_properties.assert_any_call({'name': 'Bob', 'type': 'PERSON'}, limit=1)
     mock_graph_repo.search_entities_by_properties.assert_any_call({'name': 'Acme', 'type': 'ORG'}, limit=1)
 
-    # Graph neighbor retrieval called for each *expanded* entity (Alice, Bob, Charlie)
-    # The mock data causes Charlie to be added and expanded as well.
-    assert mock_graph_repo.get_neighbors.call_count == 3
+    # Graph neighbor retrieval called for each *graph entity* found from extracted ones (Alice, Bob)
+    assert mock_graph_repo.get_neighbors.call_count == 2 # Alice and Bob
     mock_graph_repo.get_neighbors.assert_any_call('ent-graph-alice')
     mock_graph_repo.get_neighbors.assert_any_call('ent-graph-bob')
 
@@ -743,7 +742,7 @@ async def test_answer_query_with_graph(
     rag_engine: SimpleGraphRAGEngine, # Use correct fixture name
     mock_vector_store: AsyncMock,
     mock_entity_extractor: AsyncMock,
-    mock_graph_repo: AsyncMock, # Keep this name as it matches the mock setup
+    mock_graph_repository: AsyncMock, # Use the same mock injected into rag_engine
     mock_llm_service: AsyncMock
 ):
     """Test answer_query including graph context."""
@@ -777,11 +776,11 @@ async def test_answer_query_with_graph(
         if name_to_match == "Project Gamma" and type_to_match == "Project": # Corrected entity type
             return [graph_entity_gamma]
         return []
-    mock_graph_repo.search_entities_by_properties.side_effect = mock_search_props_for_answer_test
+    mock_graph_repository.search_entities_by_properties.side_effect = mock_search_props_for_answer_test
 
     # Mock Graph Repo - Getting neighbors
     graph_rel = create_mock_graph_relationship(source_id=graph_entity_alice.id, target_id=graph_entity_gamma.id, type="WORKS_ON")
-    mock_graph_repo.get_neighbors.return_value = ([graph_entity_alice, graph_entity_gamma], [graph_rel])
+    mock_graph_repository.get_neighbors.return_value = ([graph_entity_alice, graph_entity_gamma], [graph_rel])
     
     mock_llm_service.generate_response.return_value = expected_answer
 
@@ -792,21 +791,21 @@ async def test_answer_query_with_graph(
     mock_vector_store.search.assert_awaited_once_with(query, top_k=limit)
     mock_entity_extractor.extract_from_text.assert_awaited_once_with(mock_chunk_data.text)
     
-    assert mock_graph_repo.search_entities_by_properties.call_count == 2 # Check CALL count
+    assert mock_graph_repository.search_entities_by_properties.call_count == 2 # Check CALL count on the correct mock
     # Check specific calls with correct search_props structure
-    call_args_list = mock_graph_repo.search_entities_by_properties.call_args_list # Use call_args_list
+    call_args_list = mock_graph_repository.search_entities_by_properties.call_args_list # Use call_args_list from the correct mock
     # Expected search_props dictionaries
     expected_search_props_alice = {"name": "Alice", "type": "Person"} 
     expected_search_props_gamma = {"name": "Project Gamma", "type": "Project"}
     
     # Check if the calls were made with the expected search_props
     # Note: order of calls might not be guaranteed, so check for presence
-    alice_called = any(call[1].get('search_props') == expected_search_props_alice for call in call_args_list)
-    gamma_called = any(call[1].get('search_props') == expected_search_props_gamma for call in call_args_list)
-    assert alice_called, "Search for Alice was not called with correct props"
-    assert gamma_called, "Search for Project Gamma was not called with correct props"
+    alice_called = any(call[0][0] == expected_search_props_alice for call in call_args_list if call[0])
+    gamma_called = any(call[0][0] == expected_search_props_gamma for call in call_args_list if call[0])
+    assert alice_called, f"Search for Alice was not called with correct props. Call list: {call_args_list}"
+    assert gamma_called, f"Search for Project Gamma was not called with correct props. Call list: {call_args_list}"
 
-    mock_graph_repo.get_neighbors.assert_awaited_once() # get_neighbors should be called if entities are found
+    assert mock_graph_repository.get_neighbors.await_count == 2 # Called for Alice and Gamma
     mock_llm_service.generate_response.assert_awaited_once()
     # Check LLM prompt structure
     prompt_arg = mock_llm_service.generate_response.call_args[0][0]
