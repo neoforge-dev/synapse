@@ -61,15 +61,15 @@ def _convert_neo4j_temporal_types(data: Dict[str, Any]) -> Dict[str, Any]:
 
 class MemgraphConnectionConfig:
     """Configuration specific to Memgraph connection (extracted from global settings)."""
-    def __init__(self, settings_obj):
-        # Use the passed settings object
-        self.host = settings_obj.MEMGRAPH_HOST
-        self.port = settings_obj.MEMGRAPH_PORT
-        self.user = settings_obj.MEMGRAPH_USERNAME
-        self.password = settings_obj.MEMGRAPH_PASSWORD.get_secret_value() if settings_obj.MEMGRAPH_PASSWORD else None
-        self.use_ssl = settings_obj.MEMGRAPH_USE_SSL # Assuming this setting exists
-        self.max_retries = settings_obj.MEMGRAPH_MAX_RETRIES
-        self.retry_delay = settings_obj.MEMGRAPH_RETRY_WAIT_SECONDS
+    def __init__(self, settings_obj: Settings):
+        # Use the passed settings object with correct attribute names
+        self.host = settings_obj.memgraph_host
+        self.port = settings_obj.memgraph_port
+        self.user = settings_obj.memgraph_user
+        self.password = settings_obj.memgraph_password.get_secret_value() if settings_obj.memgraph_password else None
+        self.use_ssl = settings_obj.memgraph_use_ssl
+        self.max_retries = settings_obj.memgraph_max_retries
+        self.retry_delay = settings_obj.memgraph_retry_delay # Use the correct field name
 
 class MemgraphGraphRepository(GraphStore, GraphRepository):
     """Optimized Memgraph implementation of both GraphStore and GraphRepository interfaces."""
@@ -77,7 +77,8 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
     def __init__(self, settings_obj: Optional[Settings] = None):
         """Initializes the repository, establishing connection parameters."""
         if settings_obj is None:
-            settings_obj = settings # Use global settings if no settings provided
+            # Ensure we get a Settings instance if None is passed
+            settings_obj = get_settings()
         self.config = MemgraphConnectionConfig(settings_obj)
         self._connection: Optional[mgclient.Connection] = None # Added connection attribute
         # mgclient uses synchronous connect, connection pooling is handled internally or needs manual management
