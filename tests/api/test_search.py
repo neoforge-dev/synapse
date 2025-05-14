@@ -1,21 +1,20 @@
-import pytest
-from httpx import AsyncClient
-from fastapi import status
 from unittest.mock import AsyncMock
+
+import pytest
+from fastapi import status
+from httpx import AsyncClient
 from pydantic_core import ValidationError
-from graph_rag.core.graph_rag_engine import QueryResult
-from graph_rag.domain.models import Chunk, Document, Entity, Relationship
 
 # from graph_rag.api.main import app # No longer needed, use test_client fixture
 from graph_rag.api.schemas import (
-    SearchQueryRequest, SearchQueryResponse, SearchResultSchema, 
-    ChunkResultSchema, DocumentResultSchema
+    SearchQueryRequest,
 )
 
 # Mark all tests in this module as async
 pytestmark = pytest.mark.asyncio
 
-# --- Test Cases for Unified Search Endpoint --- 
+# --- Test Cases for Unified Search Endpoint ---
+
 
 @pytest.mark.asyncio
 async def test_unified_search_keyword(
@@ -27,13 +26,11 @@ async def test_unified_search_keyword(
 
     # No need to set return_value here, the fixture uses a side_effect
     # mock_graph_rag_engine.query.return_value = mock_query_result # REMOVED
-    mock_graph_rag_engine.reset_mock() # Keep reset_mock
+    mock_graph_rag_engine.reset_mock()  # Keep reset_mock
 
     # Prepare request payload
     request_payload = SearchQueryRequest(
-        query=query_text,
-        search_type="keyword",
-        limit=limit
+        query=query_text, search_type="keyword", limit=limit
     ).model_dump()
 
     response = await test_client.post("/api/v1/search/query", json=request_payload)
@@ -43,13 +40,15 @@ async def test_unified_search_keyword(
     assert response_data["query"] == query_text
     assert response_data["search_type"] == "keyword"
     # Check against the mock engine side_effect from conftest.py
-    assert len(response_data["results"]) == 1 
+    assert len(response_data["results"]) == 1
     first_result = response_data["results"][0]
     assert first_result["score"] == 0.0
     assert isinstance(first_result["chunk"], dict)
-    assert first_result["chunk"]["id"] == "key_chunk1" # From conftest mock_query
-    assert first_result["chunk"]["text"] == "Keyword result" # From conftest mock_query
-    assert first_result["chunk"]["document_id"] == "doc_key1" # From conftest mock_query
+    assert first_result["chunk"]["id"] == "key_chunk1"  # From conftest mock_query
+    assert first_result["chunk"]["text"] == "Keyword result"  # From conftest mock_query
+    assert (
+        first_result["chunk"]["document_id"] == "doc_key1"
+    )  # From conftest mock_query
     # Check document from mock_get_document in conftest.py
     assert first_result["document"] is not None
     assert first_result["document"]["id"] == "doc_key1"
@@ -65,9 +64,10 @@ async def test_unified_search_keyword(
         config={
             "k": limit,
             "search_type": "keyword",
-            "include_graph": False # Default used by router when calling engine
+            "include_graph": False,  # Default used by router when calling engine
         },
     )
+
 
 @pytest.mark.asyncio
 async def test_unified_search_vector(
@@ -79,12 +79,10 @@ async def test_unified_search_vector(
 
     # No need to set return_value here, the fixture uses a side_effect
     # mock_graph_rag_engine.query.return_value = mock_query_result_vec # REMOVED
-    mock_graph_rag_engine.reset_mock() # Keep reset_mock
+    mock_graph_rag_engine.reset_mock()  # Keep reset_mock
 
     request_payload = SearchQueryRequest(
-        query=query_text,
-        search_type="vector",
-        limit=limit
+        query=query_text, search_type="vector", limit=limit
     ).model_dump()
 
     response = await test_client.post("/api/v1/search/query", json=request_payload)
@@ -99,9 +97,11 @@ async def test_unified_search_vector(
     first_result = response_data["results"][0]
     assert first_result["score"] == 0.0
     assert isinstance(first_result["chunk"], dict)
-    assert first_result["chunk"]["id"] == "vec_chunk1" # From conftest mock_query
-    assert first_result["chunk"]["text"] == "Vector result" # From conftest mock_query
-    assert first_result["chunk"]["document_id"] == "doc_vec1" # From conftest mock_query
+    assert first_result["chunk"]["id"] == "vec_chunk1"  # From conftest mock_query
+    assert first_result["chunk"]["text"] == "Vector result"  # From conftest mock_query
+    assert (
+        first_result["chunk"]["document_id"] == "doc_vec1"
+    )  # From conftest mock_query
     # Check document from mock_get_document in conftest.py
     assert first_result["document"] is not None
     assert first_result["document"]["id"] == "doc_vec1"
@@ -116,9 +116,10 @@ async def test_unified_search_vector(
         config={
             "k": limit,
             "search_type": "vector",
-            "include_graph": False # Default used by router when calling engine
+            "include_graph": False,  # Default used by router when calling engine
         },
     )
+
 
 @pytest.mark.asyncio
 async def test_unified_search_engine_error(
@@ -129,14 +130,12 @@ async def test_unified_search_engine_error(
     search_type = "keyword"
     limit = 5
     error_message = "Simulated engine query error"
-    
+
     mock_graph_rag_engine.query.side_effect = Exception(error_message)
     mock_graph_rag_engine.reset_mock()
 
     request_payload = SearchQueryRequest(
-        query=query_text,
-        search_type=search_type,
-        limit=limit
+        query=query_text, search_type=search_type, limit=limit
     ).model_dump()
 
     response = await test_client.post("/api/v1/search/query", json=request_payload)
@@ -148,13 +147,10 @@ async def test_unified_search_engine_error(
     assert "Search failed due to an internal server error." in response.json()["detail"]
 
     mock_graph_rag_engine.query.assert_awaited_once_with(
-        query_text, # Pass query_text positionally
-        config={
-            "k": limit,
-            "search_type": search_type,
-            "include_graph": False
-        }
+        query_text,  # Pass query_text positionally
+        config={"k": limit, "search_type": search_type, "include_graph": False},
     )
+
 
 @pytest.mark.asyncio
 async def test_unified_search_invalid_search_type(
@@ -164,12 +160,13 @@ async def test_unified_search_invalid_search_type(
     with pytest.raises(ValidationError) as excinfo:
         SearchQueryRequest(
             query="test query",
-            search_type="invalid_type", # Use an invalid type
-            limit=5
+            search_type="invalid_type",  # Use an invalid type
+            limit=5,
         )
     assert "String should match pattern" in str(excinfo.value)
     assert "vector|keyword" in str(excinfo.value)
     # No need to call the endpoint, validation happens on model creation
+
 
 @pytest.mark.asyncio
 async def test_unified_search_invalid_limit(
@@ -196,4 +193,4 @@ async def test_unified_search_invalid_limit(
     # response = await client.get("/api/v1/search/chunks/vector", params={"query": "limit test", "limit": 9999})
     # assert response.status_code == status.HTTP_200_OK # Or 422 if API caps input
 
-    # TODO: Add test for invalid limit for vector search if needed 
+    # TODO: Add test for invalid limit for vector search if needed

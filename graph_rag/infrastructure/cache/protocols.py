@@ -1,4 +1,5 @@
-from typing import Protocol, Optional, Any, Dict
+from typing import Any, Optional, Protocol
+
 
 class CacheService(Protocol):
     """Interface for a key-value cache service."""
@@ -17,4 +18,4 @@ class CacheService(Protocol):
 
     async def clear(self) -> None:
         """Clear the entire cache."""
-        ... 
+        ...

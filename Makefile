@@ -10,10 +10,13 @@ SHELL := /bin/bash
 # Define Python interpreter command
 PYTHON := python3
 UV := uv
+# Explicitly define python executable within the virtual environment
+VENV_PYTHON := $(VENV_DIR)/bin/python 
 
 # Add commands for NLTK and spaCy data
-DOWNLOAD_NLTK = $(PYTHON) -m nltk.downloader punkt
-DOWNLOAD_SPACY = $(PYTHON) -m spacy download en_core_web_sm
+# Use VENV_PYTHON for these commands to avoid issues with uv run environment
+DOWNLOAD_NLTK = $(VENV_PYTHON) -m nltk.downloader punkt
+DOWNLOAD_SPACY = $(VENV_PYTHON) -m spacy download en_core_web_sm
 
 # Project variables
 VENV_DIR ?= .venv
@@ -41,9 +44,9 @@ install-deps: ## Install Python dependencies for development using uv
 
 download-nlp-data: install-deps ## Download necessary NLTK and spaCy data models (Requires dependencies installed)
 	@echo "INFO: Downloading NLTK 'punkt'..."
-	$(UV) run $(DOWNLOAD_NLTK) # Use uv run to ensure it uses the venv
+	$(VENV_DIR)/bin/python -m nltk.downloader punkt
 	@echo "INFO: Downloading spaCy 'en_core_web_sm' model..."
-	$(UV) run $(DOWNLOAD_SPACY) # Use uv run
+	$(VENV_DIR)/bin/python -m spacy download en_core_web_sm
 
 install-dev: install-deps download-nlp-data ## Install dependencies and download NLP data for development
 	@echo "INFO: Development environment setup complete."

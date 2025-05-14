@@ -1,3 +1,3 @@
-from . import documents, chunks, ingestion, search
+from . import chunks, documents, ingestion, search
 
-__all__ = ["documents", "chunks", "ingestion", "search"] 
+__all__ = ["chunks", "documents", "ingestion", "search"]

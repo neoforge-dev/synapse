@@ -2,9 +2,10 @@
 # from . import interfaces, document_processor, entity_extractor, knowledge_graph_builder, graph_rag_engine
 
 __all__ = [
-    "interfaces", 
-    "document_processor", 
-    "entity_extractor", 
+    "document_processor",
+    "entity_extractor",
+    "graph_rag_engine",
+    "interfaces",
     "knowledge_graph_builder",
-    "graph_rag_engine"
-] 
+    "persistent_kg_builder",
+]

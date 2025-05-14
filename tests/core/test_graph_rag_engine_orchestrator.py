@@ -1,33 +1,50 @@
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch, call
-import uuid
+from unittest.mock import AsyncMock
 
 import pytest
-from typing import List, Dict, Any, Tuple
+
 from graph_rag.core.graph_rag_engine import GraphRAGEngineOrchestrator
-from graph_rag.llm.protocols import LLMService
 from graph_rag.core.interfaces import (
-    DocumentProcessor, EntityExtractor, KnowledgeGraphBuilder, EmbeddingService, GraphRepository, ChunkData,
-    VectorStore, ExtractedEntity, ExtractionResult, DocumentData,
-    SearchResultData,
+    ChunkData,
+    DocumentData,
+    DocumentProcessor,
+    EmbeddingService,
+    EntityExtractor,
+    ExtractedEntity,
+    ExtractionResult,
+    GraphRepository,
+    KnowledgeGraphBuilder,
+    VectorStore,
 )
-from graph_rag.domain.models import Document, Entity, Relationship, Chunk
-from graph_rag.services.ingestion import IngestionResult
-from graph_rag.core.graph_rag_engine import QueryResult
+from graph_rag.domain.models import Document
 
 
 @pytest.fixture
 def mock_document_processor():
     mock = AsyncMock(spec=DocumentProcessor)
+
     # FIX: Return ChunkData objects with document_id from input
     async def mock_chunk_side_effect(doc_data: DocumentData):
         # Simulate chunking based on input doc_data
         return [
-            ChunkData(id=f"chunk-{doc_data.id}-1", text="Chunk 1 content", document_id=doc_data.id, embedding=[], metadata={}),
-            ChunkData(id=f"chunk-{doc_data.id}-2", text="Chunk 2 content", document_id=doc_data.id, embedding=[], metadata={}),
+            ChunkData(
+                id=f"chunk-{doc_data.id}-1",
+                text="Chunk 1 content",
+                document_id=doc_data.id,
+                embedding=[],
+                metadata={},
+            ),
+            ChunkData(
+                id=f"chunk-{doc_data.id}-2",
+                text="Chunk 2 content",
+                document_id=doc_data.id,
+                embedding=[],
+                metadata={},
+            ),
         ]
+
     mock.chunk_document.side_effect = mock_chunk_side_effect
     return mock
+
 
 @pytest.fixture
 def mock_embedding_service():
@@ -36,40 +53,46 @@ def mock_embedding_service():
     mock.get_embedding_dimension.return_value = 10
     return mock
 
+
 @pytest.fixture
 def mock_entity_extractor() -> AsyncMock:
     extractor = AsyncMock(spec=EntityExtractor)
+
     async def side_effect(text):
         # Create some valid ExtractedEntity objects
         entities = [
             ExtractedEntity(id=f"e_{text[:5]}", label="TEST_LABEL", text=text[:5]),
-            ExtractedEntity(id="e_other", label="OTHER", text="other")
+            ExtractedEntity(id="e_other", label="OTHER", text="other"),
         ]
         # Return an ExtractionResult with valid entities and NO relationships
         # to avoid Pydantic validation issues with Relationship model in the test setup
         return ExtractionResult(entities=entities, relationships=[])
-        
+
     extractor.extract.side_effect = side_effect
     return extractor
+
 
 @pytest.fixture
 def mock_kg_builder():
     mock = AsyncMock(spec=KnowledgeGraphBuilder)
     return mock
 
+
 @pytest.fixture
 def mock_graph_repository():
     mock = AsyncMock(spec=GraphRepository)
     return mock
+
 
 @pytest.fixture
 def mock_vector_store():
     """Provides an AsyncMock for the VectorStore interface."""
     mock = AsyncMock(spec=VectorStore)
     # Configure specific return values or side effects if needed for tests
-    # Example: mock.add_chunks.return_value = None 
-    # Example: mock.search.return_value = [...] 
+    # Example: mock.add_chunks.return_value = None
+    # Example: mock.search.return_value = [...]
     return mock
+
 
 @pytest.fixture
 def graph_rag_engine(
@@ -78,7 +101,7 @@ def graph_rag_engine(
     mock_entity_extractor,
     mock_kg_builder,
     mock_graph_repository,
-    mock_vector_store
+    mock_vector_store,
 ):
     # Assuming VectorStore dependency needs mocking if used directly in process_and_store_document
     # For now, let's assume it's handled within kg_builder or repo
@@ -89,8 +112,9 @@ def graph_rag_engine(
         kg_builder=mock_kg_builder,
         graph_repo=mock_graph_repository,
         vector_store=mock_vector_store,
-        graph_store=mock_graph_repository
+        graph_store=mock_graph_repository,
     )
+
 
 @pytest.mark.asyncio
 async def test_process_and_store_document_success(
@@ -99,30 +123,33 @@ async def test_process_and_store_document_success(
     mock_embedding_service,
     mock_entity_extractor,
     mock_kg_builder,
-    mock_graph_repository
+    mock_graph_repository,
 ):
     """
     Test the successful processing and storing of a document.
     """
-    document = Document(id="doc1", content="Full document text.", metadata={"source": "test"})
+    document = Document(
+        id="doc1", content="Full document text.", metadata={"source": "test"}
+    )
 
     # FIX: Explicitly set the extract mock behavior for this test, overriding the fixture's side_effect
     # mock_entity_extractor.reset_mock() # Avoid resetting if it causes issues
-    mock_entity_extractor.extract = AsyncMock(return_value = ExtractionResult(
-        entities=[
-            ExtractedEntity(id="e_chunk1", label="TEST_LABEL", text="Chunk"),
-            ExtractedEntity(id="e_chunk2", label="TEST_LABEL", text="Chunk")
-        ],
-        relationships=[]
-    ))
+    mock_entity_extractor.extract = AsyncMock(
+        return_value=ExtractionResult(
+            entities=[
+                ExtractedEntity(id="e_chunk1", label="TEST_LABEL", text="Chunk"),
+                ExtractedEntity(id="e_chunk2", label="TEST_LABEL", text="Chunk"),
+            ],
+            relationships=[],
+        )
+    )
 
     # Add mock for vector store add_chunks if it's called
     # graph_rag_engine.vector_store.add_chunks = AsyncMock(return_value=None)
 
     # Call the method with doc_content and metadata as separate arguments
     await graph_rag_engine.process_and_store_document(
-        doc_content=document.content, 
-        metadata=document.metadata
+        doc_content=document.content, metadata=document.metadata
     )
 
     # Assertions
@@ -132,18 +159,19 @@ async def test_process_and_store_document_success(
 
     # Assert DocumentProcessor call
     # Construct the expected DocumentData object (need to handle generated doc_id? No, mock can use ANY)
-    from unittest.mock import ANY # Import ANY
     # expected_doc_data = DocumentData(id=ANY, content=document.content, metadata=document.metadata)
     # mock_document_processor.chunk_document.assert_awaited_once_with(expected_doc_data)
-    
+
     # Instead of using ANY with Pydantic, assert call count and inspect args:
     mock_document_processor.chunk_document.assert_awaited_once()
     call_args, call_kwargs = mock_document_processor.chunk_document.call_args
-    passed_doc_data = call_args[0] # Assuming DocumentData is the first positional arg
+    passed_doc_data = call_args[0]  # Assuming DocumentData is the first positional arg
     assert isinstance(passed_doc_data, DocumentData)
     assert passed_doc_data.content == document.content
     assert passed_doc_data.metadata == document.metadata
-    assert isinstance(passed_doc_data.id, str) # Check if ID is a string (was generated)
+    assert isinstance(
+        passed_doc_data.id, str
+    )  # Check if ID is a string (was generated)
 
     # Check calls for each chunk
     assert mock_embedding_service.generate_embedding.await_count == 2
@@ -158,11 +186,11 @@ async def test_process_and_store_document_success(
     mock_kg_builder.add_document.assert_awaited_once()
     call_args, _ = mock_kg_builder.add_document.await_args
     passed_doc_data = call_args[0]
-    captured_doc_id = passed_doc_data.id # Capture the generated document ID
+    captured_doc_id = passed_doc_data.id  # Capture the generated document ID
     assert isinstance(passed_doc_data, DocumentData)
     assert passed_doc_data.content == document.content
     assert passed_doc_data.metadata == document.metadata
-    assert isinstance(passed_doc_data.id, str) # Verify ID was generated
+    assert isinstance(passed_doc_data.id, str)  # Verify ID was generated
 
     assert mock_kg_builder.add_chunk.await_count == 2
     # Inspect the arguments of the calls
@@ -184,10 +212,10 @@ async def test_process_and_store_document_success(
         assert isinstance(chunk, ChunkData)
         if chunk.text == "Chunk 1 content":
             found_chunk1 = True
-            assert chunk.document_id == captured_doc_id # Use captured ID
+            assert chunk.document_id == captured_doc_id  # Use captured ID
         elif chunk.text == "Chunk 2 content":
             found_chunk2 = True
-            assert chunk.document_id == captured_doc_id # Use captured ID
+            assert chunk.document_id == captured_doc_id  # Use captured ID
         else:
             pytest.fail(f"Unexpected chunk text found: {chunk.text}")
     assert found_chunk1, "Chunk 1 was not passed to the KG builder"
@@ -197,7 +225,9 @@ async def test_process_and_store_document_success(
     mock_kg_builder.add_document.assert_awaited_once_with(passed_doc_data)
 
     # Check entity/relationship calls (simplified check for any call due to complex data)
-    assert mock_kg_builder.add_entity.await_count == 2 # One per chunk in this mock setup
+    assert (
+        mock_kg_builder.add_entity.await_count == 2
+    )  # One per chunk in this mock setup
     assert mock_kg_builder.add_relationship.await_count == 0
 
     # Check graph repository calls (assuming KG builder uses it internally, or if engine calls it directly)
@@ -222,14 +252,14 @@ async def test_process_and_store_document_success(
 # - Test with errors during entity extraction
 # - Test with errors during knowledge graph building
 
-    # Assert no other unexpected calls (optional, but good practice)
-    # e.g., mock_graph_repo methods should not have been called if not expected
+# Assert no other unexpected calls (optional, but good practice)
+# e.g., mock_graph_repo methods should not have been called if not expected
 
-    # # 8. Assert graph_repo methods called << DELETE THIS SECTION
-    # mock_graph_repo.add_document.assert_awaited_once_with(document)
-    # mock_graph_repo.add_chunk.assert_awaited_count(2)
-    # mock_graph_repo.add_entity.assert_awaited_count(2)
-    # mock_graph_repo.add_relationship.assert_awaited_once_with(\n    #     Relationship(source_id="E1", target_id="E2", label="FRIENDS", properties={})\n    # ) 
+# # 8. Assert graph_repo methods called << DELETE THIS SECTION
+# mock_graph_repo.add_document.assert_awaited_once_with(document)
+# mock_graph_repo.add_chunk.assert_awaited_count(2)
+# mock_graph_repo.add_entity.assert_awaited_count(2)
+# mock_graph_repo.add_relationship.assert_awaited_once_with(\n    #     Relationship(source_id="E1", target_id="E2", label="FRIENDS", properties={})\n    # )
 
 # Sample data for testing
 DOC_ID = "doc1"

@@ -1,53 +1,50 @@
 # System Patterns
 
 ## Core Architecture
-*   **Layers:** API (FastAPI) -> Services -> Core (Interfaces, Domain Models, Engine) -> Infrastructure (DB/Model Implementations) -> LLM Abstraction.
-    *   Dirs: `api/`, `services/`, `core/`, `infrastructure/`, `llm/`
-*   **DI:** FastAPI `Depends` + Factories/Singletons (`api/dependencies.py`).
-*   **Interfaces:** Core components use Protocols (`core/interfaces.py`).
+- **Layered Structure:** API (FastAPI) -> Services -> Core (Interfaces, Domain Models, Engine) -> Infrastructure (DB/Model Impls) -> LLM Abstraction.
+    - Corresponding Dirs: `api/`, `services/`, `core/`, `infrastructure/`, `llm/`.
+- **Dependency Injection (DI):** FastAPI `Depends` with factories/singletons via `api/dependencies.py`.
+- **Interfaces:** Defined as Protocols in `core/interfaces.py`.
 
-## Key Design Patterns
-*   Repository (`GraphRepository`)
-*   Strategy (Configurable components: VectorStore, EntityExtractor, LLMService)
-*   Singleton (`api/dependencies.py` for DB connections, LLMs, embedding models)
-*   Factory Functions (`api/dependencies.py` for component creation)
+## Key Design Patterns Used
+- Repository (e.g., `GraphRepository`).
+- Strategy (for configurable components like VectorStore, EntityExtractor, LLMService).
+- Singleton & Factory (primarily in `api/dependencies.py` for shared resources).
 
-## Data Modeling & Graph Ops
-*   **Domain Models:** Pydantic (`domain/models.py`: Document, Chunk, Entity, etc.).
-*   **Graph Schema:**
-    *   Labels: `:Document`, `:Chunk`, `:Entity`, etc.
-    *   Required Props: Custom `id` (string UUID).
-    *   Other data stored in node properties dict.
-    *   Timestamps: `created_at`, `updated_at` properties.
-    *   Relationships: `CONTAINS`, `MENTIONS`, etc.
-*   **Reconstructing Pydantic Models from `mgclient` Driver:**
-    1.  Get `node_obj` from driver.
-    2.  Copy `node_obj.properties` dict.
-    3.  Extract core fields (`id`, `type`, `name`, etc.) using `.get()` on the copy.
-    4.  Extract/parse standard fields (`created_at`, etc.) from the copy.
-    5.  Create `all_properties` dict excluding standard fields already handled.
-    6.  Instantiate Pydantic model, passing core fields as args and `all_properties` to model's `properties` field.
-    *   Ensures direct access to core fields + full metadata preservation in `.properties`.
-    *   Uses `_convert_neo4j_temporal_types` helper.
+## Data Modeling & Graph Operations
+- **Domain Models:** Pydantic models in `domain/models.py` (e.g., Document, Chunk, Entity).
+- **Graph Schema Highlights:**
+    - Labels: `:Document`, `:Chunk`, `:Entity`.
+    - Required Properties: `id` (string UUID), `created_at`, `updated_at`.
+    - Relationships: `CONTAINS`, `MENTIONS`.
+- **Pydantic Model Reconstruction (from `mgclient`):
+    - Driver's `node.properties` are mapped to Pydantic model fields.
+    - Core fields are direct attributes; other properties stored in a `properties` dict field.
+    - Utilizes `_convert_neo4j_temporal_types` helper. (Refer to codebase for exact logic).
 
-## Component Relationships (High-Level)
-*   API Routers -> Services/Engines
-*   Services -> Repositories + Core Components
-*   Engine -> Repositories + Core Components + LLMService
-*   Repositories -> Databases
-*   Extractors/Embedders -> External Models
+## High-Level Component Interactions
+- API Routers delegate to Services/Engines.
+- Services use Repositories & Core Components.
+- Engine uses Repositories, Core Components & LLMService.
+- Repositories interact with Databases.
+- Extractors/Embedders interact with external models.
 
-## Error Handling
-*   Detailed logging + Exception handlers.
-*   Fallback mocks (e.g., `MockLLMService`).
-*   Standard HTTP errors in API.
+## Error Handling Approach
+- Detailed logging and custom Exception handlers.
+- Fallback mock implementations (e.g., `MockLLMService`).
+- Standard HTTP error responses from API.
 
-## Testing
-*   **Framework:** `pytest` (`pytest-asyncio`, `httpx`, `unittest.mock`).
-*   **DB:** Dockerized Memgraph (integration), `pymgclient` (direct checks).
-*   **Execution:** `Makefile` (`test`).
-*   **Mocking:** `conftest.py` `test_client` fixture mocks dependencies heavily for API tests.
+## Testing Strategy
+- **Framework:** `pytest` (with `pytest-asyncio`, `httpx`, `unittest.mock`).
+- **Database Testing:** Dockerized Memgraph for integration tests; `pymgclient` for direct checks.
+- **Execution:** Via `Makefile` (e.g., `make test`).
+- **Mocking:** Extensive use of mocks in `conftest.py` and per-test setup, especially for API tests.
 
 ## Debugging
-*   Protocol: Structured approach (Observe -> Analyze -> Hypothesize -> Verify -> Fix -> Document). See `debugging-protocol.md`.
-*   Tools: Logging, `GraphDebugger`, DB queries. 
+## New Decisions & Patterns (Config/DI)
+- Configuration aliasing: `Settings` now maps `GRAPH_DB_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD` to Memgraph settings when corresponding `SYNAPSE_` variables are not set. `SYNAPSE_*` takes precedence.
+- Single settings source: Use `graph_rag.config.get_settings` throughout; avoid duplicate settings getters to prevent ambiguity.
+- Graph store selection: Prefer mgclient-based `MemgraphGraphRepository` in DI for MVP; avoid mixing with the Neo4j async repository in default paths.
+- FastAPI DI: Prefer app.state initialized via lifespan for core singletons (repo, vector store, extractors, engine), with lightweight getters accessing state.
+- Follows structured protocol (see `debugging-protocol.md`).
+- Key Tools: Logging, `GraphDebugger` utility, direct database queries. 

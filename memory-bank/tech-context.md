@@ -1,35 +1,38 @@
 # Tech Context
 
 ## Core Stack
-*   **Language:** Python 3.10+
-*   **Frameworks:** FastAPI, Typer
-*   **Graph DB:** Memgraph (via `mgclient` driver)
-    *   Nodes use custom `id` property (string UUID).
-    *   Data reconstructed to Pydantic models (see `system-patterns.md`).
-*   **Vector Store:** Configurable (`vector_store_type`); Default: `simple` (in-memory `SimpleVectorStore`)
-*   **Embedding:** Configurable (`embedding_provider`); Default: `sentencetransformers` (via `SentenceTransformerEmbeddingService`, default model: `all-MiniLM-L6-v2`)
-*   **Entity Extraction:** Configurable (`entity_extractor_type`); Default: `spacy` (via `SpacyEntityExtractor`, default model: `en_core_web_sm`)
-*   **LLM:** Configurable (`LLM_TYPE`); Default: `mock` (`MockLLMService`); `openai` (`OpenAILLMService`) placeholder exists.
-*   **Cache:** Configurable (`cache_type`); Default: `memory` (`MemoryCache`).
-*   **DI:** FastAPI `Depends`, factories/singletons in `graph_rag/api/dependencies.py`.
+- **Language:** Python 3.10+
+- **Frameworks:** FastAPI, Typer
+- **Graph DB:** Memgraph (via `mgclient`)
+- **Vector Store:** Default `simple` (in-memory `SimpleVectorStore`); Configurable via `vector_store_type`.
+- **Embedding:** Default `sentencetransformers` (`all-MiniLM-L6-v2`); Configurable via `embedding_provider`.
+- **Entity Extraction:** Default `spacy` (`en_core_web_sm`); Configurable via `entity_extractor_type`.
+- **LLM:** Default `mock` (`MockLLMService`); `openai` available; Configurable via `LLM_TYPE`.
+- **Cache:** Default `memory` (`MemoryCache`); Configurable via `cache_type`.
+- **DI:** FastAPI `Depends`, factories in `graph_rag/api/dependencies.py`.
 
-## Development
-*   **Deps:** Poetry (`pyproject.toml`, `poetry.lock`)
-*   **Env:** `pyenv` (recommended), `poetry` venvs
-*   **Lint/Format:** Ruff (`poetry run ruff check/format .`)
-*   **Testing:** Pytest (`pytest-asyncio`, `httpx`, `unittest.mock`) (`poetry run pytest`)
-*   **Config:** Pydantic Settings (`graph_rag/config/settings.py`), `.env` files.
-*   **Tasks:** `Makefile` (`install-dev`, `test`, `format`)
+## Development Workflow
+- **Dependency Management:** Poetry
+- **Environment:** `pyenv` + Poetry virtual environments
+- **Linting/Formatting:** Ruff
+- **Testing:** Pytest (tools: `pytest-asyncio`, `httpx`, `unittest.mock`)
+- **Configuration:** Pydantic Settings (`graph_rag/config/settings.py`), `.env` files
+- **Task Runner:** `Makefile` (common tasks: `install-dev`, `test`, `format`)
 
-## Constraints
-*   Requires running Memgraph instance (Docker).
-*   Requires internet for NLP model downloads (e.g., `poetry run python -m spacy download en_core_web_sm`).
-*   Requires `asyncio` programming.
+## Key Operational Constraints
+- Running Memgraph instance (Docker recommended).
+- Internet access for initial NLP model downloads.
+- `asyncio` for core operations.
 
-## Key Libs (non-dev)
-*   `fastapi`, `uvicorn`, `typer`, `mgclient`
-*   `pydantic`, `pydantic-settings`
-*   `sentence-transformers`, `spacy`, `nltk` (`punkt`)
-*   `tenacity`, `python-dotenv`, `aiofiles`
-
-*(See `pyproject.toml` for versions)* 
+## Critical Libraries (Non-Dev)
+## Environment & Configuration Notes
+- Primary env prefix: `SYNAPSE_` for app settings (e.g., `SYNAPSE_MEMGRAPH_HOST`).
+- Supported aliases for tests/integration:
+  - `GRAPH_DB_URI` → host/port/SSL detection for Memgraph (e.g., `bolt://host:7687`, `bolt+s://host:7687`).
+  - `NEO4J_USERNAME` / `NEO4J_PASSWORD` → mapped to `memgraph_user` / `memgraph_password`.
+- `SYNAPSE_*` values take precedence over aliases.
+- FastAPI, Uvicorn, Typer, `mgclient`
+- Pydantic, Pydantic-Settings
+- Sentence-Transformers, SpaCy, NLTK (`punkt`)
+- Tenacity, python-dotenv, aiofiles
+- *(Refer to `pyproject.toml` for specific versions)* 

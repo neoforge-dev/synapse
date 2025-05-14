@@ -1,16 +1,16 @@
-from typing import TypeVar, Dict, Any, List
+from typing import Any, TypeVar
 
 # Type variable for LLM responses
 LLM = TypeVar("LLM")
 
 # Type aliases for common LLM-related data structures
-EntityDict = Dict[str, Any]
-RelationshipDict = Dict[str, Any]
-MessageDict = Dict[str, str]
-ConversationHistory = List[MessageDict]
+EntityDict = dict[str, Any]
+RelationshipDict = dict[str, Any]
+MessageDict = dict[str, str]
+ConversationHistory = list[MessageDict]
 
 # Type alias for embedding vectors
-EmbeddingVector = List[float]
+EmbeddingVector = list[float]
 
 # Type alias for token usage statistics
-TokenUsageStats = Dict[str, int] 
+TokenUsageStats = dict[str, int]

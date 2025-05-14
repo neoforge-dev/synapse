@@ -1,24 +1,26 @@
 """Tests for graph-specific debugging scenarios."""
 
-import pytest
 import logging
+from asyncio import TimeoutError  # Import TimeoutError
 from datetime import datetime
-from pathlib import Path
-from typing import Dict, Any, List, Tuple
+
 import neo4j
-from unittest.mock import patch, AsyncMock, MagicMock
-from asyncio import TimeoutError # Import TimeoutError
+import pytest
 
 # Setup logger for this test module
 logger = logging.getLogger(__name__)
 
-from graph_rag.core.debug_tools import GraphDebugger, DebugContext, SystemState
-from graph_rag.core.senior_debug_protocol import Investigation, TestFailure, SeniorDebugProtocol
-from graph_rag.domain.models import Node, Relationship # Use correct models
+from graph_rag.core.debug_tools import DebugContext, GraphDebugger
+from graph_rag.core.senior_debug_protocol import (
+    Investigation,
+    TestFailure,
+)
+
 
 # Define a simple placeholder SchemaError for testing
 class SchemaError(Exception):
     pass
+
 
 @pytest.mark.asyncio
 async def test_debug_orphaned_nodes(graph_debugger: GraphDebugger):
@@ -58,17 +60,18 @@ async def test_debug_orphaned_nodes(graph_debugger: GraphDebugger):
         investigation, context = await graph_debugger.debug_test_failure(
             failure_exception,
             test_file="tests/core/test_graph_debugging_scenarios.py",
-            test_function="test_debug_orphaned_nodes"
+            test_function="test_debug_orphaned_nodes",
         )
 
         # Check for graph-specific hypotheses
         assert any(h["type"] == "graph_structure" for h in investigation.hypotheses)
-        assert context is not None # Ensure context was created
+        assert context is not None  # Ensure context was created
 
     finally:
         # Cleanup
         async with graph_debugger.driver.session() as session:
             await session.run("MATCH (n:TestNode) DETACH DELETE n")
+
 
 @pytest.mark.asyncio
 async def test_debug_query_performance(graph_debugger: GraphDebugger):
@@ -85,20 +88,14 @@ async def test_debug_query_performance(graph_debugger: GraphDebugger):
 
     try:
         # Execute a potentially problematic query
-        query = """
-            MATCH (n:PerformanceTest)
-            WHERE n.id = 'perf1'
-            MATCH (n)-[*1..5]-(m)
-            RETURN m
-        """
 
         # Create dummy failure
         failure_exception = TimeoutError("Query performance issue")
         # Debug performance issue
         investigation, context = await graph_debugger.debug_test_failure(
-            failure_exception, 
+            failure_exception,
             test_file="tests/core/test_graph_debugging_scenarios.py",
-            test_function="test_debug_query_performance"
+            test_function="test_debug_query_performance",
         )
 
         assert isinstance(investigation, Investigation)
@@ -122,6 +119,7 @@ async def test_debug_query_performance(graph_debugger: GraphDebugger):
         async with graph_debugger.driver.session() as session:
             await session.run("MATCH (n:PerformanceTest) DETACH DELETE n")
 
+
 @pytest.mark.asyncio
 async def test_debug_relationship_patterns(graph_debugger: GraphDebugger):
     """Test debugging scenario with relationship pattern issues."""
@@ -143,15 +141,18 @@ async def test_debug_relationship_patterns(graph_debugger: GraphDebugger):
         investigation, context = await graph_debugger.debug_test_failure(
             failure_exception,
             test_file="tests/core/test_graph_debugging_scenarios.py",
-            test_function="test_debug_relationship_patterns"
+            test_function="test_debug_relationship_patterns",
         )
 
         assert isinstance(investigation, Investigation)
         assert isinstance(context, DebugContext)
 
         # Check for graph-specific hypotheses
-        graph_hypotheses = [h for h in investigation.hypotheses
-                          if h["type"] in ["graph_structure", "query_performance"]]
+        graph_hypotheses = [
+            h
+            for h in investigation.hypotheses
+            if h["type"] in ["graph_structure", "query_performance"]
+        ]
         assert len(graph_hypotheses) > 0
 
         # Test state capture
@@ -164,6 +165,7 @@ async def test_debug_relationship_patterns(graph_debugger: GraphDebugger):
         async with graph_debugger.driver.session() as session:
             await session.run("MATCH (n:PatternTest) DETACH DELETE n")
 
+
 @pytest.mark.asyncio
 async def test_debug_transaction_issues(graph_debugger: GraphDebugger):
     """Test debugging scenario with transaction issues."""
@@ -173,10 +175,15 @@ async def test_debug_transaction_issues(graph_debugger: GraphDebugger):
         async with graph_debugger.driver.session() as session:
             try:
                 # Correct Memgraph syntax: CREATE CONSTRAINT ON (n:Label) ASSERT n.property IS UNIQUE;
-                await session.run(f"CREATE CONSTRAINT ON (n:TransactionTest) ASSERT n.id IS UNIQUE")
+                await session.run(
+                    "CREATE CONSTRAINT ON (n:TransactionTest) ASSERT n.id IS UNIQUE"
+                )
             except neo4j.exceptions.ClientError as e:
                 # Handle potential race condition or existing constraint from other tests if necessary
-                if "already exists" not in str(e).lower() and "constraint requires a label and property" not in str(e).lower(): # Check for Memgraph messages
+                if (
+                    "already exists" not in str(e).lower()
+                    and "constraint requires a label and property" not in str(e).lower()
+                ):  # Check for Memgraph messages
                     raise
 
         # Start a transaction (using the driver directly)
@@ -188,7 +195,9 @@ async def test_debug_transaction_issues(graph_debugger: GraphDebugger):
                 # Simulate a transaction error
                 try:
                     # This might cause a constraint violation or other issue
-                    await tx.run("CREATE (n:TransactionTest {id: 'tx1'})") # Duplicate ID
+                    await tx.run(
+                        "CREATE (n:TransactionTest {id: 'tx1'})"
+                    )  # Duplicate ID
                     await tx.commit()
                     pytest.fail("Transaction should have failed")
                 except Exception as e:
@@ -205,9 +214,9 @@ async def test_debug_transaction_issues(graph_debugger: GraphDebugger):
                     # )
                     # Pass exception and file/func name separately
                     investigation, context = await graph_debugger.debug_test_failure(
-                        e, 
-                        test_file="tests/core/test_graph_debugging_scenarios.py", 
-                        test_function="test_debug_transaction_issues"
+                        e,
+                        test_file="tests/core/test_graph_debugging_scenarios.py",
+                        test_function="test_debug_transaction_issues",
                     )
 
                     assert isinstance(investigation, Investigation)
@@ -217,7 +226,7 @@ async def test_debug_transaction_issues(graph_debugger: GraphDebugger):
                     # assert any("transaction" in h["description"].lower()
                     #           for h in investigation.hypotheses)
                     # Relaxed assertion: Check if any hypothesis was generated
-                    assert investigation.hypotheses # Check if the list is not empty
+                    assert investigation.hypotheses  # Check if the list is not empty
 
         # Now, use debugger to check transaction status if needed
         # Example: Check active transactions (might be empty after commit/rollback)
@@ -235,9 +244,12 @@ async def test_debug_transaction_issues(graph_debugger: GraphDebugger):
                 await session.run(f"DROP CONSTRAINT {constraint_name}")
             except neo4j.exceptions.ClientError as e:
                 # Ignore error if constraint doesn't exist (might have failed setup or DROP syntax varies)
-                if "constraint does not exist" not in str(e).lower() and \
-                   "Constraint with name" not in str(e).lower(): # Memgraph might use different phrasing
+                if (
+                    "constraint does not exist" not in str(e).lower()
+                    and "Constraint with name" not in str(e).lower()
+                ):  # Memgraph might use different phrasing
                     logger.warning(f"Could not drop constraint {constraint_name}: {e}")
+
 
 @pytest.mark.asyncio
 async def test_debug_index_issues(graph_debugger: GraphDebugger):
@@ -268,7 +280,9 @@ async def test_debug_index_issues(graph_debugger: GraphDebugger):
         #     test_code=query,
         #     timestamp=datetime.now()
         # )
-        failure_exception = Warning("Query might need index") # Use a generic Warning for now
+        failure_exception = Warning(
+            "Query might need index"
+        )  # Use a generic Warning for now
 
         # Debug potential index issue
         # investigation, context = await graph_debugger.debug_test_failure(failure)
@@ -293,6 +307,7 @@ async def test_debug_index_issues(graph_debugger: GraphDebugger):
         async with graph_debugger.driver.session() as session:
             await session.run("MATCH (n:IndexTest) DETACH DELETE n")
 
+
 # Helper to create dummy TestFailure objects
 def create_dummy_failure(test_name: str, error_message: str) -> TestFailure:
     return TestFailure(
@@ -302,5 +317,5 @@ def create_dummy_failure(test_name: str, error_message: str) -> TestFailure:
         test_function=test_name,
         traceback_info="",
         test_code="",
-        timestamp=datetime.now()
-    ) 
+        timestamp=datetime.now(),
+    )

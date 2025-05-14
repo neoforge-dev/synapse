@@ -1,9 +1,12 @@
 # Product Context
 
-- **Problem:** Enhance standard RAG with graph-based context.
-- **Users:** RAG developers, graph data scientists.
-- **Value:** Reliable API/CLI for graph-enhanced RAG, clear data contracts (Pydantic).
+- **Problem Solved:** Enhancing standard RAG by incorporating graph-based context.
+- **Target Users:**
+    - RAG developers.
+    - Graph data scientists/researchers.
+- **Core Value Proposition:**
+    - Reliable API and CLI.
+    - Pydantic-enforced data contracts for consistency.
 
 - Enhance RAG with graph context.
-- Target Users: RAG developers, graph researchers.
 - Key Feature: API/CLI with reliable Pydantic data contracts. 
