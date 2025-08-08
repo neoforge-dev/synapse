@@ -130,12 +130,29 @@ def create_search_router() -> APIRouter:
 
         try:
             if stream:
-                if request.search_type != "vector":
-                    # Only vector streaming is supported for now
-                    raise HTTPException(
-                        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-                        detail="Streaming is only implemented for vector searches.",
-                    )
+                # Keyword streaming behind feature flag
+                if request.search_type == "keyword":
+                    try:
+                        from graph_rag.config import get_settings
+
+                        settings = get_settings()
+                        if not getattr(settings, "enable_keyword_streaming", False):
+                            raise HTTPException(
+                                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                                detail=(
+                                    "Streaming is only implemented for vector searches."
+                                ),
+                            )
+                    except HTTPException:
+                        raise
+                    except Exception:
+                        # If settings cannot be loaded, default to disabled
+                        raise HTTPException(
+                            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                            detail=(
+                                "Streaming is only implemented for vector searches."
+                            ),
+                        )
                 # Set up streaming response
                 async def stream_search_results():
                     try:

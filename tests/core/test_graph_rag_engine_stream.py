@@ -47,4 +47,6 @@ async def test_stream_context_vector_returns_results_in_order():
     assert len(results) == 2
     assert results[0].chunk.id == "c1"
     assert results[1].chunk.id == "c2"
-    mock_vector_store.search.assert_awaited_once_with("find me", top_k=10)
+    mock_vector_store.search.assert_awaited_once_with(
+        "find me", top_k=10, search_type="vector"
+    )

@@ -127,6 +127,12 @@ class Settings(BaseSettings):
         description="Maximum number of tokens for the context retrieved from the graph.",
     )
 
+    # --- Feature Flags ---
+    enable_keyword_streaming: bool = Field(
+        False,
+        description="Enable streaming of keyword search results (NDJSON).",
+    )
+
     # Add other settings as needed...
 
     @model_validator(mode="after")

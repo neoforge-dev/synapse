@@ -376,16 +376,20 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
     async def stream_context(
         self, query: str, search_type: str = "vector", limit: int = 5
     ) -> AsyncGenerator[SearchResultData, None]:
-        """Stream relevant context chunks.
+        """Stream relevant context chunks for vector or keyword search.
 
-        Minimal vector-only implementation to support API streaming paths.
+        For now, retrieve all results once and yield sequentially to keep behavior
+        deterministic and tests predictable. This can be optimized later to true
+        incremental streaming when backends support it.
         """
-        if search_type != "vector":
+        if search_type not in {"vector", "keyword"}:
             raise ValueError(f"Unsupported search type for streaming: {search_type}")
         logger.info(
-            f"Streaming context (vector) for query '{query}' (limit={limit})"
+            f"Streaming context ({search_type}) for query '{query}' (limit={limit})"
         )
-        results = await self._vector_store.search(query, top_k=limit)
+        results = await self._vector_store.search(
+            query, top_k=limit, search_type=search_type
+        )
         for item in results:
             yield item
 
