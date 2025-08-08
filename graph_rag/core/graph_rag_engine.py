@@ -373,6 +373,22 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         retrieved_chunks, _ = await self._retrieve_and_build_context(query, config)
         return retrieved_chunks
 
+    async def stream_context(
+        self, query: str, search_type: str = "vector", limit: int = 5
+    ) -> AsyncGenerator[SearchResultData, None]:
+        """Stream relevant context chunks.
+
+        Minimal vector-only implementation to support API streaming paths.
+        """
+        if search_type != "vector":
+            raise ValueError(f"Unsupported search type for streaming: {search_type}")
+        logger.info(
+            f"Streaming context (vector) for query '{query}' (limit={limit})"
+        )
+        results = await self._vector_store.search(query, top_k=limit)
+        for item in results:
+            yield item
+
     async def answer_query(
         self,
         query_text: str,

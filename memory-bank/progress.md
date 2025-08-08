@@ -12,35 +12,43 @@
 - **API:** FastAPI app, routers, DI via `api/dependencies.py`. Document management (`/api/v1/documents`) endpoint tests are now passing with mocks.
 - **Testing:** `pytest` setup; foundational API/Memgraph tests pass. `SimpleGraphRAGEngine` and orchestrator have strong test coverage.
 
-## High-Priority Next Steps (Actionable To-Do List)
-1. Run full test suite; confirm new config tests pass and previous validation error is gone.
-2. Fix streaming endpoint test (`/api/v1/search/stream`) data shape issue.
-3. Standardize DI to mgclient repo; gate/remove legacy client usages to avoid drift.
-4. Address remaining API test failures (mocks and DI consistency).
+## High-Priority Plan (Next Steps)
+Guided by Pareto and core user journey (ingest → retrieve → answer), we will deliver highest-value improvements first.
+
+1) Streamed context retrieval from core engine (must-have for API parity)
+   - Reduces divergence between orchestrator and simple engine
+   - Enables consistent streaming in `/search/query?stream=true`
+   - TDD: add failing test for `SimpleGraphRAGEngine.stream_context`, then implement minimal functionality (vector search only; keyword later if needed)
+
+2) DI hardening and guard tests (stability, fast failure)
+   - Add unit tests for DI getters to return 503 when state is missing (`get_vector_store`, `get_ingestion_service`, `get_graph_rag_engine`)
+   - Ensure factories are consistently used across app/state
+
+3) Consolidate Memgraph client usage in DI (eliminate drift)
+   - Verify no vestigial neo4j driver paths remain
+   - Confirm mgclient-backed repo is the only concrete implementation wired at runtime
+
+4) Coverage on ingest/query vertical slice (lock behavior)
+   - Add tests around ingestion → vector store → query mapping for metadata/score propagation
+   - Keep YAGNI: test only the critical paths actually used by API/CLI
+
+5) Refactors while green (only after tests)
+   - Clarify naming and dependency seams in `api/dependencies.py`
+   - Remove dead code paths and comments that can mislead future work
 
 ## Other Important Tasks (Post-Critical Path)
-- Refine error handling across layers.
-- Scalability/performance improvements.
-- Deployment strategy.
-- Monitoring/logging.
-- (Post-MVP) Web UI.
+- Robust error mapping in API (uniform problem details)
+- Performance tuning of vector/graph joins (as real backends are used)
+- Deployment/observability (non-MVP)
 
-## Key Known Issues & Risks
-- **Config drift across envs:** Addressed via alias support; still needs verification in CI.
-- **API Test Failures (various):** Several API tests still fail due to:
-    - Missing mock methods (e.g., `get_all_documents` on `GraphRepository` mock).
-    - Dependency injection issues (e.g., `get_ingestion_service` not defined in test scope).
-- **Streaming Endpoint Test:** Fails due to mock data structure mismatch.
-- **Low Overall Test Coverage:** Actively being addressed. Skipped tests are a major factor.
-- **~45 Skipped Tests:** Investigation complete; primary cause is external dependencies/environment config. Cannot address directly.
-- **Tooling Instability:** `edit_file` tool has shown issues with large/complex changes on certain files, blocking specific refactoring tasks.
-- **DI Standardization:** Ensure consistent use of `dependencies.py` across all tests.
-- **`SimpleGraphRAGEngine._get_graph_context`:** Full error handling logic for `get_neighbors` still unverified due to view limitations.
+## Immediate Sprint Backlog
+- [ ] Add failing test: `tests/core/test_graph_rag_engine_stream.py::test_stream_context_vector`
+- [ ] Implement `SimpleGraphRAGEngine.stream_context` (vector only)
+- [ ] Run tests, keep green
+- [ ] Commit changes with descriptive message
+- [ ] Add DI guard tests for 503 behavior
 
-## Next Steps (Priority Order)
-1. Execute tests; fix failures starting with streaming endpoint.
-2. Consolidate Memgraph client usage to mgclient repo path in DI.
-3. Continue increasing test coverage.
-
-All MemgraphGraphRepository CRUD tests still pass (chunk property persistence fixed previously). 
-`tests/api/test_documents.py` remains green after DI and date comparison fixes.
+## Notes
+- YAGNI: Implement streaming for vector first; keyword later if needed
+- TDD non-negotiable: define behavior in tests before code
+- Keep vertical slices small and shippable
