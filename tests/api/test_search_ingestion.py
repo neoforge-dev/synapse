@@ -375,6 +375,21 @@ async def test_search_stream_success(
 
 
 @pytest.mark.asyncio
+async def test_search_stream_keyword_not_implemented(
+    test_client: AsyncClient, mock_graph_rag_engine: AsyncMock
+):
+    """Streaming keyword search should return 501 Not Implemented."""
+    payload = {"query": "abc", "search_type": "keyword", "limit": 1}
+
+    async with test_client.stream(
+        "POST", "/api/v1/search/query?stream=true", json=payload
+    ) as response:
+        assert response.status_code == status.HTTP_501_NOT_IMPLEMENTED
+        # Drain if any body is present
+        async for _ in response.aiter_lines():
+            pass
+
+@pytest.mark.asyncio
 async def test_search_stream_handles_search_result_data(
     test_client: AsyncClient, mock_graph_rag_engine: AsyncMock
 ):

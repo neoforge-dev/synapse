@@ -130,6 +130,12 @@ def create_search_router() -> APIRouter:
 
         try:
             if stream:
+                if request.search_type != "vector":
+                    # Only vector streaming is supported for now
+                    raise HTTPException(
+                        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                        detail="Streaming is only implemented for vector searches.",
+                    )
                 # Set up streaming response
                 async def stream_search_results():
                     try:
@@ -247,6 +253,9 @@ def create_search_router() -> APIRouter:
         except ValueError as ve:
             logger.warning(f"Search validation error for query '{request.query}': {ve}")
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+        except HTTPException as http_exc:
+            # Propagate intentional HTTP errors (e.g., 501 for unsupported streaming)
+            raise http_exc
         except RuntimeError as re:
             logger.error(
                 f"Runtime error during search for query '{request.query}': {re}",
