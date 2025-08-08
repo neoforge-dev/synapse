@@ -1,50 +1,59 @@
-name: Python CI
+name: CI
 
 on:
   push:
-    branches: ["main"]
+    branches: [ main ]
   pull_request:
-    branches: ["main"]
-
-permissions:
-  contents: read
+    branches: [ main ]
 
 jobs:
-  build:
+  validate:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11"] # Test against Python 3.11
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-
+          python-version: '3.12'
       - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        run: pipx install uv
+      - name: Install deps
+        run: uv pip install -e .[dev]
+      - name: Lint
+        run: uv run ruff check .
+      - name: Format check
+        run: uv run ruff format --check .
+      - name: Unit tests
+        run: make test
 
-      - name: Install dependencies
+  memgraph-integration:
+    if: contains(github.event.pull_request.labels.*.name, 'memgraph')
+    runs-on: ubuntu-latest
+    services:
+      memgraph:
+        image: memgraph/memgraph:latest
+        ports:
+          - 7687:7687
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        run: pipx install uv
+      - name: Install deps
+        run: uv pip install -e .[dev]
+      - name: Wait for Memgraph
         run: |
-          uv pip install --system -e '.[dev]' # Install app and dev dependencies
-
-      - name: Lint with Ruff
-        run: |
-          uv run ruff check . --output-format=github
-          uv run ruff format . --check
-
-      # Type Checking (Optional - can be slow, enable if needed)
-      # - name: Type check with MyPy
-      #   run: |
-      #     uv run mypy graph_rag/
-
-      - name: Test with pytest
-        run: |
-          # Note: This runs tests without a Memgraph instance.
-          # Consider using Docker services in Actions for integration tests later.
-          uv run pytest
+          for i in {1..30}; do
+            echo "Checking Memgraph... attempt $i"
+            nc -z 127.0.0.1 7687 && echo "Memgraph is up" && exit 0
+            sleep 2
+          done
+          echo "Memgraph failed to start" && exit 1
+      - name: Run integration tests
+        env:
+          TEST_MEMGRAPH_URI: bolt://127.0.0.1:7687
+          TEST_NEO4J_URI: bolt://127.0.0.1:7687
+          TEST_NEO4J_USER: neo4j
+          TEST_NEO4J_PASSWORD: password
+        run: make test-integration
