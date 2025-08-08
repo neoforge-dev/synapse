@@ -130,11 +130,6 @@ def create_search_router() -> APIRouter:
 
         try:
             if stream:
-                # SimpleGraphRAGEngine doesn't support streaming currently
-                logger.warning(
-                    f"Streaming search requested for '{request.query}', but not implemented by the current engine."
-                )
-
                 # Set up streaming response
                 async def stream_search_results():
                     try:
@@ -144,18 +139,29 @@ def create_search_router() -> APIRouter:
                         )
                         if inspect.iscoroutine(result_iter):
                             result_iter = await result_iter
-                        async for chunk in result_iter:
+                        async for item in result_iter:
+                            # Support both SearchResultData and ChunkData yields
+                            score_val = 0.0
+                            chunk_obj = item
+                            # If SearchResultData-like
+                            if hasattr(item, "chunk") and hasattr(item, "score"):
+                                chunk_obj = getattr(item, "chunk")
+                                score_val = float(getattr(item, "score", 0.0))
+                            else:
+                                # If ChunkData-like with optional score attr
+                                score_val = float(getattr(item, "score", 0.0))
+
                             # Convert chunk to API schema
                             chunk_schema = schemas.ChunkResultSchema(
-                                id=chunk.id,
-                                text=chunk.text,
-                                document_id=chunk.document_id,
+                                id=chunk_obj.id,
+                                text=chunk_obj.text,
+                                document_id=chunk_obj.document_id,
                             )
 
                             # Create search result
                             result = schemas.SearchResultSchema(
                                 chunk=chunk_schema,
-                                score=chunk.score if hasattr(chunk, "score") else 0.0,
+                                score=score_val,
                                 document=None,  # Omit document for streaming responses
                             ).model_dump()
 

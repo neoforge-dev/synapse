@@ -19,7 +19,12 @@ from graph_rag.api.schemas import (
     SearchQueryRequest,
 )
 from graph_rag.core.graph_rag_engine import QueryResult
-from graph_rag.core.interfaces import ChunkData, GraphRepository, VectorStore
+from graph_rag.core.interfaces import (
+    ChunkData,
+    GraphRepository,
+    VectorStore,
+    SearchResultData,
+)
 
 # Remove direct app import (should be already removed or commented out)
 # from graph_rag.api.main import app
@@ -368,6 +373,52 @@ async def test_search_stream_success(
         [expected_call], any_order=True
     )
 
+
+@pytest.mark.asyncio
+async def test_search_stream_handles_search_result_data(
+    test_client: AsyncClient, mock_graph_rag_engine: AsyncMock
+):
+    """Ensure streaming works when engine yields SearchResultData objects."""
+
+    async def mock_stream_results_generator():
+        chunk = ChunkData(
+            id="chunk_sr_0",
+            text="SR Content 0",
+            document_id="doc_sr_0",
+            metadata={},
+            embedding=[],
+        )
+        yield SearchResultData(chunk=chunk, score=0.77)
+
+    mock_graph_rag_engine.stream_context = AsyncMock(
+        return_value=mock_stream_results_generator()
+    )
+
+    payload = {"query": "find me", "search_type": "vector", "limit": 1}
+
+    received = []
+    async with test_client.stream(
+        "POST", "/api/v1/search/query?stream=true", json=payload
+    ) as response:
+        assert response.status_code == status.HTTP_200_OK
+        assert response.headers["content-type"] == "application/x-ndjson"
+        async for line in response.aiter_lines():
+            if line:
+                received.append(json.loads(line))
+
+    assert len(received) == 1
+    item = received[0]
+    assert item["score"] == 0.77
+    assert item["chunk"]["id"] == "chunk_sr_0"
+    assert item["chunk"]["text"] == "SR Content 0"
+    assert item["chunk"]["document_id"] == "doc_sr_0"
+    assert item["document"] is None
+
+    from unittest.mock import call
+
+    mock_graph_rag_engine.stream_context.assert_has_calls(
+        [call("find me", "vector", 1)], any_order=True
+    )
 
 @pytest.mark.asyncio
 async def test_search_no_results(test_client: AsyncClient, mock_graph_rag_engine):
