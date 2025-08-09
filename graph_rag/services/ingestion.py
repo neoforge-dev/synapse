@@ -1,4 +1,6 @@
 import logging
+import asyncio
+import time
 import re
 import uuid
 from typing import Any, Optional
@@ -85,6 +87,7 @@ class IngestionService:
             IngestionResult with document and chunk IDs
         """
         print(f"DEBUG: IngestionService.ingest_document called for doc {document_id}")
+        start_ts = time.monotonic()
         id_source = None
         try:
             if isinstance(metadata, dict):
@@ -117,6 +120,7 @@ class IngestionService:
             if normalized_topics:
                 metadata["topics"] = normalized_topics
         # Optionally replace existing chunks and vectors for idempotent re-ingestion
+        vectors_deleted_attempted = 0
         if replace_existing:
             try:
                 existing_chunks = await self.graph_store.get_chunks_by_document_id(
@@ -124,6 +128,7 @@ class IngestionService:
                 )
                 if existing_chunks:
                     old_chunk_ids = [c.id for c in existing_chunks]
+                    vectors_deleted_attempted = len(old_chunk_ids)
                     logger.info(
                         "Pre-delete: doc_id=%s id_source=%s existing_chunks=%d",
                         document_id,
@@ -142,9 +147,13 @@ class IngestionService:
                         )
                     except Exception:
                         logger.debug("Graph chunk deletion step failed or unsupported; continuing")
-                    # Delete from vector store best-effort
+                    # Delete from vector store best-effort with retry/backoff
                     try:
-                        await self.vector_store.delete_chunks(old_chunk_ids)
+                        await self._retry(
+                            lambda: self.vector_store.delete_chunks(old_chunk_ids),
+                            attempts=3,
+                            base_delay=0.2,
+                        )
                         logger.info(
                             "Vector delete: doc_id=%s id_source=%s deleted_chunks=%d",
                             document_id,
@@ -190,6 +199,7 @@ class IngestionService:
         )
 
         # 3. Generate embeddings (if requested)
+        vectors_added_expected = 0
         if self.embedding_service and generate_embeddings:
             logger.info(
                 "Generating embeddings for %s: %d chunks",
@@ -209,10 +219,16 @@ class IngestionService:
                             chunk.metadata = {}
                         chunk.metadata["document_id"] = document_id
                     logger.info("Embeddings generated successfully.")
+                    # Count how many will be added to vector store
+                    vectors_added_expected = sum(1 for c in chunk_objects if c.embedding is not None)
 
                     # Add chunks to vector store *after* embeddings are assigned (if generated)
                     try:
-                        await self.vector_store.add_chunks(chunk_objects)
+                        await self._retry(
+                            lambda: self.vector_store.add_chunks(chunk_objects),
+                            attempts=3,
+                            base_delay=0.2,
+                        )
                         logger.info(
                             "Vector store: added %d chunks for %s",
                             len(chunk_objects),
@@ -350,8 +366,53 @@ class IngestionService:
         logger.info(
             f"Ingestion complete for document {document_id}. Saved {len(chunk_ids)} chunks."
         )
+        # Emit compact metrics line for observability
+        duration_ms = int((time.monotonic() - start_ts) * 1000)
+        try:
+            logger.info(
+                "IngestMetrics doc_id=%s id_source=%s chunks=%d vectors_deleted=%d vectors_added_expected=%d duration_ms=%d",
+                document_id,
+                id_source,
+                len(chunk_ids),
+                vectors_deleted_attempted,
+                vectors_added_expected,
+                duration_ms,
+            )
+        except Exception:
+            # Never fail on metrics logging
+            pass
         # 5. Return result
         return IngestionResult(document_id=document_id, chunk_ids=chunk_ids)
+
+    async def _retry(
+        self,
+        func: callable,  # returns Awaitable
+        attempts: int = 3,
+        base_delay: float = 0.1,
+        factor: float = 2.0,
+    ) -> None:
+        """Retry an async operation with exponential backoff.
+
+        Args:
+            func: Zero-arg callable returning an awaitable
+            attempts: Max attempts
+            base_delay: Initial delay in seconds
+            factor: Backoff multiplier
+        """
+        last_err: Exception | None = None
+        delay = base_delay
+        for i in range(1, attempts + 1):
+            try:
+                await func()
+                return
+            except Exception as e:  # noqa: BLE001
+                last_err = e
+                if i >= attempts:
+                    break
+                await asyncio.sleep(delay)
+                delay *= factor
+        if last_err is not None:
+            raise last_err
 
     def _extract_topics(self, content: str, metadata: dict[str, Any]) -> list[str]:
         """Derive topics from metadata or content heuristics.
