@@ -283,6 +283,11 @@ async def ingest(
     read_stdin: bool = typer.Option(
         False, "--stdin", help="Read document content from STDIN; ignores file path"
     ),
+    json_summary: bool = typer.Option(
+        False,
+        "--json-summary",
+        help="With --json for directories, include a summary with totals",
+    ),
 ) -> None:
     """
     Ingest a document into the graph database.
@@ -567,34 +572,68 @@ async def ingest(
                 return
 
             results_payload: list[dict[str, Any]] = [] if as_json else None
+            succeeded = 0
+            failed = 0
             for path in candidates:
                 fm = parse_front_matter(path)
                 merged_meta = _merge_metadata(fm)
                 try:
-                    res = await process_and_store_document(
-                        path,
-                        merged_meta,
-                        enable_embeddings=embeddings,
-                        replace_existing=replace,
-                    )
-                except TypeError:
-                    res = await process_and_store_document(path, merged_meta)
-                if as_json:
-                    # Expect dict-like from implementation/tests; fallback minimal
-                    if isinstance(res, dict):
-                        results_payload.append(res)
-                    else:
-                        results_payload.append({"path": str(path)})
-                processed_count += 1
+                    try:
+                        res = await process_and_store_document(
+                            path,
+                            merged_meta,
+                            enable_embeddings=embeddings,
+                            replace_existing=replace,
+                        )
+                    except TypeError:
+                        res = await process_and_store_document(path, merged_meta)
+                    if as_json:
+                        # Expect dict-like from implementation/tests; fallback minimal
+                        item = res if isinstance(res, dict) else {"path": str(path)}
+                        # Add status for per-file outcome
+                        if isinstance(item, dict) and "status" not in item:
+                            item = {**item, "status": "ok"}
+                        results_payload.append(item)
+                    succeeded += 1
+                except Exception as e:
+                    failed += 1
+                    logger.error(f"Failed to ingest {path}: {e}", exc_info=True)
+                    if as_json:
+                        results_payload.append({
+                            "path": str(path),
+                            "error": str(e),
+                            "status": "error",
+                        })
+                    # Continue processing other files in directory mode
+                    continue
+                finally:
+                    processed_count += 1
             if processed_count == 0:
                 typer.echo("No eligible files found to ingest.")
                 raise typer.Exit(1)
             if as_json:
-                typer.echo(json.dumps(results_payload, ensure_ascii=False))
+                if json_summary:
+                    summary_obj = {
+                        "files": results_payload,
+                        "summary": {
+                            "processed": processed_count,
+                            "succeeded": succeeded,
+                            "failed": failed,
+                        },
+                    }
+                    typer.echo(json.dumps(summary_obj, ensure_ascii=False))
+                else:
+                    typer.echo(json.dumps(results_payload, ensure_ascii=False))
             else:
-                typer.echo(
-                    f"Successfully processed and stored {processed_count} files from {file_path}."
-                )
+                # Preserve existing success message expected by tests
+                if failed == 0:
+                    typer.echo(
+                        f"Successfully processed and stored {processed_count} files from {file_path}."
+                    )
+                else:
+                    typer.echo(
+                        f"Processed {processed_count} files from {file_path} ({succeeded} succeeded, {failed} failed)."
+                    )
         else:
             # Single file
             if dry_run:
@@ -693,6 +732,11 @@ def ingest_command(
     read_stdin: bool = typer.Option(
         False, "--stdin", help="Read document content from STDIN; ignores file path"
     ),
+    json_summary: bool = typer.Option(
+        False,
+        "--json-summary",
+        help="With --json for directories, include a summary with totals",
+    ),
 ) -> None:
     """Wrapper function to run the async ingest command with options."""
     asyncio.run(
@@ -708,5 +752,6 @@ def ingest_command(
             dry_run=dry_run,
             as_json=as_json,
             read_stdin=read_stdin,
+            json_summary=json_summary,
         )
     )

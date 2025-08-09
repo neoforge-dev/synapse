@@ -9,6 +9,9 @@ from graph_rag.cli.commands.admin import check_health  # Import admin command
 
 # Import command functions directly
 from graph_rag.cli.commands.ingest import ingest_command
+from graph_rag.cli.commands.discover import discover_command
+from graph_rag.cli.commands.parse import parse_command
+from graph_rag.cli.commands.store import store_command
 from graph_rag.cli.commands.search import search_query
 from graph_rag.config import get_settings  # Import factory
 
@@ -32,6 +35,9 @@ app = typer.Typer(
 
 # Register commands directly
 app.command("ingest")(ingest_command)
+app.command("discover")(discover_command)
+app.command("parse")(parse_command)
+app.command("store")(store_command)
 app.command("search")(search_query)
 app.command("admin-health")(check_health)  # Renamed for clarity
 
