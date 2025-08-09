@@ -60,3 +60,40 @@ async def test_faiss_vector_store_persistence(tmp_path):
     store2 = FaissVectorStore(path=str(path), embedding_dimension=dim)
     results2 = await store2.search_similar_chunks(emb_a, limit=1)
     assert results2 and results2[0].chunk.id == "c1"
+
+
+@pytest.mark.asyncio
+async def test_faiss_vector_store_delete_and_rebuild(tmp_path):
+    from graph_rag.infrastructure.vector_stores.faiss_vector_store import (
+        FaissVectorStore,
+    )
+
+    dim = 8
+    path = tmp_path / "faiss_del"
+    store = FaissVectorStore(path=str(path), embedding_dimension=dim)
+
+    emb_a = [1.0] + [0.0] * (dim - 1)
+    emb_b = [0.0, 1.0] + [0.0] * (dim - 2)
+    chunks = [
+        ChunkData(id="c1", text="alpha", document_id="d1", embedding=emb_a),
+        ChunkData(id="c2", text="beta", document_id="d2", embedding=emb_b),
+    ]
+    await store.add_chunks(chunks)
+
+    # Ensure both are searchable initially
+    res_a = await store.search_similar_chunks(emb_a, limit=2)
+    assert any(r.chunk.id == "c1" for r in res_a)
+    assert any(r.chunk.id == "c2" for r in res_a)
+
+    # Delete c1 and verify it's removed
+    await store.delete_chunks(["c1"])
+    res_after = await store.search_similar_chunks(emb_a, limit=2)
+    assert not any(r.chunk.id == "c1" for r in res_after)
+    assert any(r.chunk.id == "c2" for r in res_after)
+
+    # Reload from disk and verify deletion persists
+    store2 = FaissVectorStore(path=str(path), embedding_dimension=dim)
+    res_after_reload = await store2.search_similar_chunks(emb_a, limit=2)
+    assert not any(r.chunk.id == "c1" for r in res_after_reload)
+    # c2 should still be present
+    assert any(r.chunk.id == "c2" for r in res_after_reload)

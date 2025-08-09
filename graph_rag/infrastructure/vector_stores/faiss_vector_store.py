@@ -89,6 +89,8 @@ class FaissVectorStore(VectorStore):
                     "document_id": ch.document_id,
                     "text": ch.text,
                     "metadata": ch.metadata or {},
+                    # Persist original (unnormalized) embedding for rebuilds
+                    "embedding": ch.embedding,
                 }
             )
         if not vectors:
@@ -147,21 +149,32 @@ class FaissVectorStore(VectorStore):
         )
 
     async def delete_chunks(self, chunk_ids: list[str]) -> None:  # type: ignore[override]
-        # Not supported efficiently with IndexFlat; rebuild by filtering rows.
+        # Rebuild by filtering rows and re-adding remaining embeddings.
         if not chunk_ids:
             return
-        keep_rows = [r for r in self._rows if r["chunk_id"] not in set(chunk_ids)]
+        to_delete = set(chunk_ids)
+        keep_rows = [r for r in self._rows if r.get("chunk_id") not in to_delete]
         self._rows = keep_rows
         self._row_by_chunk_id = {r["chunk_id"]: i for i, r in enumerate(self._rows)}
-        # Rebuild index
+
+        # Rebuild FAISS index from persisted embeddings
         self.index = faiss.IndexFlatIP(self.embedding_dimension)
         if self._rows:
-            vecs = []
+            # Collect embeddings; skip rows that lack persisted embedding (legacy)
+            reb_vectors = []
             for r in self._rows:
-                # Without storing embeddings on disk, can't rebuild; for now, we drop support for delete without full rebuild.
-                # Future: persist embeddings alongside metadata.
-                pass
-        # Save new (empty) index for now; document limitation
+                emb = r.get("embedding")
+                if isinstance(emb, list) and len(emb) == self.embedding_dimension:
+                    reb_vectors.append(emb)
+                else:
+                    logger.warning(
+                        "Row %s missing embedding for FAISS rebuild; skipping. Consider re-ingesting.",
+                        r.get("chunk_id"),
+                    )
+            if reb_vectors:
+                vec = np.array(reb_vectors, dtype=np.float32)
+                vec = _normalize(vec)
+                self.index.add(vec)
         self._save()
 
     async def delete_store(self) -> None:  # type: ignore[override]

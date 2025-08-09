@@ -1,117 +1,73 @@
-# Implementation Plan (Pragmatic, Pareto-first)
+# Graph RAG MCP: Identity, Idempotence, and Vector Store Robustness Plan
 
-This plan targets the 20% of work that delivers 80% of value for a Mac-based power user with a large personal knowledge base (Notion/Obsidian), using CLI/API today and MCP tomorrow.
+This plan captures the remaining details and concrete tasks to fully deliver stable document identity, idempotent ingestion, robust vector store operations, and good observability.
 
 ## Objectives
-- Persistent, reliable local knowledge base: ingest Markdown/Notion export, persist vectors, build a graph, query via CLI/API.
-- Zero-to-usable in minutes on macOS; optional auto-start.
-- Thin MCP server to expose ingest/search/query tools to chat IDEs.
+- Stable, canonical `document_id` across imports and renames
+- Idempotent re-ingestion that atomically replaces chunks and vectors
+- Correct FAISS deletion (no ghost vectors; index remains consistent)
+- Notion export nuances handled reliably (IDs, property tables)
+- End-to-end wiring in CLI/API with observability of identity provenance
+- Comprehensive tests (unit, service, infrastructure, integration)
 
-## Guiding Principles
-- TDD for each vertical slice (tests first, minimal code to green, refactor).
-- YAGNI: implement only what directly serves the core flow.
-- Clean architecture: API → Services → Core → Infra, DI’d, test-friendly.
+## Current State
+- Implemented `graph_rag/utils/identity.py` with multi-priority ID derivation.
+- Ingestion service supports `replace_existing=True` to delete existing chunks and vectors before re-ingest.
+- CLI derives canonical `document_id` and attaches `id_source` to metadata; parses YAML front matter and Notion property tables.
+- Added tests for identity derivation and idempotent re-ingestion.
+- FAISS store supports persistence and search; deletion currently drops metadata rows but cannot truly rebuild index (no stored embeddings).
 
-## Core User Journey
-1) Install on Mac; run one command to bring up API (+ Memgraph if used).
-2) Ingest a folder of Markdown (Obsidian/Notion export) with front matter metadata.
-3) Persist vectors between runs (local FAISS index + sidecar metadata).
-4) Query via CLI/API; stream results if desired.
-5) (Next) Use same actions from MCP-enabled chat tools.
+## Gaps and Risks
+- FAISS deletion correctness: without stored embeddings, "delete" cannot rebuild the index; vectors can go stale or require full reset.
+- Observability: ensure `id_source` and `topics` are consistently persisted and queryable; make logs actionable.
+- Notion export walker: ignore attachment subfolders where appropriate; robust parsing of property tables; edge cases in names.
+- Test coverage: add infrastructure tests for FAISS deletions; service-level tests covering replace_existing + FAISS behavior.
 
-## Workstream A: Vector Store Persistence (FAISS)
-- Why: Highest leverage for reliability; enables offline, resumable knowledge base.
-- Deliverables:
-  - New `FaissVectorStore` (async interface-compatible):
-    - Persist index to disk via `faiss.write_index/read_index`.
-    - Persist chunk metadata/id mappings via JSON sidecar in the same directory.
-    - Generate embeddings via configured `EmbeddingService` when missing.
-    - Cosine/IP search (IndexFlatIP) with normalized vectors.
-  - Settings additions:
-    - `vector_store_type = "faiss"` (default stays "simple").
-    - `vector_store_path` (e.g., `~/.graph_rag/faiss`), created on first run.
-  - Factory wiring in `api/dependencies.py` to construct FAISS store when selected.
-  - Tests:
-    - Ingest chunks without embeddings and search → results shape ok.
-    - Restart store (new instance, same path) and search again → persistence verified.
+## Detailed Plan
 
-## Workstream B: Markdown/Obsidian Ingestion
-- Why: Directly serves local KB ingestion.
-- Deliverables:
-  - Front matter parser (YAML) in CLI ingest path; map tags/topic/date to metadata.
-  - Ignore binary assets; handle UTF-8.
-  - Directory ingestion support in CLI: process all Markdown files recursively, skip `.obsidian/`, images, and hidden files.
-  - Tests:
-    - Ingest sample markdown with front matter; metadata captured and merged with CLI `--metadata` overrides.
-    - Directory ingestion invokes processing for all eligible files.
-  - Notes:
-    - Obsidian front matter keys to treat specially: `tags`/`Topics` → `topics` (list of strings), `aliases` → `aliases`, date fields if present → `created_at`/`updated_at`.
-    - Keep parsing tolerant; warn on YAML errors, continue.
-  - Acceptance:
-    - CLI can ingest a directory path; logs per-file; exits non-zero only if no files processed.
-    - Unit tests pass; no regression in existing CLI tests.
+### 1) FAISS Vector Store Robustness (CRITICAL)
+- Persist embeddings alongside metadata so we can rebuild indexes upon deletions.
+- Update `FaissVectorStore.add_chunks` to store `embedding` per row (raw, not normalized).
+- Update `delete_chunks` to filter rows, then rebuild a fresh index from stored embeddings of remaining rows (normalize on add to index).
+- Backward compatibility: if rows loaded without `embedding`, log a warning and skip those rows during rebuild; in that case, encourage full re-ingestion.
+- Add tests:
+  - Add chunk A and B → search returns both as appropriate
+  - Delete A → ensure A is absent in results and store remains consistent
+  - Persistence round-trip: delete, save, reload, and verify state is preserved
 
-## Workstream C: Notion Export Ingestion (Phase 1)
-- Why: Many users export Notion as Markdown ZIP.
-- Deliverables:
-  - Path walker for Notion-exported Markdown; normalize filenames; strip Notion artifacts.
-  - Parse Notion front matter or property tables (if present) at top of file; map `Tags`/`Created`/`Last edited time`.
-  - Tests: ingest a mini Notion export tree; metadata preserved and topics extracted.
-  - Acceptance: files with Notion folder names ("Page Name xxxx") are ingested with stable `document_id` derivation.
+### 2) Idempotent Re-ingestion Hardening
+- Current service deletes graph chunks and calls `vector_store.delete_chunks` before re-adding.
+- Add small guardrails/logging:
+  - Log the number of chunks found and deleted by doc id
+  - Handle vector store delete exceptions without failing ingestion
+- Extend tests if needed to validate vector store delete is invoked for old chunk IDs.
 
-## Workstream D: Topic Tagging (Pragmatic)
-- Why: Sorting/organizing by topics provides immediate value.
-- Deliverables:
-  - Heuristic topic extraction (first heading / tag / simple keyphrase fallback) with deterministic behavior;
-  - Stored in chunk/document metadata for graph queries.
-  - Graph projection: optionally add `:Topic` nodes linked to documents/chunks when topics present.
-  - Tests with deterministic inputs/outputs (no external LLM needed initially).
-  - Acceptance: searching by topic keyword returns chunks tagged with the topic via keyword path.
+### 3) Notion Export Walker & Identity Nuances
+- Ensure walker ignores Notion asset subfolders (e.g., exported attachments like `.../Page Name .../assets`); currently non-md files are skipped, which is sufficient but document in README/ARCH.
+- Identity derivation already considers UUIDs in parent directories and filenames (dashed/compact). Add doc examples.
+- Keep table parsing robust (already in CLI).
 
-## Workstream E: Autostart Ergonomics (Mac)
-- Why: “It just runs” UX.
-- Deliverables:
-  - `make up` target to start Memgraph + API.
-  - Sample `launchd` plist and script; doc steps to enable/disable.
-  - Smoke test for `make up` (non-blocking).
-  - Acceptance: `make up` runs API on default port and tails logs; `make down` stops.
+### 4) Observability & Metadata
+- Persist `id_source` into `Document.metadata` and keep through pipeline.
+- Ensure topics normalization already implemented (done). Consider a flag to disable topic projection when not desired (optional).
+- Logging: start/end and key milestones in ingestion; include `document_id` and `id_source`.
 
-## Workstream F: MCP Server (Thin Proxy)
-- Why: Unblocks chat/IDE integration without reworking core.
-- Deliverables:
-  - Python MCP server exposing tools:
-    - `graph_rag.ingest_files(paths[], metadata?)`
-    - `graph_rag.search(query, type, limit, stream?)`
-    - `graph_rag.query_answer(text, k?)`
-  - Unit tests for tool handlers (mock API calls).
-  - Docs: `docs/MCP.md` usage and configuration.
-  - Acceptance: smoke script can call MCP server methods and receive valid responses using mocked API.
+### 5) CLI & Service Integration
+- CLI already derives canonical `document_id` and passes `id_source`. Re-ingestion behavior relies on service flag; defaults to replace existing.
+- Consider a future CLI flag `--no-replace` if needed.
 
-## Documentation Upgrades
-- `README.md`: Quickstart (Mac), CLI/API, config table, FAQs.
-- `docs/ARCHITECTURE.md`: one-pager mapping core → services → infra.
-- `docs/PRD.md`: scope, personas, top jobs-to-be-done, non-goals.
-- `docs/BACKLOG.md`: curated, prioritized list (sync with this plan).
+### 6) Testing
+- Unit tests: identity derivation (done), FAISS delete/rebuild (to add).
+- Service tests: re-ingestion deletes vectors (present), can expand assertions after FAISS fix.
+- API/CLI smoke already cover ingestion flows.
 
-## Risks / Considerations
-- Embedding model load time (sentence-transformers) → allow `mock`/smaller model; cache model instance.
-- FAISS index consistency → guard writes (temp + replace), validate dimension, normalize vectors.
-- Notion export variability → start with Markdown path; document unsupported bits.
+### 7) Documentation
+- Keep `ARCHITECTURE.md` and `README.md` consistent with identity strategy and idempotence.
+- Add notes on FAISS persistence and deletion trade-offs.
 
-## Milestones (Incremental)
-1) FAISS persistence (A) — tests + wiring — ship.
-2) Obsidian front matter + directory ingestion (B) — tests + CLI support — ship.
-3) Notion export path (C) — tests — ship.
-4) Topics (D) — tests — ship.
-5) Autostart (E) — docs + make target — ship.
-6) MCP server (F) — tests + docs — ship.
-7) README/ARCH/PRD/BACKLOG — ship.
-
-## Acceptance per Milestone
-- Green unit tests (`make test`), existing suite unaffected.
-- New tests for the slice; CI validate passes.
-- Backwards-compatible defaults; no breaking changes to existing API/CLI.
-
----
-
-Next action: Implement Milestone 1 (FAISS persistence) with tests and wiring.
+## Acceptance Criteria
+- Re-ingesting a doc with same `document_id` replaces chunks in graph and vectors; no duplicate chunks or stale vectors remain.
+- FAISS `delete_chunks` removes vectors accurately and persists state; after reload, searches reflect deletions.
+- Identity derivation passes tests for metadata, Notion UUIDs, content and path hash fallbacks.
+- CLI processes Notion markdown exports, derives IDs consistently, and attaches `id_source`.
+- All tests pass locally (unit + infra). Integration tests remain green.
