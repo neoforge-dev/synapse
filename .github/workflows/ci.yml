@@ -20,21 +20,12 @@ jobs:
         run: uv venv
       - name: Install deps
         run: uv pip install -e .[dev]
+      - name: Ensure pip tooling in venv
+        run: uv pip install -U pip setuptools wheel
       - name: Setup NLP models
         run: |
           uv run python -m nltk.downloader punkt
-          uv run python - <<'PY'
-          import sys
-          import subprocess
-          try:
-              import spacy
-              spacy.load("en_core_web_sm")
-              print("spaCy model en_core_web_sm already present")
-          except Exception:
-              # Install via pip package name if available
-              subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "en_core_web_sm"])
-              print("Installed en_core_web_sm wheel")
-          PY
+          uv run python -m spacy download en_core_web_sm
       - name: Lint (errors only)
         run: uv run ruff check .
       - name: Format
