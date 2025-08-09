@@ -33,7 +33,7 @@ API_PORT ?= 8000
 # API_PORT := $(shell $(PYTHON) -c "from $(PACKAGE_NAME).config import settings; print(settings.api_port)" 2>/dev/null || echo 8000)
 
 # Phony targets (prevents conflicts with files of the same name)
-.PHONY: help install-dev download-nlp-data lint format test test-memgraph test-all run-api run-memgraph stop-memgraph logs-memgraph clean test-integration
+.PHONY: help install-dev download-nlp-data lint format test test-memgraph test-all run-api run-memgraph stop-memgraph logs-memgraph clean test-integration up down
 
 help: ## Display this help screen
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -109,6 +109,13 @@ stop-memgraph: ## Stop and remove Memgraph service container
 
 logs-memgraph: ## Tail logs for the Memgraph service
 	docker-compose logs -f memgraph
+
+up: ## Start Memgraph and API (detached Memgraph, foreground API)
+	$(MAKE) run-memgraph
+	$(MAKE) run-api
+
+down: ## Stop Memgraph service and any foreground API process (Ctrl+C API)
+	$(MAKE) stop-memgraph
 
 clean: ## Remove cache files and build artifacts
 	find . -type f -name "*.pyc" -delete
