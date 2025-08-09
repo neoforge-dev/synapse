@@ -7,7 +7,8 @@
 - CLI (Typer) calls services directly in-process (`synapse ingest`, `synapse search`).
 - Ingestion flow:
   1) Parse front matter / Notion property table → normalized metadata (`topics`, `aliases`, dates)
-  2) Process to chunks via `DocumentProcessor`
+  2) Derive canonical `document_id` (metadata `id` → Notion UUID → Obsidian `id` → content hash → path-hash fallback)
+  3) Process to chunks via `DocumentProcessor`
   3) Optional embeddings via `EmbeddingService` → `VectorStore`
   4) Persist `Document`/`Chunk` to graph and create relationships (`CONTAINS`, topics)
   5) Project `Topic` nodes and relationships to `Document` and `Chunk`

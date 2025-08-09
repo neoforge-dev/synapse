@@ -28,6 +28,10 @@ Notes:
 - Directory ingest skips hidden files and `.obsidian/` folders; accepts `.md`, `.markdown`, `.txt`.
 - `--embeddings` enables vector embeddings during ingestion (defaults off). When off, only graph+topics are stored; when on, semantic search is enabled.
 
+Identity and idempotence:
+- The system will derive a stable `document_id` per file/page (priority: explicit metadata `id` → Notion page UUID → Obsidian `id` → normalized content hash → path-hash fallback).
+- Re-ingesting the same content updates the existing document/chunks instead of duplicating.
+
 ### Configuration
 
 Set environment variables or `.env` with `SYNAPSE_` prefix. Key options:

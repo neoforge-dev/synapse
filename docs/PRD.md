@@ -20,3 +20,4 @@ Turn personal notes (Notion/Obsidian) into a queryable knowledge graph with topi
 - Ingest a Notion/Obsidian folder in minutes
 - Topics visible as graph edges; semantic search returns relevant chunks
 - One-command startup and clear Quickstart
+- Stable document identity: re-ingesting the same page/file updates in-place; renames/moves do not duplicate documents
