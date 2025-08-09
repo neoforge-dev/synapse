@@ -241,6 +241,10 @@ class GraphRepository(Protocol):
         """Retrieves a chunk by its ID."""
         ...
 
+    async def get_chunks_by_document_id(self, document_id: str) -> list[Chunk]:
+        """Retrieves all chunks associated with a given document ID."""
+        ...
+
     async def add_entity(self, entity: Entity) -> None:
         """Adds or updates an entity node."""
         ...

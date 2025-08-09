@@ -22,6 +22,7 @@ from graph_rag.infrastructure.document_processor.simple_processor import ChunkSp
 
 # Service Under Test
 from graph_rag.services.ingestion import IngestionResult, IngestionService
+from graph_rag.domain.models import Document as DomainDocument
 
 # -- Fixtures --
 
@@ -195,6 +196,61 @@ async def test_ingest_document_creates_document(
     assert added_doc.id == result.document_id  # Use result.document_id for consistency
     assert added_doc.content == sample_text
     assert added_doc.metadata == metadata
+
+
+@pytest.mark.asyncio
+async def test_reingest_replaces_existing_chunks_and_vectors(
+    mock_graph_repository: AsyncMock,
+    mock_embedding_service: MagicMock,
+    mock_document_processor: MagicMock,
+    mock_entity_extractor: MagicMock,
+    mock_vector_store: MagicMock,
+):
+    service = IngestionService(
+        document_processor=mock_document_processor,
+        entity_extractor=mock_entity_extractor,
+        graph_store=mock_graph_repository,
+        embedding_service=mock_embedding_service,
+        vector_store=mock_vector_store,
+    )
+    document_id = str(uuid.uuid4())
+    metadata = {"source": "idempotence-test"}
+
+    # First ingest produces N chunks
+    first_chunks = [
+        Chunk(id="c1", text="t1", document_id=document_id, metadata={}),
+        Chunk(id="c2", text="t2", document_id=document_id, metadata={}),
+    ]
+    mock_document_processor.chunk_document.return_value = first_chunks
+    # Simulate existing chunks fetch returns first_chunks for replace_existing probe
+    mock_graph_repository.get_chunks_by_document_id.return_value = first_chunks
+
+    await service.ingest_document(
+        document_id, "content v1", metadata, generate_embeddings=False, replace_existing=True
+    )
+
+    # On second ingest, we should delete previous chunks and vectors, then add new ones
+    second_chunks = [
+        Chunk(id="c3", text="t3", document_id=document_id, metadata={}),
+    ]
+    mock_document_processor.chunk_document.return_value = second_chunks
+    # After deletion, subsequent get is irrelevant
+    mock_graph_repository.get_chunks_by_document_id.return_value = first_chunks
+
+    await service.ingest_document(
+        document_id, "content v2", metadata, generate_embeddings=False, replace_existing=True
+    )
+
+    # Verify we attempted to delete old chunks in graph (by running the delete query)
+    assert mock_graph_repository.execute_query.called
+    # Verify vector store delete_chunks called with old ids
+    mock_vector_store.delete_chunks.assert_any_call(["c1", "c2"])
+    # New chunk was added, not the old ones
+    added_chunk_ids = [call.args[0].id for call in mock_graph_repository.add_chunk.call_args_list]
+    assert "c3" in added_chunk_ids
+    assert "c1" in added_chunk_ids or "c2" in added_chunk_ids  # first ingest
+    # Ensure total calls reflect two ingests: first 2, then 1 more
+    assert len(added_chunk_ids) == 3
 
 
 @pytest.mark.asyncio
