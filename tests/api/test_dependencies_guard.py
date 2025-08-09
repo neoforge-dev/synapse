@@ -22,7 +22,9 @@ async def test_search_endpoint_returns_503_when_vector_store_missing(app: FastAP
         if isinstance(route, APIRoute)
     ]
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
         payload = {"query": "hello", "search_type": "vector", "limit": 1}
         resp = await client.post("/api/v1/search/", json=payload)
         assert resp.status_code == status.HTTP_503_SERVICE_UNAVAILABLE

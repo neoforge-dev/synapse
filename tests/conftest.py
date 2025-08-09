@@ -468,6 +468,29 @@ async def test_client(
     app.dependency_overrides[get_document_processor] = lambda: mock_doc_processor
     app.dependency_overrides[get_knowledge_graph_builder] = lambda: mock_kg_builder
     app.dependency_overrides[get_entity_extractor] = lambda: mock_entity_extractor
+    # Also override state-aware getters used by routers (to avoid 503 during normal tests)
+    try:
+        from graph_rag.api.main import (
+            get_graph_repository as main_get_graph_repository,
+            get_vector_store as main_get_vector_store,
+            get_ingestion_service as main_get_ingestion_service,
+        )
+
+        app.dependency_overrides[main_get_graph_repository] = lambda: mock_graph_repo
+        app.dependency_overrides[main_get_vector_store] = lambda: mock_vector_store
+        app.dependency_overrides[main_get_ingestion_service] = (
+            lambda: mock_ingestion_service
+        )
+    except Exception:
+        # If import fails, skip; guard tests will manipulate overrides explicitly
+        pass
+    # Also populate app.state so state-aware getters succeed in normal tests
+    try:
+        app.state.graph_repository = mock_graph_repo
+        app.state.vector_store = mock_vector_store
+        app.state.ingestion_service = mock_ingestion_service
+    except Exception:
+        pass
     # Override BackgroundTasks dependency to use the mock
     app.dependency_overrides[BackgroundTasks] = lambda: mock_background_tasks
 
@@ -628,7 +651,9 @@ async def memgraph_connection() -> AsyncGenerator[AsyncDriver, None]:
                 f"Memgraph connection attempt {attempt + 1}/{max_attempts} failed: {e}"
             )
             if attempt == max_attempts - 1:
-                logger.error("Max Memgraph connection attempts reached. Skipping Memgraph-dependent tests.")
+                logger.error(
+                    "Max Memgraph connection attempts reached. Skipping Memgraph-dependent tests."
+                )
                 pytest.skip(
                     f"Memgraph not available at {uri}; skipping Memgraph-dependent tests"
                 )
@@ -673,7 +698,9 @@ async def memgraph_repo() -> AsyncGenerator[MemgraphGraphRepository, None]:
         yield repo
     except Exception as e:
         logger.error(f"Error setting up memgraph_repo fixture: {e}")
-        pytest.skip(f"Memgraph not available; skipping MemgraphGraphRepository tests: {e}")
+        pytest.skip(
+            f"Memgraph not available; skipping MemgraphGraphRepository tests: {e}"
+        )
     finally:
         if repo:
             await repo.close()

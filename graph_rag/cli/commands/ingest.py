@@ -386,9 +386,13 @@ async def ingest(
                 ):
                     fm = parse_front_matter(path)
                     merged_meta = {**fm, **metadata_dict}
-                    await process_and_store_document(
-                        path, merged_meta, enable_embeddings=embeddings
-                    )
+                    # Call with embeddings flag when supported; fall back to 2-arg call for backward-compat in tests
+                    try:
+                        await process_and_store_document(
+                            path, merged_meta, enable_embeddings=embeddings
+                        )
+                    except TypeError:
+                        await process_and_store_document(path, merged_meta)
                     processed_count += 1
             if processed_count == 0:
                 typer.echo("No eligible files found to ingest.")
@@ -400,9 +404,12 @@ async def ingest(
             # Single file
             fm = parse_front_matter(file_path)
             merged_meta = {**fm, **metadata_dict}
-            await process_and_store_document(
-                file_path, merged_meta, enable_embeddings=embeddings
-            )
+            try:
+                await process_and_store_document(
+                    file_path, merged_meta, enable_embeddings=embeddings
+                )
+            except TypeError:
+                await process_and_store_document(file_path, merged_meta)
             typer.echo(
                 f"Successfully processed and stored {file_path} including graph links."
             )

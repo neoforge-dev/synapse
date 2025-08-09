@@ -58,7 +58,9 @@ async def memgraph_repo() -> AsyncGenerator[MemgraphGraphRepository, None]:
 
         yield repo
     except (mgclient.Error, ConnectionRefusedError, ConnectionError) as e:
-        pytest.skip(f"Memgraph not available; skipping MemgraphGraphRepository tests: {e}")
+        pytest.skip(
+            f"Memgraph not available; skipping MemgraphGraphRepository tests: {e}"
+        )
     except Exception as e:
         pytest.skip(f"Skipping Memgraph tests due to setup error: {e}")
     finally:

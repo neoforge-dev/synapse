@@ -224,7 +224,13 @@ class SimpleVectorStore(VectorStore):
             # Keyword search implementation might need adjustment if it doesn't return scores
             results_with_scores = await self.keyword_search(query_text, k=top_k)
         else:  # Default to vector search
-            query_embedding = await self.embedding_service.encode_query(query_text)
+            # Generate embedding (compat across providers)
+            if hasattr(self.embedding_service, "encode_query"):
+                query_embedding = await self.embedding_service.encode_query(query_text)
+            else:
+                query_embedding = await self.embedding_service.generate_embedding(
+                    query_text
+                )
             if query_embedding:
                 # Vector search now directly returns List[SearchResultData]
                 # We need to call the specific vector search method which returns List[tuple[ChunkData, float]]

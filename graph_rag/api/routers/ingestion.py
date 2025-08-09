@@ -11,7 +11,17 @@ from fastapi import (
     status,
 )
 
-from graph_rag.api.dependencies import get_ingestion_service
+# Use state-aware getter from main so tests can clear overrides and hit 503
+from fastapi import Request
+
+
+# Lazy wrapper to avoid circular import at module import time
+def _state_get_ingestion_service(request: Request):
+    from graph_rag.api.main import get_ingestion_service as _getter
+
+    return _getter(request)
+
+
 from graph_rag.api.models import IngestRequest, IngestResponse
 from graph_rag.services.ingestion import IngestionService
 
@@ -29,7 +39,9 @@ async def process_document_with_service(
     logger.info(f"DEBUG: ingestion_service type: {type(ingestion_service)}")
     logger.info(f"DEBUG: content length: {len(content)}")
     try:
-        logger.info(f"DEBUG: Calling ingestion_service.ingest_document for doc {document_id}")
+        logger.info(
+            f"DEBUG: Calling ingestion_service.ingest_document for doc {document_id}"
+        )
         await ingestion_service.ingest_document(
             document_id=document_id,
             content=content,
@@ -64,7 +76,7 @@ def create_ingestion_router(
     async def ingest_document(
         background_tasks: BackgroundTasks,  # Re-enable BackgroundTasks dependency
         payload: IngestRequest = Body(...),
-        ingestion_service: IngestionService = Depends(get_ingestion_service),
+        ingestion_service: IngestionService = Depends(_state_get_ingestion_service),
     ):
         """Asynchronous endpoint to ingest a document."""
 

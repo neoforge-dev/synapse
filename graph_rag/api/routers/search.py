@@ -153,6 +153,7 @@ def create_search_router() -> APIRouter:
                                 "Streaming is only implemented for vector searches."
                             ),
                         )
+
                 # Set up streaming response
                 async def stream_search_results():
                     try:

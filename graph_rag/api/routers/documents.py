@@ -7,7 +7,21 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 # Defer schema import
 # from graph_rag.api import schemas
 from graph_rag.api import schemas  # Restore top-level import
-from graph_rag.api.dependencies import get_graph_repository, get_vector_store
+from fastapi import Request
+
+
+# Lazy wrappers to avoid circular import with app factory
+def _state_get_graph_repository(request: Request) -> "GraphRepository":
+    from graph_rag.api.main import get_graph_repository as _getter
+
+    return _getter(request)
+
+
+def _state_get_vector_store(request: Request) -> "VectorStore":
+    from graph_rag.api.main import get_vector_store as _getter
+
+    return _getter(request)
+
 
 # Import GraphRepository interface for type hinting
 from graph_rag.core.interfaces import GraphRepository, VectorStore
@@ -37,8 +51,8 @@ def create_documents_router() -> APIRouter:
     async def add_document(
         doc_in: schemas.DocumentCreate,  # Restore type hint
         repo: Annotated[
-            GraphRepository, Depends(get_graph_repository)
-        ],  # Correct dependency injection
+            GraphRepository, Depends(_state_get_graph_repository)
+        ],  # Depend on state-aware getter
     ):
         """Creates a new document entity in the graph. Uses provided ID if available, otherwise generates one."""
         try:
@@ -78,8 +92,8 @@ def create_documents_router() -> APIRouter:
     )
     async def list_all_documents(
         repo: Annotated[
-            GraphRepository, Depends(get_graph_repository)
-        ],  # Correct dependency injection
+            GraphRepository, Depends(_state_get_graph_repository)
+        ],  # Depend on state-aware getter
         limit: Optional[int] = Query(
             100, description="Limit the number of documents returned", ge=1, le=1000
         ),
@@ -134,8 +148,8 @@ def create_documents_router() -> APIRouter:
     async def get_document(
         document_id: str,
         repo: Annotated[
-            GraphRepository, Depends(get_graph_repository)
-        ],  # Correct dependency injection
+            GraphRepository, Depends(_state_get_graph_repository)
+        ],  # Depend on state-aware getter
         # ) -> 'schemas.DocumentResponse': # Use forward reference string in type hint - REMOVE
     ):
         # from graph_rag.api import schemas # Import locally - REMOVE
@@ -170,11 +184,11 @@ def create_documents_router() -> APIRouter:
     async def delete_document(
         document_id: str,
         repo: Annotated[
-            GraphRepository, Depends(get_graph_repository)
-        ],  # Correct dependency injection
+            GraphRepository, Depends(_state_get_graph_repository)
+        ],  # Depend on state-aware getter
         vector_store: Annotated[
-            VectorStore, Depends(get_vector_store)
-        ],  # Add vector store dependency
+            VectorStore, Depends(_state_get_vector_store)
+        ],  # Depend on state-aware getter
         response: Response,  # Inject Response object for status code setting
     ):
         """
@@ -259,8 +273,8 @@ def create_documents_router() -> APIRouter:
         document_id: str,
         metadata_update: schemas.DocumentMetadataUpdate,
         graph_repo: Annotated[
-            GraphRepository, Depends(get_graph_repository)
-        ],  # Correct dependency injection (use graph_repo variable name)
+            GraphRepository, Depends(_state_get_graph_repository)
+        ],  # Depend on state-aware getter
     ):
         try:
             existing_entity = await graph_repo.get_entity_by_id(document_id)

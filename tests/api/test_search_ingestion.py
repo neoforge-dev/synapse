@@ -389,6 +389,7 @@ async def test_search_stream_keyword_not_implemented(
         async for _ in response.aiter_lines():
             pass
 
+
 @pytest.mark.asyncio
 async def test_search_stream_handles_search_result_data(
     test_client: AsyncClient, mock_graph_rag_engine: AsyncMock
@@ -434,6 +435,7 @@ async def test_search_stream_handles_search_result_data(
     mock_graph_rag_engine.stream_context.assert_has_calls(
         [call("find me", "vector", 1)], any_order=True
     )
+
 
 @pytest.mark.asyncio
 async def test_search_no_results(test_client: AsyncClient, mock_graph_rag_engine):
@@ -651,7 +653,7 @@ async def test_search_batch_empty_request(test_client: AsyncClient):
 async def test_search_then_ingest_interaction(
     integration_test_client: AsyncClient,
     memgraph_repo: "graph_rag.infrastructure.graph_stores.memgraph_store.MemgraphGraphRepository",  # Use real repo fixture
-    app: FastAPI  # Access the app to get the actual vector store instance
+    app: FastAPI,  # Access the app to get the actual vector store instance
 ):
     """Test searching for non-existent, ingesting, then searching again."""
     # Get vector store from the app state (same instance used by ingestion)
@@ -726,7 +728,7 @@ async def test_search_then_ingest_interaction(
     # Wait for potential background processing by polling the vector store
     max_wait_seconds = 60
     poll_interval_seconds = 1
-    
+
     # Give background task time to start
     await asyncio.sleep(1)
     wait_start_time = asyncio.get_event_loop().time()

@@ -87,6 +87,23 @@ class IngestionService:
         logger.info(
             f"Starting ingestion for document {document_id} with metadata: {metadata}"
         )
+        # Normalize and/or derive topics before persisting document and chunking
+        topics = self._extract_topics(content=content, metadata=metadata)
+        if topics:
+            # Copy to avoid mutating caller's dict
+            metadata = dict(metadata)
+            # Deduplicate while preserving order
+            seen = set()
+            normalized_topics: list[str] = []
+            for t in topics:
+                if not t:
+                    continue
+                key = t.strip()
+                if key and key not in seen:
+                    seen.add(key)
+                    normalized_topics.append(key)
+            if normalized_topics:
+                metadata["topics"] = normalized_topics
         # 1. Create and save document using the provided ID
         document = Document(id=document_id, content=content, metadata=metadata)
         try:
@@ -201,11 +218,106 @@ class IngestionService:
                 # Optionally collect failed chunk IDs or raise immediately
                 # For now, continue processing other chunks
 
+        # 4b. Project topics as nodes and link to document and chunks
+        try:
+            topics_in_meta = []
+            if document.metadata and isinstance(document.metadata.get("topics"), list):
+                topics_in_meta = [str(t).strip() for t in document.metadata["topics"] if str(t).strip()]
+            if topics_in_meta:
+                # Deduplicate topics
+                seen_topic_ids: set[str] = set()
+                for topic in topics_in_meta:
+                    topic_id = f"topic:{topic.lower()}"
+                    if topic_id in seen_topic_ids:
+                        continue
+                    seen_topic_ids.add(topic_id)
+                    # Create/Upsert topic entity
+                    try:
+                        await self.graph_store.add_entity(
+                            Entity(
+                                id=topic_id,
+                                name=topic,
+                                type="Topic",
+                                properties={},
+                            )
+                        )
+                    except Exception:
+                        # Continue even if topic add fails
+                        logger.debug("Skipping topic add failure for %s", topic_id)
+
+                    # Link document -> topic
+                    try:
+                        await self.graph_store.add_relationship(
+                            Relationship(
+                                id=str(uuid.uuid4()),
+                                type="HAS_TOPIC",
+                                source_id=document_id,
+                                target_id=topic_id,
+                            )
+                        )
+                    except Exception:
+                        logger.debug("Skipping HAS_TOPIC relationship failure for %s", topic_id)
+
+                    # Link each chunk -> topic (mentions)
+                    for chunk in chunk_objects:
+                        try:
+                            await self.graph_store.add_relationship(
+                                Relationship(
+                                    id=str(uuid.uuid4()),
+                                    type="MENTIONS_TOPIC",
+                                    source_id=chunk.id,
+                                    target_id=topic_id,
+                                )
+                            )
+                        except Exception:
+                            logger.debug(
+                                "Skipping MENTIONS_TOPIC relationship failure for chunk %s -> %s",
+                                chunk.id,
+                                topic_id,
+                            )
+        except Exception as topic_err:
+            logger.debug("Topic projection skipped due to error: %s", topic_err)
+
         logger.info(
             f"Ingestion complete for document {document_id}. Saved {len(chunk_ids)} chunks."
         )
         # 5. Return result
         return IngestionResult(document_id=document_id, chunk_ids=chunk_ids)
+
+    def _extract_topics(self, content: str, metadata: dict[str, Any]) -> list[str]:
+        """Derive topics from metadata or content heuristics.
+
+        Priority:
+        1) If metadata already contains topics (list or str), normalize and return
+        2) Else, use the first Markdown heading (# or ##) as a single topic
+        3) Else, return empty list
+        """
+        # From metadata
+        if metadata is not None:
+            meta_topics = metadata.get("topics") or metadata.get("Tags") or metadata.get("tags")
+            if meta_topics:
+                if isinstance(meta_topics, list):
+                    return [str(t).strip().lstrip("#") for t in meta_topics if str(t).strip()]
+                if isinstance(meta_topics, str):
+                    # Split by comma or hashtag-separated words
+                    if "," in meta_topics:
+                        return [s.strip().lstrip("#") for s in meta_topics.split(",") if s.strip()]
+                    if "#" in meta_topics:
+                        return [s.strip().lstrip("#") for s in meta_topics.split() if s.strip()]
+                    return [meta_topics.strip()] if meta_topics.strip() else []
+
+        # From first heading in content
+        if content:
+            for line in content.splitlines():
+                line = line.strip()
+                if line.startswith("# ") or line.startswith("## "):
+                    heading = line.lstrip("#").strip()
+                    if heading:
+                        return [heading]
+                if line:
+                    # Stop after a few non-empty lines to avoid scanning entire document
+                    pass
+        return []
 
     async def _split_into_chunks(
         self, document: Document, max_tokens_per_chunk: int | None = None

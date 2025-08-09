@@ -21,7 +21,9 @@ async def test_simple_vector_store_search_contract():
     assert isinstance(results, list)
     assert all(isinstance(r, SearchResultData) for r in results)
     assert all(isinstance(r.score, float) for r in results)
-    assert all(isinstance(r.chunk.id, str) and isinstance(r.chunk.text, str) for r in results)
+    assert all(
+        isinstance(r.chunk.id, str) and isinstance(r.chunk.text, str) for r in results
+    )
 
     # Keyword search path
     kw_results = await store.search("beta", top_k=5, search_type="keyword")
@@ -29,3 +31,32 @@ async def test_simple_vector_store_search_contract():
     assert all(isinstance(r, SearchResultData) for r in kw_results)
     # Score is float and chunk present
     assert all(isinstance(r.score, float) for r in kw_results)
+
+
+@pytest.mark.asyncio
+async def test_faiss_vector_store_persistence(tmp_path):
+    from graph_rag.infrastructure.vector_stores.faiss_vector_store import (
+        FaissVectorStore,
+    )
+
+    dim = 8
+    path = tmp_path / "faiss"
+    store = FaissVectorStore(path=str(path), embedding_dimension=dim)
+
+    # Prepare two chunks with explicit embeddings
+    emb_a = [1.0] + [0.0] * (dim - 1)
+    emb_b = [0.0, 1.0] + [0.0] * (dim - 2)
+    chunks = [
+        ChunkData(id="c1", text="alpha", document_id="d1", embedding=emb_a),
+        ChunkData(id="c2", text="beta", document_id="d2", embedding=emb_b),
+    ]
+    await store.add_chunks(chunks)
+
+    # Query with a vector close to c1
+    results = await store.search_similar_chunks(emb_a, limit=1)
+    assert results and results[0].chunk.id == "c1"
+
+    # Recreate store from disk and query again
+    store2 = FaissVectorStore(path=str(path), embedding_dimension=dim)
+    results2 = await store2.search_similar_chunks(emb_a, limit=1)
+    assert results2 and results2[0].chunk.id == "c1"

@@ -49,5 +49,3 @@ def test_synapse_vars_take_precedence_over_aliases(monkeypatch):
     settings = Settings(_env_file=None)
     assert settings.memgraph_host == "synapse-host"
     assert settings.memgraph_port == 9999
-
-

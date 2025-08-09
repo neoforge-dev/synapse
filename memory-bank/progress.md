@@ -1,9 +1,9 @@
 # Progress and Status
 
 ## Overall Summary
-- **Current State:** Config stability improved. Env aliasing added; API import collision resolved. New tests verify settings aliasing and `MemgraphConnectionConfig` defaults. Core engine remains green; `/documents` API tests pass; some API/integration tests still pending fixes.
-- **Key Achievement:** Unified settings behavior across app/tests; removed ambiguous settings imports; added guardrail tests.
-- **Critical Concern:** Previously blocking Pydantic validation for Memgraph connection is mitigated by alias handling; need to confirm via full test run.
+- **Current State:** Streaming implemented (vector) and gated (keyword via flag). DI guardrails in place for vector store and search; contract tests added for vector store. CI pipeline added with validate job and label-gated Memgraph job; hot-path coverage reporting enabled. Core and API unit tests are green.
+- **Key Achievement:** End-to-end vector streaming through engine and API; keyword streaming feature-flagged with tests. CI now provides quick, non-blocking hot-path coverage feedback.
+- **Critical Concern:** Some DI guard tests depend on fixture overrides; added plan to temporarily clear overrides per-test when validating true DI getters.
 
 ## What Works Well
 - **Setup & Core:** Poetry, Config, Pydantic Models.
@@ -13,28 +13,22 @@
 - **Testing:** `pytest` setup; foundational API/Memgraph tests pass. `SimpleGraphRAGEngine` and orchestrator have strong test coverage.
 
 ## High-Priority Plan (Next Steps)
-Guided by Pareto and core user journey (ingest → retrieve → answer), we will deliver highest-value improvements first.
-
-1) Streamed context retrieval from core engine (must-have for API parity)
-   - Reduces divergence between orchestrator and simple engine
-   - Enables consistent streaming in `/search/query?stream=true`
-   - TDD: add failing test for `SimpleGraphRAGEngine.stream_context`, then implement minimal functionality (vector search only; keyword later if needed)
-
-2) DI hardening and guard tests (stability, fast failure)
-   - Add unit tests for DI getters to return 503 when state is missing (`get_vector_store`, `get_ingestion_service`, `get_graph_rag_engine`)
-   - Ensure factories are consistently used across app/state
-
-3) Consolidate Memgraph client usage in DI (eliminate drift)
-   - Verify no vestigial neo4j driver paths remain
-   - Confirm mgclient-backed repo is the only concrete implementation wired at runtime
-
-4) Coverage on ingest/query vertical slice (lock behavior)
-   - Add tests around ingestion → vector store → query mapping for metadata/score propagation
-   - Keep YAGNI: test only the critical paths actually used by API/CLI
-
-5) Refactors while green (only after tests)
-   - Clarify naming and dependency seams in `api/dependencies.py`
-   - Remove dead code paths and comments that can mislead future work
+- **Streaming**
+  - Implement true incremental keyword streaming when backend supports paging (keep `enable_keyword_streaming` flag).
+  - Add engine contract tests for ordering and shape across vector/keyword.
+- **DI + Health**
+  - Add DI guard tests for graph repo, entity extractor, doc processor, KG builder, ingestion service (clear fixture overrides per-test to hit real getters).
+  - Health/readiness probes: vector store size probe; guarded Memgraph ping.
+- **Contracts**
+  - GraphRepository contract tests (skipped unless Memgraph available): add/get doc/chunk, link entities, delete.
+  - GraphRAGEngine contract tests: query, retrieve_context, stream_context, error paths.
+- **CI Guardrails**
+  - Hot-path coverage reporting (non-blocking) in Makefile and CI. Done.
+  - OpenAPI spec drift check (warn-only) in CI.
+  - Flaky detector scaffold (collect failures, report/quarantine).
+- **Dev Ergonomics**
+  - Pre-commit with ruff format/check + commit-msg lint hooks.
+  - Test templates for unit/api/contract; update contributing docs.
 
 ## Other Important Tasks (Post-Critical Path)
 - Robust error mapping in API (uniform problem details)
@@ -42,11 +36,12 @@ Guided by Pareto and core user journey (ingest → retrieve → answer), we will
 - Deployment/observability (non-MVP)
 
 ## Immediate Sprint Backlog
-- [ ] Add failing test: `tests/core/test_graph_rag_engine_stream.py::test_stream_context_vector`
-- [ ] Implement `SimpleGraphRAGEngine.stream_context` (vector only)
-- [ ] Run tests, keep green
-- [ ] Commit changes with descriptive message
-- [ ] Add DI guard tests for 503 behavior
+- [x] Implement `SimpleGraphRAGEngine.stream_context` (vector) and API NDJSON; add tests
+- [x] Feature-flag keyword streaming; add tests when enabled
+- [x] Add DI guard tests (vector store; search API) and vector store contract test
+- [x] CI validate job + label-gated Memgraph + hot-path coverage reporting
+- [ ] Add per-test utility to temporarily clear dependency overrides and validate true DI getters (graph repo, etc.)
+- [ ] Add GraphRAGEngine and GraphRepository contract tests (skip Memgraph when unavailable)
 
 ## Notes
 - YAGNI: Implement streaming for vector first; keyword later if needed

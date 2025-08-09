@@ -32,5 +32,3 @@ def test_memgraph_connection_config_overrides_from_env(monkeypatch):
     assert cfg.host == "envhost"
     assert cfg.port == 7777
     assert cfg.use_ssl is True
-
-

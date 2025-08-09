@@ -59,6 +59,7 @@ from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRe
 
 # from graph_rag.infrastructure.graph_stores.neo4j_store import Neo4jGraphRepository # Remove this line
 from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
+# Avoid importing FAISS at module import time to keep optional dependency lazy
 
 # Import MockLLMService
 from graph_rag.llm import MockLLMService
@@ -255,6 +256,14 @@ def create_vector_store(settings: Settings) -> VectorStore:
     if vector_store_type == "simple":
         # Pass the embedding service instance, not the model name
         return SimpleVectorStore(embedding_service=embedding_service)
+    elif vector_store_type == "faiss":
+        # Ensure path exists; embedding dimension from service
+        dim = embedding_service.get_embedding_dimension()
+        # Lazy import to avoid hard dependency during tests without faiss
+        from graph_rag.infrastructure.vector_stores.faiss_vector_store import (
+            FaissVectorStore,
+        )
+        return FaissVectorStore(path=settings.vector_store_path, embedding_dimension=dim)
     # Add other vector store types here if needed
     # elif vector_store_type == 'qdrant':
     #    return QdrantVectorStore(...)
@@ -470,7 +479,10 @@ async def get_vector_store(
 ) -> VectorStore:
     """Provides the VectorStore instance from app state."""
     # Use the app's vector store instance from lifespan
-    if hasattr(request.app.state, 'vector_store') and request.app.state.vector_store is not None:
+    if (
+        hasattr(request.app.state, "vector_store")
+        and request.app.state.vector_store is not None
+    ):
         return request.app.state.vector_store
     else:
         logger.error("Vector store not found in app state")
@@ -552,7 +564,10 @@ async def get_ingestion_service(
 ) -> IngestionService:
     """Dependency getter for IngestionService."""
     # Use the app's ingestion service instance from lifespan
-    if hasattr(request.app.state, 'ingestion_service') and request.app.state.ingestion_service is not None:
+    if (
+        hasattr(request.app.state, "ingestion_service")
+        and request.app.state.ingestion_service is not None
+    ):
         return request.app.state.ingestion_service
     else:
         logger.error("Ingestion service not found in app state")

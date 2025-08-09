@@ -58,6 +58,10 @@ class Settings(BaseSettings):
         "simple",
         description="Type of vector store to use ('simple', 'qdrant', 'mock'). Default: simple",
     )
+    vector_store_path: str = Field(
+        os.path.expanduser("~/.graph_rag/faiss_store"),
+        description="Filesystem path for persistent vector store data (used by 'faiss').",
+    )
     vector_store_embedding_model: str = Field(
         "all-MiniLM-L6-v2",
         description="Sentence-transformer model for the vector store. Default: all-MiniLM-L6-v2",
