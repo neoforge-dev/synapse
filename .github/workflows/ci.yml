@@ -24,7 +24,16 @@ jobs:
         run: uv pip install -U pip setuptools wheel
       - name: Setup NLP models
         run: |
-          uv run python -m nltk.downloader punkt
+          uv run python - <<'PY'
+          import nltk
+          # Download both punkt and punkt_tab to satisfy NLTK >=3.9
+          for pkg in ("punkt", "punkt_tab"):
+              try:
+                  nltk.download(pkg, quiet=True)
+                  print(f"Downloaded NLTK package: {pkg}")
+              except Exception as e:
+                  print(f"Warning: failed to download {pkg}: {e}")
+          PY
           uv run python -m spacy download en_core_web_sm
       - name: Lint (errors only)
         run: uv run ruff check .
