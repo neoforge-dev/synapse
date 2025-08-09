@@ -54,6 +54,17 @@ def main_callback(
         is_eager=True,
         help="Show the application's version and exit.",
     ),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        help="Reduce logging verbosity to warnings only.",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "--debug",
+        help="Increase logging verbosity (debug level).",
+    ),
 ):
     """
     Synapse Command Line Interface.
@@ -61,6 +72,11 @@ def main_callback(
     Use 'ingest', 'search', or 'admin-health' commands.
     """
     try:
+        # Adjust logging level based on flags (quiet < default < verbose)
+        if quiet:
+            logging.getLogger().setLevel(logging.WARNING)
+        elif verbose:
+            logging.getLogger().setLevel(logging.DEBUG)
         logger.debug(f"Invoking command: {ctx.invoked_subcommand}")
     except Exception as e:
         logger.error(f"Error in CLI: {e!s}", exc_info=True)

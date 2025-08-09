@@ -125,8 +125,9 @@ class IngestionService:
                 if existing_chunks:
                     old_chunk_ids = [c.id for c in existing_chunks]
                     logger.info(
-                        "Pre-delete for %s: deleting %d existing chunks",
+                        "Pre-delete: doc_id=%s id_source=%s existing_chunks=%d",
                         document_id,
+                        id_source,
                         len(old_chunk_ids),
                     )
                     # Delete chunks in graph by relationship, leaving the Document node
@@ -145,13 +146,17 @@ class IngestionService:
                     try:
                         await self.vector_store.delete_chunks(old_chunk_ids)
                         logger.info(
-                            "Vector store: deleted %d chunks for %s",
-                            len(old_chunk_ids),
+                            "Vector delete: doc_id=%s id_source=%s deleted_chunks=%d",
                             document_id,
+                            id_source,
+                            len(old_chunk_ids),
                         )
                     except Exception as vs_del_err:
-                        logger.debug(
-                            f"Vector store chunk deletion skipped/failed: {vs_del_err}"
+                        logger.warning(
+                            "Vector delete failed: doc_id=%s id_source=%s error=%s",
+                            document_id,
+                            id_source,
+                            vs_del_err,
                         )
             except Exception as pre_err:
                 logger.debug(

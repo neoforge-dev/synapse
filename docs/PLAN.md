@@ -43,9 +43,9 @@ This plan captures the remaining details and concrete tasks to fully deliver sta
 
 ### 2) Idempotent Re-ingestion Hardening
 - Current service deletes graph chunks and calls `vector_store.delete_chunks` before re-adding.
-- Add small guardrails/logging:
-  - Log the number of chunks found and deleted by doc id
-  - Handle vector store delete exceptions without failing ingestion
+- Guardrails/logging:
+  - [x] Log the number of existing chunks and include `doc_id` and `id_source`
+  - [x] Handle vector store delete exceptions without failing ingestion (warn and continue)
 - Extend tests if needed to validate vector store delete is invoked for old chunk IDs.
 
 ### 3) Notion Export Walker & Identity Nuances

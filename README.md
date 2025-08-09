@@ -20,6 +20,10 @@ make run-api
 # 3) Ingest your notes (directory or single file)
 synapse ingest ~/Notes --embeddings  # parses YAML front matter / Notion property tables
 
+# Control verbosity globally
+synapse --quiet ingest ~/Notes        # warnings and above
+synapse --verbose ingest ~/Notes      # debug logs
+
 # Optional: add/override metadata (ergonomic flags)
 synapse ingest ~/Notes --meta source=vault --meta owner=me \
   --meta-file meta.yaml --embeddings
@@ -43,6 +47,10 @@ JSON output (non-dry-run):
 - Single file: `{ "document_id": "...", "num_chunks": N, "id_source": "...", "path": "...", "embeddings": bool, "replace_existing": bool, "topics": [..] }`
 - Directory: `[{...}, {...}]` per file summary
 - STDIN: same object as single file, with `path` pointing to a temp file
+
+Logging controls:
+- `--quiet` reduces logs to warnings/errors.
+- `--verbose` or `--debug` enables debug logs.
 
 Identity and idempotence:
 - The system will derive a stable `document_id` per file/page (priority: explicit metadata `id` → Notion page UUID → Obsidian `id` → normalized content hash → path-hash fallback). The derivation `id_source` is recorded in `Document.metadata`.

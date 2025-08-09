@@ -5,9 +5,14 @@
   - Rebuild index on deletions; skip legacy rows without embeddings
   - Add infra tests for delete/rebuild/persistence round-trip
 
-- Idempotent ingestion hardening
-  - Pre-delete logs: report counts, doc_id, id_source
-  - Best-effort vector deletion; do not fail ingestion on delete errors
+- Idempotent ingestion hardening [DONE]
+  - Pre-delete logs now include `doc_id`, `id_source`, and counts
+  - Vector deletion is best-effort with warnings; ingestion continues on errors
+
+- Next: Idempotent ingestion hardening (phase 2)
+  - Emit structured ingest result and per-file outcomes for directory mode in CLI `--json`
+  - Add retry/backoff around transient vector/graph ops
+  - Add metrics counters (deleted_chunks, added_chunks) at INFO level
 
 - CLI observability and UX
   - Non-dry-run --json implemented (single, directory, stdin)

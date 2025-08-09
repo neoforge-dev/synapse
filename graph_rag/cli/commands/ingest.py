@@ -634,7 +634,15 @@ async def ingest(
                     f"Successfully processed and stored {file_path} including graph links."
                 )
     except Exception as e:
-        typer.echo(f"Error ingesting document(s): {e}")
+        # Emit structured error if --json was requested
+        if as_json:
+            err = {"error": str(e)}
+            try:
+                typer.echo(json.dumps(err, ensure_ascii=False))
+            except Exception:
+                typer.echo('{"error":"ingest failed"}')
+        else:
+            typer.echo(f"Error ingesting document(s): {e}")
         raise typer.Exit(1)
 
 
