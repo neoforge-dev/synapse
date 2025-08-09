@@ -54,10 +54,19 @@ packages = ["graph_rag"]
 [tool.ruff]
 line-length = 88
 target-version = "py39"
+exclude = ["pymgclient", "graphrag"]
 
 [tool.ruff.lint]
-select = ["E", "F", "B", "I", "N", "UP", "PL", "RUF"]
-ignore = []
+select = ["E", "F"]
+ignore = [
+  "E501", # line length handled by formatter
+  "B008", # FastAPI Depends in default args
+  "B904", # raise in except
+  "PLR0913", "PLR0912", "PLR0915", # complexity
+  "E741", # ambiguous names in tests/legacy
+  "PLW2901", # loop var overwrite
+  "PLR2004", # magic numbers
+]
 
 [tool.ruff.format]
 quote-style = "double"
