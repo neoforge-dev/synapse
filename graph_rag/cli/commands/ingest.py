@@ -209,8 +209,19 @@ async def process_and_store_document(
         else:
             logger.info(f"No chunk-entity links to create for doc {document_id}.")
 
-        # Original result is still useful for reporting
-        # Return None as the main success indicator is no exception
+        # Build a minimal structured result for CLI reporting
+        result_payload: dict[str, Any] = {
+            "document_id": document_id,
+            "num_chunks": len(chunk_objects),
+            "id_source": id_source,
+            "path": str(file_path),
+            "embeddings": bool(enable_embeddings),
+            "replace_existing": bool(replace_existing),
+        }
+        topics = (meta_with_id or {}).get("topics")
+        if isinstance(topics, list):
+            result_payload["topics"] = topics
+        return result_payload
 
     except Exception as e:
         logger.error(f"Error during CLI processing for {file_path}: {e}", exc_info=True)
@@ -506,15 +517,19 @@ async def ingest(
             fm = parse_front_matter(tmp_file)
             merged_meta = _merge_metadata(fm)
             try:
-                await process_and_store_document(
+                res = await process_and_store_document(
                     tmp_file,
                     merged_meta,
                     enable_embeddings=embeddings,
                     replace_existing=replace,
                 )
             except TypeError:
-                await process_and_store_document(tmp_file, merged_meta)
-            typer.echo("Successfully processed STDIN content including graph links.")
+                res = await process_and_store_document(tmp_file, merged_meta)
+            if as_json:
+                payload = res if isinstance(res, dict) else {"path": str(tmp_file)}
+                typer.echo(json.dumps(payload, ensure_ascii=False))
+            else:
+                typer.echo("Successfully processed STDIN content including graph links.")
             return
 
         processed_count = 0

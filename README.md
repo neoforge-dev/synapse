@@ -29,7 +29,8 @@ synapse ingest ~/Notes --dry-run --json \
   --include "**/*.md" --exclude "archive/**"
 
 # Pipe content from stdin (single doc)
-echo "Hello from stdin" | synapse ingest ignored.md --stdin --dry-run --json
+# Non-dry-run with --json now emits a structured summary
+echo "Hello from stdin" | synapse ingest ignored.md --stdin --json
 ```
 
 Notes:
@@ -37,6 +38,11 @@ Notes:
 - `--include`/`--exclude` let you filter files using glob patterns relative to the input path.
 - `--embeddings` enables vector embeddings during ingestion (defaults off). When off, only graph+topics are stored; when on, semantic search is enabled.
 - Re-ingestion mode defaults to replace; use `--no-replace` to append-only (not recommended).
+
+JSON output (non-dry-run):
+- Single file: `{ "document_id": "...", "num_chunks": N, "id_source": "...", "path": "...", "embeddings": bool, "replace_existing": bool, "topics": [..] }`
+- Directory: `[{...}, {...}]` per file summary
+- STDIN: same object as single file, with `path` pointing to a temp file
 
 Identity and idempotence:
 - The system will derive a stable `document_id` per file/page (priority: explicit metadata `id` → Notion page UUID → Obsidian `id` → normalized content hash → path-hash fallback). The derivation `id_source` is recorded in `Document.metadata`.

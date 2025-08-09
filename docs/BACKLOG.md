@@ -1,26 +1,23 @@
-# Backlog (Curated)
+# Backlog (Prioritized for Compounding Impact)
 
-## CRITICAL NOW
-- Document identity and dedup (canonical `document_id`):
-  - Derive ID priority: explicit metadata `id` → Notion page UUID (from filename/folder/property table) → Obsidian front matter `id` → normalized content hash → path-hash fallback with stat info
-  - Implement `derive_document_id(path, content, metadata)` returning `(id, id_source, confidence)`
-  - Idempotent re-ingestion: if `document_id` exists, update metadata/content; replace chunks and re-index vectors atomically
-  - Tests: Notion nested tree stability, rename/move resilience, duplicate content across files, mixed Notion/Obsidian cases
-  - Docs: identity scheme in README + ARCH; migration/rename guidance
+- CRITICAL: FAISS correctness and persistence
+  - Store embeddings alongside metadata to enable index rebuilds
+  - Rebuild index on deletions; skip legacy rows without embeddings
+  - Add infra tests for delete/rebuild/persistence round-trip
 
-## Must-have
-- Notion export walker with stable IDs + tests (covered by identity work)
-- Enable embeddings default ON after footprint validation; keep `--no-embeddings`
-- `make up`/`make down` (done) and sample launchd plist (done)
-- README Quickstart for Mac (done)
-- Architecture/PRD docs (done)
+- Idempotent ingestion hardening
+  - Pre-delete logs: report counts, doc_id, id_source
+  - Best-effort vector deletion; do not fail ingestion on delete errors
 
-## Next
-- MCP server exposing ingest/search/query + docs
-- Search CLI topic filter examples; topic-based query path
-- FAISS persistence defaults and config polish
-- Health probes: vector store stats, Memgraph ping; troubleshooting docs
+- CLI observability and UX
+  - Non-dry-run --json implemented (single, directory, stdin)
+  - Next: --quiet/--verbose consistency; error codes and structured errors
 
-## Later
-- Autotagging improvements (lightweight keyphrase)
-- UI explorer (optional)
+- Stability & Developer Experience
+  - Reduce spaCy/transformers cold-start via lazy import paths
+  - Makefile targets: smoke, unit-fast, e2e (documented already)
+
+- Docs & Examples
+  - Architecture overview (docs/ARCHITECTURE.md)
+  - MCP integration plan (docs/MCP.md)
+  - More CLI scripting examples (jq, xargs)

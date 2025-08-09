@@ -66,6 +66,7 @@ This plan captures the remaining details and concrete tasks to fully deliver sta
   - Output controls: `--json`, `--quiet`, `--verbose/--debug`
   - Directory filters: `--include`/`--exclude` glob patterns
   - Stdin support (`--stdin`) for piping content
+  - Non-dry-run `--json` success payload including `document_id`, `num_chunks`, `id_source`, `path`, flags, and optional `topics` [DONE]
 
 ### 6) Testing
 - Unit tests: identity derivation (done), FAISS delete/rebuild (to add).
@@ -81,6 +82,7 @@ This plan captures the remaining details and concrete tasks to fully deliver sta
 - FAISS `delete_chunks` removes vectors accurately and persists state; after reload, searches reflect deletions.
 - Identity derivation passes tests for metadata, Notion UUIDs, content and path hash fallbacks.
 - CLI processes Notion markdown exports, derives IDs consistently, and attaches `id_source`.
+- Non-dry-run `synapse ingest --json` supports single file, directory, and `--stdin` payloads [DONE].
 - All tests pass locally (unit + infra). Integration tests remain green.
 
 ## CLI UX Overhaul: Task Breakdown and Phasing
@@ -111,7 +113,7 @@ Deliverables: updated CLI command, tests added under `tests/cli/`, README snippe
 
 ### Phase B (Nice-to-have, next iteration)
 5) Output controls for non-dry-run
-   - `--json` success summary after ingestion (doc id, chunks)
+   - `--json` success summary after ingestion (doc id, chunks) [DONE]
    - `--quiet`/`--verbose` unified across commands
 
 6) Safer defaults
