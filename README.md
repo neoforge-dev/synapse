@@ -20,17 +20,27 @@ make run-api
 # 3) Ingest your notes (directory or single file)
 synapse ingest ~/Notes --embeddings  # parses YAML front matter / Notion property tables
 
-# Optional: add/override metadata
-synapse ingest ~/Notes --embeddings --metadata '{"topics":["ml","graph"],"aliases":["RAG"]}'
+# Optional: add/override metadata (ergonomic flags)
+synapse ingest ~/Notes --meta source=vault --meta owner=me \
+  --meta-file meta.yaml --embeddings
+
+# Preview what would be ingested (no changes)
+synapse ingest ~/Notes --dry-run --json \
+  --include "**/*.md" --exclude "archive/**"
+
+# Pipe content from stdin (single doc)
+echo "Hello from stdin" | synapse ingest ignored.md --stdin --dry-run --json
 ```
 
 Notes:
-- Directory ingest skips hidden files and `.obsidian/` folders; accepts `.md`, `.markdown`, `.txt`.
+- Directory ingest skips hidden files, `.obsidian/` folders, and `*assets*` subfolders from Notion exports; accepts `.md`, `.markdown`, `.txt`.
+- `--include`/`--exclude` let you filter files using glob patterns relative to the input path.
 - `--embeddings` enables vector embeddings during ingestion (defaults off). When off, only graph+topics are stored; when on, semantic search is enabled.
+- Re-ingestion mode defaults to replace; use `--no-replace` to append-only (not recommended).
 
 Identity and idempotence:
-- The system will derive a stable `document_id` per file/page (priority: explicit metadata `id` → Notion page UUID → Obsidian `id` → normalized content hash → path-hash fallback).
-- Re-ingesting the same content updates the existing document/chunks instead of duplicating.
+- The system will derive a stable `document_id` per file/page (priority: explicit metadata `id` → Notion page UUID → Obsidian `id` → normalized content hash → path-hash fallback). The derivation `id_source` is recorded in `Document.metadata`.
+- Re-ingesting the same `document_id` with `--replace` deletes old chunks/vectors atomically before adding new ones.
 
 ### Configuration
 

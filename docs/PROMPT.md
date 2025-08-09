@@ -1,121 +1,110 @@
-# Cursor Agent Handoff Prompt
+## Graph RAG MCP — Continuation Prompt for New Agent
 
-You are taking over an active Graph RAG project. Your mandate is to work autonomously, using a TDD-first, XP-inspired workflow to maximize the amount of time you can progress without human intervention. Deliver small, reversible changes with high signal tests and pragmatic CI guardrails.
+You are taking over an actively developed Graph RAG project focused on stable document identity and idempotent ingestion. Continue the work with high autonomy. Follow repository conventions, keep the test suite green, and prefer minimal, safe, incremental changes with strong tests.
 
-## Project snapshot
-- Stack: Python 3.12, FastAPI, Pydantic v2, pytest, ruff, uv.
-- Architecture: API → Services → Core → Infrastructure → LLM.
-- Key layers and protocols live in `graph_rag/core/interfaces.py` and are used across services and infrastructure.
-- Data stores: Memgraph repository (infrastructure), Simple vector store with embeddings.
+### Context
+- Project type: Graph-based RAG with Memgraph + vector store (SimpleVectorStore and FAISS option), FastAPI, CLI tools, and services layer.
+- Current focus: Stable `document_id` derivation, idempotent re-ingestion (deleting old chunks/vectors before re-adding), and correct FAISS deletion behavior.
+- Test runner and tooling:
+  - Install: `make install-dev`
+  - Lint: `make lint`
+  - Format: `make format`
+  - Unit tests: `make test` (or `make test -j1`)
+  - Integration: `make test-integration` (Memgraph required)
+  - Memgraph tests: `make test-memgraph`
+  - Run API: `make run-api`
+  - Run Memgraph: `make run-memgraph`
 
-## Current state (important)
-- Vector streaming is implemented end-to-end (engine + router) and serialized as NDJSON.
-- Keyword streaming exists behind a feature flag and is enabled only when `SYNAPSE_ENABLE_KEYWORD_STREAMING=true`.
-- Engine streaming now supports both vector and keyword search types and yields `SearchResultData` sequentially for deterministic behavior.
-- Search router returns 501 for keyword streaming unless the flag is enabled and propagates HTTP exceptions.
-- DI guard tests exist (vector store search path; some for documents), vector-store contract test added.
-- CI: GitHub Actions workflow with a validate job (lint, format, unit tests + hot-path coverage reporting) and a label-gated Memgraph integration job.
+### Architecture and Code Style (follow strictly)
+- Clean architecture: API → Services → Core → Infrastructure → LLM
+- Repositories for data access (GraphRepository, VectorStore)
+- Strategy pattern for components (EntityExtractor, LLMService)
+- DI via FastAPI `Depends` and factories in `api/dependencies.py`
+- Protocol interfaces in `core/interfaces.py`
+- Style:
+  - Line length: 88 (Ruff)
+  - Double quotes
+  - Typing: use type hints; Protocol for interfaces
+  - Imports grouped: stdlib, third-party, local
+  - Naming: snake_case (functions/vars), PascalCase (classes)
+  - Async: consistent in services and repositories
+  - Error handling: specific exceptions + contextual logs
+  - Docstrings: Google style for public methods
+  - Tests: unit tests for core logic, mock external deps
 
-## Commands
-- Install dev deps: `make install-dev`
-- Lint: `make lint`
-- Format: `make format`
-- Unit tests: `make test`
-- Integration tests (Memgraph): `make test-integration` (requires Memgraph up)
-- Start API (dev): `make run-api`
-- Start Memgraph: `make run-memgraph`
-- Hot-path coverage (non-blocking): `make coverage-hot`
+### Current State
+- Identity: `graph_rag/utils/identity.py` implements multi-priority ID derivation (metadata > Notion UUID in filename/parents > content hash > path hash). Tests added and passing (`tests/utils/test_identity.py`).
+- Ingestion: Idempotent re-ingest implemented in `graph_rag/services/ingestion.py` (with `replace_existing=True`) deleting old chunks from graph and vector store before adding new ones. Service tests cover this.
+- FAISS vector store: `FaissVectorStore` now persists embeddings alongside metadata and correctly rebuilds the index on deletions. Infra tests added and passing.
+- Suite status at last run: 194 passed, 42 skipped; all green.
 
-## Endpoints (relevant)
-- Streaming search (NDJSON): `POST /api/v1/search/query?stream=true`
-  - Body: `{ "query": str, "search_type": "vector"|"keyword", "limit": int }`
-  - Keyword streaming requires `SYNAPSE_ENABLE_KEYWORD_STREAMING=true`.
-- Documents: `/api/v1/documents` (POST/GET/GET by id/DELETE/PATCH metadata)
-- Ingestion: `POST /api/v1/ingestion/documents` (async; returns 202)
-- Health: `GET /health`
+### Priorities (continue from here)
+1) Observability and Metadata
+   - Ensure `id_source` (from identity derivation) is consistently persisted and visible via API responses (`/documents` endpoints) and in logs.
+   - Tighten logs in ingestion to include `document_id`, `id_source`, counts of chunks deleted/added, and vector store actions.
+2) CLI/Service wiring improvements
+   - Add a CLI flag `--no-replace` (or `--replace/--no-replace`) to control idempotent behavior and plumb into `IngestionService.ingest_document`.
+   - Consider a dry-run mode for ingestion to preview derived IDs and actions.
+3) Notion export walker nuances
+   - Confirm directory walker ignores hidden and Obsidian folders (present), and expand ignore for Notion export attachment subfolders (assets). Only Markdown-like files should be ingested.
+   - Keep Notion property table parsing robust (present) and add small tests for corner cases.
+4) FAISS persistence hardening
+   - Introduce a lightweight metadata version field in `meta.json` (e.g., `{version: 2}`) to indicate rows include `embedding`. On load, detect legacy meta without embeddings and warn or auto-upgrade when possible.
+   - Consider a maintenance method to compact/reindex explicitly.
+5) Tests and docs
+   - Add unit/integration tests around CLI re-ingestion toggles and id_source propagation.
+   - Document the identity strategy and idempotent ingestion behavior in README/ARCH. Keep `docs/PLAN.md` up to date with changes.
 
-## Feature flags
-- `SYNAPSE_ENABLE_KEYWORD_STREAMING` (bool) → enables keyword streaming in API/engine.
+### Concrete Tasks
+- Observability
+  - Verify `id_source` is attached to `Document.metadata` on ingest and exposed in API schemas/responses where appropriate.
+  - Add structured logs in `IngestionService` around pre-delete (count of chunks to delete), post-delete, and post-add.
+- CLI ingestion flag
+  - In `graph_rag/cli/commands/ingest.py`, add Typer flag to control `replace_existing` and thread it through to `IngestionService.ingest_document`.
+  - Update help text and usage examples.
+- Notion walker
+  - Extend file selection filter to hard-ignore typical Notion asset dirs (e.g., folder matching `*assets*` next to the page file). Keep logic simple and safe.
+  - Add tests that a Notion export directory with an assets subfolder only ingests `.md` content pages.
+- FAISS meta versioning
+  - Update `FaissVectorStore` meta serialization to include a `version` key and set to `2` (rows include `embedding`).
+  - On load, detect missing version or missing `embedding` keys and keep existing warning/behavior; consider auto-setting `version=1` for legacy.
+  - Add a small unit test to ensure version is persisted and read.
+- Docs
+  - Update `README.md` or a dedicated section to document identity derivation and re-ingestion semantics.
+  - Amend `docs/PLAN.md` as items complete.
 
-## CI/CD
-- `.github/workflows/ci.yml`:
-  - Validate: ruff check, ruff format --check, unit tests, hot-path coverage.
-  - Memgraph Integration (only when PR has label `memgraph`): spins Memgraph service and runs `make test-integration`.
+### Acceptance Criteria
+- API responses for documents include persisted `id_source` in metadata where available.
+- CLI supports `--replace/--no-replace` and correctly toggles pre-delete behavior in service.
+- Notion export ingestion ignores asset folders and only ingests relevant content files; tests cover this.
+- FAISS meta includes version info; delete/rebuild remains correct; persistence round-trip behaves as expected.
+- All tests stay green: `make test` passes locally; integration tests remain as-is (skipped unless Memgraph available).
 
-## Code style and conventions
-- Line length 88, double quotes, type hints, Protocols for interfaces.
-- Tests first; small commits; conventional commit messages.
-- NDJSON streaming emits each `SearchResultSchema` as a JSON line.
+### How to Work
+- Use TDD where reasonable. Add or update tests for any change in behavior.
+- Keep changes small and incremental; run `make test` frequently.
+- Follow commit style conventions (conventional commits), and do not push unless explicitly instructed by the user.
+- Prefer adding tests near existing files: API tests in `tests/api`, CLI in `tests/cli`, services in `tests/services`, infra in `tests/infrastructure`, utils in `tests/utils`.
+- For FAISS behavior, prefer deterministic vectors in tests; use explicit embeddings or mocks as needed.
 
-## Where to look
-- Engine: `graph_rag/core/graph_rag_engine.py`
-- Routers: `graph_rag/api/routers/*.py` (notably `search.py`, `documents.py`, `ingestion.py`)
-- Config: `graph_rag/config/__init__.py`
-- Vector store: `graph_rag/infrastructure/vector_stores/simple_vector_store.py`
-- App factory and DI getters: `graph_rag/api/main.py`
-- Tests: `tests/api`, `tests/core`, `tests/infrastructure`, `tests/services`
-- Project context: `memory-bank/*.md` (especially `progress.md` and `development-workflow.md`)
+### Useful Paths
+- Identity: `graph_rag/utils/identity.py`
+- Ingestion service: `graph_rag/services/ingestion.py`
+- CLI ingest: `graph_rag/cli/commands/ingest.py`
+- FAISS store: `graph_rag/infrastructure/vector_stores/faiss_vector_store.py`
+- Simple vector store: `graph_rag/infrastructure/vector_stores/simple_vector_store.py`
+- API routers: `graph_rag/api/routers/*.py`
+- Settings: `graph_rag/config.py`
 
-## Streaming: spec recap
-- Engine `stream_context(query, search_type, limit)` yields `SearchResultData` sequentially.
-- Router converts `SearchResultData`/`ChunkData` to `SearchResultSchema` and yields NDJSON.
-- Keyword streaming returns 501 unless `SYNAPSE_ENABLE_KEYWORD_STREAMING=true`.
+### Gotchas
+- Do not run long-lived background processes in this environment.
+- Keep test isolation: avoid writing to global OS paths; tests use tmp dirs for FAISS.
+- When changing schemas or interfaces, ensure all call sites and tests are updated.
+- If you modify `faiss_vector_store` persistence, ensure backward compatibility and add clear warnings.
 
-## Known test behaviors (DI overrides)
-- The API test fixture overrides dependencies with mocks (see `tests/conftest.py`).
-- Some DI guard tests won’t hit the real state-based getters unless you temporarily clear specific overrides.
-- Plan: write a small per-test utility/fixture to clear `app.dependency_overrides` for the targeted getter to exercise real DI guards in `api/main.py`.
+### Ready-to-Run Commands
+- Run all unit tests: `make test -j1`
+- Run a single test: `python -m pytest tests/infrastructure/vector_stores/test_simple_vector_store_contract.py::test_faiss_vector_store_delete_and_rebuild -v`
+- Lint/format: `make lint && make format`
 
-## Immediate backlog (prioritized)
-1) DI + Health
-   - Implement a per-test override-clearing utility and complete DI guard tests for:
-     - Graph repository
-     - Entity extractor
-     - Document processor
-     - Knowledge graph builder
-     - Ingestion service
-   - Add basic readiness checks (vector store size probe; gated Memgraph ping).
-
-2) Contracts
-   - GraphRAGEngine contract tests for `query`, `retrieve_context`, `stream_context`, error cases.
-   - GraphRepository contract tests (skip when Memgraph unavailable): add/get doc/chunk, link entities, delete.
-
-3) Streaming
-   - Plan true incremental keyword streaming (paging/cursor) when backend supports it; keep API guarded by flag. Add engine contract tests for ordering and shape.
-
-4) CI Guardrails
-   - Add OpenAPI spec drift check (generate OpenAPI JSON and compare with committed baseline; warn-only on PR).
-   - Add flaky test detector scaffold (collect failures, mark flaky or report).
-
-5) Dev ergonomics
-   - Add `.pre-commit-config.yaml` (ruff format/check + commit-msg lint) and wiring.
-   - Provide test templates (unit/api/contract) + a short contributing section.
-
-## Deliverable guidance
-- Work in small vertical slices: add or update a failing test, implement code, keep green, commit with a conventional message.
-- Keep streaming deterministic until true incremental streaming is implemented.
-- Prefer Protocol-based contract tests at boundaries (VectorStore, GraphRepository, Engine).
-- For DI tests that must reach the real getter:
-  - Clear the specific dependency override: `if getter in app.dependency_overrides: del app.dependency_overrides[getter]`
-  - Ensure `app.state.<dep>` is `None` to trigger a 503 from `api/main.py` getter.
-
-## Examples to start with (step-by-step)
-- Implement a test utility in `tests/utils/overrides.py`:
-  - `clear_override(app: FastAPI, getter)`
-  - `restore_overrides(app: FastAPI, saved: dict)`
-- Use it in DI guard tests for documents and ingestion so you can assert 503 from real getters.
-- Add Engine contract tests under `tests/core/engine_contract/` for `stream_context` vector/keyword shape/order.
-- Add OpenAPI drift job step in CI (validate job):
-  - Run `uv run python -c "import json; from graph_rag.api.main import create_app; import json; from fastapi.encoders import jsonable_encoder; print(json.dumps(jsonable_encoder(create_app().openapi())))" > openapi.json`
-  - Compare against `docs/openapi.json`; warn on diff (don’t fail build yet).
-
-## Acceptance check for each PR
-- New tests green locally (`make test`).
-- CI validate job green (lint, format, unit tests, hot-path coverage report).
-- If touching Memgraph behavior, include label `memgraph` to run integration job.
-
-## References
-- Progress and plan: `memory-bank/progress.md`
-- Workflow: `memory-bank/development-workflow.md`
-
-Good luck. Deliver autonomously and keep the loop green. Use TDD; change one thing at a time; ship reversible increments.
+Continue the work by implementing priorities above, starting with observability (`id_source` exposure/logging) and the CLI replace toggle. Maintain green tests at each step.
