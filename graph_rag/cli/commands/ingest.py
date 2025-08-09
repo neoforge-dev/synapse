@@ -3,9 +3,11 @@
 import asyncio
 import json
 import logging  # Add logging import
+import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Optional, Any
+import fnmatch
 
 import typer
 import yaml
@@ -41,6 +43,7 @@ async def process_and_store_document(
     file_path: Path,
     metadata: Optional[dict] = None,
     enable_embeddings: bool = False,
+    replace_existing: bool = True,
 ) -> None:
     """
     Process and store a document, extract entities, and build graph links.
@@ -104,6 +107,7 @@ async def process_and_store_document(
             content=content,
             metadata=meta_with_id,
             generate_embeddings=enable_embeddings,
+            replace_existing=replace_existing,
         )
 
         # 2. Retrieve chunks
@@ -226,10 +230,47 @@ async def ingest(
     metadata: Optional[str] = typer.Option(
         None, help="JSON string of metadata to attach to the document"
     ),
+    meta: list[str] = typer.Option(
+        None,
+        "--meta",
+        help="Additional metadata entries as key=value (repeatable)",
+    ),
+    meta_file: Optional[Path] = typer.Option(
+        None,
+        "--meta-file",
+        help="Path to YAML or JSON file with metadata to merge",
+    ),
     embeddings: bool = typer.Option(
         False,
         "--embeddings/--no-embeddings",
         help="Generate and store embeddings during ingestion (default: off)",
+    ),
+    replace: bool = typer.Option(
+        True,
+        "--replace/--no-replace",
+        help=(
+            "When re-ingesting an existing document ID, delete old chunks/vectors "
+            "before adding new ones (idempotent)."
+        ),
+    ),
+    include: list[str] = typer.Option(
+        None,
+        "--include",
+        help="Glob pattern to include (repeatable). Defaults to all supported files.",
+    ),
+    exclude: list[str] = typer.Option(
+        None,
+        "--exclude",
+        help="Glob pattern to exclude (repeatable). Applied after include filters.",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show what would be ingested and exit"
+    ),
+    as_json: bool = typer.Option(
+        False, "--json", help="Emit machine-readable JSON output (with --dry-run)"
+    ),
+    read_stdin: bool = typer.Option(
+        False, "--stdin", help="Read document content from STDIN; ignores file path"
     ),
 ) -> None:
     """
@@ -239,17 +280,58 @@ async def ingest(
         file_path: Path to the file to ingest
         metadata: Optional JSON string of metadata to attach to the document
     """
-    # Validate path exists
-    if not file_path.exists():
+    # Validate path exists unless reading from stdin
+    if not read_stdin and not file_path.exists():
         typer.echo(f"Error: File {file_path} does not exist")
         raise typer.Exit(1)
 
-    # Parse metadata if provided and merge with any front matter
-    metadata_dict: dict = {}
+    # Parse metadata sources: front matter (per file), meta-file, --meta kv, JSON string
+    def _parse_meta_file(path: Path) -> dict:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except Exception as e:
+            typer.echo(f"Error: Failed to read meta-file {path}: {e}")
+            raise typer.Exit(1)
+        try:
+            if path.suffix.lower() in {".yaml", ".yml"}:
+                obj = yaml.safe_load(text) or {}
+            elif path.suffix.lower() == ".json":
+                obj = json.loads(text)
+            else:
+                # Try YAML first, then JSON
+                try:
+                    obj = yaml.safe_load(text) or {}
+                except Exception:
+                    obj = json.loads(text)
+            return obj if isinstance(obj, dict) else {}
+        except Exception as e:
+            typer.echo(f"Error: Invalid meta-file {path}: {e}")
+            raise typer.Exit(1)
+
+    def _parse_meta_kv(items: list[str] | None) -> dict:
+        result: dict[str, Any] = {}
+        if not items:
+            return result
+        for it in items:
+            if "=" not in it:
+                typer.echo(f"Warning: Ignoring malformed --meta '{it}', expected key=value")
+                continue
+            key, value = it.split("=", 1)
+            key = key.strip()
+            value = value.strip()
+            if not key:
+                continue
+            result[key] = value
+        return result
+
+    metadata_from_file: dict = _parse_meta_file(meta_file) if meta_file else {}
+    metadata_from_kv: dict = _parse_meta_kv(meta)
+    metadata_json: dict = {}
     if metadata:
         try:
-            metadata_dict = json.loads(metadata)
+            metadata_json = json.loads(metadata)
         except json.JSONDecodeError:
+            # Maintain backward-compatible error message expected by tests
             typer.echo("Error: Invalid JSON in metadata")
             raise typer.Exit(1)
 
@@ -378,27 +460,110 @@ async def ingest(
 
         return {}
 
+    def _match_globs(root: Path, candidate: Path) -> bool:
+        # Build a posix relative path for matching
+        try:
+            rel = candidate.relative_to(root)
+        except Exception:
+            rel = candidate
+        rel_posix = rel.as_posix()
+        # Includes
+        if include:
+            if not any(fnmatch.fnmatch(rel_posix, pat) for pat in include):
+                return False
+        # Excludes
+        if exclude:
+            if any(fnmatch.fnmatch(rel_posix, pat) for pat in exclude):
+                return False
+        return True
+
+    def _merge_metadata(front_matter: dict) -> dict:
+        # Merge order: front matter < meta-file < --meta < --metadata JSON
+        merged = {**(front_matter or {}), **metadata_from_file, **metadata_from_kv, **metadata_json}
+        return merged
+
     try:
+        # Special case: --stdin reads content and stores to a temp file for processing
+        if read_stdin:
+            content = sys.stdin.read()
+            if dry_run:
+                # Simulate a path for ID derivation
+                synthetic_path = Path("stdin://document")
+                derived_id, id_source, _ = derive_document_id(synthetic_path, content, {})
+                plan = [{
+                    "path": str(synthetic_path),
+                    "document_id": derived_id,
+                    "id_source": id_source,
+                }]
+                output = json.dumps(plan, ensure_ascii=False) if as_json else f"1 document(s) would be ingested. First id={derived_id} (source={id_source})."
+                typer.echo(output)
+                return
+            # Persist stdin to a temporary file to reuse pipeline
+            tmp_dir = Path(typer.get_app_dir("synapse"))
+            tmp_dir.mkdir(parents=True, exist_ok=True)
+            tmp_file = tmp_dir / "stdin_ingest.md"
+            tmp_file.write_text(content, encoding="utf-8")
+            fm = parse_front_matter(tmp_file)
+            merged_meta = _merge_metadata(fm)
+            try:
+                await process_and_store_document(
+                    tmp_file,
+                    merged_meta,
+                    enable_embeddings=embeddings,
+                    replace_existing=replace,
+                )
+            except TypeError:
+                await process_and_store_document(tmp_file, merged_meta)
+            typer.echo("Successfully processed STDIN content including graph links.")
+            return
+
         processed_count = 0
         if file_path.is_dir():
-            # Walk directory for markdown/text-like files
+            candidates: list[Path] = []
             for path in sorted(file_path.rglob("*")):
                 if (
                     path.is_file()
                     and not path.name.startswith(".")
                     and ".obsidian" not in path.parts
+                    and not any("assets" in part.lower() for part in path.parts)
                     and path.suffix.lower() in {".md", ".markdown", ".txt"}
+                    and _match_globs(file_path, path)
                 ):
-                    fm = parse_front_matter(path)
-                    merged_meta = {**fm, **metadata_dict}
-                    # Call with embeddings flag when supported; fall back to 2-arg call for backward-compat in tests
+                    candidates.append(path)
+
+            if dry_run:
+                plan: list[dict[str, Any]] = []
+                for p in candidates:
                     try:
-                        await process_and_store_document(
-                            path, merged_meta, enable_embeddings=embeddings
-                        )
-                    except TypeError:
-                        await process_and_store_document(path, merged_meta)
-                    processed_count += 1
+                        text = p.read_text(encoding="utf-8")
+                    except Exception:
+                        text = ""
+                    fm = parse_front_matter(p)
+                    merged_meta = _merge_metadata(fm)
+                    doc_id, id_source, _ = derive_document_id(p, text, merged_meta)
+                    plan.append({
+                        "path": str(p),
+                        "document_id": doc_id,
+                        "id_source": id_source,
+                        "topics": merged_meta.get("topics", []),
+                    })
+                output = json.dumps(plan, ensure_ascii=False) if as_json else f"{len(plan)} document(s) would be ingested."
+                typer.echo(output)
+                return
+
+            for path in candidates:
+                fm = parse_front_matter(path)
+                merged_meta = _merge_metadata(fm)
+                try:
+                    await process_and_store_document(
+                        path,
+                        merged_meta,
+                        enable_embeddings=embeddings,
+                        replace_existing=replace,
+                    )
+                except TypeError:
+                    await process_and_store_document(path, merged_meta)
+                processed_count += 1
             if processed_count == 0:
                 typer.echo("No eligible files found to ingest.")
                 raise typer.Exit(1)
@@ -407,11 +572,32 @@ async def ingest(
             )
         else:
             # Single file
+            if dry_run:
+                try:
+                    text = file_path.read_text(encoding="utf-8")
+                except Exception:
+                    text = ""
+                fm = parse_front_matter(file_path)
+                merged_meta = _merge_metadata(fm)
+                doc_id, id_source, _ = derive_document_id(file_path, text, merged_meta)
+                plan = [{
+                    "path": str(file_path),
+                    "document_id": doc_id,
+                    "id_source": id_source,
+                    "topics": merged_meta.get("topics", []),
+                }]
+                output = json.dumps(plan, ensure_ascii=False) if as_json else f"1 document(s) would be ingested. id={doc_id} (source={id_source})."
+                typer.echo(output)
+                return
+
             fm = parse_front_matter(file_path)
-            merged_meta = {**fm, **metadata_dict}
+            merged_meta = _merge_metadata(fm)
             try:
                 await process_and_store_document(
-                    file_path, merged_meta, enable_embeddings=embeddings
+                    file_path,
+                    merged_meta,
+                    enable_embeddings=embeddings,
+                    replace_existing=replace,
                 )
             except TypeError:
                 await process_and_store_document(file_path, merged_meta)
@@ -428,6 +614,62 @@ def ingest_command(
     metadata: Optional[str] = typer.Option(
         None, help="JSON string of metadata to attach to the document"
     ),
+    meta: list[str] = typer.Option(
+        None,
+        "--meta",
+        help="Additional metadata entries as key=value (repeatable)",
+    ),
+    meta_file: Optional[Path] = typer.Option(
+        None,
+        "--meta-file",
+        help="Path to YAML or JSON file with metadata to merge",
+    ),
+    embeddings: bool = typer.Option(
+        False,
+        "--embeddings/--no-embeddings",
+        help="Generate and store embeddings during ingestion (default: off)",
+    ),
+    replace: bool = typer.Option(
+        True,
+        "--replace/--no-replace",
+        help=(
+            "When re-ingesting an existing document ID, delete old chunks/vectors "
+            "before adding new ones (idempotent)."
+        ),
+    ),
+    include: list[str] = typer.Option(
+        None,
+        "--include",
+        help="Glob pattern to include (repeatable). Defaults to all supported files.",
+    ),
+    exclude: list[str] = typer.Option(
+        None,
+        "--exclude",
+        help="Glob pattern to exclude (repeatable). Applied after include filters.",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show what would be ingested and exit"
+    ),
+    as_json: bool = typer.Option(
+        False, "--json", help="Emit machine-readable JSON output (with --dry-run)"
+    ),
+    read_stdin: bool = typer.Option(
+        False, "--stdin", help="Read document content from STDIN; ignores file path"
+    ),
 ) -> None:
-    """Wrapper function to run the async ingest command."""
-    asyncio.run(ingest(file_path=file_path, metadata=metadata))
+    """Wrapper function to run the async ingest command with options."""
+    asyncio.run(
+        ingest(
+            file_path=file_path,
+            metadata=metadata,
+            meta=meta,
+            meta_file=meta_file,
+            embeddings=embeddings,
+            replace=replace,
+            include=include,
+            exclude=exclude,
+            dry_run=dry_run,
+            as_json=as_json,
+            read_stdin=read_stdin,
+        )
+    )

@@ -30,7 +30,16 @@ Content starts here.
     ):
         mock_process.return_value = MagicMock(document_id=str(file_path), num_chunks=1)
 
-        result = cli_runner.invoke(app, ["ingest", str(file_path), "--metadata", "{\"source\":\"notion\"}"])
+        result = cli_runner.invoke(
+            app,
+            [
+                "ingest",
+                str(file_path),
+                "--metadata",
+                "{\"source\":\"notion\"}",
+                "--replace",
+            ],
+        )
         assert result.exit_code == 0
 
         args, kwargs = mock_process.call_args

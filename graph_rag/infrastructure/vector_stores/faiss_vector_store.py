@@ -51,6 +51,13 @@ class FaissVectorStore(VectorStore):
         if self.meta_path.exists():
             try:
                 data = json.loads(self.meta_path.read_text())
+                version = int(data.get("version", 1))
+                if version < 2:
+                    logger.warning(
+                        "FAISS meta version %s detected; embeddings may be missing. "
+                        "Consider re-ingesting or running maintenance to upgrade.",
+                        version,
+                    )
                 self._rows = data.get("rows", [])
                 self._row_by_chunk_id = {r["chunk_id"]: i for i, r in enumerate(self._rows)}
             except Exception as e:
@@ -65,7 +72,7 @@ class FaissVectorStore(VectorStore):
         tmp_index.replace(self.index_path)
         # Write metadata
         tmp_meta = self.meta_path.with_suffix(".json.tmp")
-        tmp_meta.write_text(json.dumps({"rows": self._rows}))
+        tmp_meta.write_text(json.dumps({"version": 2, "rows": self._rows}))
         tmp_meta.replace(self.meta_path)
 
     # --- VectorStore API ---

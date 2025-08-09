@@ -85,8 +85,19 @@ class IngestionService:
             IngestionResult with document and chunk IDs
         """
         print(f"DEBUG: IngestionService.ingest_document called for doc {document_id}")
+        id_source = None
+        try:
+            if isinstance(metadata, dict):
+                id_source = metadata.get("id_source")
+        except Exception:
+            id_source = None
         logger.info(
-            f"Starting ingestion for document {document_id} with metadata: {metadata}"
+            (
+                "Starting ingestion for document %s | id_source=%s | replace_existing=%s"
+            ),
+            document_id,
+            id_source,
+            replace_existing,
         )
         # Normalize and/or derive topics before persisting document and chunking
         topics = self._extract_topics(content=content, metadata=metadata)
@@ -113,6 +124,11 @@ class IngestionService:
                 )
                 if existing_chunks:
                     old_chunk_ids = [c.id for c in existing_chunks]
+                    logger.info(
+                        "Pre-delete for %s: deleting %d existing chunks",
+                        document_id,
+                        len(old_chunk_ids),
+                    )
                     # Delete chunks in graph by relationship, leaving the Document node
                     try:
                         # Use repository method if available; otherwise direct query via execute_query
@@ -128,6 +144,11 @@ class IngestionService:
                     # Delete from vector store best-effort
                     try:
                         await self.vector_store.delete_chunks(old_chunk_ids)
+                        logger.info(
+                            "Vector store: deleted %d chunks for %s",
+                            len(old_chunk_ids),
+                            document_id,
+                        )
                     except Exception as vs_del_err:
                         logger.debug(
                             f"Vector store chunk deletion skipped/failed: {vs_del_err}"
@@ -157,11 +178,19 @@ class IngestionService:
 
         # 2. Split content into chunks
         chunk_objects = await self._split_into_chunks(document, max_tokens_per_chunk)
-        logger.info(f"Split document {document_id} into {len(chunk_objects)} chunks.")
+        logger.info(
+            "Chunking result for %s: %d chunks",
+            document_id,
+            len(chunk_objects),
+        )
 
         # 3. Generate embeddings (if requested)
         if self.embedding_service and generate_embeddings:
-            logger.info(f"Generating embeddings for {len(chunk_objects)} chunks...")
+            logger.info(
+                "Generating embeddings for %s: %d chunks",
+                document_id,
+                len(chunk_objects),
+            )
             chunk_texts = [c.text for c in chunk_objects]
             try:
                 # Ensure the call to encode is awaited
@@ -180,7 +209,9 @@ class IngestionService:
                     try:
                         await self.vector_store.add_chunks(chunk_objects)
                         logger.info(
-                            f"Added {len(chunk_objects)} chunks to vector store."
+                            "Vector store: added %d chunks for %s",
+                            len(chunk_objects),
+                            document_id,
                         )
                     except Exception as vs_e:
                         logger.error(

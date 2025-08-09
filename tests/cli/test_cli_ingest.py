@@ -30,7 +30,7 @@ def test_ingest_file_success(cli_runner: CliRunner, tmp_path: Path):
         mock_result.num_chunks = 1  # Assume 1 chunk for simplicity
         mock_process_and_store.return_value = mock_result
 
-        result = cli_runner.invoke(app, ["ingest", str(test_file)])
+        result = cli_runner.invoke(app, ["ingest", str(test_file), "--no-replace"])
 
         print(
             f"CLI Runner Result (Ingest Success Test):\nExit Code: {result.exit_code}\nOutput:\n{result.stdout}\nException:\n{result.exception}"
@@ -44,6 +44,8 @@ def test_ingest_file_success(cli_runner: CliRunner, tmp_path: Path):
         call_args, call_kwargs = mock_process_and_store.call_args
         assert isinstance(call_args[0], Path) and str(call_args[0]) == str(test_file)
         assert call_args[1] == {}  # Default metadata is empty dict
+        if "replace_existing" in call_kwargs:
+            assert call_kwargs["replace_existing"] is False
         # Check successful output message
         mock_echo.assert_any_call(
             f"Successfully processed and stored {test_file} including graph links."

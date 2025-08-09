@@ -68,6 +68,11 @@ file1 body
     file2 = root / "b.txt"
     file2.write_text("file2 body", encoding="utf-8")
 
+    # Notion assets folder that should be ignored
+    assets_dir = root / "My Page assets"
+    assets_dir.mkdir()
+    (assets_dir / "image.png").write_text("bin", encoding="utf-8")
+
     hidden = root / ".hidden.md"
     hidden.write_text("should be skipped", encoding="utf-8")
 
@@ -97,6 +102,7 @@ file1 body
                 str(root),
                 "--metadata",
                 "{\"source\":\"vault\"}",
+                "--no-replace",
             ],
         )
         assert result.exit_code == 0
@@ -116,6 +122,12 @@ file1 body
         file2_call = next(c for c in mock_process.call_args_list if c[0][0] == file2)
         meta2 = file2_call[0][1]
         assert meta2 == {"source": "vault"}
+
+        # Ensure the CLI threaded --no-replace into process call
+        for call in mock_process.call_args_list:
+            # kwargs may be empty because we fall back for older signature
+            if "replace_existing" in call[1]:
+                assert call[1]["replace_existing"] is False
 
         mock_echo.assert_any_call(
             f"Successfully processed and stored 2 files from {root}."

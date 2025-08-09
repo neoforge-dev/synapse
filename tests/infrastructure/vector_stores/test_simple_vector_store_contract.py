@@ -61,6 +61,13 @@ async def test_faiss_vector_store_persistence(tmp_path):
     results2 = await store2.search_similar_chunks(emb_a, limit=1)
     assert results2 and results2[0].chunk.id == "c1"
 
+    # Meta file should contain version key set to 2
+    meta = (path / "meta.json").read_text()
+    import json as _json
+
+    meta_obj = _json.loads(meta)
+    assert meta_obj.get("version") == 2
+
 
 @pytest.mark.asyncio
 async def test_faiss_vector_store_delete_and_rebuild(tmp_path):
