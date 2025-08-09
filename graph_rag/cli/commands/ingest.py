@@ -551,25 +551,35 @@ async def ingest(
                 typer.echo(output)
                 return
 
+            results_payload: list[dict[str, Any]] = [] if as_json else None
             for path in candidates:
                 fm = parse_front_matter(path)
                 merged_meta = _merge_metadata(fm)
                 try:
-                    await process_and_store_document(
+                    res = await process_and_store_document(
                         path,
                         merged_meta,
                         enable_embeddings=embeddings,
                         replace_existing=replace,
                     )
                 except TypeError:
-                    await process_and_store_document(path, merged_meta)
+                    res = await process_and_store_document(path, merged_meta)
+                if as_json:
+                    # Expect dict-like from implementation/tests; fallback minimal
+                    if isinstance(res, dict):
+                        results_payload.append(res)
+                    else:
+                        results_payload.append({"path": str(path)})
                 processed_count += 1
             if processed_count == 0:
                 typer.echo("No eligible files found to ingest.")
                 raise typer.Exit(1)
-            typer.echo(
-                f"Successfully processed and stored {processed_count} files from {file_path}."
-            )
+            if as_json:
+                typer.echo(json.dumps(results_payload, ensure_ascii=False))
+            else:
+                typer.echo(
+                    f"Successfully processed and stored {processed_count} files from {file_path}."
+                )
         else:
             # Single file
             if dry_run:
@@ -593,17 +603,21 @@ async def ingest(
             fm = parse_front_matter(file_path)
             merged_meta = _merge_metadata(fm)
             try:
-                await process_and_store_document(
+                res = await process_and_store_document(
                     file_path,
                     merged_meta,
                     enable_embeddings=embeddings,
                     replace_existing=replace,
                 )
             except TypeError:
-                await process_and_store_document(file_path, merged_meta)
-            typer.echo(
-                f"Successfully processed and stored {file_path} including graph links."
-            )
+                res = await process_and_store_document(file_path, merged_meta)
+            if as_json:
+                payload = res if isinstance(res, dict) else {"path": str(file_path)}
+                typer.echo(json.dumps(payload, ensure_ascii=False))
+            else:
+                typer.echo(
+                    f"Successfully processed and stored {file_path} including graph links."
+                )
     except Exception as e:
         typer.echo(f"Error ingesting document(s): {e}")
         raise typer.Exit(1)

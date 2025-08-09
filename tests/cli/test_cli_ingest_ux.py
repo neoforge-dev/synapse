@@ -124,3 +124,43 @@ def test_ingest_from_stdin(tmp_path: Path):
         assert mock_process.call_count == 1
         call_args, _ = mock_process.call_args
         assert isinstance(call_args[0], Path)
+
+
+def test_ingest_json_single_file_success(tmp_path: Path):
+    file_path = tmp_path / "doc.md"
+    file_path.write_text("content", encoding="utf-8")
+
+    runner = CliRunner()
+    with patch(
+        "graph_rag.cli.commands.ingest.process_and_store_document",
+        new_callable=AsyncMock,
+    ) as mock_process:
+        mock_process.return_value = {"document_id": "doc-1", "num_chunks": 2}
+        result = runner.invoke(app, ["ingest", str(file_path), "--json"])
+        assert result.exit_code == 0
+        data = json.loads(result.stdout or "{}")
+        assert data["document_id"] == "doc-1"
+        assert data["num_chunks"] == 2
+
+
+def test_ingest_json_directory_success(tmp_path: Path):
+    (tmp_path / "a.md").write_text("A", encoding="utf-8")
+    (tmp_path / "b.md").write_text("B", encoding="utf-8")
+
+    runner = CliRunner()
+    with patch(
+        "graph_rag.cli.commands.ingest.process_and_store_document",
+        new_callable=AsyncMock,
+    ) as mock_process:
+        # Return different ids per call
+        async def side_effect(path: Path, *args, **kwargs):
+            name = path.stem
+            return {"document_id": f"{name}-id", "num_chunks": 1}
+
+        mock_process.side_effect = side_effect
+        result = runner.invoke(app, ["ingest", str(tmp_path), "--json"])
+        assert result.exit_code == 0
+        arr = json.loads(result.stdout or "[]")
+        assert isinstance(arr, list) and len(arr) == 2
+        ids = {item["document_id"] for item in arr}
+        assert ids == {"a-id", "b-id"}
