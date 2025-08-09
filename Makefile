@@ -61,6 +61,15 @@ test: ## Run unit tests (excluding integration tests)
 	@echo "Running unit tests..."
 	$(UV) run pytest -v -m "not integration" --tb=long -rA --maxfail=5
 
+coverage-hot: ## Report coverage for hot paths (non-blocking)
+	@echo "Reporting coverage for hot paths (non-blocking)..."
+	$(UV) run pytest -q -m "not integration" \
+		--cov=graph_rag/api/routers \
+		--cov=graph_rag/core/graph_rag_engine.py \
+		--cov=graph_rag/infrastructure/vector_stores/simple_vector_store.py \
+		--cov-report=term-missing \
+		--cov-fail-under=0
+
 test-memgraph: ## Run Memgraph integration tests (requires Memgraph running)
 	@echo "INFO: Ensure Memgraph container is running via 'make run-memgraph' before executing this target."
 	@echo "INFO: Waiting for Memgraph to be ready..."

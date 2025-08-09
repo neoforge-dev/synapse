@@ -24,6 +24,8 @@ jobs:
         run: uv run ruff format --check .
       - name: Unit tests
         run: make test
+      - name: Coverage (hot paths)
+        run: make coverage-hot
 
   memgraph-integration:
     if: contains(github.event.pull_request.labels.*.name, 'memgraph')
