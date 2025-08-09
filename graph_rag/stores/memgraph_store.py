@@ -305,12 +305,6 @@ class MemgraphStore(GraphStore):
 
                 # Process Entities with UNWIND and MERGE
                 if entity_params:
-                    (
-                        f"UNWIND $batch AS item "
-                        f"MERGE (n:{item.get('type', 'Entity')} {{id: item.id}}) "  # Use dynamic label if needed, else a fixed one
-                        f"ON CREATE SET n = item.props, n.created_at = timestamp() "
-                        f"ON MATCH SET n = item.props, n.updated_at = timestamp()"
-                    )
                     # Note: Using item.type directly in the label might require Memgraph Enterprise or specific config.
                     # A safer approach might be to run separate queries per entity type or use a generic label.
                     # For simplicity here, let's assume a generic :Entity label if type isn't directly usable.
@@ -343,13 +337,6 @@ class MemgraphStore(GraphStore):
 
                 # Process Relationships with UNWIND and MERGE
                 if relationship_params:
-                    (
-                        f"UNWIND $batch AS item "
-                        f"MATCH (source {{id: item.source_id}}), (target {{id: item.target_id}}) "
-                        f"MERGE (source)-[r:{item.get('type', 'RELATED_TO')}]->(target) "  # Dynamic relationship type
-                        f"ON CREATE SET r = item.props, r.created_at = timestamp() "
-                        f"ON MATCH SET r = item.props, r.updated_at = timestamp()"
-                    )
                     # Again, dynamic relationship type item.type might need care.
                     # Let's assume it works or adjust if Memgraph requires quoted type strings.
                     # REVISED for robustness: Execute per relationship type or use fixed type if dynamic is complex.
@@ -357,14 +344,13 @@ class MemgraphStore(GraphStore):
                     logger.debug("Bulk adding relationships via UNWIND...")
                     # Refined relationship Cypher - use dynamic type syntax
                     rel_cypher_unwind = (
-                        f"UNWIND $batch AS item "
-                        f"MATCH (source {{id: item.source_id}}), (target {{id: item.target_id}}) "
-                        f"CALL {{ WITH source, target, item "
-                        f"  MERGE (source)-[r:`{item['type']}`]->(target) "  # Use backticks for dynamic type from item
-                        f"  ON CREATE SET r = item.props, r.created_at = timestamp() "
-                        f"  ON MATCH SET r = item.props, r.updated_at = timestamp() "
-                        f"  RETURN count(r) as rel_count "  # Return something to prevent empty result issues
-                        f"}} RETURN sum(rel_count) as total_rels"  # Aggregate results
+                        "UNWIND $batch AS item "
+                        "MATCH (source {id: item.source_id}), (target {id: item.target_id}) "
+                        "CALL { WITH source, target, item "
+                        "  WITH source, target, item, item.type AS rel_type "
+                        "  CALL apoc.create.relationship(source, rel_type, item.props, target) YIELD rel "
+                        "  RETURN count(rel) as rel_count "
+                        "} RETURN sum(rel_count) as total_rels"
                     )
                     # This requires Memgraph 2.x+ for CALL subquery.
                     # If using older version, might need different approach (e.g. separate queries per type).
