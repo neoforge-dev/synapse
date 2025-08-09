@@ -20,6 +20,10 @@ jobs:
         run: uv venv
       - name: Install deps
         run: uv pip install -e .[dev]
+      - name: Setup NLP models
+        run: |
+          uv run python -m nltk.downloader punkt
+          uv run python -m spacy download en_core_web_sm
       - name: Lint (errors only)
         run: uv run ruff check .
       - name: Format
