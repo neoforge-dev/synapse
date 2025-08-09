@@ -18,6 +18,12 @@ make run-memgraph
 make run-api
 
 # 3) Ingest your notes (directory or single file)
+# Option A: composable Unix-style pipeline (recommended)
+synapse discover ~/Notes --include "**/*.md" \
+  | synapse parse --meta source=vault \
+  | synapse store --embeddings --json
+
+# Option B: legacy one-shot wrapper (backward compatible)
 synapse ingest ~/Notes --embeddings  # parses YAML front matter / Notion property tables
 
 # Control verbosity globally
@@ -32,6 +38,12 @@ synapse ingest ~/Notes --meta source=vault --meta owner=me \
 synapse ingest ~/Notes --dry-run --json \
   --include "**/*.md" --exclude "archive/**"
 
+# Use jq to filter before storing (topics contains "AI")
+synapse discover ~/Notes --include "**/*.md" \
+  | synapse parse \
+  | jq 'select(.metadata.topics[]? == "AI")' \
+  | synapse store --embeddings --json
+
 # Pipe content from stdin (single doc)
 # Non-dry-run with --json now emits a structured summary
 echo "Hello from stdin" | synapse ingest ignored.md --stdin --json
@@ -42,6 +54,24 @@ Notes:
 - `--include`/`--exclude` let you filter files using glob patterns relative to the input path.
 - `--embeddings` enables vector embeddings during ingestion (defaults off). When off, only graph+topics are stored; when on, semantic search is enabled.
 - Re-ingestion mode defaults to replace; use `--no-replace` to append-only (not recommended).
+
+### Composable CLI commands
+
+- `synapse discover DIRECTORY [--include PATTERN ...] [--exclude PATTERN ...] [--json]`
+  - Outputs absolute file paths, one per line; with `--json`, emits `{ "path": "..." }` per line
+  - Respects ignore rules for hidden files, `.obsidian/`, and Notion `assets` folders
+
+- `synapse parse [--meta key=value ...] [--meta-file path]`
+  - Reads file paths from stdin
+  - For each file, parses YAML front matter and Notion property tables, merges metadata, and emits one JSON line: `{ path, content, metadata }`
+
+- `synapse store [--embeddings/--no-embeddings] [--replace/--no-replace] [--json]`
+  - Reads JSON lines from stdin (as produced by `parse`)
+  - Derives `document_id`, chunks content, optionally generates embeddings, stores to graph/vector stores
+  - With `--json`, emits `{ document_id, num_chunks }` per line
+
+- `synapse ingest`
+  - Backward-compatible wrapper that performs discover → parse → store in one command. Supports `--dry-run`, `--json`, and `--json-summary` for directory mode.
 
 JSON output (non-dry-run):
 - Single file: `{ "document_id": "...", "num_chunks": N, "id_source": "...", "path": "...", "embeddings": bool, "replace_existing": bool, "topics": [..] }`
