@@ -28,6 +28,7 @@ from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRe
 from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
 from graph_rag.models import ProcessedDocument
 from graph_rag.services.ingestion import IngestionService
+from graph_rag.utils.identity import derive_document_id
 
 logger = logging.getLogger(__name__)  # Initialize logger
 # Configure basic logging if not already configured by application entry point
@@ -89,15 +90,19 @@ async def process_and_store_document(
             vector_store=vector_store,  # Provide the created store
         )
 
-        # Read file content
+        # Read file content and derive stable document_id
         content = file_path.read_text()
-        document_id = str(file_path)  # Use file path as ID for CLI
+        derived_id, id_source, _ = derive_document_id(file_path, content, metadata or {})
+        document_id = derived_id
+        # Attach id_source for observability
+        meta_with_id = dict(metadata or {})
+        meta_with_id.setdefault("id_source", id_source)
 
         # 1. Basic ingestion (Doc + Chunks)
         await service.ingest_document(
             document_id=document_id,
             content=content,
-            metadata=metadata or {},
+            metadata=meta_with_id,
             generate_embeddings=enable_embeddings,
         )
 

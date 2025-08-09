@@ -69,6 +69,7 @@ class IngestionService:
         metadata: dict[str, Any],
         max_tokens_per_chunk: Optional[int] = None,
         generate_embeddings: bool = True,  # Add flag to control embedding generation
+        replace_existing: bool = True,
     ) -> IngestionResult:
         """
         Ingest a document: store it, chunk it, generate embeddings, and create relationships.
@@ -104,6 +105,38 @@ class IngestionService:
                     normalized_topics.append(key)
             if normalized_topics:
                 metadata["topics"] = normalized_topics
+        # Optionally replace existing chunks and vectors for idempotent re-ingestion
+        if replace_existing:
+            try:
+                existing_chunks = await self.graph_store.get_chunks_by_document_id(
+                    document_id
+                )
+                if existing_chunks:
+                    old_chunk_ids = [c.id for c in existing_chunks]
+                    # Delete chunks in graph by relationship, leaving the Document node
+                    try:
+                        # Use repository method if available; otherwise direct query via execute_query
+                        await self.graph_store.execute_query(
+                            """
+                            MATCH (d:Document {id: $doc_id})-[:CONTAINS]->(c:Chunk)
+                            DETACH DELETE c
+                            """,
+                            {"doc_id": document_id},
+                        )
+                    except Exception:
+                        logger.debug("Graph chunk deletion step failed or unsupported; continuing")
+                    # Delete from vector store best-effort
+                    try:
+                        await self.vector_store.delete_chunks(old_chunk_ids)
+                    except Exception as vs_del_err:
+                        logger.debug(
+                            f"Vector store chunk deletion skipped/failed: {vs_del_err}"
+                        )
+            except Exception as pre_err:
+                logger.debug(
+                    f"Pre-ingestion replace_existing probe failed for {document_id}: {pre_err}"
+                )
+
         # 1. Create and save document using the provided ID
         document = Document(id=document_id, content=content, metadata=metadata)
         try:
