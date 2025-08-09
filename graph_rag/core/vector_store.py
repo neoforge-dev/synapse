@@ -35,18 +35,8 @@ class MockVectorStore:
         return results[:top_k]
 
     async def get_all_chunks(self) -> list[Chunk]:
-        from loguru import logger
-
-        logger.info(f"MockVectorStore: Adding {len(chunks)} chunks.")
-        self.calls["add_chunks"].append(chunks)
-        for chunk in chunks:
-            if chunk.id in self.chunks:
-                logger.warning(
-                    f"Chunk ID {chunk.id} already exists in MockVectorStore. Overwriting."
-                )
-            self.chunks[chunk.id] = chunk
-            # In a real store, embedding generation might happen here if not already present
-            # For the mock, we assume embeddings are provided or handled elsewhere
+        """Return all stored chunks."""
+        return list(self.chunks)
 
     def search(
         self, query_embedding: EmbeddingVector, top_k: int = 5
@@ -62,7 +52,7 @@ class MockVectorStore:
 
         # Example: return the first `top_k` chunks that have an embedding
         count = 0
-        for chunk_id, chunk in self.chunks.items():
+        for chunk_id, chunk in enumerate(self.chunks):
             if chunk.embedding is not None:
                 # Return chunk ID and a mock score (e.g., inverse order)
                 results.append((chunk_id, 1.0 / (count + 1)))

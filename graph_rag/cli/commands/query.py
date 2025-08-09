@@ -67,12 +67,11 @@ def make_api_request(
     except json.JSONDecodeError as e:
         # Access response text carefully
         response_text = "N/A"
-        if (
-            "exc" in locals()
-            and hasattr(exc, "response")
-            and hasattr(exc.response, "text")
-        ):
-            response_text = exc.response.text
+        # httpx raises JSONDecodeError on response.json(); try to include body if available
+        try:
+            response_text = response.text  # type: ignore[attr-defined]
+        except Exception:
+            pass
         error_msg = f"Error: Could not decode JSON response from API. Details: {e}. Response text: {response_text}"
         logger.error(error_msg)
         console.print(f"[bold red]{error_msg}[/bold red]")

@@ -1,5 +1,6 @@
 import logging
 from collections.abc import AsyncGenerator
+import asyncio
 from typing import Any, Optional
 
 from .protocols import LLMService  # Import the protocol

@@ -77,8 +77,8 @@ class DocumentProcessor(Protocol):
 class EntityExtractor(Protocol):
     """Protocol for extracting entities and relationships from text or documents."""
 
-    # Use string forward reference for Document and ProcessedDocument
-    def extract(self, document: Document) -> ProcessedDocument:
+    # Use string forward references for Document and ExtractionResult
+    def extract(self, document: "Document") -> ExtractionResult:
         """Extracts entities and relationships from an entire document object.
 
         Deprecated: Prefer extract_from_text or process documents chunk by chunk.

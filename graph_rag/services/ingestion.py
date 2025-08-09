@@ -138,12 +138,16 @@ class IngestionService:
                     # Delete chunks in graph by relationship, leaving the Document node
                     try:
                         # Use repository method if available; otherwise direct query via execute_query
-                        await self.graph_store.execute_query(
-                            """
-                            MATCH (d:Document {id: $doc_id})-[:CONTAINS]->(c:Chunk)
-                            DETACH DELETE c
-                            """,
-                            {"doc_id": document_id},
+                        await self._retry(
+                            lambda: self.graph_store.execute_query(
+                                """
+                                MATCH (d:Document {id: $doc_id})-[:CONTAINS]->(c:Chunk)
+                                DETACH DELETE c
+                                """,
+                                {"doc_id": document_id},
+                            ),
+                            attempts=3,
+                            base_delay=0.2,
                         )
                     except Exception:
                         logger.debug("Graph chunk deletion step failed or unsupported; continuing")
@@ -179,7 +183,11 @@ class IngestionService:
             print(
                 f"DEBUG: About to call graph_store.add_document for doc {document_id}"
             )
-            await self.graph_store.add_document(document)
+            await self._retry(
+                lambda: self.graph_store.add_document(document),
+                attempts=3,
+                base_delay=0.2,
+            )
             print(f"DEBUG: Finished graph_store.add_document for doc {document_id}")
             # add_document doesn't return the ID, we already have it
             # if saved_doc_id != document_id:
@@ -281,7 +289,11 @@ class IngestionService:
                     print(f"DEBUG: Embedding value preview: {embedding_preview}")
 
                 # Use add_chunk for Chunk objects
-                await self.graph_store.add_chunk(chunk)
+                await self._retry(
+                    lambda: self.graph_store.add_chunk(chunk),
+                    attempts=3,
+                    base_delay=0.2,
+                )
                 # Add the chunk's ID to the list
                 chunk_ids.append(chunk.id)
 
@@ -294,7 +306,11 @@ class IngestionService:
                     source_id=document_id,
                     target_id=chunk.id,  # Use chunk.id
                 )
-                await self.graph_store.add_relationship(rel)
+                await self._retry(
+                    lambda: self.graph_store.add_relationship(rel),
+                    attempts=3,
+                    base_delay=0.2,
+                )
             except Exception as e:
                 logger.error(
                     f"Failed to save chunk {chunk.id} or its relationship for document {document_id}: {e}",
@@ -318,8 +334,9 @@ class IngestionService:
                     seen_topic_ids.add(topic_id)
                     # Create/Upsert topic entity
                     try:
+                        from graph_rag.domain.models import Entity as DomainEntity
                         await self.graph_store.add_entity(
-                            Entity(
+                            DomainEntity(
                                 id=topic_id,
                                 name=topic,
                                 type="Topic",
