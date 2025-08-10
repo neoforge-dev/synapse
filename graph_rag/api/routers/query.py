@@ -9,6 +9,7 @@ from graph_rag.api.models import (
     QueryResponse,
     QueryResultChunk,
     QueryResultGraphContext,
+    AskRequest,
 )
 from graph_rag.core.graph_rag_engine import (
     GraphRAGEngine,
@@ -104,4 +105,64 @@ def create_query_router() -> APIRouter:
                 detail=f"Failed to process query: {e}",
             )
 
+    @router.post(
+        "/ask",
+        response_model=QueryResponse,
+        summary="Ask a question and get a synthesized answer",
+        description="Retrieves context (optionally with graph) and synthesizes an answer using the configured LLM.",
+    )
+    async def ask(
+        ask_request: AskRequest,
+        engine: GraphRAGEngine = Depends(get_graph_rag_engine),
+    ):
+        logger.info(
+            f"Received ask: {ask_request.text[:100]}... (k={ask_request.k}, graph={ask_request.include_graph})"
+        )
+        try:
+            config = {"k": ask_request.k, "include_graph": ask_request.include_graph}
+            result: DomainQueryResult = await engine.query(ask_request.text, config=config)
+
+            return QueryResponse(
+                answer=result.answer,
+                relevant_chunks=_to_api_chunks(result),
+                graph_context=_to_api_graph_context(result),
+                metadata=result.metadata,
+            )
+        except Exception as e:
+            logger.error(f"Error processing ask '{ask_request.text}': {e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to process ask: {e}",
+            )
+
     return router
+
+
+def _to_api_chunks(query_result: DomainQueryResult) -> list[QueryResultChunk]:
+    api_chunks: list[QueryResultChunk] = []
+    for chunk in query_result.relevant_chunks:
+        api_chunks.append(
+            QueryResultChunk(
+                id=chunk.id,
+                text=chunk.text,
+                document_id=chunk.document_id,
+                metadata=chunk.properties or {},
+                score=chunk.properties.get("score") if chunk.properties else None,
+            )
+        )
+    return api_chunks
+
+
+def _to_api_graph_context(query_result: DomainQueryResult):
+    if not query_result.graph_context:
+        return None
+    try:
+        domain_entities, domain_relationships = query_result.graph_context
+        return QueryResultGraphContext(
+            entities=[e.model_dump() for e in domain_entities] if domain_entities else [],
+            relationships=[r.model_dump() for r in domain_relationships]
+            if domain_relationships
+            else [],
+        )
+    except (TypeError, ValueError):
+        return None

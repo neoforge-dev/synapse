@@ -13,6 +13,7 @@ from graph_rag.cli.commands.discover import discover_command
 from graph_rag.cli.commands.parse import parse_command
 from graph_rag.cli.commands.store import store_command
 from graph_rag.cli.commands.search import search_query
+from graph_rag.cli.commands.query import app as query_app
 from graph_rag.config import get_settings  # Import factory
 
 settings = get_settings()  # Get settings instance
@@ -39,6 +40,7 @@ app.command("discover")(discover_command)
 app.command("parse")(parse_command)
 app.command("store")(store_command)
 app.command("search")(search_query)
+app.add_typer(query_app, name="query")
 app.command("admin-health")(check_health)  # Renamed for clarity
 
 

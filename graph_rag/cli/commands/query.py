@@ -22,6 +22,7 @@ from graph_rag.config import get_settings
 settings = get_settings()
 DEFAULT_API_BASE_URL = f"http://{settings.api_host}:{settings.api_port}/api/v1"
 DEFAULT_QUERY_URL = f"{DEFAULT_API_BASE_URL}/query/"
+DEFAULT_ASK_URL = f"{DEFAULT_API_BASE_URL}/query/ask"
 
 # Logging and Console
 logging.basicConfig(
@@ -89,7 +90,7 @@ app = typer.Typer(help="Commands for querying the GraphRAG system.")
 
 @app.command("ask")
 def ask_query(
-    query_text: str = typer.Argument(..., help="The natural language query to ask."),
+    query_text: str = typer.Argument(..., help="The natural language question to ask."),
     k: Optional[int] = typer.Option(
         None, "--k", help="Number of relevant chunks to retrieve (vector search)."
     ),
@@ -100,40 +101,35 @@ def ask_query(
         False,
         "--show-graph",
         "-g",
-        help="Display the graph context (entities/relationships).",
+        help="Also include graph context retrieval and display entities/relationships.",
     ),
     raw: bool = typer.Option(
         False, "--raw", help="Output the raw JSON response from the API."
     ),
     api_url: str = typer.Option(
-        DEFAULT_QUERY_URL, "--url", help="URL of the query API endpoint."
+        DEFAULT_ASK_URL, "--url", help="URL of the ask API endpoint."
     ),
 ):
-    """Submits a query to the GraphRAG API and displays the results."""
+    """Asks the API to retrieve context and synthesize an answer (LLM)."""
 
-    console.print(f"[bold blue]Querying API at {api_url}...[/bold blue]")
+    console.print(f"[bold blue]Asking API at {api_url}...[/bold blue]")
 
     # --- Prepare API Payload ---
-    config = {}
+    payload: dict[str, Any] = {"text": query_text, "include_graph": show_graph}
     if k is not None:
-        config["k"] = k
-
-    payload = {"query_text": query_text, "config": config}
+        payload["k"] = k
 
     # --- Call API ---
     try:
-        with console.status("[bold green]Processing query...[/bold green]"):
+        with console.status("[bold green]Generating answer...[/bold green]"):
             response_data = make_api_request(api_url, method="POST", payload=payload)
     except typer.Exit:
-        # Error already printed by make_api_request
-        sys.exit(1)  # Ensure exit
+        sys.exit(1)
 
-    # --- Output Result ---
     if raw:
         console.print(json.dumps(response_data, indent=2))
         raise typer.Exit()
 
-    # Display formatted output
     console.print(
         Panel(
             response_data.get("answer", "No answer received."),
@@ -147,18 +143,14 @@ def ask_query(
         chunks_table.add_column("ID", style="dim", width=15)
         chunks_table.add_column("Document ID", width=15)
         chunks_table.add_column("Text Snippet")
-        # chunks_table.add_column("Score", width=8)
-
         for chunk in response_data["relevant_chunks"]:
             snippet = chunk.get("text", "")[:150] + (
                 "..." if len(chunk.get("text", "")) > 150 else ""
             )
-            # score_str = f"{chunk.get('score'):.3f}" if chunk.get('score') is not None else "N/A"
             chunks_table.add_row(
                 chunk.get("id", "N/A"),
                 chunk.get("document_id", "N/A"),
                 snippet,
-                # score_str
             )
         console.print(chunks_table)
 
@@ -190,7 +182,6 @@ def ask_query(
             rels_table.add_column("Target ID", style="dim")
             rels_table.add_column("Metadata")
             for rel in graph_context["relationships"]:
-                # Access nested source/target dictionaries if the API model returns them that way
                 source_id = (
                     rel.get("source", {}).get("id", "N/A")
                     if isinstance(rel.get("source"), dict)

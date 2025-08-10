@@ -97,6 +97,29 @@ class QueryResponse(BaseModel):
     )
 
 
+# --- Ask Models ---
+
+
+class AskRequest(BaseModel):
+    """Request model for submitting an ask (answer synthesis) request."""
+
+    text: str = Field(..., description="The user's question.")
+    k: int = Field(5, description="Number of chunks to retrieve.")
+    include_graph: bool = Field(
+        False, description="Whether to include graph-based context retrieval."
+    )
+    provider: Optional[str] = Field(
+        None,
+        description="LLM provider to use (e.g., openai, anthropic, mock). Optional override.",
+    )
+    model: Optional[str] = Field(
+        None, description="LLM model name to use. Optional override."
+    )
+    streaming: bool = Field(
+        False, description="Enable streaming responses when supported."
+    )
+
+
 # --- Admin/Management Models (Add later if needed) ---
 
 
