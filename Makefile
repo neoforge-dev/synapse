@@ -62,12 +62,12 @@ test: ## Run unit tests (excluding integration tests)
 	$(UV) run pytest -v -m "not integration" --tb=long -rA --maxfail=5
 
 coverage-hot: ## Enforce >=85% coverage on critical API routers
-    @echo "Reporting coverage for hot paths (gated at 85%)..."
-    $(UV) run pytest -q -m "not integration" \
-        --cov=graph_rag.api.routers.documents \
-        --cov=graph_rag.api.routers.ingestion \
-        --cov-report=term-missing \
-        --cov-fail-under=85
+	@echo "Reporting coverage for hot paths (gated at 85%)..."
+	$(UV) run pytest -q -m "not integration" \
+		--cov=graph_rag.api.routers.documents \
+		--cov=graph_rag.api.routers.ingestion \
+		--cov-report=term-missing \
+		--cov-fail-under=85
 
 test-memgraph: ## Run Memgraph integration tests (requires Memgraph running)
 	@echo "INFO: Ensure Memgraph container is running via 'make run-memgraph' before executing this target."
