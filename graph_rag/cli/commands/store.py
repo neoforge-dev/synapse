@@ -10,11 +10,27 @@ from graph_rag.core.entity_extractor import SpacyEntityExtractor
 from graph_rag.infrastructure.document_processor.simple_processor import SimpleDocumentProcessor
 from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
+from graph_rag.infrastructure.vector_stores.faiss_vector_store import (
+    FaissVectorStore,
+)
 from graph_rag.services.ingestion import IngestionService
 from graph_rag.utils.identity import derive_document_id
 
 
 app = typer.Typer(help="Store parsed documents into the graph and vector store")
+
+
+def _get_vector_store(settings: Settings, embedding_service: Any):
+    """Factory that returns a vector store instance based on settings."""
+    vtype = (settings.vector_store_type or "simple").lower()
+    if vtype == "faiss":
+        # Use configured path and embedding dimension from service
+        return FaissVectorStore(
+            path=settings.vector_store_path,
+            embedding_dimension=getattr(embedding_service, "get_embedding_dimension", lambda: 768)(),
+        )
+    # default
+    return SimpleVectorStore(embedding_service=embedding_service)
 
 
 @app.command()
@@ -44,7 +60,7 @@ def store_command(
         except Exception:
             pass
 
-    vector_store = SimpleVectorStore(embedding_service=embedding_service)
+    vector_store = _get_vector_store(settings, embedding_service)
 
     async def _process(path: Path, content: str, metadata: dict[str, Any]):
         nonlocal repo
@@ -115,3 +131,48 @@ def store_command(
                 typer.echo(json.dumps({"error": str(e)}, ensure_ascii=False))
             else:
                 typer.echo(f"Error storing document {path}: {e}")
+
+
+@app.command("stats")
+def store_stats() -> None:
+    """Show vector store stats (for FAISS and others)."""
+    settings = Settings()
+    embedding_service = MockEmbeddingService(dimension=10)
+    vs = _get_vector_store(settings, embedding_service)
+    import asyncio as _asyncio
+    try:
+        # Try FAISS maintenance API
+        out = _asyncio.run(vs.stats())  # type: ignore[attr-defined]
+    except AttributeError:
+        # Fallback for simple store
+        out = _asyncio.run(vs.get_vector_store_size())  # type: ignore
+        out = {"vectors": out, "type": settings.vector_store_type}
+    typer.echo(json.dumps(out, ensure_ascii=False))
+
+
+@app.command("rebuild")
+def store_rebuild() -> None:
+    """Rebuild vector index from persisted embeddings (FAISS)."""
+    settings = Settings()
+    embedding_service = MockEmbeddingService(dimension=10)
+    vs = _get_vector_store(settings, embedding_service)
+    import asyncio as _asyncio
+    try:
+        _asyncio.run(vs.rebuild_index())  # type: ignore[attr-defined]
+        typer.echo("Rebuilt vector index.")
+    except AttributeError:
+        typer.echo("Rebuild not supported for this vector store type.")
+
+
+@app.command("clear")
+def store_clear(confirm: bool = typer.Option(False, "--yes", help="Confirm deletion")) -> None:
+    """Clear the vector store."""
+    if not confirm:
+        typer.echo("Refusing to clear without --yes")
+        raise typer.Exit(code=1)
+    settings = Settings()
+    embedding_service = MockEmbeddingService(dimension=10)
+    vs = _get_vector_store(settings, embedding_service)
+    import asyncio as _asyncio
+    _asyncio.run(vs.delete_store())
+    typer.echo("Vector store cleared.")

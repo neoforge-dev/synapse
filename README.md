@@ -72,6 +72,7 @@ Notes:
   - Derives `document_id`, chunks content, optionally generates embeddings, stores to graph/vector stores
   - With `--json`, emits `{ document_id, num_chunks }` per line
   - With `--emit-chunks` and `--json`, also emits one line per chunk: `{ chunk_id, document_id }`
+  - Maintenance: `synapse store stats` (show vector stats), `synapse store rebuild` (FAISS), `synapse store clear --yes`
 
 - `synapse ingest`
   - Backward-compatible wrapper that performs discover → parse → store in one command. Supports `--dry-run`, `--json`, and `--json-summary` for directory mode.
@@ -151,9 +152,12 @@ Identity and idempotence:
 
 ### Vector store considerations
 
-- The default vector store is an in-process simple store optimized for tests and quick starts. For production, use FAISS via the API service.
-- Deletions in persistent vector stores may not physically reclaim vectors without a rebuild. The ingestion flow uses idempotent re-ingestion (`--replace`) to avoid duplicates.
-- If you rely on exact deletion semantics, prefer a full re-ingest for affected documents or rebuild the index using the API’s maintenance tools when available.
+- The default vector store is an in-process simple store optimized for tests and quick starts. For production, set `SYNAPSE_VECTOR_STORE_TYPE=faiss`.
+- FAISS store now persists raw embeddings in `meta.json` to support precise deletions and index rebuilds.
+- Use maintenance commands to manage the FAISS index:
+  - `synapse store stats` shows vector count and index paths
+  - `synapse store rebuild` reconstructs the index from persisted embeddings
+  - `synapse store clear --yes` removes index and metadata
 
 ### Configuration
 

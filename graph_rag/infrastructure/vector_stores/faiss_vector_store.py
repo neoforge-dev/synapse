@@ -48,6 +48,11 @@ class FaissVectorStore(VectorStore):
         if self.index_path.exists():
             logger.info(f"Loading FAISS index from {self.index_path}")
             self.index = faiss.read_index(str(self.index_path))
+            try:
+                # Align embedding dimension with loaded index
+                self.embedding_dimension = int(self.index.d)
+            except Exception:
+                pass
         if self.meta_path.exists():
             try:
                 data = json.loads(self.meta_path.read_text())
@@ -74,6 +79,29 @@ class FaissVectorStore(VectorStore):
         tmp_meta = self.meta_path.with_suffix(".json.tmp")
         tmp_meta.write_text(json.dumps({"version": 2, "rows": self._rows}))
         tmp_meta.replace(self.meta_path)
+
+    def _rebuild_from_rows(self) -> None:
+        """Rebuild FAISS index from current rows using persisted embeddings.
+
+        Skips legacy rows that do not include an embedding.
+        """
+        self.index = faiss.IndexFlatIP(self.embedding_dimension)
+        if not self._rows:
+            return
+        reb_vectors: list[list[float]] = []
+        for r in self._rows:
+            emb = r.get("embedding")
+            if isinstance(emb, list) and len(emb) == self.embedding_dimension:
+                reb_vectors.append(emb)
+            else:
+                logger.warning(
+                    "Row %s missing embedding for FAISS rebuild; skipping.",
+                    r.get("chunk_id"),
+                )
+        if reb_vectors:
+            vec = np.array(reb_vectors, dtype=np.float32)
+            vec = _normalize(vec)
+            self.index.add(vec)
 
     # --- VectorStore API ---
     async def add_chunks(self, chunks: list[ChunkData]) -> None:  # type: ignore[override]
@@ -165,23 +193,7 @@ class FaissVectorStore(VectorStore):
         self._row_by_chunk_id = {r["chunk_id"]: i for i, r in enumerate(self._rows)}
 
         # Rebuild FAISS index from persisted embeddings
-        self.index = faiss.IndexFlatIP(self.embedding_dimension)
-        if self._rows:
-            # Collect embeddings; skip rows that lack persisted embedding (legacy)
-            reb_vectors = []
-            for r in self._rows:
-                emb = r.get("embedding")
-                if isinstance(emb, list) and len(emb) == self.embedding_dimension:
-                    reb_vectors.append(emb)
-                else:
-                    logger.warning(
-                        "Row %s missing embedding for FAISS rebuild; skipping. Consider re-ingesting.",
-                        r.get("chunk_id"),
-                    )
-            if reb_vectors:
-                vec = np.array(reb_vectors, dtype=np.float32)
-                vec = _normalize(vec)
-                self.index.add(vec)
+        self._rebuild_from_rows()
         self._save()
 
     async def delete_store(self) -> None:  # type: ignore[override]
@@ -192,3 +204,19 @@ class FaissVectorStore(VectorStore):
         self.index = faiss.IndexFlatIP(self.embedding_dimension)
         self._rows = []
         self._row_by_chunk_id = {}
+
+    # --- Maintenance helpers ---
+    async def stats(self) -> dict[str, Any]:
+        """Return basic statistics about the FAISS store."""
+        return {
+            "vectors": int(self.index.ntotal),
+            "rows": int(len(self._rows)),
+            "dimension": int(self.embedding_dimension),
+            "index_path": str(self.index_path),
+            "meta_path": str(self.meta_path),
+        }
+
+    async def rebuild_index(self) -> None:
+        """Force a rebuild of the FAISS index from persisted embeddings."""
+        self._rebuild_from_rows()
+        self._save()
