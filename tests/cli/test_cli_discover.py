@@ -65,3 +65,38 @@ def test_discover_with_patterns_and_json(tmp_path: Path):
     }
     # Objects should only contain a path field for discover
     assert all(set(obj.keys()) == {"path"} for obj in objs)
+
+
+def test_discover_from_stdin_multiple_dirs(tmp_path: Path):
+    # Create two roots
+    root1 = tmp_path / "r1"
+    root2 = tmp_path / "r2"
+    root1.mkdir()
+    root2.mkdir()
+    (root1 / "a.md").write_text("a", encoding="utf-8")
+    (root1 / "x.txt").write_text("x", encoding="utf-8")
+    (root2 / "b.markdown").write_text("b", encoding="utf-8")
+    (root2 / ".hidden.md").write_text("h", encoding="utf-8")
+
+    runner = CliRunner()
+    stdin_payload = json.dumps([str(root1), str(root2)])
+    result = runner.invoke(
+        app,
+        [
+            "discover",
+            "--stdin",
+            "--json",
+        ],
+        input=stdin_payload,
+    )
+    assert result.exit_code == 0, result.output
+    lines = [ln for ln in result.stdout.strip().splitlines() if ln.strip()]
+    objs = [json.loads(ln) for ln in lines]
+    paths = {obj["path"] for obj in objs}
+    assert paths == {
+        str((root1 / "a.md").resolve()),
+        str((root1 / "x.txt").resolve()),
+        str((root2 / "b.markdown").resolve()),
+    }
+    # Ensure hidden excluded
+    assert all(".hidden.md" not in p for p in paths)

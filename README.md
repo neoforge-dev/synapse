@@ -20,8 +20,8 @@ make run-api
 # 3) Ingest your notes (directory or single file)
 # Option A: composable Unix-style pipeline (recommended)
 synapse discover ~/Notes --include "**/*.md" \
-  | synapse parse --meta source=vault \
-  | synapse store --embeddings --json
+  | synapse parse --meta source=vault --meta tags:='["notes","kb"]' \
+  | synapse store --embeddings --json --emit-chunks
 
 # Option B: legacy one-shot wrapper (backward compatible)
 synapse ingest ~/Notes --embeddings  # parses YAML front matter / Notion property tables
@@ -57,18 +57,21 @@ Notes:
 
 ### Composable CLI commands
 
-- `synapse discover DIRECTORY [--include PATTERN ...] [--exclude PATTERN ...] [--json]`
+- `synapse discover DIRECTORY [--include PATTERN ...] [--exclude PATTERN ...] [--json] [--stdin]`
   - Outputs absolute file paths, one per line; with `--json`, emits `{ "path": "..." }` per line
   - Respects ignore rules for hidden files, `.obsidian/`, and Notion `assets` folders
+  - With `--stdin`, accepts a JSON array of directories from stdin and discovers across all roots
 
-- `synapse parse [--meta key=value ...] [--meta-file path]`
+- `synapse parse [--meta key=value ... | --meta key:=jsonValue ...] [--meta-file path]`
   - Reads file paths from stdin
   - For each file, parses YAML front matter and Notion property tables, merges metadata, and emits one JSON line: `{ path, content, metadata }`
+  - `--meta key:=jsonValue` parses the value as JSON (e.g. `--meta tags:='["a","b"]'`, `--meta count:=123`, `--meta flag:=true`)
 
-- `synapse store [--embeddings/--no-embeddings] [--replace/--no-replace] [--json]`
+- `synapse store [--embeddings/--no-embeddings] [--replace/--no-replace] [--json] [--emit-chunks]`
   - Reads JSON lines from stdin (as produced by `parse`)
   - Derives `document_id`, chunks content, optionally generates embeddings, stores to graph/vector stores
   - With `--json`, emits `{ document_id, num_chunks }` per line
+  - With `--emit-chunks` and `--json`, also emits one line per chunk: `{ chunk_id, document_id }`
 
 - `synapse ingest`
   - Backward-compatible wrapper that performs discover → parse → store in one command. Supports `--dry-run`, `--json`, and `--json-summary` for directory mode.
