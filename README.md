@@ -149,6 +149,12 @@ Identity and idempotence:
     | synapse store --json
   ```
 
+### Vector store considerations
+
+- The default vector store is an in-process simple store optimized for tests and quick starts. For production, use FAISS via the API service.
+- Deletions in persistent vector stores may not physically reclaim vectors without a rebuild. The ingestion flow uses idempotent re-ingestion (`--replace`) to avoid duplicates.
+- If you rely on exact deletion semantics, prefer a full re-ingest for affected documents or rebuild the index using the API’s maintenance tools when available.
+
 ### Configuration
 
 Set environment variables or `.env` with `SYNAPSE_` prefix. Key options:

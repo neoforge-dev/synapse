@@ -30,6 +30,11 @@
   - Pre-commit with ruff format/check + commit-msg lint hooks.
   - Test templates for unit/api/contract; update contributing docs.
 
+## Latest progress
+- Added advanced integration recipes to `README.md` (jq/xargs for discover→parse→store, multi-root stdin, metadata augmentation, filtering, parallel batching, per-chunk outputs).
+- Documented vector store considerations in `README.md` (idempotent re-ingestion and rebuild notes).
+- Expanded `docs/ARCHITECTURE.md` with CLI decomposition and typed metadata support.
+
 ## Other Important Tasks (Post-Critical Path)
 - Robust error mapping in API (uniform problem details)
 - Performance tuning of vector/graph joins (as real backends are used)
