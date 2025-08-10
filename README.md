@@ -89,6 +89,66 @@ Identity and idempotence:
 - The system will derive a stable `document_id` per file/page (priority: explicit metadata `id` → Notion page UUID → Obsidian `id` → normalized content hash → path-hash fallback). The derivation `id_source` is recorded in `Document.metadata`.
 - Re-ingesting the same `document_id` with `--replace` deletes old chunks/vectors atomically before adding new ones.
 
+### Integration recipes (jq/xargs)
+
+- Multi-root discovery via stdin JSON array, filter, parse, and store with embeddings:
+
+  ```bash
+  printf '["%s","%s"]\n' "$HOME/Notes" "$HOME/Work" \
+    | synapse discover --stdin --json \
+    | jq -r 'select(.path | contains("/Archive/") | not) | .path' \
+    | synapse parse --meta source=vault \
+    | synapse store --embeddings --json
+  ```
+
+- Augment metadata using jq between parse and store (derive `area` from path):
+
+  ```bash
+  synapse discover "$HOME/Notes" --include "**/*.md" \
+    | synapse parse \
+    | jq '. as $d | .metadata = ($d.metadata + {area: ($d.path | split("/") | .[-2])})' \
+    | synapse store --json
+  ```
+
+- Filter by topics before storing (e.g., only keep docs tagged "AI"):
+
+  ```bash
+  synapse discover "$HOME/Notes" --include "**/*.md" \
+    | synapse parse \
+    | jq 'select(.metadata.topics[]? == "AI")' \
+    | synapse store --embeddings --json
+  ```
+
+- Capture per-chunk outputs for downstream processing queues:
+
+  ```bash
+  synapse discover "$HOME/Notes" --include "**/*.md" \
+    | synapse parse \
+    | synapse store --embeddings --json --emit-chunks \
+    | jq 'select(.chunk_id) | {chunk_id, document_id}'
+  ```
+
+- Parallel pipeline with xargs (split input into batches; adjust -P for concurrency):
+
+  ```bash
+  synapse discover "$HOME/Notes" --include "**/*.md" \
+    | xargs -P 4 -n 200 sh -c '
+        printf "%s\n" "$@" \
+        | synapse parse --meta batch_id=$RANDOM \
+        | synapse store --embeddings --json
+      ' sh
+  ```
+
+- Multi-root + include/exclude patterns, dedupe paths, then ingest:
+
+  ```bash
+  jq -nc --arg a "$HOME/Notes" --arg b "$HOME/Projects" '[ $a, $b ]' \
+    | synapse discover --stdin --include "**/*.md" --exclude "**/drafts/**" \
+    | sort -u \
+    | synapse parse \
+    | synapse store --json
+  ```
+
 ### Configuration
 
 Set environment variables or `.env` with `SYNAPSE_` prefix. Key options:
