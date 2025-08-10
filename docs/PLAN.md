@@ -139,7 +139,7 @@ Deliverables: updated CLI command, tests added under `tests/cli/`, README snippe
 The recent assessment highlights that while the architectural foundations are sound, reliability and an answer-synthesis layer are essential to deliver a one-command insight experience. The items below extend this plan.
 
 ### A) Quality and reliability hardening (short-term)
-- Raise code coverage gates in CI to >= 85% lines/branches; fail PRs under threshold (allow label-based override for infra-required tests).
+- Raise code coverage gates in CI to >= 85% lines/branches for hot paths; full-repo target will follow after infra tests are expanded.
 - Expand integration tests:
   - Graph repository (Memgraph) CRUD/links smoke tests behind label/skips
   - Vector store: delete/rebuild persistence scenarios across restarts

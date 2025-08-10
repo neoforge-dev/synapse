@@ -86,6 +86,7 @@ markers = [
 ]
 
 [tool.coverage.run]
+branch = true
 source = ["graph_rag"]
 omit = [
     "tests/*",
@@ -93,6 +94,7 @@ omit = [
 ]
 
 [tool.coverage.report]
+fail_under = 85
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
