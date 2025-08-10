@@ -66,3 +66,29 @@ def test_parse_notion_property_table(tmp_path: Path):
     assert "AI" in meta.get("topics", [])
     assert meta.get("aliases") == ["alt1"]
     assert meta.get("created_at") == "2020-02-02"
+
+
+def test_parse_meta_typed_json_support(tmp_path: Path):
+    md = tmp_path / "doc.md"
+    md.write_text("content", encoding="utf-8")
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "parse",
+            "--meta",
+            "flag=true",
+            "--meta",
+            "count:=123",
+            "--meta",
+            "tags:=[\"a\",\"b\"]",
+        ],
+        input=f"{md.resolve()}\n",
+    )
+    assert result.exit_code == 0, result.output
+    obj = json.loads(result.stdout.strip().splitlines()[0])
+    meta = obj["metadata"]
+    # string value for flag=true since single '=' is raw string
+    assert meta["flag"] == "true"
+    assert meta["count"] == 123
+    assert meta["tags"] == ["a", "b"]

@@ -22,6 +22,7 @@ def store_command(
     embeddings: bool = typer.Option(False, "--embeddings/--no-embeddings", help="Generate embeddings during storage"),
     replace: bool = typer.Option(True, "--replace/--no-replace", help="Replace existing chunks if document exists"),
     as_json: bool = typer.Option(False, "--json", help="Emit JSONL output (one object per ingested document)"),
+    emit_chunks: bool = typer.Option(False, "--emit-chunks", help="Also emit a JSON line for each stored chunk with id and document_id"),
 ) -> None:
     settings = Settings()
     # Do not attempt real Memgraph connection in unit tests or when unavailable.
@@ -77,7 +78,7 @@ def store_command(
                 "document_id": result.document_id,
                 "num_chunks": len(result.chunk_ids),
             }
-            return out
+            return out, result.chunk_ids
         finally:
             try:
                 await repo.close()
@@ -99,9 +100,12 @@ def store_command(
         content = obj.get("content", "")
         metadata = obj.get("metadata", {}) or {}
         try:
-            out = _asyncio.run(_process(path, content, metadata))
+            out, chunk_ids = _asyncio.run(_process(path, content, metadata))
             if as_json:
                 typer.echo(json.dumps(out, ensure_ascii=False))
+                if emit_chunks:
+                    for cid in chunk_ids:
+                        typer.echo(json.dumps({"chunk_id": cid, "document_id": out["document_id"]}, ensure_ascii=False))
             else:
                 typer.echo(
                     f"Stored {path.name} as {out['document_id']} ({out['num_chunks']} chunks){' with embeddings' if embeddings else ''}."

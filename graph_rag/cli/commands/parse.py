@@ -105,13 +105,25 @@ def _parse_front_matter(path: Path) -> dict:
 
 @app.command()
 def parse_command(
-    meta: Optional[list[str]] = typer.Option(None, "--meta", help="Additional metadata entries key=value (repeatable)"),
-    meta_file: Optional[Path] = typer.Option(None, "--meta-file", help="Path to YAML/JSON meta file to merge"),
+    meta: Optional[list[str]] = typer.Option(
+        None, "--meta", help="Additional metadata entries key=value or key:=json (repeatable)"
+    ),
+    meta_file: Optional[Path] = typer.Option(
+        None, "--meta-file", help="Path to YAML/JSON meta file to merge"
+    ),
 ) -> None:
     metadata_from_kv: dict[str, Any] = {}
     if meta:
         for it in meta:
-            if "=" in it:
+            if ":=" in it:
+                k, v = it.split(":=", 1)
+                k = k.strip()
+                try:
+                    metadata_from_kv[k] = json.loads(v)
+                except Exception:
+                    # fallback to raw string if JSON parsing fails
+                    metadata_from_kv[k] = v
+            elif "=" in it:
                 k, v = it.split("=", 1)
                 metadata_from_kv[k.strip()] = v.strip()
     metadata_from_file: dict[str, Any] = {}
