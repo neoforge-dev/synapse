@@ -134,3 +134,51 @@ Deliverables: updated CLI command, tests added under `tests/cli/`, README snippe
 - YAML parsing errors
   - Handle exceptions, surface helpful errors
 
+## New initiatives based on external evaluation/feedback
+
+The recent assessment highlights that while the architectural foundations are sound, reliability and an answer-synthesis layer are essential to deliver a one-command insight experience. The items below extend this plan.
+
+### A) Quality and reliability hardening (short-term)
+- Raise code coverage gates in CI to >= 85% lines/branches; fail PRs under threshold (allow label-based override for infra-required tests).
+- Expand integration tests:
+  - Graph repository (Memgraph) CRUD/links smoke tests behind label/skips
+  - Vector store: delete/rebuild persistence scenarios across restarts
+  - End-to-end: ingest → query → ask (once implemented) happy paths
+- Property-based tests for identity derivation and chunking invariants.
+- Static analysis: enable mypy in strict mode on `core/` and `services/`.
+- Error contracts: normalize API error responses (problem+json) and add tests.
+
+### B) Synthesis layer (LLM) and one-command answers (short-term)
+- Implement `LLMService` providers: OpenAI, Anthropic, Ollama (local) with retry, timeouts, and token budgeting; selectable via settings.
+- Prompting strategy:
+  - Deterministic format for retrieved chunks + graph context
+  - Answer, cite, and summarize modes with safety rails
+- New API: `POST /api/v1/ask` with options `{ text, k, include_graph, provider, model, streaming }`.
+- New CLI: `synapse ask "question" [--k 5] [--graph] [--provider openai] [--model gpt-4o] [--stream] [--json]`.
+- Tests: golden prompt assembly unit tests; mocked LLM responses; CLI/API contracts.
+
+### C) Vector store robustness and maintenance (short/mid-term)
+- Persist raw embeddings alongside metadata to support precise deletions and index rebuilds (FAISS path).
+- Maintenance commands: `synapse store stats|rebuild|clear` (CLI) and matching admin API endpoints.
+- Config defaults to a safer persistent store in API mode; document trade-offs.
+
+### D) BrandFocus-oriented capabilities (mid-term)
+- Style profiling: compute a style fingerprint from user corpus; expose as `StyleProfile` stored per user; add prompt adapters to reflect tone and structure.
+- Content ideation: `synapse suggest --topic X` to produce outlines/snippets using the knowledge base with guardrails.
+- Relationship intelligence: first-class `Person`/`Company` entities with recency/frequency scores and a simple "follow-up" signal; queries and views for interactions.
+
+### E) Observability and ops (short/mid-term)
+- Structured logging (JSON); request correlation IDs end-to-end.
+- `/metrics` (Prometheus) for ingestion rates, vector counts, latency buckets.
+- Health/readiness split; dependency pings (Memgraph, vector store) with backoff.
+
+### F) Developer experience and packaging (short-term)
+- `pipx` and Homebrew formula for CLI; prebuilt binaries via PyInstaller for macOS/Linux.
+- `synapse up`: Docker Compose to start API + Memgraph + optional FAISS sidecar.
+- Example recipes: richer jq/xargs, `ask` pipelines, and MCP usage.
+
+### Phasing
+- Phase 1 (2-3 weeks): A, B (OpenAI provider + ask), part of C (embedding persistence), E basics, F packaging.
+- Phase 2 (3-4 weeks): Remaining C (maintenance cmds), D (style profile v1, relationship scores), E metrics.
+- Phase 3: Additional providers (Anthropic/Ollama), advanced prompting, BrandFocus-specific UX polish.
+
