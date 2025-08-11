@@ -6,7 +6,7 @@ from typing import Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, PlainTextResponse
 from fastapi.routing import APIRouter
 # Removed Neo4j AsyncDriver usage; mgclient-based repository handles connectivity
 
@@ -39,12 +39,16 @@ from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRe
 from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
 from graph_rag.services.embedding import SentenceTransformerEmbeddingService
 from graph_rag.services.ingestion import IngestionService  # Needed for type hint
+from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Counter, Gauge, generate_latest
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 # --- Application State ---
 app_state = {}  # Use a dictionary for app state
+_metrics_registry: CollectorRegistry | None = None
+REQUEST_COUNT: Counter | None = None
+REQUEST_LATENCY: Gauge | None = None
 
 
 # --- Lifespan Management for Resources ---
@@ -57,6 +61,15 @@ async def lifespan(app: FastAPI):
         f"LIFESPAN START: Starting API... Config: {current_settings.model_dump(exclude={'memgraph_password'})}"
     )  # Use current_settings
     app.state.settings = current_settings  # Store in state
+    # Configure structured logging if enabled
+    try:
+        if current_settings.api_log_json:
+            logging.basicConfig(
+                level=current_settings.api_log_level.upper(),
+                format='{"time":"%(asctime)s","level":"%(levelname)s","name":"%(name)s","message":"%(message)s"}',
+            )
+    except Exception:
+        pass
     # Avoid inline type annotations on state attributes (can trigger linters)
     app.state.graph_repository = None
     app.state.vector_store = None
@@ -478,6 +491,30 @@ def create_app() -> FastAPI:
 
     app.include_router(api_router)  # Remove prefix="/api/v1" here
 
+    # --- Metrics setup ---
+    settings = get_settings()
+    if settings.enable_metrics:
+        global _metrics_registry, REQUEST_COUNT, REQUEST_LATENCY
+        _metrics_registry = CollectorRegistry()
+        REQUEST_COUNT = Counter(
+            "http_requests_total",
+            "Total HTTP requests",
+            ["method", "path", "status"],
+            registry=_metrics_registry,
+        )
+        REQUEST_LATENCY = Gauge(
+            "http_request_duration_seconds",
+            "Request duration in seconds",
+            ["path"],
+            registry=_metrics_registry,
+        )
+
+        @app.get("/metrics", include_in_schema=False)
+        async def metrics():
+            assert _metrics_registry is not None
+            data = generate_latest(_metrics_registry)
+            return PlainTextResponse(data, media_type=CONTENT_TYPE_LATEST)
+
     # --- Base Routes ---
     @app.get("/", tags=["Root"], include_in_schema=False)
     async def read_root():
@@ -524,7 +561,27 @@ def create_app() -> FastAPI:
         logger.info(
             f"rid={request_id} path={request.url.path} method={request.method} status={response.status_code} duration={process_time:.4f}s"
         )
+        # Record metrics
+        try:
+            if settings.enable_metrics and REQUEST_COUNT and REQUEST_LATENCY:
+                REQUEST_COUNT.labels(request.method, request.url.path, str(response.status_code)).inc()
+                REQUEST_LATENCY.labels(request.url.path).set(process_time)
+        except Exception:
+            pass
         return response
+
+    @app.get("/ready", tags=["Status"], status_code=status.HTTP_200_OK)
+    async def readiness(request: Request):
+        # Basic readiness: confirm core dependencies exist in app state
+        ready = all(
+            [
+                hasattr(request.app.state, "graph_rag_engine") and request.app.state.graph_rag_engine,
+                hasattr(request.app.state, "ingestion_service") and request.app.state.ingestion_service,
+            ]
+        )
+        if not ready:
+            return JSONResponse(status_code=503, content={"status": "not ready"})
+        return {"status": "ready"}
 
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception):

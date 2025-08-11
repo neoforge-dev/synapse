@@ -30,6 +30,10 @@ synapse ingest ~/Notes --embeddings  # parses YAML front matter / Notion propert
 synapse --quiet ingest ~/Notes        # warnings and above
 synapse --verbose ingest ~/Notes      # debug logs
 
+# Observability
+curl http://localhost:8000/ready        # readiness
+curl http://localhost:8000/metrics      # Prometheus metrics (enabled by default)
+
 # Optional: add/override metadata (ergonomic flags)
 synapse ingest ~/Notes --meta source=vault --meta owner=me \
   --meta-file meta.yaml --embeddings
@@ -171,6 +175,8 @@ Set environment variables or `.env` with `SYNAPSE_` prefix. Key options:
 - `SYNAPSE_EMBEDDING_PROVIDER`: `sentence-transformers` (default) or `mock`
 - `SYNAPSE_MEMGRAPH_HOST`/`SYNAPSE_MEMGRAPH_PORT`: Memgraph connection (defaults to `127.0.0.1:7687`)
 - `SYNAPSE_API_HOST`/`SYNAPSE_API_PORT`: API network settings
+- `SYNAPSE_API_LOG_JSON=true`: emit structured JSON logs
+- `SYNAPSE_ENABLE_METRICS=true|false`: toggle /metrics endpoint
 
 ### Status
 

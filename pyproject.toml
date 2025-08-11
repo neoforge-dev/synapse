@@ -25,6 +25,7 @@ dependencies = [
     "httpcore>=1.0.0",
     "python-dateutil>=2.8.2",
     "faiss-cpu>=1.10.0",
+    "prometheus-client>=0.20.0",
 ]
 
 [project.optional-dependencies]
