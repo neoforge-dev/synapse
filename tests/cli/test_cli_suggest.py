@@ -38,3 +38,23 @@ def test_cli_suggest_json_output():
         data = json.loads(res.stdout.strip())
         assert data["topic"] == "marketing plan"
         assert "idea" in data["ideas"].lower()
+
+
+def test_cli_suggest_http_error_returns_exit_code():
+    # Avoid Click's stdout capture edge case by calling the function directly
+    fake_resp = MagicMock()
+    fake_resp.raise_for_status.side_effect = Exception("boom")
+
+    with patch("httpx.Client") as client_cls:
+        client = MagicMock()
+        client.post.return_value = fake_resp
+        client_cls.return_value.__enter__.return_value = client
+
+        from graph_rag.cli.commands.suggest import run_suggest
+        import typer
+
+        try:
+            run_suggest(topic="anything", json_out=False)
+            assert False, "Expected typer.Exit to be raised"
+        except typer.Exit as e:
+            assert e.exit_code == 1

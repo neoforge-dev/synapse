@@ -36,6 +36,31 @@ def test_store_ingests_json_stream(tmp_path: Path):
         assert obj["num_chunks"] == 2
 
 
+def test_process_store_lines_ignores_empty_and_bad_json(tmp_path: Path):
+    # Prepare a valid payload and some invalid lines
+    doc_path = tmp_path / "doc.md"
+    doc_path.write_text("Hello store", encoding="utf-8")
+    payload = json.dumps({
+        "path": str(doc_path.resolve()),
+        "content": "Hello store",
+        "metadata": {},
+    })
+
+    with patch("graph_rag.cli.commands.store.IngestionService") as svc_cls:
+        svc = AsyncMock()
+        ingestion_result = AsyncMock()
+        ingestion_result.document_id = "doc-err"
+        ingestion_result.chunk_ids = []
+        svc.ingest_document.return_value = ingestion_result  # type: ignore
+        svc_cls.return_value = svc
+
+        lines = ["", "not-json", payload]
+        outputs = _process_store_lines(lines, embeddings=False, replace=True)
+        assert len(outputs) >= 1
+        obj = json.loads(outputs[0])
+        assert obj["document_id"] == "doc-err"
+
+
 def test_store_emit_chunks_flag(tmp_path: Path):
     doc_path = tmp_path / "doc.md"
     doc_path.write_text("Hello store", encoding="utf-8")
