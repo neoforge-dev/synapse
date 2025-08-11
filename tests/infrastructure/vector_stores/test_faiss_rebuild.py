@@ -4,6 +4,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+# Skip this test module if FAISS is not installed (optional dependency)
+pytest.importorskip("faiss")
+
 from graph_rag.infrastructure.vector_stores.faiss_vector_store import FaissVectorStore
 from graph_rag.core.interfaces import ChunkData
 
