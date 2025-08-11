@@ -77,6 +77,9 @@ Notes:
 - `synapse ingest`
   - Backward-compatible wrapper that performs discover → parse → store in one command. Supports `--dry-run`, `--json`, and `--json-summary` for directory mode.
 
+- `synapse suggest "<topic>" [--k 5] [--graph] [--style "concise, analytical"] [--count 5] [--json]`
+  - Uses the new `/api/v1/query/ask` endpoint to generate ideas and content suggestions grounded in your corpus.
+
 JSON output (non-dry-run):
 - Single file: `{ "document_id": "...", "num_chunks": N, "id_source": "...", "path": "...", "embeddings": bool, "replace_existing": bool, "topics": [..] }`
 - Directory: `[{...}, {...}]` per file summary
