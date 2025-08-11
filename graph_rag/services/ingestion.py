@@ -95,9 +95,7 @@ class IngestionService:
         except Exception:
             id_source = None
         logger.info(
-            (
-                "Starting ingestion for document %s | id_source=%s | replace_existing=%s"
-            ),
+            ("Starting ingestion for document %s | id_source=%s | replace_existing=%s"),
             document_id,
             id_source,
             replace_existing,
@@ -150,7 +148,9 @@ class IngestionService:
                             base_delay=0.2,
                         )
                     except Exception:
-                        logger.debug("Graph chunk deletion step failed or unsupported; continuing")
+                        logger.debug(
+                            "Graph chunk deletion step failed or unsupported; continuing"
+                        )
                     # Delete from vector store best-effort with retry/backoff
                     try:
                         await self._retry(
@@ -228,7 +228,9 @@ class IngestionService:
                         chunk.metadata["document_id"] = document_id
                     logger.info("Embeddings generated successfully.")
                     # Count how many will be added to vector store
-                    vectors_added_expected = sum(1 for c in chunk_objects if c.embedding is not None)
+                    vectors_added_expected = sum(
+                        1 for c in chunk_objects if c.embedding is not None
+                    )
 
                     # Add chunks to vector store *after* embeddings are assigned (if generated)
                     try:
@@ -323,7 +325,11 @@ class IngestionService:
         try:
             topics_in_meta = []
             if document.metadata and isinstance(document.metadata.get("topics"), list):
-                topics_in_meta = [str(t).strip() for t in document.metadata["topics"] if str(t).strip()]
+                topics_in_meta = [
+                    str(t).strip()
+                    for t in document.metadata["topics"]
+                    if str(t).strip()
+                ]
             if topics_in_meta:
                 # Deduplicate topics
                 seen_topic_ids: set[str] = set()
@@ -335,6 +341,7 @@ class IngestionService:
                     # Create/Upsert topic entity
                     try:
                         from graph_rag.domain.models import Entity as DomainEntity
+
                         await self.graph_store.add_entity(
                             DomainEntity(
                                 id=topic_id,
@@ -358,7 +365,9 @@ class IngestionService:
                             )
                         )
                     except Exception:
-                        logger.debug("Skipping HAS_TOPIC relationship failure for %s", topic_id)
+                        logger.debug(
+                            "Skipping HAS_TOPIC relationship failure for %s", topic_id
+                        )
 
                     # Link each chunk -> topic (mentions)
                     for chunk in chunk_objects:
@@ -441,16 +450,30 @@ class IngestionService:
         """
         # From metadata
         if metadata is not None:
-            meta_topics = metadata.get("topics") or metadata.get("Tags") or metadata.get("tags")
+            meta_topics = (
+                metadata.get("topics") or metadata.get("Tags") or metadata.get("tags")
+            )
             if meta_topics:
                 if isinstance(meta_topics, list):
-                    return [str(t).strip().lstrip("#") for t in meta_topics if str(t).strip()]
+                    return [
+                        str(t).strip().lstrip("#")
+                        for t in meta_topics
+                        if str(t).strip()
+                    ]
                 if isinstance(meta_topics, str):
                     # Split by comma or hashtag-separated words
                     if "," in meta_topics:
-                        return [s.strip().lstrip("#") for s in meta_topics.split(",") if s.strip()]
+                        return [
+                            s.strip().lstrip("#")
+                            for s in meta_topics.split(",")
+                            if s.strip()
+                        ]
                     if "#" in meta_topics:
-                        return [s.strip().lstrip("#") for s in meta_topics.split() if s.strip()]
+                        return [
+                            s.strip().lstrip("#")
+                            for s in meta_topics.split()
+                            if s.strip()
+                        ]
                     return [meta_topics.strip()] if meta_topics.strip() else []
 
         # From first heading in content

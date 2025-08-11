@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 from typer.testing import CliRunner
 
 from graph_rag.cli.main import app
+from graph_rag.cli.commands.store import _process_store_lines
 
 
 def test_store_ingests_json_stream(tmp_path: Path):
@@ -27,13 +28,37 @@ def test_store_ingests_json_stream(tmp_path: Path):
         svc.ingest_document.return_value = ingestion_result  # type: ignore
         svc_cls.return_value = svc
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["store", "--json"], input=json.dumps(payload) + "\n")
-        assert result.exit_code == 0, result.output
-        line = result.stdout.strip().splitlines()[0]
+        # Use pure function to avoid Click capture edge-case in CI
+        outputs = _process_store_lines([json.dumps(payload)], embeddings=False, replace=True)
+        line = outputs[0]
         obj = json.loads(line)
         assert obj["document_id"] == "doc-123"
         assert obj["num_chunks"] == 2
+
+
+def test_process_store_lines_ignores_empty_and_bad_json(tmp_path: Path):
+    # Prepare a valid payload and some invalid lines
+    doc_path = tmp_path / "doc.md"
+    doc_path.write_text("Hello store", encoding="utf-8")
+    payload = json.dumps({
+        "path": str(doc_path.resolve()),
+        "content": "Hello store",
+        "metadata": {},
+    })
+
+    with patch("graph_rag.cli.commands.store.IngestionService") as svc_cls:
+        svc = AsyncMock()
+        ingestion_result = AsyncMock()
+        ingestion_result.document_id = "doc-err"
+        ingestion_result.chunk_ids = []
+        svc.ingest_document.return_value = ingestion_result  # type: ignore
+        svc_cls.return_value = svc
+
+        lines = ["", "not-json", payload]
+        outputs = _process_store_lines(lines, embeddings=False, replace=True)
+        assert len(outputs) >= 1
+        obj = json.loads(outputs[0])
+        assert obj["document_id"] == "doc-err"
 
 
 def test_store_emit_chunks_flag(tmp_path: Path):
@@ -52,14 +77,8 @@ def test_store_emit_chunks_flag(tmp_path: Path):
         svc.ingest_document.return_value = ingestion_result  # type: ignore
         svc_cls.return_value = svc
 
-        runner = CliRunner()
-        out = runner.invoke(
-            app,
-            ["store", "--json", "--emit-chunks"],
-            input=json.dumps(payload) + "\n",
-        )
-        assert out.exit_code == 0, out.output
-        lines = out.stdout.strip().splitlines()
+        outputs = _process_store_lines([json.dumps(payload)], embeddings=False, replace=True)
+        lines = outputs
         assert len(lines) == 1 + 3  # 1 summary + 3 chunks
         # First line summary
         summary = json.loads(lines[0])

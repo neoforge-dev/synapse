@@ -263,7 +263,10 @@ def create_vector_store(settings: Settings) -> VectorStore:
         from graph_rag.infrastructure.vector_stores.faiss_vector_store import (
             FaissVectorStore,
         )
-        return FaissVectorStore(path=settings.vector_store_path, embedding_dimension=dim)
+
+        return FaissVectorStore(
+            path=settings.vector_store_path, embedding_dimension=dim
+        )
     # Add other vector store types here if needed
     # elif vector_store_type == 'qdrant':
     #    return QdrantVectorStore(...)

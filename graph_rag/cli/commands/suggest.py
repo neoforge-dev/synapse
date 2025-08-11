@@ -14,15 +14,44 @@ logger = logging.getLogger(__name__)
 app = typer.Typer(help="Content ideation and suggestions using the knowledge base")
 
 
-@app.command()
-def suggest(
+@app.callback(invoke_without_command=True)
+def _default(
     topic: str = typer.Argument(..., help="Topic or question to ideate on"),
     k: int = typer.Option(5, "--k", help="Max context chunks to retrieve"),
     include_graph: bool = typer.Option(
         False, "--graph/--no-graph", help="Include graph context if available"
     ),
     style: Optional[str] = typer.Option(
-        None, "--style", help="Optional style profile or tone (e.g. 'concise, analytical')"
+        None,
+        "--style",
+        help="Optional style profile or tone (e.g. 'concise, analytical')",
+    ),
+    count: int = typer.Option(5, "--count", help="Number of ideas to produce"),
+    json_out: bool = typer.Option(False, "--json", help="Emit JSON output"),
+    api_url: str = typer.Option(ASK_URL, help="URL of the ask API endpoint."),
+):
+    """Default entrypoint so `synapse suggest ...` works without subcommand."""
+    return run_suggest(
+        topic=topic,
+        k=k,
+        include_graph=include_graph,
+        style=style,
+        count=count,
+        json_out=json_out,
+        api_url=api_url,
+    )
+
+
+def run_suggest(
+    topic: str = typer.Argument(..., help="Topic or question to ideate on"),
+    k: int = typer.Option(5, "--k", help="Max context chunks to retrieve"),
+    include_graph: bool = typer.Option(
+        False, "--graph/--no-graph", help="Include graph context if available"
+    ),
+    style: Optional[str] = typer.Option(
+        None,
+        "--style",
+        help="Optional style profile or tone (e.g. 'concise, analytical')",
     ),
     count: int = typer.Option(5, "--count", help="Number of ideas to produce"),
     json_out: bool = typer.Option(False, "--json", help="Emit JSON output"),
@@ -45,7 +74,9 @@ def suggest(
             data = resp.json()
             answer = data.get("answer", "")
             if json_out:
-                typer.echo(json.dumps({"topic": topic, "ideas": answer}, ensure_ascii=False))
+                typer.echo(
+                    json.dumps({"topic": topic, "ideas": answer}, ensure_ascii=False)
+                )
             else:
                 typer.echo(answer)
     except httpx.HTTPStatusError as exc:
@@ -56,3 +87,25 @@ def suggest(
     except Exception as e:
         logger.error(f"Suggest command failed: {e}", exc_info=True)
         raise typer.Exit(code=1)
+
+
+# Keep an explicit subcommand for future extension, but default is callback
+@app.command("generate")
+def _generate(
+    topic: str,
+    k: int = 5,
+    include_graph: bool = False,
+    style: Optional[str] = None,
+    count: int = 5,
+    json_out: bool = False,
+    api_url: str = ASK_URL,
+):
+    return run_suggest(
+        topic=topic,
+        k=k,
+        include_graph=include_graph,
+        style=style,
+        count=count,
+        json_out=json_out,
+        api_url=api_url,
+    )

@@ -64,7 +64,12 @@ def _parse_front_matter(path: Path) -> dict:
     try:
         lines = text.splitlines()
         window = [ln.strip() for ln in lines[:20] if ln.strip()]
-        if len(window) >= 3 and "|" in window[0] and "|" in window[1] and set(window[1]) <= set("|- :"):
+        if (
+            len(window) >= 3
+            and "|" in window[0]
+            and "|" in window[1]
+            and set(window[1]) <= set("|- :")
+        ):
             props: dict[str, str] = {}
             for row in window[2:]:
                 if "|" not in row:
@@ -95,7 +100,21 @@ def _parse_front_matter(path: Path) -> dict:
                     normalized["updated_at"] = props[k]
                     break
             for k, v in props.items():
-                if k not in ("Tags", "tags", "Topics", "Aliases", "aliases", "Created", "Created time", "Last edited time", "Updated", "created", "created_at", "updated", "updated_at"):
+                if k not in (
+                    "Tags",
+                    "tags",
+                    "Topics",
+                    "Aliases",
+                    "aliases",
+                    "Created",
+                    "Created time",
+                    "Last edited time",
+                    "Updated",
+                    "created",
+                    "created_at",
+                    "updated",
+                    "updated_at",
+                ):
                     normalized[k.lower().replace(" ", "_")] = v
             return normalized
     except Exception:
@@ -106,7 +125,9 @@ def _parse_front_matter(path: Path) -> dict:
 @app.command()
 def parse_command(
     meta: Optional[list[str]] = typer.Option(
-        None, "--meta", help="Additional metadata entries key=value or key:=json (repeatable)"
+        None,
+        "--meta",
+        help="Additional metadata entries key=value or key:=json (repeatable)",
     ),
     meta_file: Optional[Path] = typer.Option(
         None, "--meta-file", help="Path to YAML/JSON meta file to merge"

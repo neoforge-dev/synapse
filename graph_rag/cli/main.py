@@ -2,7 +2,6 @@ import logging
 from typing import Optional
 
 import typer
-from rich.logging import RichHandler
 
 from graph_rag import __version__  # Assume version is defined in __init__.py
 from graph_rag.cli.commands.admin import check_health  # Import admin command
@@ -13,7 +12,7 @@ from graph_rag.cli.commands.discover import discover_command
 from graph_rag.cli.commands.parse import parse_command
 from graph_rag.cli.commands.store import store_command
 from graph_rag.cli.commands.search import search_query
-from graph_rag.cli.commands.suggest import app as suggest_app
+from graph_rag.cli.commands.suggest import run_suggest as suggest_command
 from graph_rag.cli.commands.query import app as query_app
 from graph_rag.cli.commands.config import app as config_app
 from graph_rag.config import get_settings  # Import factory
@@ -24,7 +23,6 @@ settings = get_settings()  # Get settings instance
 logging.basicConfig(
     level=settings.api_log_level.upper(),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[RichHandler(rich_tracebacks=True)],
 )
 logger = logging.getLogger("synapse.cli")
 
@@ -43,7 +41,7 @@ app.command("parse")(parse_command)
 app.command("store")(store_command)
 app.command("search")(search_query)
 app.add_typer(query_app, name="query")
-app.add_typer(suggest_app, name="suggest")
+app.command("suggest")(suggest_command)
 app.add_typer(config_app, name="config")
 app.command("admin-health")(check_health)  # Renamed for clarity
 

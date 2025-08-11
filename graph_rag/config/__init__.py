@@ -28,7 +28,9 @@ class Settings(BaseSettings):
     api_host: str = Field("0.0.0.0", description="Host address for the FastAPI server.")
     api_port: int = Field(8000, description="Port number for the FastAPI server.")
     api_log_level: str = Field("INFO", description="Logging level for the API server.")
-    api_log_json: bool = Field(False, description="Emit structured JSON logs when true.")
+    api_log_json: bool = Field(
+        False, description="Emit structured JSON logs when true."
+    )
     # Example: api_key: Optional[SecretStr] = Field(None, description="Optional API key for securing endpoints.")
 
     # --- Memgraph Settings ---
@@ -137,7 +139,9 @@ class Settings(BaseSettings):
         False,
         description="Enable streaming of keyword search results (NDJSON).",
     )
-    enable_metrics: bool = Field(True, description="Expose /metrics Prometheus endpoint.")
+    enable_metrics: bool = Field(
+        True, description="Expose /metrics Prometheus endpoint."
+    )
 
     # Add other settings as needed...
 
