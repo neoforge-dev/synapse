@@ -53,6 +53,7 @@ install-dev: install-deps download-nlp-data ## Install dependencies and download
 
 lint: ## Run linters (ruff check)
 	$(UV) run ruff check .
+	$(UV) run mypy graph_rag/core graph_rag/services || true
 
 format: ## Run formatters (ruff format)
 	$(UV) run ruff format .

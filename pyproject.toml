@@ -35,12 +35,32 @@ dev = [
     "pytest-cov>=4.1.0",
     "pytest-mock",
     "ruff>=0.1.6",
+    "mypy>=1.10.0",
     "spacy>=3.0.0",
     "neo4j>=5.13.0",
     "openai>=1.0.0",
     "gqlalchemy",
     "pyopenssl",
 ]
+
+[tool.mypy]
+python_version = "3.12"
+pretty = true
+show_error_codes = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+ignore_missing_imports = true
+follow_imports = "silent"
+
+[[tool.mypy.overrides]]
+module = [
+  "graph_rag.core.*",
+  "graph_rag.services.*",
+]
+disallow_untyped_defs = true
+check_untyped_defs = true
+strict_optional = true
 
 [project.scripts]
 synapse = "graph_rag.cli.main:app"

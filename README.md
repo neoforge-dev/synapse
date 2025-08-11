@@ -10,6 +10,9 @@ Prereqs: Docker Desktop, Python 3.10+, `uv` package manager.
 # 1) Install dev deps
 make install-dev
 
+# Optional: type checks and lint
+make lint
+
 # 2) Start services (Memgraph + API)
 make up  # leaves API in foreground; Ctrl+C to stop API
 
