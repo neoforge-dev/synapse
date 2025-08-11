@@ -90,6 +90,10 @@ Notes:
 - `synapse suggest "<topic>" [--k 5] [--graph] [--style "concise, analytical"] [--count 5] [--json]`
   - Uses the new `/api/v1/query/ask` endpoint to generate ideas and content suggestions grounded in your corpus.
 
+- `synapse config show|init`
+  - `show` prints effective settings (use `--json` for JSON)
+  - `init` writes a `.env` template (use `--path` and `--force` as needed)
+
 JSON output (non-dry-run):
 - Single file: `{ "document_id": "...", "num_chunks": N, "id_source": "...", "path": "...", "embeddings": bool, "replace_existing": bool, "topics": [..] }`
 - Directory: `[{...}, {...}]` per file summary
