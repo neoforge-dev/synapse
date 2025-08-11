@@ -14,7 +14,15 @@ from unittest.mock import AsyncMock  # Add AsyncMock, MagicMock, patch
 import nltk  # Add nltk import
 import pytest
 import pytest_asyncio  # Add import
-import spacy  # Add spacy import
+try:
+    # Allow hot-path coverage runs to skip heavy spaCy/torch import
+    if os.getenv("SKIP_SPACY_IMPORT") == "1":
+        spacy = None  # type: ignore[assignment]
+    else:
+        import spacy  # type: ignore
+except Exception:
+    # Fallback to None if spaCy cannot be imported; most tests expect it present
+    spacy = None  # type: ignore[assignment]
 from fastapi import BackgroundTasks, FastAPI
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
@@ -25,18 +33,25 @@ from neo4j import AsyncDriver, AsyncGraphDatabase  # Corrected: Use neo4j direct
 from neo4j.exceptions import AuthError, Neo4jError, ServiceUnavailable
 from typer.testing import CliRunner  # <--- Add CliRunner import
 
-from graph_rag.api import dependencies as deps  # Import the module
+if os.getenv("SKIP_SPACY_IMPORT") == "1":
+    deps = None  # type: ignore[assignment]
+    # During hot-path coverage runs, ensure embedding provider doesn't import torch
+    os.environ.setdefault("GRAPH_RAG_EMBEDDING_PROVIDER", "mock")
+    os.environ.setdefault("GRAPH_RAG_LLM_TYPE", "mock")
+else:
+    from graph_rag.api import dependencies as deps  # Import the module
 
 # Use standardized getter for graph repository
-from graph_rag.api.dependencies import (
-    get_document_processor,
-    get_entity_extractor,
-    get_graph_rag_engine,  # get_neo4j_driver, # Removed Neo4j driver getter
-    get_graph_repository,
-    get_ingestion_service,
-    get_knowledge_graph_builder,  # Corrected: get_document_processor
-    get_vector_store,  # Added import
-)
+if os.getenv("SKIP_SPACY_IMPORT") != "1":
+    from graph_rag.api.dependencies import (
+        get_document_processor,
+        get_entity_extractor,
+        get_graph_rag_engine,  # get_neo4j_driver, # Removed Neo4j driver getter
+        get_graph_repository,
+        get_ingestion_service,
+        get_knowledge_graph_builder,  # Corrected: get_document_processor
+        get_vector_store,  # Added import
+    )
 from graph_rag.api.main import create_app
 from graph_rag.api.main import lifespan as app_lifespan
 
@@ -101,8 +116,13 @@ def spacy_model_validator():  # Renamed fixture
     Assumes the model is installed as part of the development environment setup
     (e.g., via 'make download-nlp-data').
     """
+    if os.getenv("SKIP_SPACY_IMPORT") == "1":
+        logger.info("Skipping spaCy model validation (SKIP_SPACY_IMPORT=1).")
+        return
     model_name = "en_core_web_sm"
     try:
+        if spacy is None:  # type: ignore[truthy-bool]
+            raise OSError("spaCy not importable in this environment")
         spacy.load(model_name)
         logger.info(f"Required spaCy model '{model_name}' is available.")
     except OSError as e:

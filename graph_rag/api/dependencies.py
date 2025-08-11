@@ -66,7 +66,9 @@ from graph_rag.llm import MockLLMService
 from graph_rag.llm.protocols import LLMService
 
 # from graph_rag.infrastructure.entity_extractors.spacy_entity_extractor import SpacyEntityExtractor # Remove this line
-from graph_rag.services.embedding import SentenceTransformerEmbeddingService
+# NOTE: Avoid importing SentenceTransformerEmbeddingService at module import time
+# to prevent pulling in heavy torch dependencies during lightweight test runs.
+# Import it lazily inside factory when needed.
 
 # Remove PersistentKnowledgeGraphBuilder import if not used elsewhere
 # from graph_rag.core.persistent_kg_builder import PersistentKnowledgeGraphBuilder
@@ -340,6 +342,10 @@ def create_embedding_service(
         )
         instance = MockEmbeddingService(dimension=10)  # Use mock for now
     elif embedding_provider == "sentence-transformers":
+        # Lazy import to avoid torch import when not needed
+        from graph_rag.services.embedding import (
+            SentenceTransformerEmbeddingService,
+        )
         instance = SentenceTransformerEmbeddingService(
             model_name=settings.vector_store_embedding_model
         )

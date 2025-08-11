@@ -1,6 +1,14 @@
 import logging
 
-from sentence_transformers import SentenceTransformer
+try:
+    if __import__("os").getenv("SKIP_SPACY_IMPORT") == "1":
+        # During hot-path coverage runs, avoid importing torch via sentence-transformers
+        SentenceTransformer = None  # type: ignore[assignment]
+    else:
+        from sentence_transformers import SentenceTransformer
+except Exception:
+    # Fallback to None if import fails; actual use will raise
+    SentenceTransformer = None  # type: ignore[assignment]
 
 # Change import to use the factory
 from graph_rag.config import get_settings
@@ -29,6 +37,8 @@ class SentenceTransformerEmbeddingService(EmbeddingService):  # Implement the pr
         logger.info(f"Loading embedding model: {self._model_name}")
         try:
             # Keep disabled components if only embeddings needed
+            if SentenceTransformer is None:
+                raise RuntimeError("SentenceTransformer unavailable in this environment")
             self._model = SentenceTransformer(self._model_name)
             logger.info("Embedding model loaded successfully.")
         except Exception as e:
