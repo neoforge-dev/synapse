@@ -17,6 +17,9 @@ make lint
 make up  # leaves API in foreground; Ctrl+C to stop API
 
 # Alternatively run in two terminals
+# Packaging (pipx)
+make build
+pipx install dist/*.whl
 make run-memgraph
 make run-api
 

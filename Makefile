@@ -122,6 +122,15 @@ clean: ## Remove cache files and build artifacts
 	find . -type d -name "__pycache__" -delete
 	rm -rf build dist *.egg-info .pytest_cache .ruff_cache $(VENV_DIR) 
 
+.PHONY: build wheel install-local
+build: ## Build source and wheel distributions
+	$(UV) run python -m build
+
+wheel: build ## Alias for build
+
+install-local: ## Install the package locally via pipx
+	pipx install --force dist/*.whl || true
+
 # --- Remove Duplicated Targets Below ---
 # .PHONY: install test lint format clean run-deps stop-deps
 

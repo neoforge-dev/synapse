@@ -36,6 +36,7 @@ dev = [
     "pytest-mock",
     "ruff>=0.1.6",
     "mypy>=1.10.0",
+    "build>=1.2.1",
     "spacy>=3.0.0",
     "neo4j>=5.13.0",
     "openai>=1.0.0",
