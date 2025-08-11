@@ -95,7 +95,9 @@ async def process_and_store_document(
 
         # Read file content and derive stable document_id
         content = file_path.read_text()
-        derived_id, id_source, _ = derive_document_id(file_path, content, metadata or {})
+        derived_id, id_source, _ = derive_document_id(
+            file_path, content, metadata or {}
+        )
         document_id = derived_id
         # Attach id_source for observability
         meta_with_id = dict(metadata or {})
@@ -330,7 +332,9 @@ async def ingest(
             return result
         for it in items:
             if "=" not in it:
-                typer.echo(f"Warning: Ignoring malformed --meta '{it}', expected key=value")
+                typer.echo(
+                    f"Warning: Ignoring malformed --meta '{it}', expected key=value"
+                )
                 continue
             key, value = it.split("=", 1)
             key = key.strip()
@@ -378,7 +382,11 @@ async def ingest(
                         if "," in value:
                             return [s.strip() for s in value.split(",") if s.strip()]
                         if "#" in value:
-                            return [s.strip().lstrip("#") for s in value.split() if s.strip()]
+                            return [
+                                s.strip().lstrip("#")
+                                for s in value.split()
+                                if s.strip()
+                            ]
                         return [value.strip()] if value.strip() else []
                     return [str(value)]
 
@@ -387,7 +395,9 @@ async def ingest(
                     normalized["topics"] = _ensure_list(data.get("tags"))
                 if "Topics" in data and data.get("Topics") is not None:
                     topics = _ensure_list(data.get("Topics"))
-                    normalized["topics"] = list({*(normalized.get("topics", [])), *topics})
+                    normalized["topics"] = list(
+                        {*(normalized.get("topics", [])), *topics}
+                    )
 
                 # aliases passthrough normalization
                 if "aliases" in data and data.get("aliases") is not None:
@@ -398,7 +408,12 @@ async def ingest(
                     if k in data and data.get(k):
                         normalized["created_at"] = str(data.get(k))
                         break
-                for k in ("updated", "updated_at", "last_edited_time", "Last edited time"):
+                for k in (
+                    "updated",
+                    "updated_at",
+                    "last_edited_time",
+                    "Last edited time",
+                ):
                     if k in data and data.get(k):
                         normalized["updated_at"] = str(data.get(k))
                         break
@@ -413,7 +428,12 @@ async def ingest(
             lines = text.splitlines()
             # Look for a table header in first ~20 lines
             window = [ln.strip() for ln in lines[:20] if ln.strip()]
-            if len(window) >= 3 and "|" in window[0] and "|" in window[1] and set(window[1]) <= set("|- :"):
+            if (
+                len(window) >= 3
+                and "|" in window[0]
+                and "|" in window[1]
+                and set(window[1]) <= set("|- :")
+            ):
                 # Parse rows of the form: | Property | Value |
                 props: dict[str, str] = {}
                 for row in window[2:]:
@@ -440,9 +460,17 @@ async def ingest(
                         return [str(v) for v in value]
                     if isinstance(value, str):
                         if "," in value:
-                            return [s.strip().lstrip("#") for s in value.split(",") if s.strip()]
+                            return [
+                                s.strip().lstrip("#")
+                                for s in value.split(",")
+                                if s.strip()
+                            ]
                         if "#" in value:
-                            return [s.strip().lstrip("#") for s in value.split() if s.strip()]
+                            return [
+                                s.strip().lstrip("#")
+                                for s in value.split()
+                                if s.strip()
+                            ]
                         return [value.strip()] if value.strip() else []
                     return [str(value)]
 
@@ -466,12 +494,28 @@ async def ingest(
 
                 # Include any other simple scalar properties
                 for k, v in props.items():
-                    if k not in ("Tags", "tags", "Topics", "Aliases", "aliases", "Created", "Created time", "Last edited time", "Updated", "created", "created_at", "updated", "updated_at"):
+                    if k not in (
+                        "Tags",
+                        "tags",
+                        "Topics",
+                        "Aliases",
+                        "aliases",
+                        "Created",
+                        "Created time",
+                        "Last edited time",
+                        "Updated",
+                        "created",
+                        "created_at",
+                        "updated",
+                        "updated_at",
+                    ):
                         normalized[k.lower().replace(" ", "_")] = v
 
                 return normalized
         except Exception as table_err:
-            logger.warning(f"Failed to parse Notion property table in {path}: {table_err}")
+            logger.warning(
+                f"Failed to parse Notion property table in {path}: {table_err}"
+            )
             return {}
 
         return {}
@@ -495,7 +539,12 @@ async def ingest(
 
     def _merge_metadata(front_matter: dict) -> dict:
         # Merge order: front matter < meta-file < --meta < --metadata JSON
-        merged = {**(front_matter or {}), **metadata_from_file, **metadata_from_kv, **metadata_json}
+        merged = {
+            **(front_matter or {}),
+            **metadata_from_file,
+            **metadata_from_kv,
+            **metadata_json,
+        }
         return merged
 
     try:
@@ -505,13 +554,21 @@ async def ingest(
             if dry_run:
                 # Simulate a path for ID derivation
                 synthetic_path = Path("stdin://document")
-                derived_id, id_source, _ = derive_document_id(synthetic_path, content, {})
-                plan = [{
-                    "path": str(synthetic_path),
-                    "document_id": derived_id,
-                    "id_source": id_source,
-                }]
-                output = json.dumps(plan, ensure_ascii=False) if as_json else f"1 document(s) would be ingested. First id={derived_id} (source={id_source})."
+                derived_id, id_source, _ = derive_document_id(
+                    synthetic_path, content, {}
+                )
+                plan = [
+                    {
+                        "path": str(synthetic_path),
+                        "document_id": derived_id,
+                        "id_source": id_source,
+                    }
+                ]
+                output = (
+                    json.dumps(plan, ensure_ascii=False)
+                    if as_json
+                    else f"1 document(s) would be ingested. First id={derived_id} (source={id_source})."
+                )
                 typer.echo(output)
                 return
             # Persist stdin to a temporary file to reuse pipeline
@@ -534,7 +591,9 @@ async def ingest(
                 payload = res if isinstance(res, dict) else {"path": str(tmp_file)}
                 typer.echo(json.dumps(payload, ensure_ascii=False))
             else:
-                typer.echo("Successfully processed STDIN content including graph links.")
+                typer.echo(
+                    "Successfully processed STDIN content including graph links."
+                )
             return
 
         processed_count = 0
@@ -561,13 +620,19 @@ async def ingest(
                     fm = parse_front_matter(p)
                     merged_meta = _merge_metadata(fm)
                     doc_id, id_source, _ = derive_document_id(p, text, merged_meta)
-                    plan.append({
-                        "path": str(p),
-                        "document_id": doc_id,
-                        "id_source": id_source,
-                        "topics": merged_meta.get("topics", []),
-                    })
-                output = json.dumps(plan, ensure_ascii=False) if as_json else f"{len(plan)} document(s) would be ingested."
+                    plan.append(
+                        {
+                            "path": str(p),
+                            "document_id": doc_id,
+                            "id_source": id_source,
+                            "topics": merged_meta.get("topics", []),
+                        }
+                    )
+                output = (
+                    json.dumps(plan, ensure_ascii=False)
+                    if as_json
+                    else f"{len(plan)} document(s) would be ingested."
+                )
                 typer.echo(output)
                 return
 
@@ -599,11 +664,13 @@ async def ingest(
                     failed += 1
                     logger.error(f"Failed to ingest {path}: {e}", exc_info=True)
                     if as_json:
-                        results_payload.append({
-                            "path": str(path),
-                            "error": str(e),
-                            "status": "error",
-                        })
+                        results_payload.append(
+                            {
+                                "path": str(path),
+                                "error": str(e),
+                                "status": "error",
+                            }
+                        )
                     # Continue processing other files in directory mode
                     continue
                 finally:
@@ -644,13 +711,19 @@ async def ingest(
                 fm = parse_front_matter(file_path)
                 merged_meta = _merge_metadata(fm)
                 doc_id, id_source, _ = derive_document_id(file_path, text, merged_meta)
-                plan = [{
-                    "path": str(file_path),
-                    "document_id": doc_id,
-                    "id_source": id_source,
-                    "topics": merged_meta.get("topics", []),
-                }]
-                output = json.dumps(plan, ensure_ascii=False) if as_json else f"1 document(s) would be ingested. id={doc_id} (source={id_source})."
+                plan = [
+                    {
+                        "path": str(file_path),
+                        "document_id": doc_id,
+                        "id_source": id_source,
+                        "topics": merged_meta.get("topics", []),
+                    }
+                ]
+                output = (
+                    json.dumps(plan, ensure_ascii=False)
+                    if as_json
+                    else f"1 document(s) would be ingested. id={doc_id} (source={id_source})."
+                )
                 typer.echo(output)
                 return
 

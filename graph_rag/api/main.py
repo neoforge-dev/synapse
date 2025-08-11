@@ -37,19 +37,38 @@ from graph_rag.infrastructure.document_processor.simple_processor import (
 )
 from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
-from graph_rag.infrastructure.vector_stores.faiss_vector_store import FaissVectorStore
 from graph_rag.services.embedding import SentenceTransformerEmbeddingService
 from graph_rag.services.ingestion import IngestionService  # Needed for type hint
-from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Counter, Gauge, generate_latest
+
+try:
+    from prometheus_client import (
+        CONTENT_TYPE_LATEST,
+        CollectorRegistry,
+        Counter,
+        Gauge,
+        generate_latest,
+    )
+
+    HAS_PROMETHEUS = True
+except Exception:  # pragma: no cover - optional dependency
+    HAS_PROMETHEUS = False
+    CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
+    CollectorRegistry = None  # type: ignore[assignment]
+    Counter = None  # type: ignore[assignment]
+    Gauge = None  # type: ignore[assignment]
+
+    def generate_latest(*_args, **_kwargs):  # type: ignore[no-redef]
+        return b""
+
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 # --- Application State ---
 app_state = {}  # Use a dictionary for app state
-_metrics_registry: CollectorRegistry | None = None
-REQUEST_COUNT: Counter | None = None
-REQUEST_LATENCY: Gauge | None = None
+_metrics_registry = None  # type: ignore[assignment]
+REQUEST_COUNT = None  # type: ignore[assignment]
+REQUEST_LATENCY = None  # type: ignore[assignment]
 
 
 # --- Lifespan Management for Resources ---
@@ -147,19 +166,35 @@ async def lifespan(app: FastAPI):
         try:
             vtype = current_settings.vector_store_type.lower()
             if vtype == "simple":
-                app.state.vector_store = SimpleVectorStore(embedding_service=embedding_service)
-                logger.info("LIFESPAN: Initialized SimpleVectorStore with provided embedding service.")
+                app.state.vector_store = SimpleVectorStore(
+                    embedding_service=embedding_service
+                )
+                logger.info(
+                    "LIFESPAN: Initialized SimpleVectorStore with provided embedding service."
+                )
             elif vtype == "faiss":
+                # Lazy import to avoid hard dependency during tests without faiss installed
+                from graph_rag.infrastructure.vector_stores.faiss_vector_store import (
+                    FaissVectorStore,
+                )
+
                 app.state.vector_store = FaissVectorStore(
                     path=current_settings.vector_store_path,
-                    embedding_dimension=getattr(embedding_service, "get_embedding_dimension", lambda: 768)(),
+                    embedding_dimension=getattr(
+                        embedding_service, "get_embedding_dimension", lambda: 768
+                    )(),
                 )
-                logger.info("LIFESPAN: Initialized FaissVectorStore at %s", current_settings.vector_store_path)
+                logger.info(
+                    "LIFESPAN: Initialized FaissVectorStore at %s",
+                    current_settings.vector_store_path,
+                )
             elif vtype == "mock":
                 app.state.vector_store = MockVectorStore()
                 logger.info("LIFESPAN: Initialized MockVectorStore.")
             else:
-                logger.warning(f"LIFESPAN: Unsupported vector_store_type '{current_settings.vector_store_type}'. Using MockVectorStore.")
+                logger.warning(
+                    f"LIFESPAN: Unsupported vector_store_type '{current_settings.vector_store_type}'. Using MockVectorStore."
+                )
                 app.state.vector_store = MockVectorStore()
         except Exception as e:
             logger.critical(
@@ -495,7 +530,7 @@ def create_app() -> FastAPI:
 
     # --- Metrics setup ---
     settings = get_settings()
-    if settings.enable_metrics:
+    if settings.enable_metrics and HAS_PROMETHEUS:
         global _metrics_registry, REQUEST_COUNT, REQUEST_LATENCY
         _metrics_registry = CollectorRegistry()
         REQUEST_COUNT = Counter(
@@ -516,6 +551,10 @@ def create_app() -> FastAPI:
             assert _metrics_registry is not None
             data = generate_latest(_metrics_registry)
             return PlainTextResponse(data, media_type=CONTENT_TYPE_LATEST)
+    elif settings.enable_metrics and not HAS_PROMETHEUS:
+        logger.warning(
+            "Metrics enabled but 'prometheus_client' not installed; skipping /metrics endpoint."
+        )
 
     # --- Base Routes ---
     @app.get("/", tags=["Root"], include_in_schema=False)
@@ -566,7 +605,9 @@ def create_app() -> FastAPI:
         # Record metrics
         try:
             if settings.enable_metrics and REQUEST_COUNT and REQUEST_LATENCY:
-                REQUEST_COUNT.labels(request.method, request.url.path, str(response.status_code)).inc()
+                REQUEST_COUNT.labels(
+                    request.method, request.url.path, str(response.status_code)
+                ).inc()
                 REQUEST_LATENCY.labels(request.url.path).set(process_time)
         except Exception:
             pass
@@ -577,8 +618,10 @@ def create_app() -> FastAPI:
         # Basic readiness: confirm core dependencies exist in app state
         ready = all(
             [
-                hasattr(request.app.state, "graph_rag_engine") and request.app.state.graph_rag_engine,
-                hasattr(request.app.state, "ingestion_service") and request.app.state.ingestion_service,
+                hasattr(request.app.state, "graph_rag_engine")
+                and request.app.state.graph_rag_engine,
+                hasattr(request.app.state, "ingestion_service")
+                and request.app.state.ingestion_service,
             ]
         )
         if not ready:

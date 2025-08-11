@@ -120,7 +120,9 @@ def create_query_router() -> APIRouter:
         )
         try:
             config = {"k": ask_request.k, "include_graph": ask_request.include_graph}
-            result: DomainQueryResult = await engine.query(ask_request.text, config=config)
+            result: DomainQueryResult = await engine.query(
+                ask_request.text, config=config
+            )
 
             return QueryResponse(
                 answer=result.answer,
@@ -129,7 +131,9 @@ def create_query_router() -> APIRouter:
                 metadata=result.metadata,
             )
         except Exception as e:
-            logger.error(f"Error processing ask '{ask_request.text}': {e}", exc_info=True)
+            logger.error(
+                f"Error processing ask '{ask_request.text}': {e}", exc_info=True
+            )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to process ask: {e}",
@@ -159,7 +163,9 @@ def _to_api_graph_context(query_result: DomainQueryResult):
     try:
         domain_entities, domain_relationships = query_result.graph_context
         return QueryResultGraphContext(
-            entities=[e.model_dump() for e in domain_entities] if domain_entities else [],
+            entities=[e.model_dump() for e in domain_entities]
+            if domain_entities
+            else [],
             relationships=[r.model_dump() for r in domain_relationships]
             if domain_relationships
             else [],

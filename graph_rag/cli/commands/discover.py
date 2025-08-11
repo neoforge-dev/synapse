@@ -9,7 +9,10 @@ app = typer.Typer(help="Discover files for ingestion")
 
 
 def _match_globs(
-    root: Path, candidate: Path, include: Optional[list[str]], exclude: Optional[list[str]]
+    root: Path,
+    candidate: Path,
+    include: Optional[list[str]],
+    exclude: Optional[list[str]],
 ) -> bool:
     try:
         rel = candidate.relative_to(root)
@@ -39,10 +42,18 @@ def _match_globs(
 @app.command()
 def discover_command(
     directory: Optional[Path] = typer.Argument(None, help="Directory to search"),
-    include: Optional[list[str]] = typer.Option(None, "--include", help="Glob pattern to include (repeatable)."),
-    exclude: Optional[list[str]] = typer.Option(None, "--exclude", help="Glob pattern to exclude (repeatable)."),
-    as_json: bool = typer.Option(False, "--json", help="Emit JSON lines with a 'path' field."),
-    read_stdin: bool = typer.Option(False, "--stdin", help="Read a JSON array of directories from stdin"),
+    include: Optional[list[str]] = typer.Option(
+        None, "--include", help="Glob pattern to include (repeatable)."
+    ),
+    exclude: Optional[list[str]] = typer.Option(
+        None, "--exclude", help="Glob pattern to exclude (repeatable)."
+    ),
+    as_json: bool = typer.Option(
+        False, "--json", help="Emit JSON lines with a 'path' field."
+    ),
+    read_stdin: bool = typer.Option(
+        False, "--stdin", help="Read a JSON array of directories from stdin"
+    ),
 ) -> None:
     roots: list[Path] = []
     if directory is not None:
@@ -66,7 +77,9 @@ def discover_command(
             raise typer.Exit(1)
 
     if not roots:
-        typer.echo("Error: provide a DIRECTORY or --stdin JSON array of directories", err=True)
+        typer.echo(
+            "Error: provide a DIRECTORY or --stdin JSON array of directories", err=True
+        )
         raise typer.Exit(1)
 
     exts = {".md", ".markdown", ".txt"}
@@ -85,6 +98,6 @@ def discover_command(
 
     for p in sorted(results_set):
         if as_json:
-            typer.echo(f"{{\"path\": \"{str(p)}\"}}")
+            typer.echo(f'{{"path": "{str(p)}"}}')
         else:
             typer.echo(str(p))

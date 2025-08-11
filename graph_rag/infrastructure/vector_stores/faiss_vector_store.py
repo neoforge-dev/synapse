@@ -64,7 +64,9 @@ class FaissVectorStore(VectorStore):
                         version,
                     )
                 self._rows = data.get("rows", [])
-                self._row_by_chunk_id = {r["chunk_id"]: i for i, r in enumerate(self._rows)}
+                self._row_by_chunk_id = {
+                    r["chunk_id"]: i for i, r in enumerate(self._rows)
+                }
             except Exception as e:
                 logger.error(f"Failed to load FAISS metadata: {e}")
                 self._rows = []
@@ -112,11 +114,15 @@ class FaissVectorStore(VectorStore):
         new_rows: list[dict[str, Any]] = []
         for ch in chunks:
             if ch.embedding is None:
-                logger.warning(f"Skipping chunk {ch.id} without embedding for FAISS store")
+                logger.warning(
+                    f"Skipping chunk {ch.id} without embedding for FAISS store"
+                )
                 continue
             if ch.id in self._row_by_chunk_id:
                 # FAISS IndexFlat doesn't support in-place update; naive strategy: append new and keep last
-                logger.warning(f"Duplicate chunk id {ch.id} detected; appending new embedding")
+                logger.warning(
+                    f"Duplicate chunk id {ch.id} detected; appending new embedding"
+                )
             vectors.append(ch.embedding)
             new_rows.append(
                 {
