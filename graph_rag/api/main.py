@@ -37,6 +37,7 @@ from graph_rag.infrastructure.document_processor.simple_processor import (
 )
 from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
+from graph_rag.infrastructure.vector_stores.faiss_vector_store import FaissVectorStore
 from graph_rag.services.embedding import SentenceTransformerEmbeddingService
 from graph_rag.services.ingestion import IngestionService  # Needed for type hint
 from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Counter, Gauge, generate_latest
@@ -144,20 +145,21 @@ async def lifespan(app: FastAPI):
     logger.info("LIFESPAN: Initializing Vector Store...")
     if not hasattr(app.state, "vector_store") or app.state.vector_store is None:
         try:
-            if current_settings.vector_store_type.lower() == "simple":
-                # Use the embedding_service instance created above
-                vector_store = SimpleVectorStore(embedding_service=embedding_service)
-                app.state.vector_store = vector_store
-                logger.info(
-                    "LIFESPAN: Initialized SimpleVectorStore with provided embedding service."
+            vtype = current_settings.vector_store_type.lower()
+            if vtype == "simple":
+                app.state.vector_store = SimpleVectorStore(embedding_service=embedding_service)
+                logger.info("LIFESPAN: Initialized SimpleVectorStore with provided embedding service.")
+            elif vtype == "faiss":
+                app.state.vector_store = FaissVectorStore(
+                    path=current_settings.vector_store_path,
+                    embedding_dimension=getattr(embedding_service, "get_embedding_dimension", lambda: 768)(),
                 )
-            elif current_settings.vector_store_type.lower() == "mock":
+                logger.info("LIFESPAN: Initialized FaissVectorStore at %s", current_settings.vector_store_path)
+            elif vtype == "mock":
                 app.state.vector_store = MockVectorStore()
                 logger.info("LIFESPAN: Initialized MockVectorStore.")
             else:
-                logger.warning(
-                    f"LIFESPAN: Unsupported vector_store_type '{current_settings.vector_store_type}'. Using MockVectorStore."
-                )
+                logger.warning(f"LIFESPAN: Unsupported vector_store_type '{current_settings.vector_store_type}'. Using MockVectorStore.")
                 app.state.vector_store = MockVectorStore()
         except Exception as e:
             logger.critical(
