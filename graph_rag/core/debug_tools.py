@@ -1,7 +1,7 @@
 """Debugging tools for GraphRAG system."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -106,7 +106,7 @@ class GraphDebugger:
             }
 
             return SystemState(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 node_counts=node_counts,
                 relationship_counts={
                     item["type"]: item["count"] for item in rel_counts

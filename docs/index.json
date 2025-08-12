@@ -1,0 +1,81 @@
+{
+  "project": "Synapse MCP",
+  "version": "0.1.0",
+  "docs": [
+    "README.md",
+    "docs/HANDBOOK.md",
+    "docs/ARCHITECTURE.md",
+    "docs/PRD.md",
+    "docs/PLAN.md",
+    "docs/MCP.md",
+    "docs/LAUNCHD.md",
+    "docs/PROMPT.md",
+    "docs/INDEX.md",
+    "docs/DELETION_CANDIDATES.md",
+    "CONTRIBUTING.md",
+    "CLAUDE.md"
+  ],
+  "code": {
+    "package": "graph_rag",
+    "paths": [
+      "graph_rag/api",
+      "graph_rag/cli",
+      "graph_rag/core",
+      "graph_rag/infrastructure",
+      "graph_rag/services",
+      "graph_rag/llm",
+      "graph_rag/utils",
+      "graph_rag/domain",
+      "graph_rag/stores",
+      "graph_rag/data_stores",
+      "graph_rag/models.py",
+      "graph_rag/config/__init__.py"
+    ]
+  },
+  "tests": [
+    "tests/api",
+    "tests/cli",
+    "tests/core",
+    "tests/infrastructure",
+    "tests/services",
+    "tests/config",
+    "tests/utils",
+    "tests/integration"
+  ],
+  "memory_bank": [
+    "memory-bank/active-context.md",
+    "memory-bank/debugging-examples.md",
+    "memory-bank/debugging-protocol.md",
+    "memory-bank/development-workflow.md",
+    "memory-bank/product-context.md",
+    "memory-bank/progress.md",
+    "memory-bank/project-brief.md",
+    "memory-bank/system-patterns.md",
+    "memory-bank/tech-context.md"
+  ],
+  "third_party": [
+    "pymgclient/"
+  ],
+  "config": [
+    "pyproject.toml",
+    "Makefile",
+    "uv.lock",
+    ".github/workflows/ci.yml",
+    "docker-compose.yml",
+    "docker-compose.dev.yml",
+    "Dockerfile",
+    "Dockerfile.dev"
+  ],
+  "generated": [
+    "htmlcov/",
+    "pytest_output.log",
+    "pytestdebug.log",
+    "last-api-test.txt",
+    "last-delete-test.txt",
+    "last-integration-test.txt",
+    "last-nlp-test.txt",
+    "last-test-run.txt"
+  ],
+  "orphans_or_placeholders": [],
+  "cleanup_proposals": {}
+}

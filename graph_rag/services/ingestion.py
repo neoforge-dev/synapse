@@ -86,7 +86,9 @@ class IngestionService:
         Returns:
             IngestionResult with document and chunk IDs
         """
-        print(f"DEBUG: IngestionService.ingest_document called for doc {document_id}")
+        logger.debug(
+            "IngestionService.ingest_document called for doc %s", document_id
+        )
         start_ts = time.monotonic()
         id_source = None
         try:
@@ -180,15 +182,17 @@ class IngestionService:
         document = Document(id=document_id, content=content, metadata=metadata)
         try:
             # Use the specific add_document method for Document objects
-            print(
-                f"DEBUG: About to call graph_store.add_document for doc {document_id}"
+            logger.debug(
+                "About to call graph_store.add_document for doc %s", document_id
             )
             await self._retry(
                 lambda: self.graph_store.add_document(document),
                 attempts=3,
                 base_delay=0.2,
             )
-            print(f"DEBUG: Finished graph_store.add_document for doc {document_id}")
+            logger.debug(
+                "Finished graph_store.add_document for doc %s", document_id
+            )
             # add_document doesn't return the ID, we already have it
             # if saved_doc_id != document_id:
             #      # Log a warning if the returned ID is different (unexpected)
@@ -279,16 +283,12 @@ class IngestionService:
                 if not hasattr(chunk, "embedding"):
                     chunk.embedding = None
 
-                # --- Add debug print here ---
-                print(
-                    f"DEBUG: Before save_chunk - Chunk ID: {chunk.id}, Embedding is None: {chunk.embedding is None}"
+                # --- Debug logging (no stdout noise) ---
+                logger.debug(
+                    "Before save_chunk id=%s embedding_is_none=%s",
+                    chunk.id,
+                    chunk.embedding is None,
                 )
-                if chunk.embedding is not None:
-                    # Limit printing large embeddings
-                    embedding_preview = str(chunk.embedding[:5]) + (
-                        "..." if len(chunk.embedding) > 5 else ""
-                    )
-                    print(f"DEBUG: Embedding value preview: {embedding_preview}")
 
                 # Use add_chunk for Chunk objects
                 await self._retry(

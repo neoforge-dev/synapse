@@ -29,7 +29,7 @@ synapse discover ~/Notes --include "**/*.md" \
   | synapse parse --meta source=vault --meta tags:='["notes","kb"]' \
   | synapse store --embeddings --json --emit-chunks
 
-# Option B: legacy one-shot wrapper (backward compatible)
+# Option B: one-shot wrapper (convenience)
 synapse ingest ~/Notes --embeddings  # parses YAML front matter / Notion property tables
 
 # Control verbosity globally
@@ -40,9 +40,12 @@ synapse --verbose ingest ~/Notes      # debug logs
 curl http://localhost:8000/ready        # readiness
 curl http://localhost:8000/metrics      # Prometheus metrics (enabled by default)
 
-# Optional: add/override metadata (ergonomic flags)
+# Point CLI search/admin to a custom API base
+export SYNAPSE_API_BASE_URL="http://localhost:8000/api/v1"
+
+# Optional: add/override metadata; control replacement
 synapse ingest ~/Notes --meta source=vault --meta owner=me \
-  --meta-file meta.yaml --embeddings
+  --meta-file meta.yaml --embeddings --replace/--no-replace
 
 # Preview what would be ingested (no changes)
 synapse ingest ~/Notes --dry-run --json \
@@ -170,7 +173,7 @@ Identity and idempotence:
 ### Vector store considerations
 
 - The default vector store is an in-process simple store optimized for tests and quick starts. For production, set `SYNAPSE_VECTOR_STORE_TYPE=faiss`.
-- FAISS store now persists raw embeddings in `meta.json` to support precise deletions and index rebuilds.
+- FAISS store persists raw embeddings in `meta.json` (version 2) to support precise deletions and index rebuilds.
 - Use maintenance commands to manage the FAISS index:
   - `synapse store stats` shows vector count and index paths
   - `synapse store rebuild` reconstructs the index from persisted embeddings
@@ -196,6 +199,7 @@ Set environment variables or `.env` with `SYNAPSE_` prefix. Key options:
 
 ### Next Docs
 
+- `docs/HANDBOOK.md`: single source of truth (architecture, workflows, ops)
 - `docs/ARCHITECTURE.md`: system overview and layering
 - `docs/PRD.md`: goals, scope, personas
 - `docs/BACKLOG.md`: curated prioritized backlog

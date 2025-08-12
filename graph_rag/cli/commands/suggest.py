@@ -1,11 +1,12 @@
 import json
 import logging
 from typing import Optional
+import os
 
 import httpx
 import typer
 
-API_BASE_URL = "http://localhost:8000/api/v1"
+API_BASE_URL = os.getenv("SYNAPSE_API_BASE_URL", "http://localhost:8000/api/v1")
 ASK_URL = f"{API_BASE_URL}/query/ask"
 
 logger = logging.getLogger(__name__)
