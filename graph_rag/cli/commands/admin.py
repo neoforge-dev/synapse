@@ -4,9 +4,10 @@ import sys
 
 import httpx
 import typer
+import os
 
-# TODO: Make API base URL configurable
-API_BASE_URL = "http://localhost:8000"
+# Configurable API base URL via env var
+API_BASE_URL = os.getenv("SYNAPSE_API_BASE_URL", "http://localhost:8000")
 HEALTH_URL = f"{API_BASE_URL}/health"
 
 logger = logging.getLogger(__name__)

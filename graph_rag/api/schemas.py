@@ -74,7 +74,7 @@ class SearchQueryResponse(BaseModel):
 
 class SearchBatchQueryRequest(BaseModel):
     queries: list[SearchQueryRequest] = Field(
-        ..., min_items=1, max_items=10
+        ..., min_length=1, max_length=10
     )  # Require at least one query, cap at 10
 
 

@@ -1,9 +1,9 @@
 # Backlog (Prioritized for Compounding Impact)
 
-- CRITICAL: FAISS correctness and persistence
-  - Store embeddings alongside metadata to enable index rebuilds
-  - Rebuild index on deletions; skip legacy rows without embeddings
-  - Add infra tests for delete/rebuild/persistence round-trip
+- CRITICAL: FAISS correctness and persistence [DONE]
+  - Store embeddings alongside metadata to enable index rebuilds [DONE]
+  - Rebuild index on deletions; skip legacy rows without embeddings [DONE]
+  - Add infra tests for delete/rebuild/persistence round-trip [DONE]
 
 - Idempotent ingestion hardening [DONE]
   - Pre-delete logs now include `doc_id`, `id_source`, and counts

@@ -107,23 +107,23 @@ def create_documents_router() -> APIRouter:
             doc_entities = await repo.search_entities_by_properties(
                 {"type": "Document"}, limit=limit
             )
-            # Manually construct DocumentResponse objects to map Entity.properties to DocumentResponse.metadata
-            return [
-                schemas.DocumentResponse(
-                    id=entity.id,
-                    metadata=entity.properties.get(
-                        "metadata", {}
-                    ),  # Extract only the metadata field
-                    type=entity.type,
-                    created_at=entity.properties.get(
-                        "created_at"
-                    ),  # Extract from properties
-                    updated_at=entity.properties.get(
-                        "updated_at"
-                    ),  # Extract from properties
+            # Manually construct DocumentResponse objects, preferring nested metadata if present.
+            # Ensure important keys like id_source surface even if stored at top-level.
+            responses: list[schemas.DocumentResponse] = []
+            for entity in doc_entities:
+                meta = dict(entity.properties.get("metadata") or {})
+                if "id_source" in entity.properties and "id_source" not in meta:
+                    meta["id_source"] = entity.properties["id_source"]
+                responses.append(
+                    schemas.DocumentResponse(
+                        id=entity.id,
+                        metadata=meta,
+                        type=entity.type,
+                        created_at=entity.properties.get("created_at"),
+                        updated_at=entity.properties.get("updated_at"),
+                    )
                 )
-                for entity in doc_entities
-            ]
+            return responses
         except Exception as e:
             logger.error(f"Error listing documents: {e}", exc_info=True)
             raise HTTPException(
@@ -162,18 +162,15 @@ def create_documents_router() -> APIRouter:
                 detail=f"Document with id '{document_id}' not found",
             )
         # Map properties to metadata in the response, include type and timestamps if present
+        meta = dict(doc_entity.properties.get("metadata") or {})
+        if "id_source" in doc_entity.properties and "id_source" not in meta:
+            meta["id_source"] = doc_entity.properties["id_source"]
         return schemas.DocumentResponse(
             id=doc_entity.id,
-            metadata=doc_entity.properties.get(
-                "metadata", {}
-            ),  # Extract only the metadata field
+            metadata=meta,
             type=doc_entity.type,
-            created_at=doc_entity.properties.get(
-                "created_at"
-            ),  # Extract from properties
-            updated_at=doc_entity.properties.get(
-                "updated_at"
-            ),  # Extract from properties
+            created_at=doc_entity.properties.get("created_at"),
+            updated_at=doc_entity.properties.get("updated_at"),
         )
 
     @router.delete(

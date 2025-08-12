@@ -5,7 +5,7 @@ import inspect
 import logging
 import sys  # Import sys
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -22,7 +22,9 @@ class TestFailure(BaseModel):
     test_function: str
     test_parameters: Optional[dict[str, Any]] = None  # Parameters used in the test
     test_code: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )
     traceback_str: Optional[str] = None  # Store traceback as string
     expected_behavior: Optional[str] = None  # Added field
     actual_behavior: Optional[str] = None  # Added field
@@ -253,7 +255,7 @@ class SeniorDebugProtocol:
                     "step": step,
                     "status": "pending",
                     "result": None,
-                    "timestamp": datetime.utcnow(),
+                    "timestamp": datetime.now(timezone.utc).replace(tzinfo=None),
                 }
             )
 
@@ -265,7 +267,7 @@ class SeniorDebugProtocol:
         """Record the resolution of the issue."""
         investigation.resolution = {
             "fix": fix,
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc).replace(tzinfo=None),
             "verified": False,
         }
         return investigation

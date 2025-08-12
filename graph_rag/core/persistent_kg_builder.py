@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from graph_rag.core.interfaces import (
     ChunkData,
@@ -31,8 +31,8 @@ class PersistentKnowledgeGraphBuilder(KnowledgeGraphBuilder):
                 "id": doc.id,
                 "content": doc.content,
                 "metadata": doc.metadata,  # Pass the dict directly
-                "created_at": datetime.utcnow().isoformat(),  # Add timestamp on creation
-                "updated_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             }
             await self.graph_store.add_node(label="Document", properties=doc_props)
         except Exception as e:
@@ -51,8 +51,8 @@ class PersistentKnowledgeGraphBuilder(KnowledgeGraphBuilder):
                 "text": chunk.text,
                 "document_id": chunk.document_id,
                 "embedding": chunk.embedding,  # Pass embedding list directly
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             }
             await self.graph_store.add_node(label="Chunk", properties=chunk_props)
 
@@ -62,7 +62,7 @@ class PersistentKnowledgeGraphBuilder(KnowledgeGraphBuilder):
                     source_node_id=chunk.document_id,
                     target_node_id=chunk.id,
                     rel_type="CONTAINS",  # Define relationship type
-                    properties={"created_at": datetime.utcnow().isoformat()},
+                    properties={"created_at": datetime.now(timezone.utc).isoformat()},
                 )
                 logger.debug(
                     f"Linked Document {chunk.document_id} -[:CONTAINS]-> Chunk {chunk.id}"
@@ -83,8 +83,8 @@ class PersistentKnowledgeGraphBuilder(KnowledgeGraphBuilder):
                 "id": entity.id,
                 "label": entity.label,
                 "text": entity.text,
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             }
             # Use the entity's label (e.g., PER, ORG) as the graph node label
             await self.graph_store.add_node(label=entity.label, properties=entity_props)
@@ -98,8 +98,8 @@ class PersistentKnowledgeGraphBuilder(KnowledgeGraphBuilder):
         )
         try:
             rel_props = {
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
                 # Add any other properties from the relationship object if needed
             }
             await self.graph_store.add_relationship(
@@ -120,7 +120,7 @@ class PersistentKnowledgeGraphBuilder(KnowledgeGraphBuilder):
         self, chunk_id: str, entity_ids: list[str]
     ) -> None:
         logger.debug(f"Linking chunk {chunk_id} to entities: {entity_ids}")
-        link_props = {"created_at": datetime.utcnow().isoformat()}
+        link_props = {"created_at": datetime.now(timezone.utc).isoformat()}
         errors = []
         for entity_id in entity_ids:
             try:

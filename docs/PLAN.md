@@ -18,10 +18,10 @@ This plan captures the remaining details and concrete tasks to fully deliver sta
 - Ingestion service supports `replace_existing=True` to delete existing chunks and vectors before re-ingest.
 - CLI derives canonical `document_id` and attaches `id_source` to metadata; parses YAML front matter and Notion property tables.
 - Added tests for identity derivation and idempotent re-ingestion.
-- FAISS store supports persistence and search; deletion currently drops metadata rows but cannot truly rebuild index (no stored embeddings).
+- FAISS store persists raw embeddings (meta version 2) and rebuilds the index on deletions using stored embeddings.
 
 ## Gaps and Risks
-- FAISS deletion correctness: without stored embeddings, "delete" cannot rebuild the index; vectors can go stale or require full reset.
+- Legacy FAISS meta without embeddings may exist; rebuild skips such rows with a warning until re-ingested.
 - Observability: ensure `id_source` and `topics` are consistently persisted and queryable; make logs actionable.
 - Notion export walker: ignore attachment subfolders where appropriate; robust parsing of property tables; edge cases in names.
 - Test coverage: add infrastructure tests for FAISS deletions; service-level tests covering replace_existing + FAISS behavior.
@@ -32,10 +32,9 @@ This plan captures the remaining details and concrete tasks to fully deliver sta
 ## Detailed Plan
 
 ### 1) FAISS Vector Store Robustness (CRITICAL)
-- Persist embeddings alongside metadata so we can rebuild indexes upon deletions.
-- Update `FaissVectorStore.add_chunks` to store `embedding` per row (raw, not normalized).
-- Update `delete_chunks` to filter rows, then rebuild a fresh index from stored embeddings of remaining rows (normalize on add to index).
-- Backward compatibility: if rows loaded without `embedding`, log a warning and skip those rows during rebuild; in that case, encourage full re-ingestion.
+- Persist embeddings alongside metadata [DONE].
+- Store per-row `embedding` on add; rebuild from stored embeddings on delete [DONE].
+- Backward compatibility: legacy rows without `embedding` are skipped with warning [DONE].
 - Add tests:
   - Add chunk A and B → search returns both as appropriate
   - Delete A → ensure A is absent in results and store remains consistent
@@ -69,7 +68,7 @@ This plan captures the remaining details and concrete tasks to fully deliver sta
   - Non-dry-run `--json` success payload including `document_id`, `num_chunks`, `id_source`, `path`, flags, and optional `topics` [DONE]
 
 ### 6) Testing
-- Unit tests: identity derivation (done), FAISS delete/rebuild (to add).
+- Unit tests: identity derivation (done), FAISS delete/rebuild (added).
 - Service tests: re-ingestion deletes vectors (present), can expand assertions after FAISS fix.
 - CLI tests: metadata flags, meta-file, dry-run JSON summary, include/exclude filters, stdin flag path.
 

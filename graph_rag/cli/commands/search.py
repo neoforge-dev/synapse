@@ -5,8 +5,10 @@ import sys
 import httpx
 import typer
 
-# TODO: Make API base URL configurable
-API_BASE_URL = "http://localhost:8000/api/v1"
+import os
+
+# Allow overriding API base URL via env var for flexibility
+API_BASE_URL = os.getenv("SYNAPSE_API_BASE_URL", "http://localhost:8000/api/v1")
 SEARCH_URL = f"{API_BASE_URL}/search/query"
 
 logger = logging.getLogger(__name__)

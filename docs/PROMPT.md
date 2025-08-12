@@ -49,8 +49,8 @@ You are taking over an actively developed Graph RAG project focused on stable do
    - Confirm directory walker ignores hidden and Obsidian folders (present), and expand ignore for Notion export attachment subfolders (assets). Only Markdown-like files should be ingested.
    - Keep Notion property table parsing robust (present) and add small tests for corner cases.
 4) FAISS persistence hardening
-   - Introduce a lightweight metadata version field in `meta.json` (e.g., `{version: 2}`) to indicate rows include `embedding`. On load, detect legacy meta without embeddings and warn or auto-upgrade when possible.
-   - Consider a maintenance method to compact/reindex explicitly.
+   - Metadata version field `version: 2` implemented; rows include `embedding`. On load, legacy rows are detected and warned.
+   - Maintenance helpers exist: `stats()`, `rebuild_index()` on the FAISS store.
 5) Tests and docs
    - Add unit/integration tests around CLI re-ingestion toggles and id_source propagation.
    - Document the identity strategy and idempotent ingestion behavior in README/ARCH. Keep `docs/PLAN.md` up to date with changes.

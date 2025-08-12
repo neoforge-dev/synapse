@@ -52,3 +52,11 @@
 - YAGNI: Implement streaming for vector first; keyword later if needed
 - TDD non-negotiable: define behavior in tests before code
 - Keep vertical slices small and shippable
+
+## 2025-08-12 — Repo consolidation and docs unification
+- Added `docs/HANDBOOK.md` as single source-of-truth; updated `README.md`, `docs/ARCHITECTURE.md`, `docs/PLAN.md`, `docs/BACKLOG.md`, `docs/PROMPT.md`, `docs/MCP.md`.
+- Generated/updated navigation: `docs/INDEX.md`, `docs/index.json`; added `docs/DELETION_CANDIDATES.md`.
+- Deleted legacy/empty items: `graphrag/`, `handlers/`, `middleware/`, root `services/`, `database/`, root `utils/`, `models/user.go`, `CLAUDE.md`.
+- Tech debt: replaced stdout prints in `graph_rag/services/ingestion.py` with debug logs; made CLI admin/search respect `SYNAPSE_API_BASE_URL`.
+- CI: deduplicated `.github/workflows/ci.yml` and added hot-path coverage job.
+- Tests: unit suite passes (221 passed, 42 skipped). Deprecation warnings noted for later.
