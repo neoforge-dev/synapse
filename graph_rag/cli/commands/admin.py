@@ -6,9 +6,9 @@ import httpx
 import typer
 import os
 
-# Configurable API base URL via env var
 API_BASE_URL = os.getenv("SYNAPSE_API_BASE_URL", "http://localhost:8000")
 HEALTH_URL = f"{API_BASE_URL}/health"
+API_V1 = f"{API_BASE_URL}/api/v1"
 
 logger = logging.getLogger(__name__)
 
@@ -69,4 +69,43 @@ def check_health(
         raise SystemExit(1)
 
 
-# Add other admin commands later (e.g., config show, db status)
+@typer.Typer().command()
+def vector_stats(
+    api_url: str = typer.Option(f"{API_V1}/admin/vector/stats", help="Admin vector stats endpoint"),
+):
+    try:
+        with httpx.Client() as client:
+            r = client.get(api_url, timeout=15.0)
+            r.raise_for_status()
+            print(json.dumps(r.json(), indent=2))
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        raise SystemExit(1)
+
+
+@typer.Typer().command()
+def vector_rebuild(
+    api_url: str = typer.Option(f"{API_V1}/admin/vector/rebuild", help="Admin vector rebuild endpoint"),
+):
+    try:
+        with httpx.Client() as client:
+            r = client.post(api_url, timeout=60.0)
+            r.raise_for_status()
+            print(json.dumps(r.json(), indent=2))
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        raise SystemExit(1)
+
+
+@typer.Typer().command()
+def integrity_check(
+    api_url: str = typer.Option(f"{API_V1}/admin/integrity/check", help="Integrity check endpoint"),
+):
+    try:
+        with httpx.Client() as client:
+            r = client.get(api_url, timeout=30.0)
+            r.raise_for_status()
+            print(json.dumps(r.json(), indent=2))
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        raise SystemExit(1)

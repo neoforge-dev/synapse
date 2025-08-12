@@ -15,6 +15,7 @@ from graph_rag.api.dependencies import (
     MockEmbeddingService,  # Import from dependencies only, avoid function name collisions
 )
 from graph_rag.api.routers import documents, ingestion, query, search
+from graph_rag.api.routers.admin import create_admin_router
 from graph_rag.api.routers.graph import create_graph_router
 
 # Local application imports
@@ -524,6 +525,7 @@ def create_app() -> FastAPI:
     search_router = search.create_search_router()
     query_router = query.create_query_router()
     graph_router = create_graph_router()
+    admin_router = create_admin_router()
 
     # Routers - Prefixes are defined within the factory's router
     api_router.include_router(documents_router, prefix="/documents", tags=["Documents"])
@@ -533,6 +535,7 @@ def create_app() -> FastAPI:
         query_router, prefix="/query", tags=["Query"]
     )  # Assuming query router needs prefix too
     api_router.include_router(graph_router, prefix="/graph", tags=["Graph"]) 
+    api_router.include_router(admin_router, prefix="/admin", tags=["Admin"]) 
 
     app.include_router(api_router)  # Remove prefix="/api/v1" here
 
