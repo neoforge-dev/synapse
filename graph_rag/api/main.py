@@ -313,6 +313,30 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("LIFESPAN: Graph RAG Engine already initialized.")
 
+    # 7b. Optionally start background maintenance (disabled by default)
+    try:
+        if getattr(current_settings, "enable_maintenance_jobs", False):
+            import asyncio as _asyncio
+
+            async def _maintenance_loop():
+                interval = max(
+                    60, int(getattr(current_settings, "maintenance_interval_seconds", 86400))
+                )
+                logger.info(f"Maintenance loop enabled (interval={interval}s)")
+                while True:
+                    try:
+                        vs = app.state.vector_store
+                        if hasattr(vs, "rebuild_index"):
+                            await vs.rebuild_index()  # type: ignore[attr-defined]
+                            logger.info("Maintenance: rebuilt vector index")
+                    except Exception as _e:
+                        logger.debug(f"Maintenance loop iteration failed: {_e}")
+                    await _asyncio.sleep(interval)
+
+            app.state._maintenance_task = _asyncio.create_task(_maintenance_loop())
+    except Exception:
+        logger.debug("Failed to initialize maintenance loop; continuing without it")
+
     # 8. Initialize ingestion service
     logger.info("LIFESPAN: Initializing Ingestion Service...")
     if (

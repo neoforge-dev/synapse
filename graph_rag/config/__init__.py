@@ -173,6 +173,19 @@ class Settings(BaseSettings):
         ),
     )
 
+    # --- Maintenance Jobs ---
+    enable_maintenance_jobs: bool = Field(
+        False,
+        description=(
+            "Enable background maintenance jobs (e.g., FAISS rebuild). Disabled by default."
+        ),
+    )
+    maintenance_interval_seconds: int = Field(
+        86400,
+        ge=60,
+        description="Interval between maintenance runs in seconds (default 1 day).",
+    )
+
     # Add other settings as needed...
 
     @model_validator(mode="after")
