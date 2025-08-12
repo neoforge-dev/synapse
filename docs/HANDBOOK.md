@@ -57,6 +57,7 @@ Key CLI guarantees and UX:
 - App factory: `graph_rag/api/main.py:create_app`
 - Query router: `POST /api/v1/query` and `POST /api/v1/query/ask`
 - `Ask` combines retrieval with LLM synthesis and can include graph context.
+- Documents router: list/get now reflect `id_source` in `metadata` when present.
 
 ### Configuration (env / .env with `SYNAPSE_` prefix)
 - `SYNAPSE_VECTOR_STORE_TYPE`: `simple` (default) or `faiss`
