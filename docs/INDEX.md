@@ -13,7 +13,6 @@
 - `docs/PROMPT.md`: Continuation prompt for agents
 - `docs/HANDBOOK.md`: Single source-of-truth for architecture, workflows, and ops
 - `CONTRIBUTING.md`: Contributing guide
-- `CLAUDE.md` (legacy): superseded by `docs/HANDBOOK.md`
  - `docs/DELETION_CANDIDATES.md`: Proposed removals and checklist
 
 ### Code (Python package `graph_rag`)
