@@ -19,6 +19,9 @@ from graph_rag.api.routers.graph import create_graph_router
 
 # Local application imports
 from graph_rag.config import get_settings
+from graph_rag.api.metrics import (
+    init_metrics as _init_business_metrics,
+)
 from graph_rag.core.entity_extractor import MockEntityExtractor, SpacyEntityExtractor
 
 # Import Concrete Implementations needed for lifespan setup
@@ -551,34 +554,8 @@ def create_app() -> FastAPI:
             registry=_metrics_registry,
         )
 
-        # --- Business metrics ---
-        ASK_TOTAL = Counter(
-            "ask_requests_total",
-            "Total ask requests (includes streaming and non-streaming)",
-            registry=_metrics_registry,
-        )
-        INGEST_TOTAL = Counter(
-            "ingestion_requests_total",
-            "Total ingestion requests accepted",
-            registry=_metrics_registry,
-        )
-        LLM_REL_INFERRED = Counter(
-            "llm_relations_inferred_total",
-            "Total number of LLM-inferred relationships during queries",
-            registry=_metrics_registry,
-        )
-        LLM_REL_PERSISTED = Counter(
-            "llm_relations_persisted_total",
-            "Total number of LLM-inferred relationships persisted to the graph",
-            registry=_metrics_registry,
-        )
-        # Expose on app state for selective increments elsewhere if needed
-        app.state.metrics = {
-            "ASK_TOTAL": ASK_TOTAL,
-            "INGEST_TOTAL": INGEST_TOTAL,
-            "LLM_REL_INFERRED": LLM_REL_INFERRED,
-            "LLM_REL_PERSISTED": LLM_REL_PERSISTED,
-        }
+        # Business metrics via helper (counters, histograms)
+        _init_business_metrics(_metrics_registry)
 
         @app.get("/metrics", include_in_schema=False)
         async def metrics():
@@ -643,19 +620,25 @@ def create_app() -> FastAPI:
                     request.method, request.url.path, str(response.status_code)
                 ).inc()
                 REQUEST_LATENCY.labels(request.url.path).set(process_time)
-                # Business metrics by path
-                metrics = getattr(request.app.state, "metrics", None)
-                if metrics:
+                # Business metrics by path (best-effort)
+                try:
+                    from graph_rag.api.metrics import (
+                        inc_ask_total,
+                        inc_ingest_total,
+                    )
+
                     path = request.url.path
                     if path.endswith("/api/v1/query/ask") or path.endswith(
                         "/api/v1/query/ask/stream"
                     ):
-                        metrics.get("ASK_TOTAL").inc()  # type: ignore[call-arg]
+                        inc_ask_total()
                     if (
                         path.endswith("/api/v1/ingestion/documents")
                         and response.status_code == 202
                     ):
-                        metrics.get("INGEST_TOTAL").inc()  # type: ignore[call-arg]
+                        inc_ingest_total()
+                except Exception:
+                    pass
         except Exception:
             pass
         return response

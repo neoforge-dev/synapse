@@ -13,6 +13,7 @@ from graph_rag.api.dependencies import (
     get_vector_store,
 )
 from graph_rag.core.graph_rag_engine import QueryResult  # Import QueryResult
+from graph_rag.api.metrics import observe_query_latency
 from graph_rag.core.interfaces import GraphRAGEngine, SearchResultData, VectorStore
 
 router = APIRouter()
@@ -200,6 +201,8 @@ def create_search_router() -> APIRouter:
                 )
 
             else:  # Batch processing
+                import time as _time
+                _start = _time.monotonic()
                 # Call engine.query with positional query text and config
                 query_result: QueryResult = await engine.query(
                     request.query,
@@ -209,6 +212,10 @@ def create_search_router() -> APIRouter:
                         "include_graph": False,
                     },
                 )
+                try:
+                    observe_query_latency(_time.monotonic() - _start)
+                except Exception:
+                    pass
 
                 # FIXED: Directly map domain Chunk objects to API schema objects
                 # This avoids the SearchResultData validation error

@@ -18,6 +18,10 @@ from graph_rag.core.graph_rag_engine import (
 from graph_rag.core.graph_rag_engine import (
     QueryResult as DomainQueryResult,
 )
+from graph_rag.api.metrics import (
+    inc_llm_rel_inferred,
+    inc_llm_rel_persisted,
+)
 
 # Import domain models needed for converting results
 
@@ -153,16 +157,12 @@ def create_query_router() -> APIRouter:
             result: DomainQueryResult = await engine.query(
                 ask_request.text, config=config
             )
-            # Increment LLM relationship counters if present in config
+            # Increment LLM relationship counters if present in config (best effort)
             try:
-                metrics = getattr(request.app.state, "metrics", None) if request else None
-                if metrics:
-                    inferred = int(config.get("llm_relations_inferred_total", 0))
-                    persisted = int(config.get("llm_relations_persisted_total", 0))
-                    if inferred:
-                        metrics.get("LLM_REL_INFERRED").inc(inferred)  # type: ignore[call-arg]
-                    if persisted:
-                        metrics.get("LLM_REL_PERSISTED").inc(persisted)  # type: ignore[call-arg]
+                inferred = int(config.get("llm_relations_inferred_total", 0))
+                persisted = int(config.get("llm_relations_persisted_total", 0))
+                inc_llm_rel_inferred(inferred)
+                inc_llm_rel_persisted(persisted)
             except Exception:
                 pass
 
