@@ -38,6 +38,7 @@ from graph_rag.models import Chunk, Entity, Relationship
 from graph_rag.services.search import (
     SearchResult,
 )  # Import SearchResult model too
+from graph_rag.services.rerank import CrossEncoderReranker
 
 # from graph_rag.core.prompts import QnAPromptContext # Import QnAPromptContext
 # from graph_rag.core.prompts as prompts # Corrected import alias
@@ -87,6 +88,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         self._graph_store = graph_store
         self._vector_store = vector_store
         self._entity_extractor = entity_extractor  # Store the extractor
+        self._reranker = CrossEncoderReranker()
         logger.info(
             f"SimpleGraphRAGEngine initialized with GraphRepository: {type(graph_store).__name__}, VectorStore: {type(vector_store).__name__}, EntityExtractor: {type(entity_extractor).__name__}, LLMService: {type(self._llm_service).__name__}"
         )
@@ -293,9 +295,53 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         ] = []  # Store full SearchResultData
 
         try:
-            # 1. Vector Search
-            logger.debug(f"Performing vector search for: '{query_text}' (k={k})")
-            retrieved_chunks_full = await self._vector_store.search(query_text, top_k=k)
+            # 1. Retrieval: vector-only by default; optionally hybrid when configured
+            logger.debug(f"Performing retrieval for: '{query_text}' (k={k})")
+            alpha = float(config.get("blend_vector_weight", 1.0))
+            beta = float(config.get("blend_keyword_weight", 0.0))
+            do_hybrid = bool(config.get("hybrid", False)) or (beta > 0.0 and alpha >= 0.0)
+
+            if do_hybrid:
+                # Hybrid retrieval: call vector and keyword searches and blend
+                results_vector = await self._vector_store.search(query_text, top_k=k, search_type="vector")
+                results_keyword = await self._vector_store.search(query_text, top_k=k, search_type="keyword")
+                # Convert to dict by chunk id for blending
+                vec_scores = {r.chunk.id: r.score for r in results_vector if r and r.chunk}
+                kw_scores = {r.chunk.id: r.score for r in results_keyword if r and r.chunk}
+                combined: dict[str, SearchResultData] = {}
+                for rid in vec_scores.keys():
+                    combined[rid] = next((r for r in results_vector if r.chunk.id == rid), None)
+                for rid in kw_scores.keys():
+                    combined.setdefault(rid, next((r for r in results_keyword if r.chunk.id == rid), None))
+                # Recompute blended scores
+                blended: list[SearchResultData] = []
+                for rid, item in combined.items():
+                    vs = vec_scores.get(rid, 0.0)
+                    ks = kw_scores.get(rid, 0.0)
+                    score = alpha * vs + beta * ks
+                    chunk = item.chunk
+                    meta = dict(chunk.metadata or {})
+                    meta["score_vector"] = vs
+                    meta["score_keyword"] = ks
+                    meta["score_blended"] = score
+                    blended.append(
+                        SearchResultData(
+                            chunk=ChunkData(
+                                id=chunk.id,
+                                text=chunk.text,
+                                document_id=chunk.document_id,
+                                metadata=meta,
+                                embedding=chunk.embedding,
+                                score=score,
+                            ),
+                            score=score,
+                        )
+                    )
+                blended.sort(key=lambda r: r.score, reverse=True)
+                retrieved_chunks_full = blended[:k]
+            else:
+                # Backward-compatible: single call with only (query, top_k=k)
+                retrieved_chunks_full = await self._vector_store.search(query_text, top_k=k)
             if not retrieved_chunks_full:
                 logger.warning(
                     f"Vector search returned no relevant chunks for query: '{query_text}'"
@@ -311,7 +357,57 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                     f"Found {len(relevant_chunk_texts)} relevant chunks via vector search."
                 )
 
-            # 2. Graph Retrieval (if requested and chunks were found)
+            # 2. Rerank and diversify (optional)
+            if retrieved_chunks_full:
+                # Optional rerank via cross-encoder
+                if bool(config.get("rerank", False)):
+                    retrieved_chunks_full = await self._reranker.rerank(
+                        query_text, retrieved_chunks_full, k
+                    )
+                # MMR diversification over the texts
+                mmr_lambda = float(config.get("mmr_lambda", 0.0))
+                if 0.0 < mmr_lambda <= 1.0 and len(retrieved_chunks_full) > 2:
+                    selected: list[SearchResultData] = []
+                    candidates = retrieved_chunks_full.copy()
+                    # Greedy MMR on cosine similarity of embeddings; fallback to text overlap if no embeddings
+                    def _sim(a: SearchResultData, b: SearchResultData) -> float:
+                        try:
+                            ea = a.chunk.embedding or []
+                            eb = b.chunk.embedding or []
+                            if ea and eb and len(ea) == len(eb):
+                                import numpy as _np
+
+                                va = _np.array(ea)
+                                vb = _np.array(eb)
+                                norm = float(_np.linalg.norm(va) * _np.linalg.norm(vb)) or 1.0
+                                return float(va.dot(vb) / norm)
+                            # Fallback to Jaccard on tokens
+                            sa = set((a.chunk.text or "").lower().split())
+                            sb = set((b.chunk.text or "").lower().split())
+                            inter = len(sa & sb)
+                            union = len(sa | sb) or 1
+                            return inter / union
+                        except Exception:
+                            return 0.0
+
+                    while candidates and len(selected) < k:
+                        if not selected:
+                            best = max(candidates, key=lambda r: r.score)
+                            selected.append(best)
+                            candidates.remove(best)
+                        else:
+                            # For each candidate, compute mmr = lambda*relevance - (1-lambda)*max_sim(selected)
+                            scored: list[tuple[float, SearchResultData]] = []
+                            for c in candidates:
+                                max_sim = max((_sim(c, s) for s in selected), default=0.0)
+                                mmr = mmr_lambda * c.score - (1.0 - mmr_lambda) * max_sim
+                                scored.append((mmr, c))
+                            best = max(scored, key=lambda t: t[0])[1]
+                            selected.append(best)
+                            candidates.remove(best)
+                    retrieved_chunks_full = selected
+
+            # 3. Graph Retrieval (if requested and chunks were found)
             if include_graph and retrieved_chunks_full:
                 logger.debug("Attempting to retrieve graph context...")
                 # a. Extract entities from chunks
@@ -346,7 +442,130 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                     "Skipping graph context retrieval as no relevant chunks were found."
                 )
 
-            # 3. Return the retrieved context
+            # 4. Optional relationship extraction via LLM and merge/persist into context
+            try:
+                if retrieved_chunks_full and config.get("extract_relationships", True):
+                    combined_text = "\n".join([r.chunk.text for r in retrieved_chunks_full if r and r.chunk and r.chunk.text])
+                    # Use LLM protocol to extract entity/relationship hints
+                    llm_entities, llm_relationships = await self._llm_service.extract_entities_relationships(combined_text)
+                    # Counters (local; integrate with metrics later if enabled)
+                    llm_inferred = 0
+                    llm_persisted = 0
+
+                    # Map existing graph entities by canonical lowercase name
+                    name_to_entity = {}
+                    for e in (final_entities or []):
+                        key = str(getattr(e, "name", None) or e.properties.get("name") or e.id).lower()
+                        if key:
+                            name_to_entity[key] = e
+
+                    # Build domain relationships between known graph entities if names match
+                    from graph_rag.domain.models import Relationship as Edge
+
+                    # Settings and gating
+                    min_conf = float(settings.llm_rel_min_confidence)
+                    allow_persist = bool(settings.enable_llm_relationships) and bool(
+                        config.get("extract_relationships_persist", False)
+                    )
+
+                    # Dedup set for session: (src_id, type, tgt_id, extractor)
+                    seen_keys: set[tuple[str, str, str, str]] = set()
+
+                    for rel in llm_relationships or []:
+                        # Normalized names
+                        src_name = (
+                            rel.get("source_name")
+                            or rel.get("source")
+                            or rel.get("source_id")
+                            or ""
+                        ).strip().lower()
+                        tgt_name = (
+                            rel.get("target_name")
+                            or rel.get("target")
+                            or rel.get("target_id")
+                            or ""
+                        ).strip().lower()
+                        rel_type = (rel.get("type") or rel.get("label") or "RELATED_TO").strip() or "RELATED_TO"
+                        confidence = float(rel.get("confidence", rel.get("score", 0.0)) or 0.0)
+
+                        src_ent = name_to_entity.get(src_name)
+                        tgt_ent = name_to_entity.get(tgt_name)
+                        if not (src_ent and tgt_ent):
+                            continue
+
+                        llm_inferred += 1
+                        # Always add to in-memory graph_context for the response
+                        final_relationships.append(
+                            Edge(
+                                id=str(uuid.uuid4()),
+                                type=rel_type,
+                                source_id=src_ent.id,
+                                target_id=tgt_ent.id,
+                                properties={
+                                    "extractor": "llm",
+                                    "confidence": confidence,
+                                    "source_name": src_name,
+                                    "target_name": tgt_name,
+                                },
+                            )
+                        )
+
+                        # Optionally persist to graph store with gating and dedupe
+                        if allow_persist and confidence >= min_conf:
+                            dedupe_key = (src_ent.id, rel_type, tgt_ent.id, "llm")
+                            if dedupe_key in seen_keys:
+                                continue
+                            seen_keys.add(dedupe_key)
+                            try:
+                                # Use MERGE with evidence_count increment on match
+                                cypher = f"""
+                                MATCH (s {{id: $src}}),(t {{id: $tgt}})
+                                MERGE (s)-[r:`{rel_type}`]->(t)
+                                ON CREATE SET r = $props, r.created_at = timestamp()
+                                ON MATCH SET r.evidence_count = coalesce(r.evidence_count, 0) + 1, r += $props, r.updated_at = timestamp()
+                                """
+                                await self._graph_store.execute_query(
+                                    cypher,
+                                    {
+                                        "src": src_ent.id,
+                                        "tgt": tgt_ent.id,
+                                        "props": {
+                                            "id": str(uuid.uuid4()),
+                                            "extractor": "llm",
+                                            "confidence": confidence,
+                                            "source_name": src_name,
+                                            "target_name": tgt_name,
+                                            "evidence_count": 1,
+                                        },
+                                    },
+                                )
+                                llm_persisted += 1
+                            except Exception as persist_err:
+                                logger.debug(
+                                    f"Skipping persist for LLM rel {src_ent.id}-[{rel_type}]->{tgt_ent.id}: {persist_err}"
+                                )
+
+                    if final_entities or final_relationships:
+                        graph_context_tuple = ((final_entities or []), (final_relationships or []))
+                    # Log simple counters; Prometheus integration handled by API layer
+                    if llm_inferred:
+                        logger.info(
+                            f"LLM relations inferred={llm_inferred} persisted={llm_persisted} (min_conf={min_conf}, enabled={allow_persist})"
+                        )
+                        # Expose counts via config so API layer can publish metrics
+                        try:
+                            config["llm_relations_inferred_total"] = (
+                                config.get("llm_relations_inferred_total", 0) + llm_inferred
+                            )
+                            config["llm_relations_persisted_total"] = (
+                                config.get("llm_relations_persisted_total", 0) + llm_persisted
+                            )
+                        except Exception:
+                            pass
+            except Exception as e:
+                logger.debug(f"LLM relationship extraction skipped due to error: {e}")
+
+            # 5. Return the retrieved context
             logger.info(
                 f"Context retrieval finished. Found {len(retrieved_chunks_full)} chunks and {len(final_entities) if graph_context_tuple else 0} graph entities."
             )
@@ -456,7 +675,12 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
             return "Could not find relevant information to answer the query."
 
         # 3. Create Prompt and Call LLM
-        prompt = f"Based on the following context, answer the query.\\n\\nQuery: {query_text}\\n\\nContext:{context_str}\\n\\nAnswer:"
+        style = (config or {}).get("style")
+        style_line = f"\n\nStyle: {style}" if style else ""
+        prompt = (
+            f"Based on the following context, answer the query.{style_line}\\n\\n"
+            f"Query: {query_text}\\n\\nContext:{context_str}\\n\\nAnswer:"
+        )
         logger.debug(f"Sending prompt to LLM (first 100 chars): {prompt[:100]}...")
         try:
             llm_response = await self._llm_service.generate_response(prompt)
@@ -474,6 +698,65 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                 f"Error generating response from LLM: {llm_err}", exc_info=True
             )
             return f"Error generating answer: {llm_err}"
+
+    async def stream_answer(
+        self,
+        query_text: str,
+        config: Optional[dict[str, Any]] = None,
+    ) -> AsyncGenerator[str, None]:
+        """Stream a synthesized answer using the LLM's streaming interface.
+
+        Retrieves context once, builds the same prompt as answer_query, and then
+        yields chunks from the LLM provider as they arrive.
+        """
+        config = config or {}
+        try:
+            retrieved_chunks_data, graph_context_tuple = await self._retrieve_and_build_context(
+                query_text, config
+            )
+        except Exception as context_err:
+            logger.error(
+                f"Failed to retrieve context for stream_answer: {context_err}",
+                exc_info=True,
+            )
+            yield f"Error retrieving context: {context_err}"
+            return
+
+        context_str = ""
+        if retrieved_chunks_data:
+            context_str += "\n\nRelevant Text Chunks:\n"
+            context_str += "\n---\n\n".join(
+                [c.chunk.text for c in retrieved_chunks_data if c.chunk]
+            )
+        if graph_context_tuple:
+            entities, relationships = graph_context_tuple
+            context_str += "\n\nRelated Graph Entities:\n"
+            context_str += "\n".join(
+                [f"- {e.id} ({e.type}): {getattr(e, 'name', 'N/A')}" for e in entities]
+            )
+            context_str += "\n\nRelated Graph Relationships:\n"
+            context_str += "\n".join(
+                [f"- ({r.source_id}) -[{r.type}]-> ({r.target_id})" for r in relationships]
+            )
+
+        if not context_str:
+            yield "Could not find relevant information to answer the query."
+            return
+
+        style = (config or {}).get("style")
+        style_line = f"\n\nStyle: {style}" if style else ""
+        prompt = (
+            f"Based on the following context, answer the query.{style_line}\\n\\n"
+            f"Query: {query_text}\\n\\nContext:{context_str}\\n\\nAnswer:"
+        )
+        try:
+            async for chunk in self._llm_service.generate_response_stream(prompt):
+                yield chunk
+        except Exception as llm_err:
+            logger.error(
+                f"Error streaming response from LLM: {llm_err}", exc_info=True
+            )
+            yield f"\n[error] {llm_err}"
 
     async def query(
         self, query_text: str, config: Optional[dict[str, Any]] = None

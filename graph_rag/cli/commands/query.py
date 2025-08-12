@@ -106,6 +106,11 @@ def ask_query(
     raw: bool = typer.Option(
         False, "--raw", help="Output the raw JSON response from the API."
     ),
+    stream: bool = typer.Option(
+        False,
+        "--stream",
+        help="Stream the answer tokens from the API instead of waiting for full response.",
+    ),
     api_url: str = typer.Option(
         DEFAULT_ASK_URL, "--url", help="URL of the ask API endpoint."
     ),
@@ -120,11 +125,36 @@ def ask_query(
         payload["k"] = k
 
     # --- Call API ---
-    try:
-        with console.status("[bold green]Generating answer...[/bold green]"):
-            response_data = make_api_request(api_url, method="POST", payload=payload)
-    except typer.Exit:
-        sys.exit(1)
+    if stream:
+        stream_url = api_url.rstrip("/") + "/stream"
+        console.print(f"[dim]Streaming from {stream_url}...[/dim]")
+        try:
+            with httpx.Client(timeout=None) as client:
+                with client.stream("POST", stream_url, json=payload) as resp:
+                    resp.raise_for_status()
+                    for chunk in resp.iter_text():
+                        if chunk:
+                            # Print as-is without buffering
+                            sys.stdout.write(chunk)
+                            sys.stdout.flush()
+            console.print("")
+        except httpx.HTTPStatusError as exc:
+            error_msg = f"Error: API returned status {exc.response.status_code}. Response: {exc.response.text}"
+            logger.error(error_msg)
+            console.print(f"[bold red]{error_msg}[/bold red]")
+            raise typer.Exit(code=1)
+        except Exception as e:
+            error_msg = f"An unexpected error occurred during streaming: {e}"
+            logger.error(error_msg, exc_info=True)
+            console.print(f"[bold red]{error_msg}[/bold red]")
+            raise typer.Exit(code=1)
+        return
+    else:
+        try:
+            with console.status("[bold green]Generating answer...[/bold green]"):
+                response_data = make_api_request(api_url, method="POST", payload=payload)
+        except typer.Exit:
+            sys.exit(1)
 
     if raw:
         console.print(json.dumps(response_data, indent=2))

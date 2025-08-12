@@ -118,6 +118,31 @@ class AskRequest(BaseModel):
     streaming: bool = Field(
         False, description="Enable streaming responses when supported."
     )
+    # Retrieval/Prompting knobs
+    style: Optional[str] = Field(
+        None, description="Optional answer style (e.g., concise, analytical, teaching)."
+    )
+    blend_vector_weight: float = Field(
+        1.0, ge=0.0, description="Weight for vector scores in hybrid retrieval."
+    )
+    blend_keyword_weight: float = Field(
+        0.0, ge=0.0, description="Weight for keyword scores in hybrid retrieval."
+    )
+    rerank: bool = Field(
+        False, description="Enable lightweight reranking of top results."
+    )
+    mmr_lambda: float = Field(
+        0.0,
+        ge=0.0,
+        le=1.0,
+        description="Maximal Marginal Relevance lambda (0..1). 0=diversity, 1=relevance.",
+    )
+    extract_relationships_persist: bool = Field(
+        False,
+        description=(
+            "When true and feature is enabled in settings, persist LLM-inferred relationships."
+        ),
+    )
 
 
 # --- Admin/Management Models (Add later if needed) ---

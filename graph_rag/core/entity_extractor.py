@@ -103,6 +103,14 @@ class SpacyEntityExtractor(EntityExtractor):
         )  # Simplified: Removed single quote from leading char set
         return text
 
+    def _canonicalize(self, name: str) -> str:
+        """Return a canonical form for entity merging (basic heuristics)."""
+        base = name.lower().strip()
+        base = re.sub(r"\s+", " ", base)
+        # Remove common suffixes/prefixes
+        base = re.sub(r"\b(inc\.|co\.|ltd\.|gmbh|s\.r\.?l\.|corp\.)\b", "", base)
+        return base.strip()
+
     # Implement the new interface method
     async def extract_from_text(
         self, text: str, context: Optional[dict[str, Any]] = None
@@ -126,9 +134,26 @@ class SpacyEntityExtractor(EntityExtractor):
                 entities=[], relationships=[]
             )  # Return empty on error
 
+        # Canonicalization map: canonical_name -> assigned id
+        canon_map: dict[str, str] = {}
         for ent in spacy_doc.ents:
             normalized_text = self._normalize_entity_text(ent.text)
+            canonical = self._canonicalize(ent.text)
             entity_id = f"{ent.label_}:{normalized_text}"
+            # If canonical already assigned, reuse the earlier ID
+            if canonical in canon_map:
+                reuse_id = canon_map[canonical]
+                # Update map to one canonical id
+                if reuse_id in entities:
+                    # Append alias
+                    aliases = entities[reuse_id].metadata.get("aliases", []) if entities[reuse_id].metadata else []
+                    aliases = list({*aliases, ent.text})
+                    if entities[reuse_id].metadata is None:
+                        entities[reuse_id].metadata = {}
+                    entities[reuse_id].metadata["aliases"] = aliases
+                continue
+            # New canonical
+            canon_map[canonical] = entity_id
             if entity_id not in entities:
                 entities[entity_id] = ExtractedEntity(
                     id=entity_id,

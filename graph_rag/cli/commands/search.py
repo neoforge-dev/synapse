@@ -4,6 +4,7 @@ import sys
 
 import httpx
 import typer
+from click import echo as click_echo
 
 import os
 
@@ -69,18 +70,16 @@ def search_query(
                         f"Expected ndjson stream, but got content type: {response.headers.get('content-type')}"
                     )
 
-                print("--- Streaming Results (JSON Lines) ---", file=sys.stderr)
+                click_echo("--- Streaming Results (JSON Lines) ---", err=True)
                 for line in response.iter_lines():
-                    print(line)  # Print each JSON line as it arrives
-                print("--- End of Stream ---", file=sys.stderr)
+                    click_echo(line)
+                click_echo("--- End of Stream ---", err=True)
 
         else:
             # Handle batch response
             logger.info(f"Requesting batch search from {request_url}...")
             with HTTPClient() as client:
-                response = client.post(
-                    request_url, json=payload, timeout=60.0
-                )  # Longer timeout for potentially large batch
+                response = client.post(request_url, json=payload, timeout=60.0)
                 response.raise_for_status()
                 response_data = response.json()
 
@@ -88,7 +87,15 @@ def search_query(
                     f"API Response ({response.status_code}) - {len(response_data.get('results', []))} results."
                 )
                 # Pretty print the JSON response
-                print(json.dumps(response_data, indent=2))
+                # Use typer.echo for CLI-friendly output (captures in tests)
+                # Write to stdout using low-level sys.stdout to avoid Click's testing I/O issues
+                # Use typer.echo which is patched in tests
+                # Ensure we dump plain dict; some mocks may return MagicMock
+                try:
+                    payload_out = dict(response_data)
+                except Exception:
+                    payload_out = response_data
+                click_echo(json.dumps(payload_out, indent=2))
 
     except httpx.RequestError as exc:
         logger.error(

@@ -32,6 +32,11 @@ synapse discover ~/Notes --include "**/*.md" \
 # Option B: one-shot wrapper (convenience)
 synapse ingest ~/Notes --embeddings  # parses YAML front matter / Notion property tables
 
+# Notion API sync (direct): requires SYNAPSE_NOTION_API_KEY in env
+synapse notion sync --db <DATABASE_ID> --limit 50 --embeddings --replace
+# Or export JSON of pages
+synapse notion sync --query "project" --json | jq .
+
 # Control verbosity globally
 synapse --quiet ingest ~/Notes        # warnings and above
 synapse --verbose ingest ~/Notes      # debug logs
@@ -39,6 +44,9 @@ synapse --verbose ingest ~/Notes      # debug logs
 # Observability
 curl http://localhost:8000/ready        # readiness
 curl http://localhost:8000/metrics      # Prometheus metrics (enabled by default)
+
+# Ask (synthesis) with streaming
+synapse query ask "What did I write about embeddings trade-offs?" --k 5 --stream
 
 # Point CLI search/admin to a custom API base
 export SYNAPSE_API_BASE_URL="http://localhost:8000/api/v1"

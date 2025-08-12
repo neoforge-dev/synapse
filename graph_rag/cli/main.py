@@ -14,6 +14,8 @@ from graph_rag.cli.commands.store import store_command
 from graph_rag.cli.commands.search import search_query
 from graph_rag.cli.commands.suggest import run_suggest as suggest_command
 from graph_rag.cli.commands.query import app as query_app
+from graph_rag.cli.commands.graph import app as graph_app
+from graph_rag.cli.commands.notion import app as notion_app
 from graph_rag.cli.commands.config import app as config_app
 from graph_rag.config import get_settings  # Import factory
 
@@ -41,6 +43,8 @@ app.command("parse")(parse_command)
 app.command("store")(store_command)
 app.command("search")(search_query)
 app.add_typer(query_app, name="query")
+app.add_typer(graph_app, name="graph")
+app.add_typer(notion_app, name="notion")
 app.command("suggest")(suggest_command)
 app.add_typer(config_app, name="config")
 app.command("admin-health")(check_health)  # Renamed for clarity

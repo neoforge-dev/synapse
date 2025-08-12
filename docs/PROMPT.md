@@ -1,110 +1,79 @@
-## Graph RAG MCP — Continuation Prompt for New Agent
+You are taking over a Python project that implements Graph-augmented Retrieval (Graph RAG) for personal knowledge bases (Notion/Obsidian) with a CLI and FastAPI API. Your objectives are to complete the remaining epics and harden the system for practical daily use.
 
-You are taking over an actively developed Graph RAG project focused on stable document identity and idempotent ingestion. Continue the work with high autonomy. Follow repository conventions, keep the test suite green, and prefer minimal, safe, incremental changes with strong tests.
+Context you must know (read these):
+- README.md: quickstart and CLI/API overview
+- docs/PLAN.md: current plan, epics, and remaining work
+- docs/HANDBOOK.md and docs/ARCHITECTURE.md: architecture, layering, and DI patterns
+- graph_rag/*: codebase (API routers, services, core engine, infrastructure, CLI)
+- tests/*: contract and integration tests; keep them green
 
-### Context
-- Project type: Graph-based RAG with Memgraph + vector store (SimpleVectorStore and FAISS option), FastAPI, CLI tools, and services layer.
-- Current focus: Stable `document_id` derivation, idempotent re-ingestion (deleting old chunks/vectors before re-adding), and correct FAISS deletion behavior.
-- Test runner and tooling:
-  - Install: `make install-dev`
-  - Lint: `make lint`
-  - Format: `make format`
-  - Unit tests: `make test` (or `make test -j1`)
-  - Integration: `make test-integration` (Memgraph required)
-  - Memgraph tests: `make test-memgraph`
-  - Run API: `make run-api`
-  - Run Memgraph: `make run-memgraph`
+Current status (key capabilities already implemented):
+- Ingestion pipeline from Markdown and Notion exports; YAML/Notion property parsing
+- Stable document identity and idempotent re-ingestion
+- Graph store (Memgraph) with documents/chunks/topics and linking helpers
+- Vector store (Simple/FAISS); embeddings via sentence-transformers
+- Ask endpoint and CLI with streaming; citations in metadata
+- Hybrid retrieval (vector + keyword blending), optional cross-encoder rerank and MMR diversification
+- Notion sync CLI with incremental checkpoints and rate-limit handling; asset include/skip
+- Observability: request metrics; ask/ingestion counters
 
-### Architecture and Code Style (follow strictly)
-- Clean architecture: API → Services → Core → Infrastructure → LLM
-- Repositories for data access (GraphRepository, VectorStore)
-- Strategy pattern for components (EntityExtractor, LLMService)
-- DI via FastAPI `Depends` and factories in `api/dependencies.py`
-- Protocol interfaces in `core/interfaces.py`
-- Style:
-  - Line length: 88 (Ruff)
-  - Double quotes
-  - Typing: use type hints; Protocol for interfaces
-  - Imports grouped: stdlib, third-party, local
-  - Naming: snake_case (functions/vars), PascalCase (classes)
-  - Async: consistent in services and repositories
-  - Error handling: specific exceptions + contextual logs
-  - Docstrings: Google style for public methods
-  - Tests: unit tests for core logic, mock external deps
+Your goals (remaining plan to implement):
 
-### Current State
-- Identity: `graph_rag/utils/identity.py` implements multi-priority ID derivation (metadata > Notion UUID in filename/parents > content hash > path hash). Tests added and passing (`tests/utils/test_identity.py`).
-- Ingestion: Idempotent re-ingest implemented in `graph_rag/services/ingestion.py` (with `replace_existing=True`) deleting old chunks from graph and vector store before adding new ones. Service tests cover this.
-- FAISS vector store: `FaissVectorStore` now persists embeddings alongside metadata and correctly rebuilds the index on deletions. Infra tests added and passing.
-- Suite status at last run: 194 passed, 42 skipped; all green.
+1) Persist LLM-derived relationships with confidence gating
+- Add `SYNAPSE_ENABLE_LLM_RELATIONSHIPS` (bool, default false) and `SYNAPSE_LLM_REL_MIN_CONFIDENCE` (float 0..1, default 0.7) to settings.
+- In `SimpleGraphRAGEngine._retrieve_and_build_context`, when enabled:
+  - Post-process `llm_service.extract_entities_relationships` output
+  - Map by canonical entity names to known graph entities
+  - If both ends exist and `confidence>=min_conf`, persist via `graph_store.add_relationship` with properties `{extractor:"llm", confidence, source_name, target_name}`
+  - Dedupe: avoid inserting duplicates (same type/source/target); instead update `evidence_count` and `updated_at`
+- Add a config toggle `extract_relationships_persist` in AskRequest and thread to engine
+- Counters: increment `llm_relations_inferred_total` and `llm_relations_persisted_total`
+- Tests: unit for gating/dedupe; integration with Memgraph fixture
 
-### Priorities (continue from here)
-1) Observability and Metadata
-   - Ensure `id_source` (from identity derivation) is consistently persisted and visible via API responses (`/documents` endpoints) and in logs.
-   - Tighten logs in ingestion to include `document_id`, `id_source`, counts of chunks deleted/added, and vector store actions.
-2) CLI/Service wiring improvements
-   - Add a CLI flag `--no-replace` (or `--replace/--no-replace`) to control idempotent behavior and plumb into `IngestionService.ingest_document`.
-   - Consider a dry-run mode for ingestion to preview derived IDs and actions.
-3) Notion export walker nuances
-   - Confirm directory walker ignores hidden and Obsidian folders (present), and expand ignore for Notion export attachment subfolders (assets). Only Markdown-like files should be ingested.
-   - Keep Notion property table parsing robust (present) and add small tests for corner cases.
-4) FAISS persistence hardening
-   - Metadata version field `version: 2` implemented; rows include `embedding`. On load, legacy rows are detected and warned.
-   - Maintenance helpers exist: `stats()`, `rebuild_index()` on the FAISS store.
-5) Tests and docs
-   - Add unit/integration tests around CLI re-ingestion toggles and id_source propagation.
-   - Document the identity strategy and idempotent ingestion behavior in README/ARCH. Keep `docs/PLAN.md` up to date with changes.
+2) Subgraph APIs and exports
+- New router `graph_rag/api/routers/graph.py` with:
+  - `GET /graph/neighbors?id=..&depth=1&types=HAS_TOPIC,MENTIONS` -> `{nodes, edges}`
+  - `POST /graph/subgraph {seeds:[], depth, rel_types?}` -> `{nodes, edges}`
+  - `GET /graph/export?format=graphml|json` -> string payload; implement simple GraphML and Cytoscape JSON formatters
+- Wire router in `api/main.py`; add CLI wrappers `synapse graph neighbors|export`
+- Tests: basic shape tests; export smoke tests
 
-### Concrete Tasks
-- Observability
-  - Verify `id_source` is attached to `Document.metadata` on ingest and exposed in API schemas/responses where appropriate.
-  - Add structured logs in `IngestionService` around pre-delete (count of chunks to delete), post-delete, and post-add.
-- CLI ingestion flag
-  - In `graph_rag/cli/commands/ingest.py`, add Typer flag to control `replace_existing` and thread it through to `IngestionService.ingest_document`.
-  - Update help text and usage examples.
-- Notion walker
-  - Extend file selection filter to hard-ignore typical Notion asset dirs (e.g., folder matching `*assets*` next to the page file). Keep logic simple and safe.
-  - Add tests that a Notion export directory with an assets subfolder only ingests `.md` content pages.
-- FAISS meta versioning
-  - Update `FaissVectorStore` meta serialization to include a `version` key and set to `2` (rows include `embedding`).
-  - On load, detect missing version or missing `embedding` keys and keep existing warning/behavior; consider auto-setting `version=1` for legacy.
-  - Add a small unit test to ensure version is persisted and read.
-- Docs
-  - Update `README.md` or a dedicated section to document identity derivation and re-ingestion semantics.
-  - Amend `docs/PLAN.md` as items complete.
+3) Notion sync dry-run diffs and attachment policy
+- Extend `synapse notion sync` with:
+  - `--dry-run` to print planned changes (add/update/delete) per `page_id`
+  - `--attachments policy` where policy in `ignore|link|download`; implement download with `--download-path`
+- State file: keep last cursor and last edited time per context key
+- Rate limit budget: configurable QPS and backoff ceiling
+- Tests: unit diff; CLI output checks
 
-### Acceptance Criteria
-- API responses for documents include persisted `id_source` in metadata where available.
-- CLI supports `--replace/--no-replace` and correctly toggles pre-delete behavior in service.
-- Notion export ingestion ignores asset folders and only ingests relevant content files; tests cover this.
-- FAISS meta includes version info; delete/rebuild remains correct; persistence round-trip behaves as expected.
-- All tests stay green: `make test` passes locally; integration tests remain as-is (skipped unless Memgraph available).
+4) Background jobs and richer metrics
+- FAISS maintenance job: periodic (disabled by default) and CLI-triggered
+- Integrity checks: vector count vs graph chunks; log warnings and metrics
+- Metrics: `ingestion_chunks_total`, `ingestion_vectors_total`, plus latency histograms for ingest/query
+- Tests: counters increment and job invocation paths
 
-### How to Work
-- Use TDD where reasonable. Add or update tests for any change in behavior.
-- Keep changes small and incremental; run `make test` frequently.
-- Follow commit style conventions (conventional commits), and do not push unless explicitly instructed by the user.
-- Prefer adding tests near existing files: API tests in `tests/api`, CLI in `tests/cli`, services in `tests/services`, infra in `tests/infrastructure`, utils in `tests/utils`.
-- For FAISS behavior, prefer deterministic vectors in tests; use explicit embeddings or mocks as needed.
+5) MCP server and packaging
+- Implement a small MCP server exposing `ingest_files`, `search`, `query_answer` that calls the local FastAPI or direct services
+- Provide config examples for VS Code/Claude; add smoke tests for tool invocation
+- Packaging: PyPI + Homebrew; `synapse up` (docker-compose) convenience
 
-### Useful Paths
-- Identity: `graph_rag/utils/identity.py`
-- Ingestion service: `graph_rag/services/ingestion.py`
-- CLI ingest: `graph_rag/cli/commands/ingest.py`
-- FAISS store: `graph_rag/infrastructure/vector_stores/faiss_vector_store.py`
-- Simple vector store: `graph_rag/infrastructure/vector_stores/simple_vector_store.py`
-- API routers: `graph_rag/api/routers/*.py`
-- Settings: `graph_rag/config.py`
+Guardrails and expectations:
+- Maintain green tests. Add or adjust tests only when changing public contracts; prefer additive changes.
+- Follow existing layering/DI patterns. Avoid tight coupling across layers.
+- Keep code readable and match `code_style` conventions; add concise docstrings for new modules.
+- Do not hard-fail on optional dependencies (e.g., CrossEncoder, Prometheus) — degrade gracefully.
+- Ensure new API params have sane defaults and are backward compatible.
 
-### Gotchas
-- Do not run long-lived background processes in this environment.
-- Keep test isolation: avoid writing to global OS paths; tests use tmp dirs for FAISS.
-- When changing schemas or interfaces, ensure all call sites and tests are updated.
-- If you modify `faiss_vector_store` persistence, ensure backward compatibility and add clear warnings.
+Getting started checklist:
+- Read docs/PLAN.md (Remaining work section) and open related files
+- Add new settings and feature flags
+- Implement LLM relationship persistence with gating and counters
+- Add graph router for subgraph/expor; wire it up and write small tests
+- Extend Notion sync for dry-run/attachments; unit tests for diffing
+- Add maintenance jobs and metrics; update README with new flags/endpoints
+- Prepare MCP server skeleton and packaging scripts; add examples
 
-### Ready-to-Run Commands
-- Run all unit tests: `make test -j1`
-- Run a single test: `python -m pytest tests/infrastructure/vector_stores/test_simple_vector_store_contract.py::test_faiss_vector_store_delete_and_rebuild -v`
-- Lint/format: `make lint && make format`
-
-Continue the work by implementing priorities above, starting with observability (`id_source` exposure/logging) and the CLI replace toggle. Maintain green tests at each step.
+When stuck:
+- Prefer small, incremental PR-sized edits; run targeted pytest subsets often
+- If a dependency is missing at runtime, fallback to no-op or mock and log a warning
+- Document new flags/endpoints in README and HANDBOOK

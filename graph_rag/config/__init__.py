@@ -105,6 +105,18 @@ class Settings(BaseSettings):
         description="Model name for the LLM service. Default: gpt-3.5-turbo",
     )
 
+    # --- Notion API Settings ---
+    notion_api_key: Optional[SecretStr] = Field(
+        None, description="Notion API key (internal sync)."
+    )
+    notion_base_url: str = Field(
+        "https://api.notion.com/v1",
+        description="Base URL for Notion API.",
+    )
+    notion_version: str = Field(
+        "2022-06-28", description="Notion API version header value."
+    )
+
     # --- Cache Settings ---
     cache_type: str = Field(
         "memory",
@@ -141,6 +153,24 @@ class Settings(BaseSettings):
     )
     enable_metrics: bool = Field(
         True, description="Expose /metrics Prometheus endpoint."
+    )
+
+    # --- LLM-derived relationship persistence ---
+    enable_llm_relationships: bool = Field(
+        False,
+        description=(
+            "Enable persisting LLM-inferred relationships into the graph. "
+            "Env: SYNAPSE_ENABLE_LLM_RELATIONSHIPS"
+        ),
+    )
+    llm_rel_min_confidence: float = Field(
+        0.7,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Minimum confidence (0..1) required to persist LLM relationships. "
+            "Env: SYNAPSE_LLM_REL_MIN_CONFIDENCE"
+        ),
     )
 
     # Add other settings as needed...

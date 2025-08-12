@@ -181,3 +181,141 @@ The recent assessment highlights that while the architectural foundations are so
 - Phase 2 (3-4 weeks): Remaining C (maintenance cmds), D (style profile v1, relationship scores), E metrics.
 - Phase 3: Additional providers (Anthropic/Ollama), advanced prompting, BrandFocus-specific UX polish.
 
+## Next 4 Epics (Detailed Plan)
+
+### Epic 1: Ask/Synthesis Layer (LLM-backed answers with citations)
+- Goals
+  - Deterministic prompt assembly with retrieved chunks and optional graph context
+  - Provider abstraction with retries/timeouts; OpenAI first, mock default
+  - Streaming support (NDJSON) at API; CLI toggles
+  - Citations: include chunk IDs and document IDs in the response metadata
+- Deliverables
+  - API: `POST /api/v1/query/ask` (already exists) wired to configured LLM
+  - Engine: ensure a single retrieval pass then a single LLM call; pass citations
+  - CLI: `synapse query ask` flags `--k`, `--show-chunks`, `--show-graph`, `--raw`
+  - Docs: examples and troubleshooting
+- Tasks
+  1) LLM service initialization in API lifespan and pass into `SimpleGraphRAGEngine`
+  2) Add provider selection via settings (`llm_type`, `llm_model_name`), use existing factory
+  3) Include citations (chunk/document IDs) in `QueryResponse.metadata.citations`
+  4) Optional: streaming endpoint `POST /query/ask/stream` yielding NDJSON
+  5) Tests: golden prompt assembly (unit), API contract (ask), streaming (when added)
+
+### Epic 2: Notion API Incremental Sync
+- Goals
+  - Sync pages/databases directly from Notion, incremental by `since` cursor
+  - Stable identity using `page_id`; idempotent re-ingest
+- Deliverables
+  - CLI: `synapse notion sync [--db DB_ID] [--since ISO] [--replace] [--embeddings]`
+  - Mapper: Notion properties → normalized metadata (`topics`, `aliases`, dates)
+  - Checkpointing and resumable sync; rate-limit handling
+- Tasks
+  1) OAuth/token config in `Settings`; client wrapper with retries
+  2) Page listing + content rendering (Markdown) + attachments policy
+  3) Delta cursor persistence; continue-on-error semantics
+  4) Tests: fixtures for Notion JSON → normalized documents; idempotence cases
+
+### Epic 3: Reliability, Observability, Ops
+- Goals
+  - JSON logging, correlation IDs, health/readiness, Prometheus metrics
+  - Standardized problem+json error responses
+  - Performance: lazy-load NLP/embeddings; batch writes where safe
+- Deliverables
+  - `/metrics` (done), extend counters/gauges for ingestion and vector maintenance
+  - `/health`, `/ready` (done), extend with dependency checks
+- Tasks
+  1) Counters: documents ingested, chunks added/deleted, vector size/ops
+  2) Health: Memgraph ping, vector store probe; reflect in readiness
+  3) Error mapping: unify to problem+json in routers
+  4) Tests: DI guards; raise hot-path coverage to ≥85%
+
+### Epic 4: Distribution, Onboarding, MCP
+- Goals
+  - Install-and-ingest in <10min; MCP tools for IDEs
+- Deliverables
+  - `synapse up` for docker-compose; `synapse config init`
+  - Packaging: pipx, Homebrew tap, optional PyInstaller binaries
+  - MCP server exposing `ingest_files`, `search`, `query_answer`
+- Tasks
+  1) Compose shim (API + Memgraph) and CLI wrapper
+  2) Preflight wizard: connection test, model downloads
+  3) MCP thin server + examples for VS Code/Claude
+
+## Remaining work to reach full completion
+
+This section enumerates the concrete work items still outstanding to fully deliver the planned functionality with clear acceptance criteria.
+
+### Epic A: Persist LLM-derived relationships with confidence gating
+- Goals
+  - Move beyond returning LLM-inferred relationships in-context by persisting them to Memgraph with safety rails.
+- Deliverables
+  - Config flags in `Settings`: `enable_llm_relationships=true|false` (default false), `llm_relationship_min_confidence` (0..1)
+  - Engine: when enabled, post-process LLM extractions: map by canonical name to existing entities; if both ends exist and confidence ≥ threshold, persist via `graph_store.add_relationship` with properties `{source: name, target: name, extractor: "llm", confidence: x}`.
+  - De-duplication: before insert, check if a relationship of same type exists; if so, update `evidence_count` and `updated_at`.
+  - CLI/API: add a dry-run toggle to only report planned writes.
+  - Observability: add counters (`llm_relations_inferred_total`, `llm_relations_persisted_total`) and a histogram for extraction latency.
+- Tests
+  - Unit: mapping and confidence gating; dedupe logic.
+  - Integration: with Memgraph running, persist a small batch and verify via Cypher queries.
+- Acceptance
+  - With flag on and sufficient confidence, inferred relationships are persisted once, de-duped, and visible via graph queries; counters reflect operations.
+
+### Epic B: Subgraph APIs and exports
+- Goals
+  - Provide graph exploration endpoints and export formats suitable for visualization.
+- Deliverables
+  - API endpoints:
+    - `GET /api/v1/graph/neighbors?id=...&depth=1&types=HAS_TOPIC,MENTIONS` (returns `{ nodes, edges }`)
+    - `POST /api/v1/graph/subgraph` with body `{ seeds:[], depth, rel_types? }`
+    - `GET /api/v1/graph/export?format=graphml|json` (Cytoscape JSON)
+  - CLI: `synapse graph neighbors`, `synapse graph export` wrappers.
+- Tests
+  - Unit: parameter validation and shaping; smoke for export formatters.
+  - Integration: small fixture graph -> consistent API payloads.
+- Acceptance
+  - Endpoints return node/edge payloads suitable for Cytoscape; export validated on sample graphs.
+
+### Epic C: Notion sync – dry-run diffs and attachment policy
+- Goals
+  - Make sync operations safer and more controllable.
+- Deliverables
+  - CLI flags: `--dry-run` (show adds/updates/deletes per page_id), `--attachments policy` (`ignore|link|download`) with download path.
+  - State: per-DB/per-query checkpoints extended with last cursor and last edited time.
+  - Rate-limit budgets: configurable max QPS and exponential backoff ceiling.
+- Tests
+  - Unit: diff calc for adds/updates/deletes given synthetic states.
+  - Integration: mock Notion responses -> correct CLI outputs for `--dry-run`.
+- Acceptance
+  - Running with `--dry-run` prints idempotent plan with counts; policies honored; rate-limits respected.
+
+### Epic D: Background jobs and richer metrics
+- Goals
+  - Improve operational reliability and transparency.
+- Deliverables
+  - Background FAISS maintenance: `rebuild` task callable via CLI and periodic job (disabled by default).
+  - Vector/graph integrity checks with warnings.
+  - Metrics: `ingestion_chunks_total`, `ingestion_vectors_total`, latency histograms for ingest/query; `/metrics` docs.
+- Tests
+  - Unit: job scheduling stubs; metrics counters increment under expected paths.
+- Acceptance
+  - Admin can trigger rebuild; metrics visible; integrity checks produce actionable warnings.
+
+### Epic E: MCP server and packaging
+- Goals
+  - Integrate with IDE agents and ease installation.
+- Deliverables
+  - MCP server exposing tools: `ingest_files`, `search`, `query_answer` (calls local FastAPI or services).
+  - Packaging: PyPI, Homebrew tap; multi-arch Docker images; `synapse up` convenience.
+  - Release workflow: versioning, changelog, GitHub Actions.
+- Tests
+  - Unit: MCP tool stubs with mocked services; smoke run via example config.
+- Acceptance
+  - MCP tools usable in VS Code/Claude with sample configuration; install-and-ingest path < 10 minutes.
+
+### Timeline (suggested)
+- Week 1: A (persist LLM rels), begin B (neighbors endpoint)
+- Week 2: Finish B (exports), start C (dry-run), ops metrics in D
+- Week 3: Finish C and D; start E (MCP server skeleton)
+- Week 4: Finish E and packaging; docs and examples
+
+

@@ -15,6 +15,7 @@ from graph_rag.api.dependencies import (
     MockEmbeddingService,  # Import from dependencies only, avoid function name collisions
 )
 from graph_rag.api.routers import documents, ingestion, query, search
+from graph_rag.api.routers.graph import create_graph_router
 
 # Local application imports
 from graph_rag.config import get_settings
@@ -22,6 +23,7 @@ from graph_rag.core.entity_extractor import MockEntityExtractor, SpacyEntityExtr
 
 # Import Concrete Implementations needed for lifespan setup
 from graph_rag.core.graph_rag_engine import SimpleGraphRAGEngine
+from graph_rag.api.dependencies import create_llm_service  # LLM factory
 
 # Import Core Interfaces/Base Classes directly from their modules
 from graph_rag.core.interfaces import (
@@ -288,12 +290,13 @@ async def lifespan(app: FastAPI):
             )
             raise RuntimeError("Missing dependencies for GraphRAGEngine initialization")
         try:
+            # Initialize LLM service via factory using current settings
+            llm_service = create_llm_service(current_settings)
             app.state.graph_rag_engine = SimpleGraphRAGEngine(
                 graph_store=app.state.graph_repository,
                 vector_store=app.state.vector_store,
                 entity_extractor=app.state.entity_extractor,
-                # Add LLM service here if needed by the engine constructor
-                # llm_service=get_llm(settings=current_settings) # Or fetch from state if initialized earlier
+                llm_service=llm_service,
             )
             logger.info("LIFESPAN: Initialized SimpleGraphRAGEngine.")
         except Exception as e:
@@ -517,6 +520,7 @@ def create_app() -> FastAPI:
     )
     search_router = search.create_search_router()
     query_router = query.create_query_router()
+    graph_router = create_graph_router()
 
     # Routers - Prefixes are defined within the factory's router
     api_router.include_router(documents_router, prefix="/documents", tags=["Documents"])
@@ -525,6 +529,7 @@ def create_app() -> FastAPI:
     api_router.include_router(
         query_router, prefix="/query", tags=["Query"]
     )  # Assuming query router needs prefix too
+    api_router.include_router(graph_router, prefix="/graph", tags=["Graph"]) 
 
     app.include_router(api_router)  # Remove prefix="/api/v1" here
 
@@ -545,6 +550,35 @@ def create_app() -> FastAPI:
             ["path"],
             registry=_metrics_registry,
         )
+
+        # --- Business metrics ---
+        ASK_TOTAL = Counter(
+            "ask_requests_total",
+            "Total ask requests (includes streaming and non-streaming)",
+            registry=_metrics_registry,
+        )
+        INGEST_TOTAL = Counter(
+            "ingestion_requests_total",
+            "Total ingestion requests accepted",
+            registry=_metrics_registry,
+        )
+        LLM_REL_INFERRED = Counter(
+            "llm_relations_inferred_total",
+            "Total number of LLM-inferred relationships during queries",
+            registry=_metrics_registry,
+        )
+        LLM_REL_PERSISTED = Counter(
+            "llm_relations_persisted_total",
+            "Total number of LLM-inferred relationships persisted to the graph",
+            registry=_metrics_registry,
+        )
+        # Expose on app state for selective increments elsewhere if needed
+        app.state.metrics = {
+            "ASK_TOTAL": ASK_TOTAL,
+            "INGEST_TOTAL": INGEST_TOTAL,
+            "LLM_REL_INFERRED": LLM_REL_INFERRED,
+            "LLM_REL_PERSISTED": LLM_REL_PERSISTED,
+        }
 
         @app.get("/metrics", include_in_schema=False)
         async def metrics():
@@ -609,6 +643,19 @@ def create_app() -> FastAPI:
                     request.method, request.url.path, str(response.status_code)
                 ).inc()
                 REQUEST_LATENCY.labels(request.url.path).set(process_time)
+                # Business metrics by path
+                metrics = getattr(request.app.state, "metrics", None)
+                if metrics:
+                    path = request.url.path
+                    if path.endswith("/api/v1/query/ask") or path.endswith(
+                        "/api/v1/query/ask/stream"
+                    ):
+                        metrics.get("ASK_TOTAL").inc()  # type: ignore[call-arg]
+                    if (
+                        path.endswith("/api/v1/ingestion/documents")
+                        and response.status_code == 202
+                    ):
+                        metrics.get("INGEST_TOTAL").inc()  # type: ignore[call-arg]
         except Exception:
             pass
         return response

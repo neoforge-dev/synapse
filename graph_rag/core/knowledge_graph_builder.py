@@ -57,6 +57,23 @@ class SimpleKnowledgeGraphBuilder(KnowledgeGraphBuilder):
             await self._graph_store.add_entities_and_relationships(
                 entities, relationships
             )
+            # Link chunks to entities when present
+            chunk_links = defaultdict(list)
+            for ent in entities:
+                # If entities carry metadata with originating chunk_id(s), link them
+                meta = getattr(ent, "metadata", {}) or {}
+                cid = meta.get("chunk_id") or meta.get("chunk_ids")
+                if isinstance(cid, str):
+                    chunk_links[cid].append(ent.id)
+                elif isinstance(cid, list):
+                    for c in cid:
+                        if isinstance(c, str):
+                            chunk_links[c].append(ent.id)
+            for chunk_id, ent_ids in chunk_links.items():
+                try:
+                    await self._graph_store.link_chunk_to_entities(chunk_id, list(set(ent_ids)))
+                except Exception:
+                    logger.debug(f"Failed linking chunk {chunk_id} to entities; continuing")
             logger.info(
                 f"Successfully added entities/relationships from document {doc_id} to graph store."
             )

@@ -1,4 +1,5 @@
 import logging
+from fastapi import Request
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -88,11 +89,23 @@ def create_query_router() -> APIRouter:
                     )
                     # Keep api_graph_context as None
 
+            # Include citations in metadata (chunk_id, document_id)
+            try:
+                citations = [
+                    {"chunk_id": c.id, "document_id": c.document_id}
+                    for c in query_result.relevant_chunks
+                ]
+            except Exception:
+                citations = []
+            meta_with_citations = dict(query_result.metadata or {})
+            if citations:
+                meta_with_citations.setdefault("citations", citations)
+
             return QueryResponse(
                 answer=query_result.answer,
                 relevant_chunks=api_chunks,
                 graph_context=api_graph_context,
-                metadata=query_result.metadata,  # Pass engine metadata through
+                metadata=meta_with_citations,
             )
 
         except Exception as e:
@@ -114,21 +127,62 @@ def create_query_router() -> APIRouter:
     async def ask(
         ask_request: AskRequest,
         engine: GraphRAGEngine = Depends(get_graph_rag_engine),
+        request: Request = None,
     ):
         logger.info(
             f"Received ask: {ask_request.text[:100]}... (k={ask_request.k}, graph={ask_request.include_graph})"
         )
+        # Increment ask counter if app metrics are configured
         try:
-            config = {"k": ask_request.k, "include_graph": ask_request.include_graph}
+            app = logger.root.handlers and None  # no-op to appease linters
+        except Exception:
+            pass
+        try:
+            config = {
+                "k": ask_request.k,
+                "include_graph": ask_request.include_graph,
+                "blend_vector_weight": ask_request.blend_vector_weight,
+                "blend_keyword_weight": ask_request.blend_keyword_weight,
+                "rerank": ask_request.rerank,
+                "mmr_lambda": ask_request.mmr_lambda,
+                "style": ask_request.style,
+                # Relationship extraction controls
+                "extract_relationships": True,
+                "extract_relationships_persist": ask_request.extract_relationships_persist,
+            }
             result: DomainQueryResult = await engine.query(
                 ask_request.text, config=config
             )
+            # Increment LLM relationship counters if present in config
+            try:
+                metrics = getattr(request.app.state, "metrics", None) if request else None
+                if metrics:
+                    inferred = int(config.get("llm_relations_inferred_total", 0))
+                    persisted = int(config.get("llm_relations_persisted_total", 0))
+                    if inferred:
+                        metrics.get("LLM_REL_INFERRED").inc(inferred)  # type: ignore[call-arg]
+                    if persisted:
+                        metrics.get("LLM_REL_PERSISTED").inc(persisted)  # type: ignore[call-arg]
+            except Exception:
+                pass
+
+            # Include citations in metadata
+            try:
+                citations = [
+                    {"chunk_id": c.id, "document_id": c.document_id}
+                    for c in result.relevant_chunks
+                ]
+            except Exception:
+                citations = []
+            meta_with_citations = dict(result.metadata or {})
+            if citations:
+                meta_with_citations.setdefault("citations", citations)
 
             return QueryResponse(
                 answer=result.answer,
                 relevant_chunks=_to_api_chunks(result),
                 graph_context=_to_api_graph_context(result),
-                metadata=result.metadata,
+                metadata=meta_with_citations,
             )
         except Exception as e:
             logger.error(
@@ -138,6 +192,32 @@ def create_query_router() -> APIRouter:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to process ask: {e}",
             )
+
+    @router.post(
+        "/ask/stream",
+        summary="Ask with streaming response",
+        description="Streams synthesized answer chunks (NDJSON).",
+    )
+    async def ask_stream(
+        ask_request: AskRequest,
+        engine: GraphRAGEngine = Depends(get_graph_rag_engine),
+    ):
+        from fastapi.responses import StreamingResponse
+
+        async def _gen():
+            try:
+                config = {
+                    "k": ask_request.k,
+                    "include_graph": ask_request.include_graph,
+                    "extract_relationships": True,
+                    "extract_relationships_persist": ask_request.extract_relationships_persist,
+                }
+                async for token in engine.stream_answer(ask_request.text, config=config):
+                    yield token
+            except Exception as e:  # pragma: no cover - safety
+                yield f"\n[error] {e}"
+
+        return StreamingResponse(_gen(), media_type="text/plain; charset=utf-8")
 
     return router
 
