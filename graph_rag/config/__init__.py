@@ -135,7 +135,19 @@ class Settings(BaseSettings):
     # --- Cache Settings ---
     cache_type: str = Field(
         "memory",
-        description="Type of cache to use ('memory'). Default: memory",
+        description="Type of cache to use ('memory' or 'redis'). Default: memory",
+    )
+    redis_url: Optional[str] = Field(
+        None, description="Redis URL for caching (redis://host:port/db)."
+    )
+    cache_default_ttl: int = Field(
+        300, description="Default cache TTL in seconds."
+    )
+    cache_embedding_ttl: int = Field(
+        3600, description="TTL for embedding cache in seconds."
+    )
+    cache_search_ttl: int = Field(
+        600, description="TTL for search result cache in seconds."
     )
 
     # --- Document Processor Settings ---
