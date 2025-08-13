@@ -81,7 +81,11 @@ from graph_rag.core.interfaces import (  # Corrected import  # Core interfaces
     VectorStore,
 )
 from graph_rag.domain.models import Chunk, Document  # Updated module path
-from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+try:
+    from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+except Exception:
+    class MemgraphGraphRepository:  # type: ignore
+        ...
 
 logger = logging.getLogger(__name__)
 
