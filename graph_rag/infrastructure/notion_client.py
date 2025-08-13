@@ -42,14 +42,17 @@ class NotionClient:
                     return resp.json()
                 except httpx.HTTPStatusError as e:
                     if e.response is not None and e.response.status_code == 429 and attempt < retries - 1:
-                        import time as _time
+                        import time as _time, random as _rand
                         # Respect client-side QPS and server backoff header if present
                         retry_after = e.response.headers.get("Retry-After") if e.response is not None else None
                         try:
                             delay_hdr = float(retry_after) if retry_after else None
                         except Exception:
                             delay_hdr = None
-                        delay = delay_hdr or min(backoff, float(self.settings.notion_backoff_ceiling))
+                        base = delay_hdr or min(backoff, float(self.settings.notion_backoff_ceiling))
+                        # Add jitter (±20%) to prevent thundering herd
+                        jitter = base * (_rand.uniform(0.8, 1.2))
+                        delay = min(jitter, float(self.settings.notion_backoff_ceiling))
                         _time.sleep(delay)
                         # Exponential backoff with ceiling
                         backoff = min(backoff * 2.0, float(self.settings.notion_backoff_ceiling))
