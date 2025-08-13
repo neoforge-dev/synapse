@@ -37,6 +37,12 @@ synapse notion sync --db <DATABASE_ID> --limit 50 --embeddings --replace
 # Or export JSON of pages
 synapse notion sync --query "project" --json | jq .
 
+# Notion enhancements
+# - Dry-run plan
+synapse notion sync --db <DATABASE_ID> --dry-run | jq .
+# - Attachment handling
+synapse notion sync --db <DATABASE_ID> --attachments download --download-path ./assets
+
 # Control verbosity globally
 synapse --quiet ingest ~/Notes        # warnings and above
 synapse --verbose ingest ~/Notes      # debug logs
@@ -47,6 +53,17 @@ curl http://localhost:8000/metrics      # Prometheus metrics (enabled by default
 
 # Ask (synthesis) with streaming
 synapse query ask "What did I write about embeddings trade-offs?" --k 5 --stream
+# Graph exploration
+synapse graph neighbors --id <NODE_ID> --depth 2 --types HAS_TOPIC,MENTIONS
+synapse graph export --seed <NODE_ID> --format graphml --out sub.graphml
+
+# Admin ops
+synapse admin vector-stats
+synapse admin vector-rebuild
+synapse admin integrity-check
+
+# MCP server (optional)
+synapse mcp run --host 127.0.0.1 --port 8765
 
 # Point CLI search/admin to a custom API base
 export SYNAPSE_API_BASE_URL="http://localhost:8000/api/v1"
