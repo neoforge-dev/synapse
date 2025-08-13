@@ -5,6 +5,7 @@ import typer
 
 from graph_rag import __version__  # Assume version is defined in __init__.py
 from graph_rag.cli.commands.admin import app as admin_app
+from graph_rag.cli.commands.admin import up as admin_up
 
 # Import command functions directly
 from graph_rag.cli.commands.ingest import ingest_command
@@ -50,6 +51,33 @@ app.command("suggest")(suggest_command)
 app.add_typer(config_app, name="config")
 app.add_typer(admin_app, name="admin")
 app.add_typer(mcp_app, name="mcp")
+
+
+# Top-level convenience: synapse up (delegates to admin up)
+@app.command("up")
+def up(
+    compose: Optional[str] = typer.Option(None, "--compose", help="Path to docker-compose.yml"),
+    detached: bool = typer.Option(True, "--detached/--no-detached", help="Run docker compose up -d"),
+    start_docker: bool = typer.Option(
+        True if get_settings().api_host is not None else False,
+        "--start-docker/--no-start-docker",
+        help="On macOS, attempt to start Docker Desktop if not running",
+    ),
+    wait_bolt: bool = typer.Option(
+        True,
+        "--wait-bolt/--no-wait-bolt",
+        help="Wait for Memgraph Bolt (127.0.0.1:7687) to accept connections",
+    ),
+    wait_timeout: int = typer.Option(60, "--wait-timeout", help="Seconds to wait for Bolt readiness"),
+):
+    """Bring up required services via docker-compose (delegates to admin up)."""
+    admin_up(
+        compose_file=compose,
+        detached=detached,
+        start_docker=start_docker,
+        wait_bolt=wait_bolt,
+        wait_timeout=wait_timeout,
+    )
 
 
 # Version callback
