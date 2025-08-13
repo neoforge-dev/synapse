@@ -4,7 +4,7 @@ from typing import Optional
 import typer
 
 from graph_rag import __version__  # Assume version is defined in __init__.py
-from graph_rag.cli.commands.admin import check_health  # Import admin command
+from graph_rag.cli.commands.admin import app as admin_app
 
 # Import command functions directly
 from graph_rag.cli.commands.ingest import ingest_command
@@ -48,7 +48,7 @@ app.add_typer(graph_app, name="graph")
 app.add_typer(notion_app, name="notion")
 app.command("suggest")(suggest_command)
 app.add_typer(config_app, name="config")
-app.command("admin-health")(check_health)  # Renamed for clarity
+app.add_typer(admin_app, name="admin")
 app.add_typer(mcp_app, name="mcp")
 
 

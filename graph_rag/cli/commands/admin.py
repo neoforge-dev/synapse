@@ -11,8 +11,10 @@ HEALTH_URL = f"{API_BASE_URL}/health"
 API_V1 = f"{API_BASE_URL}/api/v1"
 
 logger = logging.getLogger(__name__)
+app = typer.Typer(help="Admin and maintenance commands")
 
 
+@app.command("health")
 def check_health(
     api_url: str = typer.Option(
         HEALTH_URL, help="URL of the health check API endpoint."
@@ -69,7 +71,7 @@ def check_health(
         raise SystemExit(1)
 
 
-@typer.Typer().command()
+@app.command("vector-stats")
 def vector_stats(
     api_url: str = typer.Option(f"{API_V1}/admin/vector/stats", help="Admin vector stats endpoint"),
 ):
@@ -83,7 +85,7 @@ def vector_stats(
         raise SystemExit(1)
 
 
-@typer.Typer().command()
+@app.command("vector-rebuild")
 def vector_rebuild(
     api_url: str = typer.Option(f"{API_V1}/admin/vector/rebuild", help="Admin vector rebuild endpoint"),
 ):
@@ -97,7 +99,7 @@ def vector_rebuild(
         raise SystemExit(1)
 
 
-@typer.Typer().command()
+@app.command("integrity-check")
 def integrity_check(
     api_url: str = typer.Option(f"{API_V1}/admin/integrity/check", help="Integrity check endpoint"),
 ):
