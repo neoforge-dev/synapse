@@ -1,0 +1,5 @@
+# Include only the graph_rag package; exclude data and pymgclient from packaging
+recursive-include graph_rag *
+recursive-include tests *
+recursive-exclude data *
+recursive-exclude pymgclient *
