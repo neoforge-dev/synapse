@@ -17,6 +17,7 @@ from graph_rag.cli.commands.query import app as query_app
 from graph_rag.cli.commands.graph import app as graph_app
 from graph_rag.cli.commands.notion import app as notion_app
 from graph_rag.cli.commands.config import app as config_app
+from graph_rag.cli.commands.mcp import app as mcp_app
 from graph_rag.config import get_settings  # Import factory
 
 settings = get_settings()  # Get settings instance
@@ -48,6 +49,7 @@ app.add_typer(notion_app, name="notion")
 app.command("suggest")(suggest_command)
 app.add_typer(config_app, name="config")
 app.command("admin-health")(check_health)  # Renamed for clarity
+app.add_typer(mcp_app, name="mcp")
 
 
 # Version callback
