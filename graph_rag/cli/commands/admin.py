@@ -118,8 +118,14 @@ def integrity_check(
 def up(
     compose_file: str = typer.Option(None, "--compose", help="Path to docker-compose.yml"),
     detached: bool = typer.Option(True, "--detached/--no-detached", help="Run docker compose up -d"),
+    wait_bolt: bool = typer.Option(
+        True,
+        "--wait-bolt/--no-wait-bolt",
+        help="Wait for Memgraph Bolt (127.0.0.1:7687) to accept connections",
+    ),
+    wait_timeout: int = typer.Option(60, "--wait-timeout", help="Seconds to wait for Bolt readiness"),
 ):
-    """Bring up Memgraph/API via docker compose (convenience)."""
+    """Bring up Memgraph/API via docker compose and optionally wait for Bolt readiness."""
     compose = compose_file or os.getenv("SYNAPSE_DOCKER_COMPOSE", "docker-compose.yml")
     args = ["docker", "compose", "-f", compose, "up"]
     if detached:
@@ -134,3 +140,29 @@ def up(
     except Exception as e:
         typer.echo(f"Failed to run docker compose: {e}")
         raise typer.Exit(1)
+
+    if not wait_bolt:
+        return
+
+    # Poll Bolt port for readiness
+    import socket
+    import time as _time
+
+    host = os.getenv("SYNAPSE_MEMGRAPH_HOST", "127.0.0.1")
+    try:
+        port = int(os.getenv("SYNAPSE_MEMGRAPH_PORT", "7687"))
+    except ValueError:
+        port = 7687
+
+    deadline = _time.time() + max(1, wait_timeout)
+    typer.echo(f"Waiting for Memgraph Bolt at {host}:{port} (timeout {wait_timeout}s)...")
+    while _time.time() < deadline:
+        try:
+            with socket.create_connection((host, port), timeout=2.0):
+                typer.echo("Memgraph Bolt is ready.")
+                return
+        except OSError:
+            _time.sleep(1.0)
+
+    typer.echo("Timed out waiting for Memgraph Bolt readiness.")
+    raise typer.Exit(2)
