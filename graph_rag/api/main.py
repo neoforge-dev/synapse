@@ -632,7 +632,10 @@ def create_app() -> FastAPI:
         # Log request start
         logger.info(f"rid={request_id} path={request.url.path} method={request.method}")
 
+        import time as _t
+        _q_start = _t.time()
         response = await call_next(request)
+        _q_dur = _t.time() - _q_start
 
         process_time = time.time() - start_time
         response.headers["X-Request-ID"] = request_id
@@ -652,6 +655,7 @@ def create_app() -> FastAPI:
                     from graph_rag.api.metrics import (
                         inc_ask_total,
                         inc_ingest_total,
+                        observe_query_latency,
                     )
 
                     path = request.url.path
@@ -659,6 +663,7 @@ def create_app() -> FastAPI:
                         "/api/v1/query/ask/stream"
                     ):
                         inc_ask_total()
+                        observe_query_latency(_q_dur)
                     if (
                         path.endswith("/api/v1/ingestion/documents")
                         and response.status_code == 202

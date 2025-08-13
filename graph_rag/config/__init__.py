@@ -116,6 +116,16 @@ class Settings(BaseSettings):
     notion_version: str = Field(
         "2022-06-28", description="Notion API version header value."
     )
+    notion_max_qps: float = Field(
+        3.0,
+        ge=0.1,
+        description="Maximum Notion API requests per second (client-side throttle).",
+    )
+    notion_backoff_ceiling: float = Field(
+        8.0,
+        ge=0.5,
+        description="Maximum exponential backoff seconds ceiling for 429 retries.",
+    )
 
     # --- Cache Settings ---
     cache_type: str = Field(

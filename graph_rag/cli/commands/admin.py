@@ -1,6 +1,7 @@
 import json
 import logging
 import sys
+import subprocess
 
 import httpx
 import typer
@@ -111,3 +112,25 @@ def integrity_check(
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         raise SystemExit(1)
+
+
+@app.command("up")
+def up(
+    compose_file: str = typer.Option(None, "--compose", help="Path to docker-compose.yml"),
+    detached: bool = typer.Option(True, "--detached/--no-detached", help="Run docker compose up -d"),
+):
+    """Bring up Memgraph/API via docker compose (convenience)."""
+    compose = compose_file or os.getenv("SYNAPSE_DOCKER_COMPOSE", "docker-compose.yml")
+    args = ["docker", "compose", "-f", compose, "up"]
+    if detached:
+        args.append("-d")
+    logger.info("Running: %s", " ".join(args))
+    try:
+        proc = subprocess.run(args, check=True)
+        if proc.returncode == 0:
+            typer.echo("compose up completed")
+        else:
+            raise RuntimeError(f"compose exited with {proc.returncode}")
+    except Exception as e:
+        typer.echo(f"Failed to run docker compose: {e}")
+        raise typer.Exit(1)
