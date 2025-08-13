@@ -354,7 +354,7 @@ async def test_retrieve_context_vector(
     )
 
     # Assert Vector Search
-    mock_vector_store.search.assert_awaited_once_with(query_text, top_k=10)
+    mock_vector_store.search.assert_awaited_once_with(query_text, top_k=10, search_type="vector")
 
     # Assert LLM Call (ensure it was called since context was found)
     mock_llm_service.generate_response.assert_awaited_once()
@@ -416,7 +416,7 @@ async def test_simple_engine_query_uses_stores(
 
     # Assertions
     # Vector store called
-    mock_vector_store.search.assert_awaited_once_with(query_text, top_k=1)
+    mock_vector_store.search.assert_awaited_once_with(query_text, top_k=1, search_type="vector")
     # Entity extractor NOT called (because graph=False, implicitly skipped in earlier steps)
     # Note: Current implementation might call extractor even if graph=False, adjust if needed.
     # For now, assume it's skipped if graph=False or no chunks found.
@@ -672,7 +672,7 @@ async def test_simple_engine_query_with_graph_context(
 
     # Assert
     # Vector search called
-    mock_vector_store.search.assert_awaited_once_with(query, top_k=config.get("k", 3))
+    mock_vector_store.search.assert_awaited_once_with(query, top_k=config.get("k", 3), search_type="vector")
 
     # Entity extraction called
     mock_entity_extractor.extract_from_text.assert_called_once_with(combined_text)
@@ -749,7 +749,7 @@ async def test_simple_engine_query_graph_no_entities_extracted(
     result = await engine.query(query, config=config)  # include_graph=True by default
 
     # Assert
-    mock_vector_store.search.assert_awaited_once_with(query, top_k=config["k"])
+    mock_vector_store.search.assert_awaited_once_with(query, top_k=config["k"], search_type="vector")
     combined_text = " ".join([sr.chunk.text for sr in sample_chunk_list if sr.chunk])
     mock_entity_extractor.extract_from_text.assert_called_once_with(combined_text)
     # Graph searches should NOT be called
@@ -795,7 +795,7 @@ async def test_simple_engine_query_graph_entities_not_found(
     result = await engine.query(query, config=config)  # include_graph=True by default
 
     # Assert
-    mock_vector_store.search.assert_awaited_once_with(query, top_k=config["k"])
+    mock_vector_store.search.assert_awaited_once_with(query, top_k=config["k"], search_type="vector")
     combined_text = " ".join([sr.chunk.text for sr in sample_chunk_list if sr.chunk])
     mock_entity_extractor.extract_from_text.assert_called_once_with(combined_text)
     # Graph property search *was* called
@@ -836,7 +836,7 @@ async def test_simple_engine_query_no_context_found(
     result = await engine.query(query, config=config)  # include_graph=True by default
 
     # Assert
-    mock_vector_store.search.assert_awaited_once_with(query, top_k=config["k"])
+    mock_vector_store.search.assert_awaited_once_with(query, top_k=config["k"], search_type="vector")
     # Nothing else should be called if no chunks are found initially
     mock_entity_extractor.extract_from_text.assert_not_called()
     mock_graph_repo.search_entities_by_properties.assert_not_called()
@@ -878,7 +878,7 @@ async def test_retrieve_context_vector_only(
     results = await rag_engine.retrieve_context(query=query, limit=limit)
 
     # Assertions
-    mock_vector_store.search.assert_awaited_once_with(query, top_k=limit)
+    mock_vector_store.search.assert_awaited_once_with(query, top_k=limit, search_type="vector")
     assert results == mock_search_results
     # Ensure graph/extraction methods weren't called unnecessarily by retrieve_context
     # Note: _retrieve_and_build_context IS called, but its internal graph calls are skipped due to config
@@ -917,7 +917,7 @@ async def test_answer_query_vector_only(
     )
 
     # Assertions
-    mock_vector_store.search.assert_awaited_once_with(query, top_k=limit)
+    mock_vector_store.search.assert_awaited_once_with(query, top_k=limit, search_type="vector")
     # Check that LLM was called with expected prompt structure
     mock_llm_service.generate_response.assert_awaited_once()
     call_args, _ = mock_llm_service.generate_response.await_args
@@ -1011,7 +1011,7 @@ async def test_answer_query_with_graph(
     )
 
     # Assertions
-    mock_vector_store.search.assert_awaited_once_with(query, top_k=limit)
+    mock_vector_store.search.assert_awaited_once_with(query, top_k=limit, search_type="vector")
     mock_entity_extractor.extract_from_text.assert_awaited_once_with(
         mock_chunk_data.text
     )
@@ -1080,7 +1080,7 @@ async def test_answer_query_no_context(
     answer = await rag_engine.answer_query(query)
 
     # Assertions
-    mock_vector_store.search.assert_awaited_once_with(query, top_k=3)  # Default k=3
+    mock_vector_store.search.assert_awaited_once_with(query, top_k=3, search_type="vector")  # Default k=3
     mock_llm_service.generate_response.assert_not_awaited()  # LLM should not be called
     assert (
         answer == "Could not find relevant information to answer the query."
@@ -1177,3 +1177,185 @@ async def test_answer_query_graph_duplicate_extracted_entities_searched_once(
 
     mock_llm_service.generate_response.assert_called_once()
     # Further assertions on LLM context could be added if necessary
+
+
+# === Retrieval Quality Controls Tests ===
+
+
+@pytest.mark.asyncio
+async def test_query_search_type_vector_only(
+    rag_engine: SimpleGraphRAGEngine,
+    mock_vector_store: AsyncMock,
+    mock_llm_service: AsyncMock,
+):
+    """Test search_type='vector' uses only vector search."""
+    query_text = "test vector search"
+    mock_chunk = create_mock_chunk_data(id="c1", text="vector result", score=0.1)
+    mock_result = create_mock_search_result(mock_chunk, 0.9)
+    
+    # Mock vector store to return different results for vector vs keyword
+    async def mock_search_side_effect(query, top_k, search_type="vector"):
+        if search_type == "vector":
+            return [mock_result]
+        elif search_type == "keyword":
+            return []  # Should not be called for vector-only
+        return []
+    
+    mock_vector_store.search.side_effect = mock_search_side_effect
+    mock_llm_service.generate_response.return_value = "Vector search answer"
+    
+    # Act
+    config = {"search_type": "vector", "include_graph": False, "k": 3}
+    result = await rag_engine.query(query_text, config=config)
+    
+    # Assert
+    assert result.answer == "Vector search answer"
+    assert len(result.relevant_chunks) == 1
+    assert result.relevant_chunks[0].text == "vector result"
+    
+    # Should only call vector search, never keyword
+    mock_vector_store.search.assert_called_once_with(query_text, top_k=3, search_type="vector")
+
+
+@pytest.mark.asyncio
+async def test_query_search_type_keyword_only(
+    rag_engine: SimpleGraphRAGEngine,
+    mock_vector_store: AsyncMock,
+    mock_llm_service: AsyncMock,
+):
+    """Test search_type='keyword' uses only keyword search."""
+    query_text = "test keyword search"
+    mock_chunk = create_mock_chunk_data(id="c1", text="keyword result", score=0.1)
+    mock_result = create_mock_search_result(mock_chunk, 0.8)
+    
+    # Mock vector store to return different results for vector vs keyword
+    async def mock_search_side_effect(query, top_k, search_type="vector"):
+        if search_type == "keyword":
+            return [mock_result]
+        elif search_type == "vector":
+            return []  # Should not be called for keyword-only
+        return []
+    
+    mock_vector_store.search.side_effect = mock_search_side_effect
+    mock_llm_service.generate_response.return_value = "Keyword search answer"
+    
+    # Act
+    config = {"search_type": "keyword", "include_graph": False, "k": 3}
+    result = await rag_engine.query(query_text, config=config)
+    
+    # Assert
+    assert result.answer == "Keyword search answer"
+    assert len(result.relevant_chunks) == 1
+    assert result.relevant_chunks[0].text == "keyword result"
+    
+    # Should only call keyword search, never vector
+    mock_vector_store.search.assert_called_once_with(query_text, top_k=3, search_type="keyword")
+
+
+@pytest.mark.asyncio
+async def test_query_search_type_hybrid_blending(
+    rag_engine: SimpleGraphRAGEngine,
+    mock_vector_store: AsyncMock,
+    mock_llm_service: AsyncMock,
+):
+    """Test search_type='hybrid' blends vector and keyword results based on blend_keyword_weight."""
+    query_text = "test hybrid search"
+    
+    # Mock different results for vector vs keyword
+    vector_chunk = create_mock_chunk_data(id="v1", text="vector result", score=0.1)
+    vector_result = create_mock_search_result(vector_chunk, 0.9)
+    
+    keyword_chunk = create_mock_chunk_data(id="k1", text="keyword result", score=0.1) 
+    keyword_result = create_mock_search_result(keyword_chunk, 0.7)
+    
+    async def mock_search_side_effect(query, top_k, search_type="vector"):
+        if search_type == "vector":
+            return [vector_result]
+        elif search_type == "keyword":
+            return [keyword_result]
+        return []
+    
+    mock_vector_store.search.side_effect = mock_search_side_effect
+    mock_llm_service.generate_response.return_value = "Hybrid search answer"
+    
+    # Act: Test with blend_keyword_weight=0.3 (30% keyword, 70% vector)
+    config = {
+        "search_type": "hybrid", 
+        "include_graph": False, 
+        "k": 3,
+        "blend_keyword_weight": 0.3
+    }
+    result = await rag_engine.query(query_text, config=config)
+    
+    # Assert
+    assert result.answer == "Hybrid search answer"
+    
+    # Should call both vector and keyword search
+    assert mock_vector_store.search.call_count == 2
+    mock_vector_store.search.assert_any_call(query_text, top_k=3, search_type="vector")
+    mock_vector_store.search.assert_any_call(query_text, top_k=3, search_type="keyword")
+    
+    # Results should be blended (exact blending logic will be tested in implementation)
+    assert len(result.relevant_chunks) >= 1
+
+
+@pytest.mark.asyncio
+async def test_query_no_answer_min_score_threshold(
+    rag_engine: SimpleGraphRAGEngine,
+    mock_vector_store: AsyncMock,
+    mock_llm_service: AsyncMock,
+):
+    """Test no_answer_min_score returns no-answer message when top score is below threshold."""
+    query_text = "test low score query"
+    
+    # Mock low-score result
+    low_score_chunk = create_mock_chunk_data(id="c1", text="low relevance", score=0.1)
+    low_score_result = create_mock_search_result(low_score_chunk, 0.2)  # Score below threshold
+    
+    mock_vector_store.search.return_value = [low_score_result]
+    
+    # Act: Set threshold higher than the mock result score
+    config = {
+        "search_type": "vector",
+        "include_graph": False, 
+        "k": 3,
+        "no_answer_min_score": 0.5  # Threshold higher than 0.2
+    }
+    result = await rag_engine.query(query_text, config=config)
+    
+    # Assert: Should return no-answer message without calling LLM
+    assert "No relevant information found" in result.answer
+    assert len(result.relevant_chunks) == 0
+    mock_llm_service.generate_response.assert_not_called()
+
+
+@pytest.mark.asyncio 
+async def test_query_no_answer_min_score_passes_threshold(
+    rag_engine: SimpleGraphRAGEngine,
+    mock_vector_store: AsyncMock,
+    mock_llm_service: AsyncMock,
+):
+    """Test no_answer_min_score allows processing when top score meets threshold."""
+    query_text = "test high score query"
+    
+    # Mock high-score result
+    high_score_chunk = create_mock_chunk_data(id="c1", text="high relevance", score=0.1)
+    high_score_result = create_mock_search_result(high_score_chunk, 0.8)  # Score above threshold
+    
+    mock_vector_store.search.return_value = [high_score_result]
+    mock_llm_service.generate_response.return_value = "High score answer"
+    
+    # Act: Set threshold lower than the mock result score
+    config = {
+        "search_type": "vector",
+        "include_graph": False,
+        "k": 3, 
+        "no_answer_min_score": 0.5  # Threshold lower than 0.8
+    }
+    result = await rag_engine.query(query_text, config=config)
+    
+    # Assert: Should process normally and call LLM
+    assert result.answer == "High score answer"
+    assert len(result.relevant_chunks) == 1
+    assert result.relevant_chunks[0].text == "high relevance"
+    mock_llm_service.generate_response.assert_called_once()

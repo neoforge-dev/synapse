@@ -293,35 +293,61 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         ] = []  # Store full SearchResultData
 
         try:
-            # 1. Retrieval: vector-only by default; optionally hybrid when configured
+            # 1. Retrieval: handle search_type parameter for vector, keyword, or hybrid search
             logger.debug(f"Performing retrieval for: '{query_text}' (k={k})")
-            alpha = float(config.get("blend_vector_weight", 1.0))
-            beta = float(config.get("blend_keyword_weight", 0.0))
-            do_hybrid = bool(config.get("hybrid", False)) or (beta > 0.0 and alpha >= 0.0)
-
-            if do_hybrid:
-                # Hybrid retrieval: call vector and keyword searches and blend
+            search_type = config.get("search_type", "vector").lower()
+            blend_keyword_weight = float(config.get("blend_keyword_weight", 0.0))
+            no_answer_min_score = float(config.get("no_answer_min_score", 0.0))
+            
+            if search_type == "vector":
+                # Vector-only search
+                logger.debug("Using vector-only search")
+                retrieved = await self._vector_store.search(query_text, top_k=k, search_type="vector")
+                retrieved_chunks_full = retrieved
+                
+            elif search_type == "keyword":
+                # Keyword-only search
+                logger.debug("Using keyword-only search")
+                retrieved = await self._vector_store.search(query_text, top_k=k, search_type="keyword")
+                retrieved_chunks_full = retrieved
+                
+            elif search_type == "hybrid":
+                # Hybrid search: blend vector and keyword results
+                logger.debug(f"Using hybrid search with blend_keyword_weight={blend_keyword_weight}")
+                
+                # Get results from both search types
                 results_vector = await self._vector_store.search(query_text, top_k=k, search_type="vector")
                 results_keyword = await self._vector_store.search(query_text, top_k=k, search_type="keyword")
+                
                 # Convert to dict by chunk id for blending
                 vec_scores = {r.chunk.id: r.score for r in results_vector if r and r.chunk}
                 kw_scores = {r.chunk.id: r.score for r in results_keyword if r and r.chunk}
+                
+                # Combine all chunks from both searches
                 combined: dict[str, SearchResultData] = {}
-                for rid in vec_scores.keys():
-                    combined[rid] = next((r for r in results_vector if r.chunk.id == rid), None)
-                for rid in kw_scores.keys():
-                    combined.setdefault(rid, next((r for r in results_keyword if r.chunk.id == rid), None))
-                # Recompute blended scores
+                for r in results_vector:
+                    if r and r.chunk:
+                        combined[r.chunk.id] = r
+                for r in results_keyword:
+                    if r and r.chunk:
+                        combined.setdefault(r.chunk.id, r)
+                
+                # Recompute blended scores: (1-blend_keyword_weight) * vector + blend_keyword_weight * keyword
+                alpha = 1.0 - blend_keyword_weight  # vector weight
+                beta = blend_keyword_weight  # keyword weight
+                
                 blended: list[SearchResultData] = []
                 for rid, item in combined.items():
                     vs = vec_scores.get(rid, 0.0)
                     ks = kw_scores.get(rid, 0.0)
                     score = alpha * vs + beta * ks
+                    
                     chunk = item.chunk
                     meta = dict(chunk.metadata or {})
                     meta["score_vector"] = vs
                     meta["score_keyword"] = ks
                     meta["score_blended"] = score
+                    
                     blended.append(
                         SearchResultData(
                             chunk=ChunkData(
@@ -335,21 +361,23 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                             score=score,
                         )
                     )
+                
+                # Sort by blended score
                 blended.sort(key=lambda r: r.score, reverse=True)
-                # Apply no-answer threshold if configured
-                threshold = float(config.get("no_answer_min_score", 0.0) or 0.0)
-                if blended and threshold > 0.0 and (blended[0].score or 0.0) < threshold:
-                    retrieved_chunks_full = []
-                else:
-                    retrieved_chunks_full = blended[:k]
+                retrieved_chunks_full = blended[:k]
+                
             else:
-                # Backward-compatible: single call with only (query, top_k=k)
-                retrieved = await self._vector_store.search(query_text, top_k=k)
-                threshold = float(config.get("no_answer_min_score", 0.0) or 0.0)
-                if retrieved and threshold > 0.0 and (retrieved[0].score or 0.0) < threshold:
+                # Fallback to vector search for unknown search types
+                logger.warning(f"Unknown search_type '{search_type}', falling back to vector search")
+                retrieved = await self._vector_store.search(query_text, top_k=k, search_type="vector")
+                retrieved_chunks_full = retrieved
+            
+            # Apply no-answer threshold check
+            if no_answer_min_score > 0.0 and retrieved_chunks_full:
+                top_score = retrieved_chunks_full[0].score if retrieved_chunks_full[0].score is not None else 0.0
+                if top_score < no_answer_min_score:
+                    logger.info(f"Top result score {top_score:.3f} below threshold {no_answer_min_score:.3f}, returning no-answer")
                     retrieved_chunks_full = []
-                else:
-                    retrieved_chunks_full = retrieved
             if not retrieved_chunks_full:
                 logger.warning(
                     f"Vector search returned no relevant chunks for query: '{query_text}'"
@@ -698,6 +726,10 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
 
         if not context_str:
             logger.warning(f"No context found for answer_query: '{query_text}'.")
+            # Check if this was due to no-answer threshold
+            no_answer_min_score = (config or {}).get("no_answer_min_score", 0.0)
+            if no_answer_min_score > 0.0:
+                return "No relevant information found"
             return "Could not find relevant information to answer the query."
 
         # 3. Create Prompt and Call LLM
