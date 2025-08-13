@@ -1,4 +1,5 @@
 import json
+import webbrowser
 from typing import Optional
 
 import httpx
@@ -54,3 +55,27 @@ def export(
         typer.echo(f"wrote {format} to {outfile}")
     else:
         typer.echo(body)
+
+
+@app.command("viz")
+def viz(
+    seed: Optional[str] = typer.Option(None, "--seed", help="Starting node for visualization"),
+    port: int = typer.Option(8000, "--port", help="API server port"),
+    host: str = typer.Option("localhost", "--host", help="API server host"),
+    open_browser: bool = typer.Option(True, "--open/--no-open", help="Open browser automatically"),
+):
+    """Open interactive graph visualization in browser."""
+    base_url = f"http://{host}:{port}/api/v1/graph/viz"
+    url = f"{base_url}?seed={seed}" if seed else base_url
+    
+    print(f"Graph visualization URL: {url}")
+    
+    if open_browser:
+        try:
+            webbrowser.open(url)
+            print("Opened visualization in default browser.")
+        except Exception as e:
+            print(f"Could not open browser: {e}")
+            print("Please open the URL manually.")
+    else:
+        print("Use --open to open in browser automatically.")
