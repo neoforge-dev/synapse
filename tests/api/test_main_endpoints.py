@@ -121,4 +121,43 @@ async def test_health_check_engine_failure(integration_test_client: AsyncClient,
         app.dependency_overrides = original_overrides
 
 
+@pytest.mark.asyncio
+async def test_readiness_checks_dependencies_ok(test_client: AsyncClient, app: FastAPI, mock_graph_repo, mock_vector_store):
+    """Readiness should return 200 when dependency probes succeed."""
+    # Ensure mocks are wired
+    app.state.graph_repository = mock_graph_repo
+    app.state.vector_store = mock_vector_store
+    app.state.graph_rag_engine = object()
+    app.state.ingestion_service = object()
+    # Probes: graph_repo.get_document_by_id returns None by default; treat as OK
+    # Vector store: add a get_vector_store_size that returns 0
+    try:
+        mock_vector_store.get_vector_store_size.return_value = 0  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+    resp = await test_client.get("/ready")
+    assert resp.status_code == status.HTTP_200_OK
+    data = resp.json()
+    assert data.get("status") == "ready"
+
+
+@pytest.mark.asyncio
+async def test_readiness_reports_failure_on_dep_error(test_client: AsyncClient, app: FastAPI, mock_graph_repo, mock_vector_store):
+    """Readiness should return 503 when a dependency probe fails."""
+    app.state.graph_repository = mock_graph_repo
+    app.state.vector_store = mock_vector_store
+    app.state.graph_rag_engine = object()
+    app.state.ingestion_service = object()
+    # Make graph ping fail
+    async def _boom(_id: str):
+        raise RuntimeError("DB down")
+
+    mock_graph_repo.get_document_by_id.side_effect = _boom
+    resp = await test_client.get("/ready")
+    assert resp.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    body = resp.json()
+    assert body.get("status") == "not ready"
+
+
 # TODO: Add a test to verify the health check actually checks DB connectivity if that's part of it.

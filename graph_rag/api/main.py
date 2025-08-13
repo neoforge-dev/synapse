@@ -677,18 +677,54 @@ def create_app() -> FastAPI:
 
     @app.get("/ready", tags=["Status"], status_code=status.HTTP_200_OK)
     async def readiness(request: Request):
-        # Basic readiness: confirm core dependencies exist in app state
-        ready = all(
-            [
+        """Readiness check with lightweight dependency probes.
+
+        - Verifies core state (engine, ingestion_service)
+        - Pings Memgraph via a trivial read
+        - Pings Vector store (size or a no-op search)
+        """
+        try:
+            # State checks
+            engine_ok = bool(
                 hasattr(request.app.state, "graph_rag_engine")
-                and request.app.state.graph_rag_engine,
+                and request.app.state.graph_rag_engine
+            )
+            ingest_ok = bool(
                 hasattr(request.app.state, "ingestion_service")
-                and request.app.state.ingestion_service,
-            ]
-        )
-        if not ready:
+                and request.app.state.ingestion_service
+            )
+            if not (engine_ok and ingest_ok):
+                return JSONResponse(status_code=503, content={"status": "not ready"})
+
+            # Graph probe: attempt a very cheap call
+            graph_ok = True
+            try:
+                if hasattr(request.app.state, "graph_repository") and request.app.state.graph_repository:
+                    repo = request.app.state.graph_repository
+                    # Use a guarded call that does not assume data presence
+                    await repo.get_document_by_id("__readiness_probe__")
+            except Exception:
+                graph_ok = False
+
+            # Vector store probe
+            vector_ok = True
+            try:
+                if hasattr(request.app.state, "vector_store") and request.app.state.vector_store:
+                    vs = request.app.state.vector_store
+                    if hasattr(vs, "get_vector_store_size"):
+                        await vs.get_vector_store_size()  # type: ignore[attr-defined]
+                    else:
+                        # Fallback: try a zero-results search with positional args for compatibility
+                        await vs.search("", 0)  # type: ignore[misc]
+            except Exception:
+                vector_ok = False
+
+            if not (graph_ok and vector_ok):
+                return JSONResponse(status_code=503, content={"status": "not ready"})
+
+            return {"status": "ready"}
+        except Exception:
             return JSONResponse(status_code=503, content={"status": "not ready"})
-        return {"status": "ready"}
 
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception):
