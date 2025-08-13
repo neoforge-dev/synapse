@@ -2,6 +2,11 @@ import uuid
 
 import pytest
 
+try:
+    import mgclient  # type: ignore
+except Exception:
+    pytest.skip("mgclient not available; skipping Memgraph repository tests", allow_module_level=True)
+
 from graph_rag.domain.models import Chunk, Document, Entity, Relationship
 
 # Use the concrete implementation from conftest

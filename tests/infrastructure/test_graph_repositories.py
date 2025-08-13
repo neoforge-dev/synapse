@@ -4,6 +4,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+try:
+    import mgclient  # type: ignore
+except Exception:
+    pytest.skip("mgclient not available; skipping Memgraph repository tests", allow_module_level=True)
+
 from graph_rag.core.interfaces import GraphRepository
 from graph_rag.data_stores.graph_store import GraphStore
 from graph_rag.domain.models import Entity

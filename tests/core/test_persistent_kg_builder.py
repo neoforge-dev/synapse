@@ -1,3 +1,12 @@
+import pytest
+
+# Skip entire module if mgclient (Memgraph client) isn’t available
+try:
+    import mgclient  # type: ignore
+except Exception:
+    pytest.skip("mgclient not available; skipping Memgraph-dependent tests", allow_module_level=True)
+
+pytestmark = pytest.mark.integration
 import uuid
 from typing import Optional
 from unittest.mock import ANY, AsyncMock, MagicMock, call

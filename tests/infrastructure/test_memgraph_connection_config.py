@@ -2,6 +2,11 @@ import os
 
 import pytest
 
+try:
+    import mgclient  # type: ignore
+except Exception:
+    pytest.skip("mgclient not available; skipping Memgraph connection config tests", allow_module_level=True)
+
 from graph_rag.config import Settings
 from graph_rag.infrastructure.graph_stores.memgraph_store import (
     MemgraphConnectionConfig,

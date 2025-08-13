@@ -7,6 +7,11 @@ from collections.abc import AsyncGenerator
 
 import numpy as np
 import pytest
+
+try:
+    import mgclient  # type: ignore
+except Exception:
+    pytest.skip("mgclient not available; skipping Memgraph integration tests", allow_module_level=True)
 import pytest_asyncio
 
 from graph_rag.domain.models import Chunk, Document, Entity, Relationship

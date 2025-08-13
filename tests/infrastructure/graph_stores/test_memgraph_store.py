@@ -7,7 +7,12 @@ from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 from typing import Optional
 
-import mgclient
+import pytest
+
+try:
+    import mgclient  # type: ignore
+except Exception:
+    pytest.skip("mgclient not available; skipping Memgraph store tests", allow_module_level=True)
 import pytest
 import pytest_asyncio
 

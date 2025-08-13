@@ -8,6 +8,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pytest
+
+try:
+    import mgclient  # type: ignore
+except Exception:
+    pytest.skip("mgclient not available; skipping e2e Memgraph tests", allow_module_level=True)
 from fastapi import FastAPI, status
 from httpx import AsyncClient, Timeout
 
