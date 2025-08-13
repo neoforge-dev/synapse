@@ -31,6 +31,11 @@ class SimpleVectorStore(VectorStore):
         self.documents: list[str] = []  # Store original document text
         self.chunk_ids: list[str] = []  # Store chunk IDs for retrieval by ID
         self.lock = asyncio.Lock()
+        # --- BM25 structures ---
+        self._bm25_docs: list[list[str]] = []
+        self._bm25_doc_freq: dict[str, int] = {}
+        self._bm25_avgdl: float = 0.0
+        self._bm25_dirty: bool = False
 
     async def add_chunks(self, chunks: list[ChunkData]) -> None:
         """
@@ -190,6 +195,9 @@ class SimpleVectorStore(VectorStore):
                     self.metadata.pop(index)
                 if index < len(self.documents):
                     self.documents.pop(index)
+                if index < len(self._bm25_docs):
+                    self._bm25_docs.pop(index)
+                    self._bm25_dirty = True
 
             logger.info(f"Removed {len(indices_to_remove)} chunks from vector store")
 
@@ -435,37 +443,58 @@ class SimpleVectorStore(VectorStore):
     async def keyword_search(
         self, query: str, k: int = 5
     ) -> list[tuple[ChunkData, float]]:
-        """Performs simple keyword search (case-insensitive)."""
-        logger.debug(f"Performing keyword search for query: '{query[:50]}...'")
-        query_lower = query.lower()
-        results = []
+        """Performs BM25 keyword search (lowercase tokenization)."""
+        logger.debug(f"Performing BM25 keyword search for query: '{query[:50]}...'")
+        tokens = self._tokenize(query)
+        results: list[tuple[int, float]] = []
         async with self.lock:
-            for i, doc_text in enumerate(self.documents):
-                if query_lower in doc_text.lower():
-                    # Score based on presence (simple scoring)
-                    # In a real scenario, TF-IDF or BM25 would be better
-                    score = 1.0  # Simple score for keyword match
-                    chunk_data = ChunkData(
-                        id=self.chunk_ids[i]
-                        if i < len(self.chunk_ids)
-                        else f"chunk_{i}",
-                        text=doc_text,
-                        document_id=self.metadata[i].get("document_id", "unknown"),
-                        metadata=self.metadata[i],
-                        score=score,
-                    )
-                    results.append((chunk_data, score))
+            self._ensure_bm25_index()
+            N = max(1, len(self._bm25_docs))
+            # Okapi BM25 params
+            k1 = 1.5
+            b = 0.75
+            for i, doc_tokens in enumerate(self._bm25_docs):
+                if not doc_tokens:
+                    continue
+                score = 0.0
+                dl = len(doc_tokens)
+                # term frequencies for this doc
+                tf: dict[str, int] = {}
+                for t in doc_tokens:
+                    tf[t] = tf.get(t, 0) + 1
+                for q in tokens:
+                    df = self._bm25_doc_freq.get(q, 0)
+                    if df == 0:
+                        continue
+                    idf = max(0.0, ( (N - df + 0.5) / (df + 0.5) ))
+                    # Use log on idf-like ratio to stabilize
+                    import math as _math
 
-            # Sort results by score (though all are 1.0 here)
-            # In a more complex scoring system, this would be meaningful
-            results.sort(key=lambda item: item[1], reverse=True)
+                    idf = _math.log(1.0 + idf)
+                    f = tf.get(q, 0)
+                    if f == 0:
+                        continue
+                    denom = f + k1 * (1.0 - b + b * (dl / (self._bm25_avgdl or 1.0)))
+                    score += idf * ((f * (k1 + 1.0)) / denom)
+                if score > 0.0:
+                    results.append((i, float(score)))
 
-            # Get top k results
-            actual_k = min(k, len(results))
-            top_results = results[:actual_k]
+            # Sort and take top-k
+            results.sort(key=lambda t: t[1], reverse=True)
+            top = results[: min(k, len(results))]
+            out: list[tuple[ChunkData, float]] = []
+            for i, s in top:
+                chunk_data = ChunkData(
+                    id=self.chunk_ids[i] if i < len(self.chunk_ids) else f"chunk_{i}",
+                    text=self.documents[i],
+                    document_id=self.metadata[i].get("document_id", "unknown"),
+                    metadata=self.metadata[i],
+                    score=s,
+                )
+                out.append((chunk_data, s))
 
-        logger.debug(f"Keyword search returned {len(top_results)} results.")
-        return top_results
+        logger.debug(f"BM25 keyword search returned {len(out)} results.")
+        return out
 
     async def get_vector_store_size(self) -> int:
         """Returns the number of vectors in the store."""
@@ -479,4 +508,36 @@ class SimpleVectorStore(VectorStore):
             self.metadata = []
             self.documents = []
             self.chunk_ids = []
+            self._bm25_docs = []
+            self._bm25_doc_freq = {}
+            self._bm25_avgdl = 0.0
+            self._bm25_dirty = False
         logger.info("SimpleVectorStore cleared.")
+
+    # --- BM25 helpers ---
+    def _tokenize(self, text: str) -> list[str]:
+        # Simple whitespace + lowercase; strip punctuation crudely
+        import re as _re
+
+        text = (text or "").lower()
+        tokens = _re.findall(r"[a-z0-9]+", text)
+        return tokens
+
+    def _ensure_bm25_index(self) -> None:
+        if not self._bm25_dirty and self._bm25_docs and self._bm25_doc_freq:
+            return
+        # Rebuild doc list and stats from self.documents
+        self._bm25_docs = [self._tokenize(t) for t in self.documents]
+        df: dict[str, int] = {}
+        total_len = 0
+        for doc in self._bm25_docs:
+            total_len += len(doc)
+            seen: set[str] = set()
+            for tok in doc:
+                if tok in seen:
+                    continue
+                df[tok] = df.get(tok, 0) + 1
+                seen.add(tok)
+        self._bm25_doc_freq = df
+        self._bm25_avgdl = (total_len / max(1, len(self._bm25_docs))) if self._bm25_docs else 0.0
+        self._bm25_dirty = False
