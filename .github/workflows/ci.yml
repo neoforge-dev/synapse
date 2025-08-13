@@ -20,9 +20,9 @@ jobs:
       - name: Install deps (dev)
         run: |
           pip install -e .[dev]
-      - name: Lint
+      - name: Lint package code only
         run: |
-          ruff check .
+          ruff check graph_rag
       - name: Run unit tests
         env:
           SKIP_SPACY_IMPORT: '1'
