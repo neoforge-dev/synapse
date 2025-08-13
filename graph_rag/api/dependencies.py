@@ -55,7 +55,11 @@ from graph_rag.infrastructure.document_processor.simple_processor import (
 )
 
 # Concrete Implementations (adjust paths as needed)
-from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+try:
+    from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+except Exception:  # pragma: no cover - allow CI without mgclient
+    class MemgraphGraphRepository:  # type: ignore
+        ...
 
 # from graph_rag.infrastructure.graph_stores.neo4j_store import Neo4jGraphRepository # Remove this line
 from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore

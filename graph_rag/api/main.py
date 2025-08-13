@@ -40,7 +40,11 @@ from graph_rag.core.vector_store import MockVectorStore
 from graph_rag.infrastructure.document_processor.simple_processor import (
     SimpleDocumentProcessor,
 )
-from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+try:
+    from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+except Exception:  # pragma: no cover - allow CI without mgclient
+    class MemgraphGraphRepository:  # type: ignore
+        ...
 from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
 from graph_rag.services.embedding import SentenceTransformerEmbeddingService
 from graph_rag.services.ingestion import IngestionService  # Needed for type hint
