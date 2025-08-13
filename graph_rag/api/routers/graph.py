@@ -81,6 +81,8 @@ def create_graph_router() -> APIRouter:
         format: str = Query("json", pattern="^(json|graphml)$"),
         seed: Optional[str] = Query(None, description="Optional seed id to scope export"),
         depth: int = Query(1, ge=1, le=3),
+        limit_nodes: Optional[int] = Query(None, ge=1, description="Optional max nodes in export"),
+        limit_edges: Optional[int] = Query(None, ge=1, description="Optional max edges in export"),
         repo: Annotated[GraphRepository, Depends(get_graph_repository)] = None,
     ):
         try:
@@ -88,6 +90,10 @@ def create_graph_router() -> APIRouter:
                 nodes, edges = await repo.query_subgraph(seed, max_depth=depth)
             else:
                 nodes, edges = [], []
+            if isinstance(limit_nodes, int):
+                nodes = nodes[: max(0, limit_nodes)]
+            if isinstance(limit_edges, int):
+                edges = edges[: max(0, limit_edges)]
             if format == "json":
                 elements = {
                     "elements": {
