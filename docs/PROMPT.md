@@ -77,3 +77,42 @@ When stuck:
 - Prefer small, incremental PR-sized edits; run targeted pytest subsets often
 - If a dependency is missing at runtime, fallback to no-op or mock and log a warning
 - Document new flags/endpoints in README and HANDBOOK
+
+---
+
+Hand-off briefing for the next Cursor agent
+
+Principles (non-negotiable)
+- Pareto first; TDD always; YAGNI; vertical slices over horizontal layers
+
+Primary user journey
+1) Ingest notes (local/Notion)
+2) Ask a question with citations; optionally stream
+3) Explore/export subgraphs
+4) Operate the system (health, metrics, vector maintenance)
+
+Status overview
+- LLM relation gating + optional persist; subgraph APIs/CLI; Notion `--dry-run` + `--attachments`; metrics/admin/maintenance; MCP skeleton; BM25; streaming ask; packaging and unit CI in place
+
+Immediate execution plan (see `docs/PLAN.md` for acceptance criteria)
+- P0
+  - Retrieval toggles end-to-end: `search_type`, `blend_keyword_weight`, `no_answer_min_score` implemented and tested
+  - API tests ensure toggles propagate to engine
+- P1
+  - Notion dry-run robustness; rate-limit tests with 429 mocks
+  - Admin JSON logging toggle; minor integrity sampling
+- P2
+  - CLI `synapse up` (compose wrapper); graph API test expansion; prepare TestPyPI workflow
+
+Concrete next tasks
+1) Implement and test `no_answer_min_score` in engine; verify ask returns calibrated no-answer below threshold
+2) Ensure API -> engine propagation for retrieval toggles; add unit+API tests
+3) Extend Notion tests for multi-run dry-runs and 429 handling
+4) Add `SYNAPSE_JSON_LOGS` setting; wire JSON logs in API/CLI
+5) Implement `synapse up` command; update README examples
+6) Optional Memgraph job (allowed to fail) in CI; keep unit job green
+
+Working agreements
+- Keep package code lint-clean; tests may be looser
+- Degrade gracefully on optional deps; log warnings not crashes
+- Commit small, descriptive changes; keep CI green

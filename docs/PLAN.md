@@ -318,4 +318,74 @@ This section enumerates the concrete work items still outstanding to fully deliv
 - Week 3: Finish C and D; start E (MCP server skeleton)
 - Week 4: Finish E and packaging; docs and examples
 
+---
+
+## Execution plan (current phase)
+
+Priorities are trimmed to the smallest set that unblocks daily use (Pareto 20%): CI green, retrieval quality toggles tested, basic packaging/onboarding, and essential tests for new surfaces.
+
+### P0: CI reliability and scope
+- Actions
+  - Keep unit workflow scoped to package code for lint; run all unit tests (not integration)
+  - Add a second optional job (allowed to fail) for Memgraph integration when `RUN_MEMGRAPH_TESTS` is set and Memgraph service is available
+  - Add pre-commit ruff config to ignore E402/F401 in tests; keep package code strict
+- Acceptance
+  - Main CI green on PRs; optional integration job informative
+
+### P0: Retrieval quality (minimal viable knobs)
+- Actions
+  - BM25 is implemented in `SimpleVectorStore`; add config toggles to engine/query path: `search_type`, `blend_keyword_weight`, `no_answer_min_score`
+  - Implement “no-answer” threshold in engine: if top blended score < threshold, return calibrated “no relevant info”
+  - Add reranker provider flag; no-op by default; unit test for ordering preserved
+- Tests
+  - Engine unit tests: bm25-only, vector-only, blended; threshold behavior
+  - API tests: ask with toggles propagated
+- Acceptance
+  - Queries can be routed vector/bm25/blended; thresholded no-answer returned when configured
+
+### P1: Notion sync robustness (unit)
+- Actions
+  - Expand dry-run tests: update/delete across multiple runs; state file corruption recovery (fallback to no state)
+  - Rate-limit/backoff budget injected via `Settings` and verified with mocked 429 responses
+- Acceptance
+  - Dry-run prints consistent plan across runs; rate-limit retries capped and logged
+
+### P1: Admin/ops polish
+- Actions
+  - Document admin endpoints in README and add examples (done); add JSON logging toggle in settings and wire to FastAPI/CLI
+  - Integrity check: add option to sample-random chunks vs vectors for deeper check (best-effort)
+- Acceptance
+  - Admin can introspect vector size and trigger rebuild; integrity warnings actionable
+
+### P2: Packaging & onboarding
+- Actions
+  - Docker Compose quickstart: `synapse up` wrapper (CLI) that shells to `docker-compose up -d memgraph` and runs API
+  - Homebrew tap (scripted formula) – tracked in separate repo; add docs placeholder with manual install
+  - Release workflow (tag → build wheels → GitHub Release) – minimal skeleton, publish to TestPyPI first
+- Acceptance
+  - New users can pick: pipx install, Docker quickstart, or brew (when ready). One command to bring up Memgraph+API.
+
+### P2: Graph API tests
+- Actions
+  - Expand `tests/api/test_graph_api.py` to include filtered types and depth>1 for neighbors; GraphML smoke with labels
+- Acceptance
+  - Graph endpoints covered with >80% branch coverage on happy/error paths
+
+---
+
+## Task breakdown (checklist)
+
+- [ ] Engine: `no_answer_min_score` support and tests
+- [ ] Engine/API: propagate retrieval toggles fully and tests (ask, search)
+- [ ] Notion: dry-run multi-run tests; rate-limit budget tests
+- [ ] Admin: JSON logging toggle; minor integrity sampling
+- [ ] CLI: `synapse up` command
+- [ ] CI: optional Memgraph job; pre-commit/ruff config to narrow test lint
+- [ ] Graph tests: neighbors depth>1/types; export JSON/GraphML asserts
+- [ ] Release: TestPyPI workflow (draft)
+
+Notes
+- YAGNI: do not implement multi-provider rerank or complex MCP features yet
+- Defer full Homebrew pipeline until after TestPyPI release is validated
+
 

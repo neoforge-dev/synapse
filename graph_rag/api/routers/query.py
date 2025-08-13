@@ -149,6 +149,7 @@ def create_query_router() -> APIRouter:
                 "blend_keyword_weight": ask_request.blend_keyword_weight,
                 "rerank": ask_request.rerank,
                 "mmr_lambda": ask_request.mmr_lambda,
+                "no_answer_min_score": ask_request.no_answer_min_score,
                 "style": ask_request.style,
                 # Relationship extraction controls
                 "extract_relationships": True,

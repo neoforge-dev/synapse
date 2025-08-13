@@ -260,6 +260,15 @@ class GraphRepository(Protocol):
         """Retrieves neighbor nodes for a given node."""
         ...
 
+    async def query_subgraph(
+        self,
+        seed_id: str,
+        max_depth: int = 1,
+        relationship_types: list[str] | None = None,
+    ) -> tuple[list[dict], list[dict]]:
+        """Returns a subgraph around a seed node as dicts for API convenience."""
+        ...
+
     async def update_node_properties(
         self, node_id: str, properties: dict[str, Any]
     ) -> dict[str, Any] | None:

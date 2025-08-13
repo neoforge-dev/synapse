@@ -2,6 +2,7 @@ import logging
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import PlainTextResponse
 
 from graph_rag.api.dependencies import get_graph_repository
 from graph_rag.core.interfaces import GraphRepository
@@ -10,7 +11,8 @@ logger = logging.getLogger(__name__)
 
 
 def create_graph_router() -> APIRouter:
-    router = APIRouter(prefix="/graph", tags=["Graph"])
+    # No internal prefix; main app mounts with /graph
+    router = APIRouter(tags=["Graph"])
 
     @router.get("/neighbors")
     async def neighbors(
@@ -80,7 +82,7 @@ def create_graph_router() -> APIRouter:
         seed: Optional[str] = Query(None, description="Optional seed id to scope export"),
         depth: int = Query(1, ge=1, le=3),
         repo: Annotated[GraphRepository, Depends(get_graph_repository)] = None,
-    ) -> str:
+    ):
         try:
             if seed:
                 nodes, edges = await repo.query_subgraph(seed, max_depth=depth)
@@ -104,9 +106,8 @@ def create_graph_router() -> APIRouter:
                         ],
                     }
                 }
-                import json
-
-                return json.dumps(elements)
+                # Return dict so FastAPI serializes to JSON object (not quoted string)
+                return elements
             from xml.sax.saxutils import escape
 
             def node_xml(n: dict) -> str:
@@ -129,7 +130,8 @@ def create_graph_router() -> APIRouter:
                 "</graph>"
                 "</graphml>"
             )
-            return graphml
+            # Return plain text/XML so body is not JSON-quoted
+            return PlainTextResponse(graphml, media_type="application/xml")
         except Exception as e:
             logger.error(f"export failed: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=str(e))

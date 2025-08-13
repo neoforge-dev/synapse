@@ -338,10 +338,20 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                         )
                     )
                 blended.sort(key=lambda r: r.score, reverse=True)
-                retrieved_chunks_full = blended[:k]
+                # Apply no-answer threshold if configured
+                threshold = float(config.get("no_answer_min_score", 0.0) or 0.0)
+                if blended and threshold > 0.0 and (blended[0].score or 0.0) < threshold:
+                    retrieved_chunks_full = []
+                else:
+                    retrieved_chunks_full = blended[:k]
             else:
                 # Backward-compatible: single call with only (query, top_k=k)
-                retrieved_chunks_full = await self._vector_store.search(query_text, top_k=k)
+                retrieved = await self._vector_store.search(query_text, top_k=k)
+                threshold = float(config.get("no_answer_min_score", 0.0) or 0.0)
+                if retrieved and threshold > 0.0 and (retrieved[0].score or 0.0) < threshold:
+                    retrieved_chunks_full = []
+                else:
+                    retrieved_chunks_full = retrieved
             if not retrieved_chunks_full:
                 logger.warning(
                     f"Vector search returned no relevant chunks for query: '{query_text}'"

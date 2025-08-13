@@ -15,6 +15,11 @@ from graph_rag.core.interfaces import (
     VectorStore,
 )
 from graph_rag.domain.models import Chunk, Document, Relationship
+from graph_rag.api.metrics import (
+    inc_ingested_chunks,
+    inc_ingested_vectors,
+    observe_ingest_latency,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -248,6 +253,11 @@ class IngestionService:
                             len(chunk_objects),
                             document_id,
                         )
+                        # Metrics: vectors attempted added
+                        try:
+                            inc_ingested_vectors(vectors_added_expected)
+                        except Exception:
+                            pass
                     except Exception as vs_e:
                         logger.error(
                             f"Failed to add chunks to vector store: {vs_e}",
@@ -395,6 +405,11 @@ class IngestionService:
         # Emit compact metrics line for observability
         duration_ms = int((time.monotonic() - start_ts) * 1000)
         try:
+            # Prometheus histograms are observed in seconds
+            observe_ingest_latency(duration_ms / 1000.0)
+        except Exception:
+            pass
+        try:
             logger.info(
                 "IngestMetrics doc_id=%s id_source=%s chunks=%d vectors_deleted=%d vectors_added_expected=%d duration_ms=%d",
                 document_id,
@@ -406,6 +421,10 @@ class IngestionService:
             )
         except Exception:
             # Never fail on metrics logging
+            pass
+        try:
+            inc_ingested_chunks(len(chunk_ids))
+        except Exception:
             pass
         # 5. Return result
         return IngestionResult(document_id=document_id, chunk_ids=chunk_ids)

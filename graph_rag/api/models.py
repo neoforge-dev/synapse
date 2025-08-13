@@ -137,6 +137,12 @@ class AskRequest(BaseModel):
         le=1.0,
         description="Maximal Marginal Relevance lambda (0..1). 0=diversity, 1=relevance.",
     )
+    no_answer_min_score: float = Field(
+        0.0,
+        ge=0.0,
+        le=1.0,
+        description="If top retrieval score is below this threshold, return a calibrated no-answer.",
+    )
     extract_relationships_persist: bool = Field(
         False,
         description=(
