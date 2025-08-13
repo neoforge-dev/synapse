@@ -149,6 +149,12 @@ class AskRequest(BaseModel):
             "When true and feature is enabled in settings, persist LLM-inferred relationships."
         ),
     )
+    extract_relationships_dry_run: bool = Field(
+        False,
+        description=(
+            "When true, do not write LLM relationships; return planned writes in metadata."
+        ),
+    )
 
 
 # --- Admin/Management Models (Add later if needed) ---

@@ -154,6 +154,7 @@ def create_query_router() -> APIRouter:
                 # Relationship extraction controls
                 "extract_relationships": True,
                 "extract_relationships_persist": ask_request.extract_relationships_persist,
+                "extract_relationships_dry_run": ask_request.extract_relationships_dry_run,
             }
             result: DomainQueryResult = await engine.query(
                 ask_request.text, config=config

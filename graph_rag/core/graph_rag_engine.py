@@ -474,8 +474,11 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
 
                     # Settings and gating
                     min_conf = float(settings.llm_rel_min_confidence)
-                    allow_persist = bool(settings.enable_llm_relationships) and bool(
-                        config.get("extract_relationships_persist", False)
+                    dry_run_only = bool(config.get("extract_relationships_dry_run", False))
+                    allow_persist = (
+                        bool(settings.enable_llm_relationships)
+                        and bool(config.get("extract_relationships_persist", False))
+                        and not dry_run_only
                     )
 
                     # Dedup set for session: (src_id, type, tgt_id, extractor)
@@ -554,6 +557,21 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                                 logger.debug(
                                     f"Skipping persist for LLM rel {src_ent.id}-[{rel_type}]->{tgt_ent.id}: {persist_err}"
                                 )
+                        elif dry_run_only and confidence >= min_conf:
+                            # Record planned write in config for the API to surface if desired
+                            try:
+                                plan = config.setdefault("llm_relationships_planned", [])
+                                plan.append(
+                                    {
+                                        "source_id": src_ent.id,
+                                        "target_id": tgt_ent.id,
+                                        "type": rel_type,
+                                        "confidence": confidence,
+                                        "extractor": "llm",
+                                    }
+                                )
+                            except Exception:
+                                pass
 
                     if final_entities or final_relationships:
                         graph_context_tuple = ((final_entities or []), (final_relationships or []))
