@@ -14,18 +14,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install UV
-        uses: astral-sh/setup-uv@v2
-      - name: Install deps
+      - name: Upgrade pip
         run: |
-          uv pip install -e .[dev]
+          python -m pip install --upgrade pip
+      - name: Install deps (dev)
+        run: |
+          pip install -e .[dev]
       - name: Lint
         run: |
-          uv run ruff check .
+          ruff check .
       - name: Run unit tests
         env:
           SKIP_SPACY_IMPORT: '1'
           GRAPH_RAG_EMBEDDING_PROVIDER: 'mock'
           GRAPH_RAG_LLM_TYPE: 'mock'
         run: |
-          uv run pytest -m "not integration" -q
+          pytest -m "not integration" -q
