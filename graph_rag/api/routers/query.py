@@ -137,10 +137,7 @@ def create_query_router() -> APIRouter:
             f"Received ask: {ask_request.text[:100]}... (k={ask_request.k}, graph={ask_request.include_graph})"
         )
         # Increment ask counter if app metrics are configured
-        try:
-            app = logger.root.handlers and None  # no-op to appease linters
-        except Exception:
-            pass
+        # no-op placeholder removed (was creating an unused variable)
         try:
             config = {
                 "k": ask_request.k,

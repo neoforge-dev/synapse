@@ -9,7 +9,6 @@ from graph_rag.core.interfaces import (
     DocumentData,
     ExtractedEntity,
     ExtractedRelationship,
-    KnowledgeGraphBuilder,
 )
 from graph_rag.models import ProcessedDocument
 
@@ -20,9 +19,9 @@ class KnowledgeGraphBuilder(ABC):
     """Abstract base class for building and updating the knowledge graph."""
 
     @abstractmethod
-    def build(self, processed_document: ProcessedDocument):
+    async def build(self, processed_document: ProcessedDocument):
         """Builds or updates the graph based on a processed document."""
-        pass
+        raise NotImplementedError
 
 
 class SimpleKnowledgeGraphBuilder(KnowledgeGraphBuilder):

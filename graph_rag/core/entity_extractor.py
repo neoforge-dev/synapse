@@ -4,7 +4,7 @@ import re  # Added import
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-from graph_rag.core.interfaces import EntityExtractor, ExtractedEntity, ExtractionResult
+from graph_rag.core.interfaces import ExtractedEntity, ExtractionResult
 from graph_rag.models import Document, Entity, ProcessedDocument, Relationship
 
 logger = logging.getLogger(__name__)

@@ -12,11 +12,10 @@ for direct invocation or testing.
 """
 from __future__ import annotations
 
-import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, List
 
 import httpx
 

@@ -5,7 +5,7 @@ import os
 from typing import Optional
 from urllib.parse import urlparse
 
-from pydantic import Field, HttpUrl, SecretStr, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)

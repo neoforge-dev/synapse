@@ -774,7 +774,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
                 node_name = node_properties.get("name", None)  # Use get instead of pop
                 node_type = (
                     specific_entity_type
-                    or next((l for l in labels if l not in base_labels), None)
+                    or next((label for label in labels if label not in base_labels), None)
                     or (labels[0] if labels else "Node")
                 )
                 return Node(
@@ -1192,7 +1192,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
                         neighbor_node_model_type = "Chunk"
                     else:
                         specific_labels = [
-                            l for l in neighbor_labels if l not in base_labels
+                            label for label in neighbor_labels if label not in base_labels
                         ]
                         if specific_labels:
                             neighbor_entity_type = specific_labels[0]
@@ -1242,7 +1242,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
                         node_type = (
                             neighbor_entity_type
                             or next(
-                                (l for l in neighbor_labels if l not in base_labels),
+                                (label for label in neighbor_labels if label not in base_labels),
                                 None,
                             )
                             or (neighbor_labels[0] if neighbor_labels else "Node")

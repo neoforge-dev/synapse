@@ -1,6 +1,8 @@
 import logging
 import uuid
 from typing import Any, Callable
+from graph_rag.api.models import IngestRequest, IngestResponse
+from graph_rag.services.ingestion import IngestionService
 
 from fastapi import (
     APIRouter,
@@ -22,8 +24,6 @@ def _state_get_ingestion_service(request: Request):
     return _getter(request)
 
 
-from graph_rag.api.models import IngestRequest, IngestResponse
-from graph_rag.services.ingestion import IngestionService
 
 logger = logging.getLogger(__name__)
 

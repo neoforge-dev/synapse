@@ -287,33 +287,7 @@ class MockGraphStore(GraphStore):
         logger.info(f"MockGraphStore: Getting document by ID {document_id}")
         return self.documents.get(document_id)
 
-    # Implement other methods as needed for tests, returning mock data
-    async def get_neighbors(
-        self,
-        node_id: str,
-        relationship_type: Optional[str] = None,
-        direction: str = "out",
-    ) -> list[dict]:
-        # Simplified mock implementation
-        neighbors = []
-        if direction in ["out", "both"]:
-            for edge in self.edges:
-                if edge["source"] == node_id and (
-                    not relationship_type or edge["type"] == relationship_type
-                ):
-                    target_node = self.nodes.get(edge["target"])
-                    if target_node:
-                        neighbors.append(target_node)  # Return the node dict
-        if direction in ["in", "both"]:
-            for edge in self.edges:
-                if edge["target"] == node_id and (
-                    not relationship_type or edge["type"] == relationship_type
-                ):
-                    source_node = self.nodes.get(edge["source"])
-                    if source_node:
-                        neighbors.append(source_node)
-        logger.debug(f"MockGraphStore: Found {len(neighbors)} neighbors for {node_id}")
-        return neighbors
+    # Remove legacy async helper duplicating get_neighbors signature
 
     async def close(self) -> None:
         logger.info("MockGraphStore: close() called.")

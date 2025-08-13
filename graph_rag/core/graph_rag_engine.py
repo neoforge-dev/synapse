@@ -7,13 +7,11 @@ from dataclasses import dataclass, field
 from typing import Any, Optional, Union
 
 from graph_rag.config import get_settings
-from graph_rag.core.entity_extractor import EntityExtractor  # Import base class
 from graph_rag.core.interfaces import (
     ChunkData,
     DocumentData,
     DocumentProcessor,
     EmbeddingService,
-    EntityExtractor,
     ExtractedEntity,
     ExtractedRelationship,
     ExtractionResult,
@@ -71,7 +69,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         self,
         graph_store: GraphRepository,
         vector_store: VectorStore,
-        entity_extractor: EntityExtractor,
+        entity_extractor,
         llm_service: LLMService = None,
     ):
         """Requires GraphRepository, VectorStore, EntityExtractor, and optionally LLMService."""
@@ -888,7 +886,7 @@ class GraphRAGEngineOrchestrator(GraphRAGEngine):
     def __init__(
         self,
         document_processor: DocumentProcessor,
-        entity_extractor: EntityExtractor,
+        entity_extractor,
         kg_builder: KnowledgeGraphBuilder,
         embedding_service: EmbeddingService,
         graph_store: GraphRepository,  # Changed from graph_repo for consistency with SimpleGraphRAGEngine?

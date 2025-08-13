@@ -2,7 +2,6 @@ import json
 import logging
 import re
 from typing import Optional
-from datetime import datetime, timezone
 import json as _json
 from pathlib import Path
 import uuid
@@ -13,7 +12,7 @@ import typer
 from graph_rag.config import Settings
 from graph_rag.infrastructure.notion_client import NotionClient
 from graph_rag.infrastructure.notion_render import render_blocks_to_markdown
-from graph_rag.utils.identity import derive_document_id
+# from graph_rag.utils.identity import derive_document_id
 from graph_rag.cli.commands.store import _process_store_lines
 
 app = typer.Typer(help="Notion API sync utilities")

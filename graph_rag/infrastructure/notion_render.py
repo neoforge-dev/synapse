@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import List
 
 
 def _rich_text_to_plain(rt: List[dict]) -> str:

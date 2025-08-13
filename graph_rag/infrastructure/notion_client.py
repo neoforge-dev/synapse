@@ -1,5 +1,5 @@
 import logging
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, Optional
 
 import httpx
 
@@ -42,7 +42,8 @@ class NotionClient:
                     return resp.json()
                 except httpx.HTTPStatusError as e:
                     if e.response is not None and e.response.status_code == 429 and attempt < retries - 1:
-                        import time as _time, random as _rand
+                        import time as _time
+                        import random as _rand
                         # Respect client-side QPS and server backoff header if present
                         retry_after = e.response.headers.get("Retry-After") if e.response is not None else None
                         try:

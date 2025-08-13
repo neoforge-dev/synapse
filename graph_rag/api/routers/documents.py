@@ -3,6 +3,8 @@ import uuid
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from graph_rag.core.interfaces import GraphRepository, VectorStore
+from graph_rag.domain.models import Entity
 
 # Defer schema import
 # from graph_rag.api import schemas
@@ -23,11 +25,7 @@ def _state_get_vector_store(request: Request) -> "VectorStore":
     return _getter(request)
 
 
-# Import GraphRepository interface for type hinting
-from graph_rag.core.interfaces import GraphRepository, VectorStore
-from graph_rag.domain.models import (
-    Entity,
-)
+# (imports moved to top)
 
 # from graph_rag.core.graph_store import GraphStore # Remove incorrect import
 # from graph_rag.core.vector_store import VectorStore # Incorrect import

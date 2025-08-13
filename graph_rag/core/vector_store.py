@@ -38,30 +38,7 @@ class MockVectorStore:
         """Return all stored chunks."""
         return list(self.chunks)
 
-    def search(
-        self, query_embedding: EmbeddingVector, top_k: int = 5
-    ) -> list[SearchResult]:
-        from loguru import logger
-
-        logger.info(f"MockVectorStore: Performing search with top_k={top_k}.")
-        self.calls["search"].append((query_embedding, top_k))
-
-        # Mock search logic: return some predefined results or based on simple criteria
-        # This is highly simplified and doesn't actually use the query_embedding
-        results: list[SearchResult] = []
-
-        # Example: return the first `top_k` chunks that have an embedding
-        count = 0
-        for chunk_id, chunk in enumerate(self.chunks):
-            if chunk.embedding is not None:
-                # Return chunk ID and a mock score (e.g., inverse order)
-                results.append((chunk_id, 1.0 / (count + 1)))
-                count += 1
-                if count >= top_k:
-                    break
-
-        logger.info(f"MockVectorStore: Search returned {len(results)} results.")
-        return results
+    # Removed legacy sync search method that conflicted with async search
 
     def get_chunk(self, chunk_id: str) -> Chunk | None:
         """Helper to retrieve a chunk by ID (useful for tests)."""
