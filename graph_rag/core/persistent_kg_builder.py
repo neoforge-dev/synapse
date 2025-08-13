@@ -8,9 +8,13 @@ from graph_rag.core.interfaces import (
     ExtractedRelationship,
     KnowledgeGraphBuilder,
 )  # Added GraphRepository
-from graph_rag.infrastructure.graph_stores.memgraph_store import (
-    MemgraphGraphRepository,
-)  # Corrected class name
+try:
+    from graph_rag.infrastructure.graph_stores.memgraph_store import (
+        MemgraphGraphRepository,
+    )  # Corrected class name
+except Exception:  # pragma: no cover - optional for unit tests without mgclient
+    class MemgraphGraphRepository:  # type: ignore
+        ...
 
 logger = logging.getLogger(__name__)
 
