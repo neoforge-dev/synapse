@@ -116,6 +116,11 @@ class Settings(BaseSettings):
     notion_version: str = Field(
         "2022-06-28", description="Notion API version header value."
     )
+    notion_max_retries: int = Field(
+        5,
+        ge=0,
+        description="Maximum retry attempts on Notion API 429/temporary failures.",
+    )
     notion_max_qps: float = Field(
         3.0,
         ge=0.1,

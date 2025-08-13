@@ -30,7 +30,7 @@ class NotionClient:
         return httpx.Client(base_url=self._base, headers=self._headers, timeout=30.0)
 
     def _request(self, method: str, url: str, *, json: dict | None = None) -> dict[str, Any]:
-        retries = 5
+        retries = int(getattr(self.settings, "notion_max_retries", 5) or 5)
         backoff = 0.5
         for attempt in range(retries):
             with self._client() as client:
