@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import List, Dict, Any, Optional, Set
+from typing import List, Dict
 from collections import Counter
 
 logger = logging.getLogger(__name__)

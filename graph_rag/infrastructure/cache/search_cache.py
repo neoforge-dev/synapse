@@ -1,7 +1,7 @@
 """Search result caching for vector and graph searches."""
 
 import logging
-from typing import Any, Callable, List
+from typing import Callable, List
 
 from .query_cache import QueryCache
 

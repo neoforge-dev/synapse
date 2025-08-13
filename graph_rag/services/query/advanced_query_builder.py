@@ -1,7 +1,7 @@
 """Advanced query builder for constructing complex Boolean queries."""
 
 import logging
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List
 from enum import Enum
 
 logger = logging.getLogger(__name__)

@@ -1,0 +1,77 @@
+{
+  "c5a8923b-3223-4a76-bfa2-d4666ccb7242": {
+    "id": "c5a8923b-3223-4a76-bfa2-d4666ccb7242",
+    "created_at": "2025-08-14T02:32:48.414801",
+    "updated_at": "2025-08-14T02:32:48.414804",
+    "name": "recent_python_docs",
+    "description": "Recent Python documentation and tutorials",
+    "query": {
+      "field_filters": {
+        "category": {
+          "equals": "technical"
+        },
+        "tags": {
+          "contains": "python"
+        },
+        "created_at": {
+          "after": "2024-01-01"
+        }
+      },
+      "content_search": "tutorial OR documentation",
+      "sort_by": "created_at",
+      "sort_order": "desc"
+    },
+    "created_by": "user123",
+    "is_public": true
+  },
+  "ccb5f6f6-4208-4f03-ac41-2aad3253772b": {
+    "id": "ccb5f6f6-4208-4f03-ac41-2aad3253772b",
+    "created_at": "2025-08-14T02:34:56.948922",
+    "updated_at": "2025-08-14T02:34:56.948925",
+    "name": "recent_python_docs",
+    "description": "Recent Python documentation and tutorials",
+    "query": {
+      "field_filters": {
+        "category": {
+          "equals": "technical"
+        },
+        "tags": {
+          "contains": "python"
+        },
+        "created_at": {
+          "after": "2024-01-01"
+        }
+      },
+      "content_search": "tutorial OR documentation",
+      "sort_by": "created_at",
+      "sort_order": "desc"
+    },
+    "created_by": "user123",
+    "is_public": true
+  },
+  "980d56f9-4878-4b5e-9675-3b2d918c63a3": {
+    "id": "980d56f9-4878-4b5e-9675-3b2d918c63a3",
+    "created_at": "2025-08-14T02:35:33.623166",
+    "updated_at": "2025-08-14T02:35:33.623169",
+    "name": "recent_python_docs",
+    "description": "Recent Python documentation and tutorials",
+    "query": {
+      "field_filters": {
+        "category": {
+          "equals": "technical"
+        },
+        "tags": {
+          "contains": "python"
+        },
+        "created_at": {
+          "after": "2024-01-01"
+        }
+      },
+      "content_search": "tutorial OR documentation",
+      "sort_by": "created_at",
+      "sort_order": "desc"
+    },
+    "created_by": "user123",
+    "is_public": true
+  }
+}

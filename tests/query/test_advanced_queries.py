@@ -1,7 +1,6 @@
 """Test advanced query capabilities using TDD approach."""
 
 import pytest
-from typing import List, Dict, Any
 
 
 def test_boolean_query_builder():

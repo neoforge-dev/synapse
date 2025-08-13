@@ -2,8 +2,8 @@
 
 import logging
 import re
-from typing import List, Dict, Any, Optional, Set
-from collections import Counter, defaultdict
+from typing import List
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 

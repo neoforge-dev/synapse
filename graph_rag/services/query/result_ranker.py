@@ -2,8 +2,8 @@
 
 import logging
 import math
-from typing import List, Dict, Any, Optional, Set
-from datetime import datetime, timedelta
+from typing import List, Dict, Any
+from datetime import datetime
 from collections import Counter
 
 logger = logging.getLogger(__name__)

@@ -2,7 +2,7 @@
 
 import hashlib
 import logging
-from typing import Any, Callable, List, Optional
+from typing import Callable, List
 
 from .query_cache import QueryCache
 

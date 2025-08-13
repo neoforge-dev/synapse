@@ -1,0 +1,21 @@
+{
+  "technical_documentation": {
+    "name": "technical_documentation",
+    "description": "Find technical documentation with specific tags",
+    "query_pattern": {
+      "field_filters": {
+        "category": {
+          "equals": "technical"
+        },
+        "tags": {
+          "contains": "{technology}"
+        }
+      },
+      "content_search": "{search_term}"
+    },
+    "parameters": [
+      "technology",
+      "search_term"
+    ]
+  }
+}
