@@ -196,6 +196,19 @@ class VectorStore(Protocol):
         """Deletes the entire vector store collection (optional method)."""
         ...
 
+    # Optional capabilities exposed by some vector stores (used by admin tooling)
+    async def stats(self) -> dict[str, Any]:
+        """Returns implementation-specific statistics such as vector count."""
+        ...
+
+    async def rebuild_index(self) -> None:
+        """Triggers an index rebuild if the backend supports it."""
+        ...
+
+    async def get_vector_store_size(self) -> int:
+        """Returns the number of vectors/documents in the store, if available."""
+        ...
+
 
 class GraphSearcher(Protocol):
     """Interface for graph traversal based search/retrieval."""

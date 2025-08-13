@@ -11,7 +11,8 @@ logger = logging.getLogger(__name__)
 
 
 def create_admin_router() -> APIRouter:
-    router = APIRouter(prefix="/admin", tags=["Admin"])
+    # No internal prefix; main app mounts under /admin
+    router = APIRouter(tags=["Admin"])
 
     @router.get("/vector/stats")
     async def vector_stats(

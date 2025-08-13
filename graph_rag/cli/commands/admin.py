@@ -118,6 +118,11 @@ def integrity_check(
 def up(
     compose_file: str = typer.Option(None, "--compose", help="Path to docker-compose.yml"),
     detached: bool = typer.Option(True, "--detached/--no-detached", help="Run docker compose up -d"),
+    start_docker: bool = typer.Option(
+        True if sys.platform == "darwin" else False,
+        "--start-docker/--no-start-docker",
+        help="On macOS, attempt to start Docker Desktop if not running",
+    ),
     wait_bolt: bool = typer.Option(
         True,
         "--wait-bolt/--no-wait-bolt",
@@ -126,7 +131,17 @@ def up(
     wait_timeout: int = typer.Option(60, "--wait-timeout", help="Seconds to wait for Bolt readiness"),
 ):
     """Bring up Memgraph/API via docker compose and optionally wait for Bolt readiness."""
+    # Optional: start Docker Desktop on macOS if docker is not ready
+    try:
+        _ensure_docker_running(start_docker=start_docker, timeout_seconds=max(5, wait_timeout))
+    except Exception as e:
+        typer.echo(f"Docker preflight failed: {e}")
+        raise typer.Exit(1)
+
     compose = compose_file or os.getenv("SYNAPSE_DOCKER_COMPOSE", "docker-compose.yml")
+    if not os.path.exists(compose):
+        typer.echo(f"Compose file not found: {compose}")
+        raise typer.Exit(1)
     args = ["docker", "compose", "-f", compose, "up"]
     if detached:
         args.append("-d")
@@ -166,3 +181,45 @@ def up(
 
     typer.echo("Timed out waiting for Memgraph Bolt readiness.")
     raise typer.Exit(2)
+
+
+def _ensure_docker_running(start_docker: bool, timeout_seconds: int = 60) -> None:
+    """Ensure Docker daemon is running. On macOS, optionally try to start Docker Desktop.
+
+    - If `docker info` succeeds, return.
+    - If it fails and we're on macOS and `start_docker` is True, attempt to launch Docker.app and poll.
+    - On other platforms or if not starting, raise an Exception.
+    """
+    def _docker_info_ok() -> bool:
+        try:
+            result = subprocess.run(["docker", "info"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return result.returncode == 0
+        except Exception:
+            return False
+
+    # Fast path
+    if _docker_info_ok():
+        return
+
+    if sys.platform == "darwin" and start_docker and os.getenv("SYNAPSE_START_DOCKER", "1") != "0":
+        try:
+            # Launch Docker Desktop; it is idempotent if already running
+            subprocess.Popen(["open", "-a", "Docker"])  # noqa: S603
+        except Exception as e:
+            raise RuntimeError(f"Failed to start Docker Desktop: {e}")
+
+        # Poll until docker info works or timeout
+        import time as _time
+
+        deadline = _time.time() + max(10, timeout_seconds)
+        typer.echo("Waiting for Docker Desktop to start...")
+        while _time.time() < deadline:
+            if _docker_info_ok():
+                typer.echo("Docker is running.")
+                return
+            _time.sleep(1.5)
+
+        raise RuntimeError("Timed out waiting for Docker Desktop to start.")
+
+    # Non-macOS or not allowed to auto-start
+    raise RuntimeError("Docker is not running. Please start Docker and retry.")
