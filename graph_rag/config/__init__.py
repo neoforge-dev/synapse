@@ -248,6 +248,14 @@ class Settings(BaseSettings):
         if self.memgraph_password is None and os.getenv("NEO4J_PASSWORD") is not None:
             self.memgraph_password = SecretStr(os.getenv("NEO4J_PASSWORD") or "")
 
+        # Alias for JSON logging: allow SYNAPSE_JSON_LOGS to set api_log_json
+        try:
+            if os.getenv("SYNAPSE_JSON_LOGS") is not None and os.getenv("SYNAPSE_API_LOG_JSON") is None:
+                val = os.getenv("SYNAPSE_JSON_LOGS", "false").lower() in {"1", "true", "yes", "on"}
+                self.api_log_json = val
+        except Exception:
+            pass
+
         return self
 
     def get_memgraph_uri(self) -> str:
