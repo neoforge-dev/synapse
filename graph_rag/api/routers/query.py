@@ -142,6 +142,7 @@ def create_query_router() -> APIRouter:
             config = {
                 "k": ask_request.k,
                 "include_graph": ask_request.include_graph,
+                "search_type": ask_request.search_type,
                 "blend_vector_weight": ask_request.blend_vector_weight,
                 "blend_keyword_weight": ask_request.blend_keyword_weight,
                 "rerank": ask_request.rerank,

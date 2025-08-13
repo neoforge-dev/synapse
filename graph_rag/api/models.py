@@ -119,6 +119,9 @@ class AskRequest(BaseModel):
         False, description="Enable streaming responses when supported."
     )
     # Retrieval/Prompting knobs
+    search_type: str = Field(
+        "hybrid", description="Search type: 'vector', 'keyword', or 'hybrid'."
+    )
     style: Optional[str] = Field(
         None, description="Optional answer style (e.g., concise, analytical, teaching)."
     )
