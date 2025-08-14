@@ -427,6 +427,7 @@ def create_graph_rag_engine(
         graph_store=graph_repository,
         vector_store=vector_store,
         entity_extractor=entity_extractor,
+        llm_service=llm_service,  # Pass LLM service to engine
     )
 
 
