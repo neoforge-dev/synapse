@@ -37,6 +37,7 @@ from graph_rag.services.search import (
     SearchResult,
 )  # Import SearchResult model too
 from graph_rag.services.rerank import CrossEncoderReranker
+from graph_rag.services.memory import ContextManager
 
 # from graph_rag.core.prompts import QnAPromptContext # Import QnAPromptContext
 # from graph_rag.core.prompts as prompts # Corrected import alias
@@ -71,6 +72,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         vector_store: VectorStore,
         entity_extractor,
         llm_service: LLMService = None,
+        context_manager: ContextManager = None,
     ):
         """Requires GraphRepository, VectorStore, EntityExtractor, and optionally LLMService."""
         if not isinstance(graph_store, GraphRepository):
@@ -87,6 +89,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         self._vector_store = vector_store
         self._entity_extractor = entity_extractor  # Store the extractor
         self._reranker = CrossEncoderReranker()
+        self._context_manager = context_manager
         logger.info(
             f"SimpleGraphRAGEngine initialized with GraphRepository: {type(graph_store).__name__}, VectorStore: {type(vector_store).__name__}, EntityExtractor: {type(entity_extractor).__name__}, LLMService: {type(self._llm_service).__name__}"
         )
@@ -673,6 +676,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         # Allow passing pre-fetched context
         _retrieved_chunks_data: Optional[list[SearchResultData]] = None,
         _graph_context_tuple: Optional[tuple[list[Entity], list[Relationship]]] = None,
+        conversation_id: Optional[str] = None,
     ) -> str:
         """Retrieve context (if not provided), format prompt, and generate an answer using the LLM."""
         logger.info(
@@ -732,11 +736,22 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                 return "No relevant information found"
             return "Could not find relevant information to answer the query."
 
-        # 3. Create Prompt and Call LLM
+        # 3. Get conversation context if available
+        conversation_context = ""
+        if conversation_id and self._context_manager:
+            try:
+                conversation_context = await self._context_manager.get_conversation_context(conversation_id)
+                if conversation_context:
+                    conversation_context = f"\n\n{conversation_context}\n\n"
+            except Exception as e:
+                logger.warning(f"Failed to get conversation context: {e}")
+
+        # 4. Create Prompt and Call LLM
         style = (config or {}).get("style")
         style_line = f"\n\nStyle: {style}" if style else ""
         prompt = (
             f"Based on the following context, answer the query.{style_line}\\n\\n"
+            f"{conversation_context}"
             f"Query: {query_text}\\n\\nContext:{context_str}\\n\\nAnswer:"
         )
         logger.debug(f"Sending prompt to LLM (first 100 chars): {prompt[:100]}...")
@@ -768,6 +783,8 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         yields chunks from the LLM provider as they arrive.
         """
         config = config or {}
+        conversation_id = config.get("conversation_id")
+        
         try:
             retrieved_chunks_data, graph_context_tuple = await self._retrieve_and_build_context(
                 query_text, config
@@ -801,10 +818,21 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
             yield "Could not find relevant information to answer the query."
             return
 
+        # Get conversation context if available
+        conversation_context = ""
+        if conversation_id and self._context_manager:
+            try:
+                conversation_context = await self._context_manager.get_conversation_context(conversation_id)
+                if conversation_context:
+                    conversation_context = f"\n\n{conversation_context}\n\n"
+            except Exception as e:
+                logger.warning(f"Failed to get conversation context for streaming: {e}")
+
         style = (config or {}).get("style")
         style_line = f"\n\nStyle: {style}" if style else ""
         prompt = (
             f"Based on the following context, answer the query.{style_line}\\n\\n"
+            f"{conversation_context}"
             f"Query: {query_text}\\n\\nContext:{context_str}\\n\\nAnswer:"
         )
         try:
@@ -821,6 +849,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
     ) -> QueryResult:
         logger.info(f"[DEBUG] Entered SimpleGraphRAGEngine.query for: '{query_text}'")
         config = config or {}
+        conversation_id = config.get("conversation_id")
 
         retrieved_chunks_data: list[SearchResultData] = []
         graph_context_tuple: Optional[tuple[list[Entity], list[Relationship]]] = None
@@ -851,6 +880,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                     config,
                     _retrieved_chunks_data=retrieved_chunks_data,
                     _graph_context_tuple=graph_context_tuple,
+                    conversation_id=conversation_id,
                 )
             except Exception as answer_err:
                 logger.error(
@@ -861,6 +891,14 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                     f"Answer generation failed: {answer_err}"  # Overwrite or append?
                 )
                 answer_text = f"Error generating answer: {answer_err}"  # Ensure answer reflects error
+
+        # 2.5. Add interaction to conversation memory if successful
+        if conversation_id and self._context_manager and not error_info:
+            try:
+                await self._context_manager.add_interaction(conversation_id, query_text, answer_text)
+                logger.debug(f"Added interaction to conversation {conversation_id}")
+            except Exception as memory_err:
+                logger.warning(f"Failed to save interaction to conversation memory: {memory_err}")
 
         # 3. Map SearchResultData to domain Chunk for QueryResult
         final_relevant_chunks: list[Chunk] = []

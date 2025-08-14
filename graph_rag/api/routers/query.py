@@ -11,6 +11,9 @@ from graph_rag.api.models import (
     QueryResultChunk,
     QueryResultGraphContext,
     AskRequest,
+    StartConversationRequest,
+    StartConversationResponse,
+    ConversationContextResponse,
 )
 from graph_rag.core.graph_rag_engine import (
     GraphRAGEngine,
@@ -149,6 +152,7 @@ def create_query_router() -> APIRouter:
                 "mmr_lambda": ask_request.mmr_lambda,
                 "no_answer_min_score": ask_request.no_answer_min_score,
                 "style": ask_request.style,
+                "conversation_id": ask_request.conversation_id,
                 # Relationship extraction controls
                 "extract_relationships": True,
                 "extract_relationships_persist": ask_request.extract_relationships_persist,
@@ -209,6 +213,7 @@ def create_query_router() -> APIRouter:
                 config = {
                     "k": ask_request.k,
                     "include_graph": ask_request.include_graph,
+                    "conversation_id": ask_request.conversation_id,
                     "extract_relationships": True,
                     "extract_relationships_persist": ask_request.extract_relationships_persist,
                 }
@@ -218,6 +223,109 @@ def create_query_router() -> APIRouter:
                 yield f"\n[error] {e}"
 
         return StreamingResponse(_gen(), media_type="text/plain; charset=utf-8")
+
+    @router.post(
+        "/conversations/start",
+        response_model=StartConversationResponse,
+        summary="Start a new conversation",
+        description="Start a new conversation session for context-aware responses.",
+    )
+    async def start_conversation(
+        request: StartConversationRequest,
+        engine: GraphRAGEngine = Depends(get_graph_rag_engine),
+    ):
+        """Start a new conversation session."""
+        try:
+            # Check if engine has context manager
+            if not hasattr(engine, '_context_manager') or not engine._context_manager:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Conversation memory is not available. Context manager not configured."
+                )
+            
+            conversation_id = await engine._context_manager.start_conversation(request.user_id)
+            
+            return StartConversationResponse(
+                conversation_id=conversation_id,
+                message=f"Conversation started for user {request.user_id}"
+            )
+            
+        except Exception as e:
+            logger.error(f"Error starting conversation for user {request.user_id}: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to start conversation: {e}",
+            )
+
+    @router.get(
+        "/conversations/{conversation_id}/context",
+        response_model=ConversationContextResponse,
+        summary="Get conversation context",
+        description="Retrieve the formatted context for a conversation.",
+    )
+    async def get_conversation_context(
+        conversation_id: str,
+        engine: GraphRAGEngine = Depends(get_graph_rag_engine),
+    ):
+        """Get conversation context."""
+        try:
+            if not hasattr(engine, '_context_manager') or not engine._context_manager:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Conversation memory is not available. Context manager not configured."
+                )
+            
+            context = await engine._context_manager.get_conversation_context(conversation_id)
+            summary = await engine._context_manager.get_conversation_summary(conversation_id)
+            
+            return ConversationContextResponse(
+                conversation_id=conversation_id,
+                context=context,
+                has_summary=bool(summary)
+            )
+            
+        except Exception as e:
+            logger.error(f"Error getting context for conversation {conversation_id}: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to get conversation context: {e}",
+            )
+
+    @router.delete(
+        "/conversations/{conversation_id}",
+        summary="Delete a conversation",
+        description="Delete a conversation and all its history.",
+    )
+    async def delete_conversation(
+        conversation_id: str,
+        engine: GraphRAGEngine = Depends(get_graph_rag_engine),
+    ):
+        """Delete a conversation."""
+        try:
+            if not hasattr(engine, '_context_manager') or not engine._context_manager:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Conversation memory is not available. Context manager not configured."
+                )
+            
+            deleted = await engine._context_manager.delete_conversation(conversation_id)
+            
+            if not deleted:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Conversation {conversation_id} not found"
+                )
+            
+            return {"message": f"Conversation {conversation_id} deleted successfully"}
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error deleting conversation {conversation_id}: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to delete conversation: {e}",
+            )
 
     return router
 

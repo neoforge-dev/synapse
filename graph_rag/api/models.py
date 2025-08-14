@@ -108,6 +108,9 @@ class AskRequest(BaseModel):
     include_graph: bool = Field(
         False, description="Whether to include graph-based context retrieval."
     )
+    conversation_id: Optional[str] = Field(
+        None, description="Optional conversation ID for context-aware responses."
+    )
     provider: Optional[str] = Field(
         None,
         description="LLM provider to use (e.g., openai, anthropic, mock). Optional override.",
@@ -158,6 +161,30 @@ class AskRequest(BaseModel):
             "When true, do not write LLM relationships; return planned writes in metadata."
         ),
     )
+
+
+# --- Conversation Memory Models ---
+
+
+class StartConversationRequest(BaseModel):
+    """Request model for starting a new conversation."""
+    
+    user_id: str = Field(..., description="User identifier for the conversation.")
+
+
+class StartConversationResponse(BaseModel):
+    """Response model for starting a new conversation."""
+    
+    conversation_id: str = Field(..., description="Unique conversation identifier.")
+    message: str = Field(default="Conversation started successfully.")
+
+
+class ConversationContextResponse(BaseModel):
+    """Response model for conversation context."""
+    
+    conversation_id: str = Field(..., description="Conversation identifier.")
+    context: str = Field(..., description="Formatted conversation context.")
+    has_summary: bool = Field(False, description="Whether conversation has a summary.")
 
 
 # --- Admin/Management Models (Add later if needed) ---
