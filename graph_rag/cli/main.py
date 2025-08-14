@@ -20,6 +20,7 @@ from graph_rag.cli.commands.notion import app as notion_app
 from graph_rag.cli.commands.config import app as config_app
 from graph_rag.cli.commands.mcp import app as mcp_app
 from graph_rag.cli.commands.compose import app as compose_app
+from graph_rag.cli.commands.init import app as init_app
 from graph_rag.config import get_settings  # Import factory
 
 settings = get_settings()  # Get settings instance
@@ -53,6 +54,7 @@ app.add_typer(config_app, name="config")
 app.add_typer(admin_app, name="admin")
 app.add_typer(mcp_app, name="mcp")
 app.add_typer(compose_app, name="compose")
+app.add_typer(init_app, name="init")
 
 
 # Top-level convenience: synapse up (delegates to compose up with enhanced features)

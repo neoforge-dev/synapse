@@ -165,10 +165,19 @@ def get_cache_service(settings: Settings = Depends(get_settings)) -> CacheServic
 
 def create_graph_repository(settings: Settings) -> GraphRepository:
     """Provides a GraphRepository instance with graceful fallbacks. Expects resolved settings."""
-    # Check if graph functionality is disabled
+    
+    # Explicit vector-only mode
+    if getattr(settings, 'vector_only_mode', False):
+        logger.info("Running in explicit vector-only mode - graph features disabled")
+        return MockGraphRepository()
+    
+    # Check if graph functionality is disabled (legacy setting)
     if getattr(settings, 'disable_graph', False):
         logger.info("Graph functionality disabled via settings, using MockGraphRepository")
         return MockGraphRepository()
+    
+    # Check if auto-fallback is disabled
+    auto_fallback = getattr(settings, 'auto_fallback_vector_mode', True)
     
     # Try to create Memgraph repository if available
     if _MEMGRAPH_AVAILABLE:
@@ -177,16 +186,26 @@ def create_graph_repository(settings: Settings) -> GraphRepository:
                 f"Creating MemgraphGraphRepository instance for {settings.memgraph_host}:{settings.memgraph_port}"
             )
             repo = MemgraphGraphRepository(settings_obj=settings)
+            logger.info("✅ Memgraph connection successful - full graph features enabled")
             return repo
         except Exception as e:
-            logger.warning(
-                f"Failed to create MemgraphGraphRepository ({e}), falling back to MockGraphRepository"
-            )
+            if auto_fallback:
+                logger.warning(
+                    f"Failed to create MemgraphGraphRepository ({e}), auto-falling back to vector-only mode"
+                )
+                logger.info("💡 Run 'synapse up' to start Memgraph for full graph features")
+            else:
+                logger.error(f"Failed to create MemgraphGraphRepository: {e}")
+                raise
     else:
-        logger.warning("Memgraph not available, using MockGraphRepository fallback")
+        if auto_fallback:
+            logger.warning("Memgraph client not available, auto-falling back to vector-only mode")
+            logger.info("💡 Install mgclient and Docker to enable full graph features")
+        else:
+            raise ImportError("Memgraph client not available and auto-fallback disabled")
     
     # Fallback to mock repository
-    logger.info("Using MockGraphRepository - graph features will be limited")
+    logger.info("Using vector-only mode - some advanced features will be limited")
     return MockGraphRepository()
 
 

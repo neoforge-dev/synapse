@@ -4,13 +4,14 @@ import logging
 from typing import Any, Optional
 
 from graph_rag.core.interfaces import ExtractedEntity, GraphRepository
+from graph_rag.core.graph_store import GraphStore
 from graph_rag.models import Chunk, Document, Entity, Relationship
 
 logger = logging.getLogger(__name__)
 
 
-class MockGraphRepository(GraphRepository):
-    """Mock implementation of GraphRepository for graceful fallbacks."""
+class MockGraphRepository(GraphStore, GraphRepository):
+    """Mock implementation of GraphStore and GraphRepository for graceful fallbacks."""
     
     def __init__(self):
         """Initialize mock repository with in-memory storage."""
@@ -19,6 +20,10 @@ class MockGraphRepository(GraphRepository):
         self._entities: dict[str, Entity] = {}
         self._relationships: dict[str, Relationship] = {}
         logger.info("MockGraphRepository initialized (graph operations will be no-ops)")
+    
+    async def connect(self) -> None:
+        """Connect to repository (no-op for mock)."""
+        logger.debug("MockGraphRepository: Connecting (no-op)")
     
     async def add_document(self, document: Document) -> None:
         """Store document in memory."""
@@ -167,3 +172,68 @@ class MockGraphRepository(GraphRepository):
             "entities": len(self._entities),
             "relationships": len(self._relationships),
         }
+    
+    # GraphStore interface methods (synchronous)
+    def add_entity(self, entity: Entity):
+        """Adds or updates an entity (node) in the graph."""
+        self._entities[entity.id] = entity
+        logger.debug(f"MockGraphRepository: Added entity {entity.id} (sync)")
+    
+    def add_relationship(self, relationship: Relationship):
+        """Adds a relationship (edge) between two entities."""
+        async def _add_relationship():
+            self._relationships[relationship.id] = relationship
+            logger.debug(f"MockGraphRepository: Added relationship {relationship.id} (sync->async)")
+        return _add_relationship()
+    
+    def add_entities_and_relationships(
+        self, entities: list[Entity], relationships: list[Relationship]
+    ):
+        """Adds multiple entities and relationships."""
+        for entity in entities:
+            self.add_entity(entity)
+        for relationship in relationships:
+            self.add_relationship(relationship)
+        logger.debug(f"MockGraphRepository: Added {len(entities)} entities and {len(relationships)} relationships (sync)")
+    
+    # Removed sync add_document - conflicts with async version
+    
+    # Removed sync add_chunk - conflicts with async version
+    
+    def get_entity_by_id(self, entity_id: str) -> Optional[Entity]:
+        """Retrieves a single entity by its unique ID."""
+        entity = self._entities.get(entity_id)
+        logger.debug(f"MockGraphRepository: Retrieved entity {entity_id}: {'found' if entity else 'not found'} (sync)")
+        return entity
+    
+    def get_document_by_id(self, document_id: str):
+        """Retrieves a document by its ID (sync version for GraphStore interface)."""
+        # Note: This conflicts with async version, but GraphStore interface requires it
+        doc = self._documents.get(document_id)
+        logger.debug(f"MockGraphRepository: Retrieved document {document_id}: {'found' if doc else 'not found'} (sync)")
+        return doc
+    
+    def get_neighbors(
+        self,
+        entity_id: str,
+        relationship_types: Optional[list[str]] = None,
+        direction: str = "both",
+    ) -> tuple[list[Entity], list[Relationship]]:
+        """Retrieves direct neighbors (entities and relationships) of a given entity."""
+        logger.debug(f"MockGraphRepository: Getting neighbors for {entity_id} (returning empty lists) (sync)")
+        return [], []
+    
+    def search_entities_by_properties(
+        self, properties: dict[str, Any], limit: Optional[int] = None
+    ) -> list[Entity]:
+        """Searches for entities matching specific properties."""
+        matching_entities = []
+        if "name" in properties:
+            name_query = properties["name"].lower()
+            for entity in self._entities.values():
+                if name_query in entity.name.lower():
+                    matching_entities.append(entity)
+        if limit:
+            matching_entities = matching_entities[:limit]
+        logger.debug(f"MockGraphRepository: Found {len(matching_entities)} entities matching properties (sync)")
+        return matching_entities

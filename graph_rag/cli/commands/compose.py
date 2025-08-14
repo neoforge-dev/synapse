@@ -120,7 +120,7 @@ def compose_up(
             console.print("[yellow]Warning: API may not be ready[/yellow]")
     
     # Show status
-    status()
+    status(compose_file=str(compose_path), dev=dev)
 
 
 @app.command("down")

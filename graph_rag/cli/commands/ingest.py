@@ -14,6 +14,7 @@ import yaml
 
 from graph_rag.api.dependencies import (
     MockEmbeddingService,  # Using Mock by default for CLI
+    create_graph_repository,  # Add graceful fallback support
 )
 from graph_rag.config import Settings
 from graph_rag.core.entity_extractor import SpacyEntityExtractor
@@ -26,11 +27,7 @@ from graph_rag.domain.models import Chunk, Entity
 from graph_rag.infrastructure.document_processor.simple_processor import (
     SimpleDocumentProcessor,
 )
-try:
-    from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
-except Exception:  # pragma: no cover - optional in unit tests
-    class MemgraphGraphRepository:  # type: ignore
-        ...
+# MemgraphGraphRepository now imported via dependency injection for graceful fallback
 from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
 from graph_rag.models import ProcessedDocument
 from graph_rag.services.ingestion import IngestionService
@@ -56,12 +53,12 @@ async def process_and_store_document(
         file_path: Path to the file to process
         metadata: Optional metadata dictionary to attach to the document
     """
-    # Initialize components
+    # Initialize components with graceful fallback
     settings = Settings()
-    repo = MemgraphGraphRepository(settings)
+    repo = create_graph_repository(settings)
     processor = SimpleDocumentProcessor()
     extractor = SpacyEntityExtractor()
-    builder = SimpleKnowledgeGraphBuilder(graph_store=repo)  # Initialize builder
+    builder = SimpleKnowledgeGraphBuilder(graph_store=repo)  # Use repo as graph_store
     # Create required dependencies (using mock embeddings by default for speed/portability)
     # Optionally switch to real embeddings when enabled
     try:

@@ -136,6 +136,16 @@ class Settings(BaseSettings):
         "numeric",
         description="Citation style to use ('numeric', 'apa', 'mla', 'chicago', 'ieee'). Default: numeric",
     )
+    
+    # --- Operational Settings ---
+    vector_only_mode: bool = Field(
+        False,
+        description="Enable vector-only mode (no graph features) for simplified setup. Default: False",
+    )
+    auto_fallback_vector_mode: bool = Field(
+        True,
+        description="Automatically fall back to vector-only mode if graph store unavailable. Default: True",
+    )
 
     # --- Notion API Settings ---
     notion_api_key: Optional[SecretStr] = Field(
