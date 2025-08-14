@@ -1,0 +1,30 @@
+{
+  "mcp.servers": {
+    "synapse-graph-rag": {
+      "command": "synapse",
+      "args": ["mcp", "start", "--transport", "stdio"],
+      "env": {
+        "SYNAPSE_API_BASE_URL": "http://localhost:8000"
+      },
+      "initializationOptions": {
+        "serverInfo": {
+          "name": "Synapse GraphRAG",
+          "version": "1.0.0"
+        }
+      }
+    }
+  },
+  "mcp.mcpServers": {
+    "synapse-graph-rag": {
+      "name": "Synapse GraphRAG",
+      "description": "Graph-enhanced RAG system for document search and Q&A",
+      "enabled": true,
+      "autoStart": true,
+      "settings": {
+        "maxConcurrentRequests": 5,
+        "timeout": 30000,
+        "retryAttempts": 3
+      }
+    }
+  }
+}

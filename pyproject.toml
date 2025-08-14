@@ -5,16 +5,34 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "synapse-graph-rag"
 version = "0.1.0"
-description = "Graph-augmented Retrieval and synthesis with Memgraph, FastAPI, Typer CLI"
+description = "Graph-enhanced RAG system with MCP integration for IDE workflows"
 readme = "README.md"
 authors = [{ name = "Neoforge", email = "opensource@neoforge.dev" }]
-license = "MIT"
+maintainers = [{ name = "Neoforge", email = "opensource@neoforge.dev" }]
+license = { text = "MIT" }
 requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Linguistic",
+    "Framework :: FastAPI",
+    "Environment :: Console",
+]
 dependencies = [
   "fastapi>=0.109",
   "uvicorn[standard]>=0.23",
   "httpx>=0.24",
   "typer>=0.9",
+  "rich>=13.0",
   "pydantic>=2.6",
   "pydantic-settings>=2.2",
   "prometheus-client>=0.16",
@@ -22,27 +40,127 @@ dependencies = [
   "scikit-learn>=1.2",
   "neo4j>=5",
 ]
-keywords = ["rag", "graph", "memgraph", "faiss", "notion", "mcp"]
+keywords = ["rag", "graph", "memgraph", "faiss", "notion", "mcp", "retrieval", "ai", "nlp", "vscode", "claude", "ide"]
 
 [project.optional-dependencies]
+# Vector search backends
 faiss = ["faiss-cpu>=1.7"]
+
+# Language model integrations
 llm = ["sentence-transformers>=2.2"]
+
+# Model Context Protocol (MCP) for IDE integration
 mcp = ["mcp>=0.0.8"]
+
+# Full production deployment
+all = [
+    "synapse-graph-rag[faiss,llm,mcp]"
+]
+
+# Development and testing
 dev = [
-  "pytest>=7.4",
-  "pytest-asyncio>=0.23",
-  "pytest-mock>=3.10",
-  "ruff>=0.4",
-  "mypy>=1.7",
-  "build>=1.0",
-  "nltk>=3.8",
+    "pytest>=7.4",
+    "pytest-asyncio>=0.23",
+    "pytest-mock>=3.10",
+    "pytest-cov>=4.0",
+    "ruff>=0.4",
+    "mypy>=1.7",
+    "black>=23.0",
+    "build>=1.0",
+    "twine>=4.0",
+    "nltk>=3.8",
+]
+
+# Documentation
+docs = [
+    "mkdocs>=1.5",
+    "mkdocs-material>=9.0",
+    "mkdocs-mermaid2-plugin>=1.0",
+    "mkdocstrings[python]>=0.22",
 ]
 
 [project.scripts]
 synapse = "graph_rag.cli.main:main"
 
+[project.urls]
+Homepage = "https://github.com/neoforge-ai/synapse-graph-rag"
+Documentation = "https://github.com/neoforge-ai/synapse-graph-rag/blob/main/README.md"
+Repository = "https://github.com/neoforge-ai/synapse-graph-rag"
+Changelog = "https://github.com/neoforge-ai/synapse-graph-rag/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/neoforge-ai/synapse-graph-rag/issues"
+
 [tool.setuptools]
-license-files = []
+license-files = ["LICENSE"]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]  # Looks for packages in the current directory
+include = ["graph_rag*"]  # Include graph_rag and any subpackages
+exclude = ["tests*", "docs*", "examples*"]  # Exclude test and doc directories
+
+[tool.setuptools.package-data]
+"graph_rag" = ["py.typed", "*.json", "*.yml", "*.yaml"]
 
 [tool.ruff]
 line-length = 100
+target-version = "py310"
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = ["tests"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.coverage.run]
+source = ["graph_rag"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

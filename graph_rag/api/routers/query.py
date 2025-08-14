@@ -223,6 +223,14 @@ def create_query_router() -> APIRouter:
 
 
 def _to_api_chunks(query_result: DomainQueryResult) -> list[QueryResultChunk]:
+    """Convert domain QueryResult chunks to API QueryResultChunk models.
+    
+    Args:
+        query_result: Domain query result containing relevant chunks
+        
+    Returns:
+        List of API-compatible QueryResultChunk models
+    """
     api_chunks: list[QueryResultChunk] = []
     for chunk in query_result.relevant_chunks:
         api_chunks.append(
@@ -238,6 +246,14 @@ def _to_api_chunks(query_result: DomainQueryResult) -> list[QueryResultChunk]:
 
 
 def _to_api_graph_context(query_result: DomainQueryResult):
+    """Convert domain graph context to API QueryResultGraphContext model.
+    
+    Args:
+        query_result: Domain query result containing graph context
+        
+    Returns:
+        API-compatible QueryResultGraphContext model or None if no graph context
+    """
     if not query_result.graph_context:
         return None
     try:

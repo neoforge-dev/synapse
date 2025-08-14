@@ -1,5 +1,36 @@
-# Include only the graph_rag package; exclude data and pymgclient from packaging
-recursive-include graph_rag *
-recursive-include tests *
+# Package manifest for Synapse GraphRAG
+include README.md
+include LICENSE
+include CHANGELOG.md
+include pyproject.toml
+include VERSION
+
+# Include all package files
+recursive-include graph_rag *.py
+recursive-include graph_rag *.json
+recursive-include graph_rag *.yml
+recursive-include graph_rag *.yaml
+
+# Include type information
+include graph_rag/py.typed
+
+# Include test files for development installs
+recursive-include tests *.py
+
+# Exclude development and build artifacts
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * .DS_Store
+recursive-exclude * .git*
+recursive-exclude * *.egg-info
+
+# Exclude data directory and pymgclient from packaging
 recursive-exclude data *
 recursive-exclude pymgclient *
+recursive-exclude htmlcov *
+recursive-exclude memory-bank *
+exclude *.log
+exclude .coverage
+exclude pytest.ini
+exclude .pytest_cache
+exclude uv.lock

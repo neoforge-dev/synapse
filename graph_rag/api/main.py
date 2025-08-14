@@ -316,29 +316,53 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("LIFESPAN: Graph RAG Engine already initialized.")
 
-    # 7b. Optionally start background maintenance (disabled by default)
+    # 7b. Initialize and start background maintenance scheduler (disabled by default)
+    app.state.maintenance_scheduler = None
     try:
         if getattr(current_settings, "enable_maintenance_jobs", False):
-            import asyncio as _asyncio
+            from graph_rag.services.maintenance import (
+                FaissMaintenanceJob,
+                IntegrityCheckJob,
+                MaintenanceScheduler,
+            )
 
-            async def _maintenance_loop():
-                interval = max(
-                    60, int(getattr(current_settings, "maintenance_interval_seconds", 86400))
+            interval = max(
+                60, int(getattr(current_settings, "maintenance_interval_seconds", 86400))
+            )
+            
+            # Create scheduler
+            scheduler = MaintenanceScheduler(
+                interval_seconds=interval,
+                log_json=current_settings.api_log_json
+            )
+            
+            # Add FAISS maintenance job if vector store supports it
+            if app.state.vector_store and hasattr(app.state.vector_store, "rebuild_index"):
+                faiss_job = FaissMaintenanceJob(
+                    vector_store=app.state.vector_store,
+                    log_json=current_settings.api_log_json
                 )
-                logger.info(f"Maintenance loop enabled (interval={interval}s)")
-                while True:
-                    try:
-                        vs = app.state.vector_store
-                        if hasattr(vs, "rebuild_index"):
-                            await vs.rebuild_index()  # type: ignore[attr-defined]
-                            logger.info("Maintenance: rebuilt vector index")
-                    except Exception as _e:
-                        logger.debug(f"Maintenance loop iteration failed: {_e}")
-                    await _asyncio.sleep(interval)
-
-            app.state._maintenance_task = _asyncio.create_task(_maintenance_loop())
-    except Exception:
-        logger.debug("Failed to initialize maintenance loop; continuing without it")
+                scheduler.add_job(faiss_job)
+                logger.info("Added FAISS maintenance job to scheduler")
+            
+            # Add integrity check job
+            if app.state.graph_repository and app.state.vector_store:
+                integrity_job = IntegrityCheckJob(
+                    graph_repository=app.state.graph_repository,
+                    vector_store=app.state.vector_store,
+                    sample_size=10,
+                    log_json=current_settings.api_log_json
+                )
+                scheduler.add_job(integrity_job)
+                logger.info("Added integrity check job to scheduler")
+            
+            # Start scheduler
+            await scheduler.start()
+            app.state.maintenance_scheduler = scheduler
+            logger.info(f"Maintenance scheduler started (interval={interval}s)")
+            
+    except Exception as e:
+        logger.warning(f"Failed to initialize maintenance scheduler: {e}; continuing without it")
 
     # 8. Initialize ingestion service
     logger.info("LIFESPAN: Initializing Ingestion Service...")
@@ -387,6 +411,18 @@ async def lifespan(app: FastAPI):
 
     # --- Shutdown ---
     logger.info("LIFESPAN SHUTDOWN: Shutting down API...")
+    
+    # Stop maintenance scheduler
+    if hasattr(app.state, "maintenance_scheduler") and app.state.maintenance_scheduler:
+        try:
+            await app.state.maintenance_scheduler.stop()
+            logger.info("LIFESPAN SHUTDOWN: Maintenance scheduler stopped.")
+        except Exception as e:
+            logger.error(
+                f"LIFESPAN SHUTDOWN: Error stopping maintenance scheduler: {e}",
+                exc_info=True,
+            )
+    
     if hasattr(app.state, "neo4j_driver") and app.state.neo4j_driver:
         try:
             await app.state.neo4j_driver.close()
@@ -407,6 +443,7 @@ async def lifespan(app: FastAPI):
     app.state.neo4j_driver = None
     app.state.settings = None
     app.state.ingestion_service = None
+    app.state.maintenance_scheduler = None
     logger.info("LIFESPAN SHUTDOWN: Application shutdown complete.")
 
 

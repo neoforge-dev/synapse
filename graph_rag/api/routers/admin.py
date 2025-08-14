@@ -1,10 +1,11 @@
 import logging
-from typing import Annotated
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from graph_rag.api.dependencies import get_graph_repository, get_vector_store
 from graph_rag.core.interfaces import GraphRepository, VectorStore
+from graph_rag.services.maintenance import IntegrityCheckJob, MaintenanceScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -78,5 +79,105 @@ def create_admin_router() -> APIRouter:
         except Exception as e:
             logger.error(f"integrity_check failed: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=str(e))
+
+    # New maintenance endpoints
+    @router.post("/maintenance/rebuild-faiss", status_code=status.HTTP_202_ACCEPTED)
+    async def trigger_faiss_rebuild(
+        request: Request,
+        vector_store: Annotated[VectorStore, Depends(get_vector_store)]
+    ) -> dict:
+        """Manually trigger FAISS index rebuild."""
+        try:
+            # Get maintenance scheduler from app state if available
+            scheduler = getattr(request.app.state, 'maintenance_scheduler', None)
+            if scheduler:
+                result = await scheduler.trigger_job("faiss_maintenance")
+                if result:
+                    return {"status": "triggered", "result": result}
+                else:
+                    # Fallback: trigger rebuild directly
+                    if hasattr(vector_store, "rebuild_index"):
+                        await vector_store.rebuild_index()
+                        return {"status": "ok", "message": "FAISS rebuild completed directly"}
+                    else:
+                        raise HTTPException(status_code=400, detail="FAISS rebuild not supported")
+            else:
+                # Fallback: trigger rebuild directly
+                if hasattr(vector_store, "rebuild_index"):
+                    await vector_store.rebuild_index()
+                    return {"status": "ok", "message": "FAISS rebuild completed directly"}
+                else:
+                    raise HTTPException(status_code=400, detail="FAISS rebuild not supported")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"faiss_rebuild failed: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.get("/maintenance/status")
+    async def maintenance_status(request: Request) -> dict:
+        """Get maintenance job and scheduler status."""
+        try:
+            scheduler = getattr(request.app.state, 'maintenance_scheduler', None)
+            if scheduler:
+                return {
+                    "scheduler": scheduler.get_scheduler_status(),
+                    "jobs": scheduler.get_job_status()
+                }
+            else:
+                return {
+                    "scheduler": {"running": False, "message": "Maintenance jobs not enabled"},
+                    "jobs": {}
+                }
+        except Exception as e:
+            logger.error(f"maintenance_status failed: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @router.post("/integrity/check")
+    async def manual_integrity_check(
+        request: Request,
+        graph_repo: Annotated[GraphRepository, Depends(get_graph_repository)],
+        vector_store: Annotated[VectorStore, Depends(get_vector_store)],
+        sample_size: int = 10
+    ) -> dict:
+        """Run comprehensive integrity checks manually."""
+        try:
+            # Get settings for JSON logging
+            settings = getattr(request.app.state, 'settings', None)
+            log_json = settings.api_log_json if settings else False
+            
+            # Create and run integrity check job
+            integrity_job = IntegrityCheckJob(
+                graph_repository=graph_repo,
+                vector_store=vector_store,
+                sample_size=sample_size,
+                log_json=log_json
+            )
+            
+            result = await integrity_job.run()
+            
+            # Return result with appropriate status code
+            if result.get("result", {}).get("status") == "failed":
+                return {
+                    "status": "completed_with_errors",
+                    "result": result,
+                    "message": "Integrity check found issues"
+                }
+            else:
+                return {
+                    "status": "ok",
+                    "result": result,
+                    "message": "Integrity check completed successfully"
+                }
+                
+        except Exception as e:
+            logger.error(f"manual_integrity_check failed: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error": str(e),
+                    "type": "application/problem+json"
+                }
+            )
 
     return router

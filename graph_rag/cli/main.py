@@ -19,6 +19,7 @@ from graph_rag.cli.commands.graph import app as graph_app
 from graph_rag.cli.commands.notion import app as notion_app
 from graph_rag.cli.commands.config import app as config_app
 from graph_rag.cli.commands.mcp import app as mcp_app
+from graph_rag.cli.commands.compose import app as compose_app
 from graph_rag.config import get_settings  # Import factory
 
 settings = get_settings()  # Get settings instance
@@ -51,32 +52,49 @@ app.command("suggest")(suggest_command)
 app.add_typer(config_app, name="config")
 app.add_typer(admin_app, name="admin")
 app.add_typer(mcp_app, name="mcp")
+app.add_typer(compose_app, name="compose")
 
 
-# Top-level convenience: synapse up (delegates to admin up)
+# Top-level convenience: synapse up (delegates to compose up with enhanced features)
 @app.command("up")
 def up(
     compose: Optional[str] = typer.Option(None, "--compose", help="Path to docker-compose.yml"),
     detached: bool = typer.Option(True, "--detached/--no-detached", help="Run docker compose up -d"),
-    start_docker: bool = typer.Option(
-        True if get_settings().api_host is not None else False,
-        "--start-docker/--no-start-docker",
-        help="On macOS, attempt to start Docker Desktop if not running",
-    ),
-    wait_bolt: bool = typer.Option(
-        True,
-        "--wait-bolt/--no-wait-bolt",
-        help="Wait for Memgraph Bolt (127.0.0.1:7687) to accept connections",
-    ),
-    wait_timeout: int = typer.Option(60, "--wait-timeout", help="Seconds to wait for Bolt readiness"),
+    dev: bool = typer.Option(False, "--dev", help="Use development compose file"),
+    start_docker: bool = typer.Option(True, "--start-docker/--no-start-docker", help="Auto-start Docker Desktop on macOS"),
+    wait_services: bool = typer.Option(True, "--wait/--no-wait", help="Wait for services to be ready"),
+    wait_timeout: int = typer.Option(60, "--timeout", help="Timeout for service readiness"),
+    pull: bool = typer.Option(False, "--pull", help="Pull latest images before starting"),
+    build: bool = typer.Option(False, "--build", help="Build images before starting"),
 ):
-    """Bring up required services via docker-compose (delegates to admin up)."""
-    admin_up(
+    """Bring up the Synapse GraphRAG stack with enhanced health checks and monitoring."""
+    from graph_rag.cli.commands.compose import compose_up
+    
+    compose_up(
         compose_file=compose,
         detached=detached,
+        dev=dev,
         start_docker=start_docker,
-        wait_bolt=wait_bolt,
+        wait_services=wait_services,
         wait_timeout=wait_timeout,
+        pull=pull,
+        build=build,
+    )
+
+
+@app.command("down")
+def down(
+    compose: Optional[str] = typer.Option(None, "--compose", help="Path to docker-compose.yml"),
+    dev: bool = typer.Option(False, "--dev", help="Use development compose file"),
+    volumes: bool = typer.Option(False, "--volumes", "-v", help="Remove volumes"),
+):
+    """Stop the Synapse GraphRAG stack."""
+    from graph_rag.cli.commands.compose import compose_down
+    
+    compose_down(
+        compose_file=compose,
+        dev=dev,
+        volumes=volumes,
     )
 
 

@@ -3,9 +3,10 @@ from __future__ import annotations
 from typing import Optional
 
 try:  # optional dependency
-    from prometheus_client import Counter, Histogram, CollectorRegistry
+    from prometheus_client import Counter, Gauge, Histogram, CollectorRegistry
 except Exception:  # pragma: no cover - metrics are optional
     Counter = None  # type: ignore
+    Gauge = None  # type: ignore
     Histogram = None  # type: ignore
     CollectorRegistry = None  # type: ignore
 
@@ -18,6 +19,8 @@ INGESTION_CHUNKS_TOTAL: Optional["Counter"] = None
 INGESTION_VECTORS_TOTAL: Optional["Counter"] = None
 QUERY_LATENCY_SECONDS: Optional["Histogram"] = None
 INGEST_LATENCY_SECONDS: Optional["Histogram"] = None
+VECTOR_STORE_SIZE: Optional["Gauge"] = None
+GRAPH_CHUNK_COUNT: Optional["Gauge"] = None
 
 
 def init_metrics(registry: Optional["CollectorRegistry"]) -> None:
@@ -28,6 +31,7 @@ def init_metrics(registry: Optional["CollectorRegistry"]) -> None:
     global ASK_TOTAL, INGEST_TOTAL, LLM_REL_INFERRED, LLM_REL_PERSISTED
     global INGESTION_CHUNKS_TOTAL, INGESTION_VECTORS_TOTAL
     global QUERY_LATENCY_SECONDS, INGEST_LATENCY_SECONDS
+    global VECTOR_STORE_SIZE, GRAPH_CHUNK_COUNT
 
     if Counter is None or registry is None:  # pragma: no cover
         return
@@ -72,6 +76,16 @@ def init_metrics(registry: Optional["CollectorRegistry"]) -> None:
         "ingest_latency_seconds",
         "End-to-end ingestion latency in seconds",
         buckets=(0.1, 0.2, 0.5, 1, 2, 5, 10, 30),
+        registry=registry,
+    )
+    VECTOR_STORE_SIZE = Gauge(
+        "vector_store_size",
+        "Current number of vectors in the vector store",
+        registry=registry,
+    )
+    GRAPH_CHUNK_COUNT = Gauge(
+        "graph_chunk_count",
+        "Current number of chunks in the graph store",
         registry=registry,
     )
 
@@ -136,5 +150,23 @@ def observe_ingest_latency(seconds: float) -> None:
     try:
         if INGEST_LATENCY_SECONDS and seconds >= 0:
             INGEST_LATENCY_SECONDS.observe(seconds)  # type: ignore[call-arg]
+    except Exception:
+        pass
+
+
+def set_vector_store_size(size: int) -> None:
+    """Update the vector store size gauge."""
+    try:
+        if VECTOR_STORE_SIZE and size >= 0:
+            VECTOR_STORE_SIZE.set(size)  # type: ignore[call-arg]
+    except Exception:
+        pass
+
+
+def set_graph_chunk_count(count: int) -> None:
+    """Update the graph chunk count gauge."""
+    try:
+        if GRAPH_CHUNK_COUNT and count >= 0:
+            GRAPH_CHUNK_COUNT.set(count)  # type: ignore[call-arg]
     except Exception:
         pass

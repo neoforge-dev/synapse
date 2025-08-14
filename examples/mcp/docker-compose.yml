@@ -1,0 +1,68 @@
+version: "3.8"
+
+# Example Docker Compose setup for Synapse GraphRAG with MCP integration
+services:
+  synapse-api:
+    image: synapse-graph-rag:latest
+    ports:
+      - "8000:8000"
+    environment:
+      MEMGRAPH_URI: bolt://memgraph:7687
+      EMBEDDING_MODEL_NAME: all-MiniLM-L6-v2
+      VECTOR_SEARCH_SIMILARITY_THRESHOLD: 0.7
+    depends_on:
+      memgraph:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+    networks:
+      - synapse-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  memgraph:
+    image: memgraph/memgraph:latest
+    ports:
+      - "7687:7687"
+      - "7444:7444"
+    command: --bolt-port=7687 --log-level=TRACE
+    networks:
+      - synapse-network
+    volumes:
+      - memgraph_data:/var/lib/memgraph
+      - memgraph_logs:/var/log/memgraph
+    healthcheck:
+      test: ["CMD", "echo", "SELECT 1;", "|", "mgconsole"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: MCP server as a separate service
+  synapse-mcp:
+    image: synapse-graph-rag:latest
+    ports:
+      - "8765:8765"
+    environment:
+      SYNAPSE_API_BASE_URL: http://synapse-api:8000
+    depends_on:
+      synapse-api:
+        condition: service_healthy
+    command: synapse mcp start --host 0.0.0.0 --port 8765 --transport tcp
+    networks:
+      - synapse-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8765"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  synapse-network:
+    driver: bridge
+
+volumes:
+  memgraph_data:
+  memgraph_logs:
