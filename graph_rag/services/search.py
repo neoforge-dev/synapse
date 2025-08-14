@@ -1,8 +1,12 @@
+import time
+from enum import Enum
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 
 from graph_rag.domain.models import Chunk
 from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
 from graph_rag.services.embedding import EmbeddingService
+from graph_rag.core.interfaces import SearchResultData, VectorStore, GraphRepository
 
 
 class SearchResult(BaseModel):
@@ -96,4 +100,220 @@ class SearchService:
         return search_results
 
 
-# TODO: Add methods for vector search, graph traversal search, etc.
+class SearchStrategy(Enum):
+    """Search strategy options for different types of retrieval."""
+    VECTOR_ONLY = "vector_only"
+    KEYWORD_ONLY = "keyword_only"
+    HYBRID = "hybrid"
+    GRAPH_ENHANCED = "graph_enhanced"
+
+
+class QueryExpansion(BaseModel):
+    """Represents an expanded query with additional terms."""
+    original_query: str
+    expanded_terms: List[str]
+    expansion_strategy: str
+
+
+class HybridSearchResult(BaseModel):
+    """Result from hybrid search with metadata."""
+    results: List[SearchResultData]
+    strategy: SearchStrategy
+    query: str
+    total_vector_results: int
+    total_keyword_results: int
+    execution_time_ms: float
+    reranked: bool = False
+    
+    @property
+    def total_results(self) -> int:
+        return len(self.results)
+    
+    @property
+    def avg_score(self) -> float:
+        if not self.results:
+            return 0.0
+        return sum(r.score for r in self.results) / len(self.results)
+
+
+class QueryExpansionService:
+    """Service for expanding queries with synonyms and related terms."""
+    
+    def __init__(self):
+        # Simple synonym/expansion mappings for common terms
+        self.expansions = {
+            "ml": ["machine learning", "artificial intelligence", "AI"],
+            "ai": ["artificial intelligence", "machine learning", "ML"],
+            "neural networks": ["deep learning", "artificial neural networks", "neural nets"],
+            "deep learning": ["neural networks", "deep neural networks", "DNN"],
+            "nlp": ["natural language processing", "text processing", "language models"],
+            "computer vision": ["image processing", "visual recognition", "CV"],
+            "data science": ["data analysis", "analytics", "data mining"],
+            "python": ["programming", "coding", "software development"],
+            "api": ["application programming interface", "service interface", "endpoint"],
+            "database": ["db", "data storage", "persistence", "data store"],
+        }
+    
+    def expand_query(self, query: str) -> QueryExpansion:
+        """Expand a query with synonyms and related terms."""
+        expanded_terms = []
+        query_lower = query.lower()
+        
+        # Check for exact matches
+        if query_lower in self.expansions:
+            expanded_terms.extend(self.expansions[query_lower])
+        
+        # Check for partial matches
+        for key, expansions in self.expansions.items():
+            if key in query_lower:
+                expanded_terms.extend(expansions)
+        
+        # Remove duplicates and terms already in query
+        expanded_terms = list(set(expanded_terms))
+        expanded_terms = [term for term in expanded_terms if term.lower() not in query_lower]
+        
+        return QueryExpansion(
+            original_query=query,
+            expanded_terms=expanded_terms,
+            expansion_strategy="synonym_mapping"
+        )
+
+
+class AdvancedSearchService:
+    """Advanced search service with hybrid search, re-ranking, and query expansion."""
+    
+    def __init__(
+        self, 
+        vector_store: VectorStore, 
+        graph_repository: GraphRepository,
+        rerank_service: Optional['ReRankingService'] = None
+    ):
+        self.vector_store = vector_store
+        self.graph_repository = graph_repository
+        self.rerank_service = rerank_service
+        self.query_expansion_service = QueryExpansionService()
+    
+    async def search(
+        self,
+        query: str,
+        strategy: SearchStrategy = SearchStrategy.HYBRID,
+        limit: int = 10,
+        expand_query: bool = True,
+        rerank: bool = True,
+        threshold: Optional[float] = None
+    ) -> HybridSearchResult:
+        """Perform advanced search with the specified strategy."""
+        start_time = time.time()
+        
+        # Expand query if requested
+        expanded_query = query
+        if expand_query:
+            expansion = self.query_expansion_service.expand_query(query)
+            if expansion.expanded_terms:
+                expanded_query = f"{query} {' '.join(expansion.expanded_terms[:3])}"  # Add top 3 terms
+        
+        # Perform search based on strategy
+        if strategy == SearchStrategy.VECTOR_ONLY:
+            results = await self._vector_search(expanded_query, limit, threshold)
+            vector_count = len(results)
+            keyword_count = 0
+        elif strategy == SearchStrategy.KEYWORD_ONLY:
+            results = await self._keyword_search(expanded_query, limit)
+            vector_count = 0
+            keyword_count = len(results)
+        elif strategy == SearchStrategy.HYBRID:
+            results, vector_count, keyword_count = await self._hybrid_search(expanded_query, limit, threshold)
+        else:
+            # Default to hybrid for unsupported strategies
+            results, vector_count, keyword_count = await self._hybrid_search(expanded_query, limit, threshold)
+        
+        # Re-rank results if requested and service is available
+        reranked = False
+        if rerank and self.rerank_service and len(results) > 1:
+            from graph_rag.services.rerank import ReRankingStrategy
+            results = self.rerank_service.rerank(query, results, ReRankingStrategy.SEMANTIC_SIMILARITY)
+            reranked = True
+        
+        execution_time = (time.time() - start_time) * 1000
+        
+        return HybridSearchResult(
+            results=results[:limit],  # Ensure limit is respected
+            strategy=strategy,
+            query=query,
+            total_vector_results=vector_count,
+            total_keyword_results=keyword_count,
+            execution_time_ms=execution_time,
+            reranked=reranked
+        )
+    
+    async def hybrid_search(
+        self, 
+        query: str, 
+        limit: int = 10,
+        threshold: Optional[float] = None
+    ) -> HybridSearchResult:
+        """Convenience method for hybrid search."""
+        return await self.search(query, SearchStrategy.HYBRID, limit, threshold=threshold)
+    
+    async def _vector_search(
+        self, 
+        query: str, 
+        limit: int,
+        threshold: Optional[float] = None
+    ) -> List[SearchResultData]:
+        """Perform vector similarity search."""
+        # Increase limit for vector search to allow for filtering
+        search_limit = min(limit * 2, 50)
+        results = await self.vector_store.search(query, search_limit)
+        
+        # Apply threshold filtering if specified
+        if threshold is not None:
+            results = [r for r in results if r.score >= threshold]
+        
+        return results[:limit]
+    
+    async def _keyword_search(self, query: str, limit: int) -> List[SearchResultData]:
+        """Perform keyword search using graph repository."""
+        try:
+            results = await self.graph_repository.keyword_search(query, limit)
+            return results
+        except AttributeError:
+            # Fallback if keyword_search is not implemented
+            return []
+    
+    async def _hybrid_search(
+        self, 
+        query: str, 
+        limit: int,
+        threshold: Optional[float] = None
+    ) -> tuple[List[SearchResultData], int, int]:
+        """Perform hybrid search combining vector and keyword results."""
+        # Perform both searches concurrently for better performance
+        import asyncio
+        
+        # Use higher limits to get more diverse results before combining
+        vector_limit = min(limit * 2, 30)
+        keyword_limit = min(limit * 2, 30)
+        
+        vector_task = asyncio.create_task(self._vector_search(query, vector_limit, threshold))
+        keyword_task = asyncio.create_task(self._keyword_search(query, keyword_limit))
+        
+        vector_results, keyword_results = await asyncio.gather(vector_task, keyword_task)
+        
+        # Deduplicate results by chunk ID
+        seen_chunks = set()
+        combined_results = []
+        
+        # Add vector results first (typically higher quality)
+        for result in vector_results:
+            if result.chunk.id not in seen_chunks:
+                seen_chunks.add(result.chunk.id)
+                combined_results.append(result)
+        
+        # Add keyword results that aren't already included
+        for result in keyword_results:
+            if result.chunk.id not in seen_chunks:
+                seen_chunks.add(result.chunk.id)
+                combined_results.append(result)
+        
+        return combined_results, len(vector_results), len(keyword_results)
