@@ -326,6 +326,84 @@ class GraphRAGEngine(Protocol):
         ...
 
 
+# --- Vision Processing Interfaces ---
+
+
+class VisionContentData(BaseModel):
+    """Data structure for vision processing results."""
+    text: str = ""
+    images_text: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+@runtime_checkable
+class ImageProcessor(Protocol):
+    """Protocol for image processing and OCR text extraction."""
+
+    async def extract_text_from_image(self, image_path: str) -> str:
+        """Extract text from an image file using OCR.
+        
+        Args:
+            image_path: Path to the image file
+            
+        Returns:
+            Extracted text as string, empty string if extraction fails
+        """
+        ...
+
+    def is_supported_format(self, file_path: str) -> bool:
+        """Check if the image format is supported.
+        
+        Args:
+            file_path: Path to the image file
+            
+        Returns:
+            True if format is supported, False otherwise
+        """
+        ...
+
+    async def extract_text_from_multiple_images(self, image_paths: list[str]) -> list[str]:
+        """Extract text from multiple images.
+        
+        Args:
+            image_paths: List of paths to image files
+            
+        Returns:
+            List of extracted text strings
+        """
+        ...
+
+
+@runtime_checkable 
+class PDFAnalyzer(Protocol):
+    """Protocol for PDF analysis with image extraction capabilities."""
+
+    async def extract_content(self, pdf_path: str) -> dict[str, Any]:
+        """Extract content from PDF including text and images.
+        
+        Args:
+            pdf_path: Path to the PDF file
+            
+        Returns:
+            Dictionary with keys:
+            - 'text': Extracted text content from PDF
+            - 'images_text': List of text extracted from images via OCR
+            - 'metadata': PDF metadata if available
+        """
+        ...
+
+    def is_pdf_file(self, file_path: str) -> bool:
+        """Check if file is a PDF.
+        
+        Args:
+            file_path: Path to check
+            
+        Returns:
+            True if file is PDF, False otherwise
+        """
+        ...
+
+
 # Forward references need types defined or imported if not using strings
 # from graph_rag.models import Document, Chunk, Entity, Relationship
 # This might cause circular imports, using string hints is safer here.
