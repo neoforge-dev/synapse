@@ -906,6 +906,33 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
             metadata=final_metadata,
         )
 
+    async def reason(
+        self,
+        question: str,
+        steps: Optional[list[Union[str, Any]]] = None,
+        config: Optional[dict[str, Any]] = None
+    ) -> Any:
+        """
+        Perform multi-step reasoning for complex questions.
+        
+        This method creates a MultiStepReasoningEngine and uses it to break down
+        complex questions into reasoning steps, execute each step, and synthesize
+        a comprehensive answer.
+        
+        Args:
+            question: The complex question to answer
+            steps: List of reasoning steps to execute, or None to auto-generate
+            config: Configuration options for reasoning
+            
+        Returns:
+            ReasoningResult with the complete reasoning process and final answer
+        """
+        # Import here to avoid circular imports
+        from graph_rag.core.reasoning_engine import MultiStepReasoningEngine
+        
+        reasoning_engine = MultiStepReasoningEngine(self)
+        return await reasoning_engine.reason(question=question, steps=steps, config=config)
+
 
 # Renaming this class to avoid conflict with the ABC above
 class GraphRAGEngineOrchestrator(GraphRAGEngine):
