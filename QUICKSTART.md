@@ -15,7 +15,7 @@ pip install synapse-graph-rag
 synapse init wizard --quick --vector-only
 
 # Ingest your first document
-synapse ingest "Machine learning is transforming healthcare through better diagnostics and personalized treatments." --title "ML in Healthcare"
+echo "Machine learning is transforming healthcare through better diagnostics and personalized treatments." | synapse ingest dummy_path --stdin --meta title="ML in Healthcare"
 
 # Ask intelligent questions
 synapse query ask "How is ML being used in healthcare?"
@@ -32,7 +32,7 @@ pip install synapse-graph-rag
 synapse up
 
 # Ingest and immediately query
-synapse ingest "Artificial intelligence enables doctors to analyze medical images with unprecedented accuracy." --title "AI Diagnostics"
+echo "Artificial intelligence enables doctors to analyze medical images with unprecedented accuracy." | synapse ingest dummy_path --stdin --meta title="AI Diagnostics"
 synapse query ask "What can AI help doctors with?"
 ```
 
