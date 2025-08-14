@@ -1,29 +1,32 @@
 import logging
-from fastapi import Request
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 # Use the standardized dependency getter
 from graph_rag.api.dependencies import get_graph_rag_engine
+from graph_rag.api.metrics import (
+    inc_llm_rel_inferred,
+    inc_llm_rel_persisted,
+)
 from graph_rag.api.models import (
+    AskRequest,
+    ConfidenceMetricsResponse,
+    ConversationContextResponse,
+    EnhancedAskRequest,
+    EnhancedQueryResponse,
+    AnswerValidationResponse,
     QueryRequest,
     QueryResponse,
     QueryResultChunk,
     QueryResultGraphContext,
-    AskRequest,
     StartConversationRequest,
     StartConversationResponse,
-    ConversationContextResponse,
 )
 from graph_rag.core.graph_rag_engine import (
     GraphRAGEngine,
 )
 from graph_rag.core.graph_rag_engine import (
     QueryResult as DomainQueryResult,
-)
-from graph_rag.api.metrics import (
-    inc_llm_rel_inferred,
-    inc_llm_rel_persisted,
 )
 
 # Import domain models needed for converting results
@@ -204,6 +207,121 @@ def create_query_router() -> APIRouter:
             )
 
     @router.post(
+        "/ask/enhanced",
+        response_model=EnhancedQueryResponse,
+        summary="Ask with confidence scoring",
+        description="Retrieves context and synthesizes an answer with detailed confidence metrics.",
+    )
+    async def ask_enhanced(
+        ask_request: EnhancedAskRequest,
+        engine: GraphRAGEngine = Depends(get_graph_rag_engine),
+        request: Request = None,
+    ):
+        logger.info(
+            f"Received enhanced ask: {ask_request.text[:100]}... (k={ask_request.k}, graph={ask_request.include_graph})"
+        )
+        try:
+            config = {
+                "k": ask_request.k,
+                "include_graph": ask_request.include_graph,
+                "search_type": ask_request.search_type,
+                "blend_vector_weight": ask_request.blend_vector_weight,
+                "blend_keyword_weight": ask_request.blend_keyword_weight,
+                "rerank": ask_request.rerank,
+                "mmr_lambda": ask_request.mmr_lambda,
+                "no_answer_min_score": ask_request.no_answer_min_score,
+                "style": ask_request.style,
+                "conversation_id": ask_request.conversation_id,
+                # Relationship extraction controls
+                "extract_relationships": True,
+                "extract_relationships_persist": ask_request.extract_relationships_persist,
+                "extract_relationships_dry_run": ask_request.extract_relationships_dry_run,
+            }
+
+            # Use enhanced query method
+            enhanced_result = await engine.answer_query_enhanced(
+                ask_request.text, config=config
+            )
+
+            # Convert domain model to API model
+            confidence_api = ConfidenceMetricsResponse(
+                overall_score=enhanced_result.confidence.overall_score,
+                level=enhanced_result.confidence.level.value,
+                context_coverage=enhanced_result.confidence.context_coverage,
+                context_relevance=enhanced_result.confidence.context_relevance,
+                uncertainty_indicators=enhanced_result.confidence.uncertainty_indicators,
+                source_count=enhanced_result.confidence.source_count,
+                source_quality_score=enhanced_result.confidence.source_quality_score,
+                answer_completeness=enhanced_result.confidence.answer_completeness,
+                factual_consistency=enhanced_result.confidence.factual_consistency,
+                reasoning=enhanced_result.confidence.reasoning,
+            )
+
+            # Get basic query result for chunks and graph context
+            basic_result = await engine.query(ask_request.text, config=config)
+
+            # Include citations in metadata
+            try:
+                citations = [
+                    {"chunk_id": c.id, "document_id": c.document_id}
+                    for c in basic_result.relevant_chunks
+                ]
+            except Exception:
+                citations = []
+            meta_with_citations = dict(basic_result.metadata or {})
+            if citations:
+                meta_with_citations.setdefault("citations", citations)
+
+            # Convert validation results to API model if available
+            validation_api = None
+            if basic_result.metadata.get("validation"):
+                validation_data = basic_result.metadata["validation"]
+                validation_api = AnswerValidationResponse(
+                    is_valid=validation_data["is_valid"],
+                    validation_score=validation_data["validation_score"],
+                    validation_level=validation_data["validation_level"],
+                    total_claims=validation_data["total_claims"],
+                    supported_claims=validation_data["supported_claims"],
+                    unsupported_claims=validation_data["unsupported_claims"],
+                    conflicting_claims=validation_data["conflicting_claims"],
+                    chunk_coverage=validation_data["chunk_coverage"],
+                    answer_coverage=validation_data["answer_coverage"],
+                    citation_completeness=validation_data["citation_completeness"],
+                    hallucination_risk=validation_data["hallucination_risk"],
+                    requires_fact_check=validation_data["requires_fact_check"],
+                    num_issues=len(validation_data.get("issues", [])),
+                    recommendations=validation_data.get("recommendations", []),
+                )
+
+            return EnhancedQueryResponse(
+                answer=enhanced_result.answer,
+                confidence=confidence_api,
+                validation=validation_api,
+                relevant_chunks=_to_api_chunks(basic_result),
+                graph_context=_to_api_graph_context(basic_result),
+                metadata=meta_with_citations,
+                answer_with_citations=basic_result.answer_with_citations,
+                citations=basic_result.citations,
+                bibliography=basic_result.bibliography,
+                input_tokens=enhanced_result.input_tokens,
+                output_tokens=enhanced_result.output_tokens,
+                processing_time=enhanced_result.processing_time,
+                model_name=enhanced_result.model_name,
+                temperature=enhanced_result.temperature,
+                has_hallucination_risk=enhanced_result.has_hallucination_risk,
+                requires_verification=enhanced_result.requires_verification,
+            )
+
+        except Exception as e:
+            logger.error(
+                f"Error processing enhanced ask '{ask_request.text}': {e}", exc_info=True
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to process enhanced ask: {e}",
+            )
+
+    @router.post(
         "/ask/stream",
         summary="Ask with streaming response",
         description="Streams synthesized answer chunks (NDJSON).",
@@ -248,14 +366,14 @@ def create_query_router() -> APIRouter:
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                     detail="Conversation memory is not available. Context manager not configured."
                 )
-            
+
             conversation_id = await engine._context_manager.start_conversation(request.user_id)
-            
+
             return StartConversationResponse(
                 conversation_id=conversation_id,
                 message=f"Conversation started for user {request.user_id}"
             )
-            
+
         except Exception as e:
             logger.error(f"Error starting conversation for user {request.user_id}: {e}", exc_info=True)
             raise HTTPException(
@@ -280,16 +398,16 @@ def create_query_router() -> APIRouter:
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                     detail="Conversation memory is not available. Context manager not configured."
                 )
-            
+
             context = await engine._context_manager.get_conversation_context(conversation_id)
             summary = await engine._context_manager.get_conversation_summary(conversation_id)
-            
+
             return ConversationContextResponse(
                 conversation_id=conversation_id,
                 context=context,
                 has_summary=bool(summary)
             )
-            
+
         except Exception as e:
             logger.error(f"Error getting context for conversation {conversation_id}: {e}", exc_info=True)
             raise HTTPException(
@@ -313,17 +431,17 @@ def create_query_router() -> APIRouter:
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                     detail="Conversation memory is not available. Context manager not configured."
                 )
-            
+
             deleted = await engine._context_manager.delete_conversation(conversation_id)
-            
+
             if not deleted:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Conversation {conversation_id} not found"
                 )
-            
+
             return {"message": f"Conversation {conversation_id} deleted successfully"}
-            
+
         except HTTPException:
             raise
         except Exception as e:

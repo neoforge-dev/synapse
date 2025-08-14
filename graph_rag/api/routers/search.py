@@ -12,8 +12,8 @@ from graph_rag.api.dependencies import (
     get_graph_repository,
     get_vector_store,
 )
-from graph_rag.core.graph_rag_engine import QueryResult  # Import QueryResult
 from graph_rag.api.metrics import observe_query_latency
+from graph_rag.core.graph_rag_engine import QueryResult  # Import QueryResult
 from graph_rag.core.interfaces import GraphRAGEngine, SearchResultData, VectorStore
 
 router = APIRouter()
@@ -170,7 +170,7 @@ def create_search_router() -> APIRouter:
                             chunk_obj = item
                             # If SearchResultData-like
                             if hasattr(item, "chunk") and hasattr(item, "score"):
-                                chunk_obj = getattr(item, "chunk")
+                                chunk_obj = item.chunk
                                 score_val = float(getattr(item, "score", 0.0))
                             else:
                                 # If ChunkData-like with optional score attr

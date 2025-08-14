@@ -1,5 +1,5 @@
 import logging
-from typing import Annotated, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
@@ -87,7 +87,7 @@ async def get_chunks_by_document(
 )
 async def list_all_chunks(
     repo: Annotated[GraphRepository, Depends(get_graph_repository)],
-    limit: Optional[int] = Query(
+    limit: int | None = Query(
         100, description="Limit the number of chunks returned", ge=1, le=1000
     ),
 ):

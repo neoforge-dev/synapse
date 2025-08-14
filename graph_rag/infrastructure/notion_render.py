@@ -1,7 +1,6 @@
-from typing import List
 
 
-def _rich_text_to_plain(rt: List[dict]) -> str:
+def _rich_text_to_plain(rt: list[dict]) -> str:
     out = []
     for part in rt or []:
         text = part.get("plain_text")
@@ -10,12 +9,12 @@ def _rich_text_to_plain(rt: List[dict]) -> str:
     return "".join(out)
 
 
-def render_blocks_to_markdown(blocks: List[dict], include_assets: bool = True) -> str:
+def render_blocks_to_markdown(blocks: list[dict], include_assets: bool = True) -> str:
     """Very simple Notion block renderer to Markdown/plain text.
 
     Supports: paragraph, heading_1/2/3, bulleted_list_item, numbered_list_item, quote, code, image, file.
     """
-    lines: List[str] = []
+    lines: list[str] = []
     for b in blocks or []:
         t = b.get("type")
         data = b.get(t, {}) if t else {}

@@ -2,8 +2,8 @@
 
 import asyncio
 import time
+
 import pytest
-from unittest.mock import AsyncMock, patch
 
 
 @pytest.mark.asyncio
@@ -11,38 +11,43 @@ async def test_graph_rag_engine_performance_with_caching():
     """Test that GraphRAG engine performance improves with caching enabled."""
     from graph_rag.core.graph_rag_engine import SimpleGraphRAGEngine
     from graph_rag.core.interfaces import (
-        ChunkData, EntityExtractor, ExtractionResult, ExtractedEntity,
-        GraphRepository, SearchResultData, VectorStore
+        ChunkData,
+        EntityExtractor,
+        ExtractedEntity,
+        ExtractionResult,
+        GraphRepository,
+        SearchResultData,
+        VectorStore,
     )
     from graph_rag.infrastructure.cache.query_cache import QueryCache
-    
+
     # Mock components with simulated latency
     class SlowMockGraphRepo(GraphRepository):
         def __init__(self):
             self.query_count = 0
             self.cache = QueryCache()
-            
+
         async def execute_query(self, query, params=None):
             cache_key = f"query:{hash(query + str(params))}"
             return await self.cache.get_or_compute(
                 cache_key, self._expensive_query, query, params
             )
-            
+
         async def _expensive_query(self, query, params):
             self.query_count += 1
             await asyncio.sleep(0.1)  # Simulate expensive graph query
             return []
-            
+
         async def query_subgraph(self, node_id, max_depth=1, relationship_types=None):
             cache_key = f"subgraph:{node_id}:{max_depth}:{relationship_types}"
             return await self.cache.get_or_compute(
                 cache_key, self._expensive_subgraph, node_id, max_depth, relationship_types
             )
-            
+
         async def _expensive_subgraph(self, node_id, max_depth, relationship_types):
             await asyncio.sleep(0.05)  # Simulate graph traversal
             return [], []
-            
+
         # Required interface implementations
         async def add_document(self, doc): pass
         async def get_document_by_id(self, doc_id): return None
@@ -114,24 +119,25 @@ async def test_graph_rag_engine_performance_with_caching():
 async def test_api_endpoint_performance_with_caching():
     """Test that API endpoints benefit from caching layer."""
     from fastapi.testclient import TestClient
+
     from graph_rag.api.main import create_app
-    
+
     app = create_app()
     client = TestClient(app)
-    
+
     # Test graph neighbors endpoint performance
     query_params = "id=test_node&depth=1"
-    
+
     # First call
     start_time = time.time()
     response1 = client.get(f"/api/v1/graph/neighbors?{query_params}")
     first_time = time.time() - start_time
-    
+
     # Second call (should hit cache in real implementation)
     start_time = time.time()
     response2 = client.get(f"/api/v1/graph/neighbors?{query_params}")
     second_time = time.time() - start_time
-    
+
     # Both should return same data structure
     assert response1.status_code == response2.status_code == 200
     data1 = response1.json()
@@ -143,15 +149,15 @@ async def test_api_endpoint_performance_with_caching():
 def test_performance_monitoring_configuration():
     """Test that performance monitoring can be configured."""
     from graph_rag.config import get_settings
-    
+
     settings = get_settings()
-    
+
     # Verify cache settings exist
     assert hasattr(settings, 'cache_type')
     assert hasattr(settings, 'cache_default_ttl')
     assert hasattr(settings, 'cache_embedding_ttl')
     assert hasattr(settings, 'cache_search_ttl')
-    
+
     # Verify performance monitoring could be enabled
     assert hasattr(settings, 'enable_metrics')  # Existing setting
 
@@ -160,7 +166,7 @@ def test_performance_monitoring_configuration():
 async def test_cache_reduces_database_load():
     """Test that caching reduces load on underlying systems."""
     from graph_rag.infrastructure.cache.query_cache import QueryCache
-    
+
     # Mock expensive database operation
     db_call_count = 0
     async def expensive_db_operation(query):
@@ -168,20 +174,20 @@ async def test_cache_reduces_database_load():
         db_call_count += 1
         await asyncio.sleep(0.02)  # Simulate DB latency
         return f"result_for_{query}"
-    
+
     cache = QueryCache()
-    
+
     # Make multiple calls with same parameters
     queries = ["SELECT * FROM nodes", "SELECT * FROM nodes", "SELECT * FROM edges", "SELECT * FROM nodes"]
-    
+
     results = []
     for query in queries:
         result = await cache.get_or_compute(f"db:{query}", expensive_db_operation, query)
         results.append(result)
-    
+
     # Verify results are correct
     assert results[0] == results[1] == results[3] == "result_for_SELECT * FROM nodes"
     assert results[2] == "result_for_SELECT * FROM edges"
-    
+
     # Verify database was called minimal number of times
     assert db_call_count == 2  # Only 2 unique queries, not 4

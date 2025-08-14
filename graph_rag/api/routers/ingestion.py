@@ -1,20 +1,21 @@
 import logging
 import uuid
-from typing import Any, Callable
-from graph_rag.api.models import IngestRequest, IngestResponse
-from graph_rag.services.ingestion import IngestionService
+from collections.abc import Callable
+from typing import Any
 
+# Use state-aware getter from main so tests can clear overrides and hit 503
 from fastapi import (
     APIRouter,
     BackgroundTasks,
     Body,
     Depends,
     HTTPException,
+    Request,
     status,
 )
 
-# Use state-aware getter from main so tests can clear overrides and hit 503
-from fastapi import Request
+from graph_rag.api.models import IngestRequest, IngestResponse
+from graph_rag.services.ingestion import IngestionService
 
 
 # Lazy wrapper to avoid circular import at module import time

@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from .protocols import CacheService  # Import the protocol
 
@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 class MemoryCache(CacheService):
     def __init__(self):
         self._cache: dict[str, Any] = {}
-        self._ttl: dict[str, Optional[asyncio.TimerHandle]] = {}
+        self._ttl: dict[str, asyncio.TimerHandle | None] = {}
         logger.info("MemoryCache initialized.")
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         if key in self._cache:
             logger.debug(f"Cache HIT for key: {key}")
             return self._cache[key]
@@ -22,7 +22,7 @@ class MemoryCache(CacheService):
             logger.debug(f"Cache MISS for key: {key}")
             return None
 
-    async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         logger.debug(f"Cache SET for key: {key} with ttl={ttl}")
         self._cache[key] = value
         # Cancel existing timer if any

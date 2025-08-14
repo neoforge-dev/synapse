@@ -43,10 +43,10 @@ class Settings(BaseSettings):
     memgraph_port: int = Field(
         7687, description="Port number for the Memgraph instance."
     )
-    memgraph_user: Optional[str] = Field(
+    memgraph_user: str | None = Field(
         None, description="Username for Memgraph connection (if required)."
     )
-    memgraph_password: Optional[SecretStr] = Field(
+    memgraph_password: SecretStr | None = Field(
         None, description="Password for Memgraph connection (if required)."
     )
     memgraph_use_ssl: bool = Field(
@@ -100,10 +100,10 @@ class Settings(BaseSettings):
         "mock",
         description="Type of LLM service to use ('mock', 'openai', 'anthropic', 'ollama'). Default: mock",
     )
-    openai_api_key: Optional[SecretStr] = Field(
+    openai_api_key: SecretStr | None = Field(
         None, description="OpenAI API key for LLM service (if using OpenAI)."
     )
-    anthropic_api_key: Optional[SecretStr] = Field(
+    anthropic_api_key: SecretStr | None = Field(
         None, description="Anthropic API key for LLM service (if using Anthropic)."
     )
     ollama_base_url: str = Field(
@@ -130,13 +130,13 @@ class Settings(BaseSettings):
         ge=1.0,
         description="Timeout in seconds for LLM API calls. Default: 30.0",
     )
-    
+
     # --- Citation Settings ---
     citation_style: str = Field(
         "numeric",
         description="Citation style to use ('numeric', 'apa', 'mla', 'chicago', 'ieee'). Default: numeric",
     )
-    
+
     # --- Operational Settings ---
     vector_only_mode: bool = Field(
         False,
@@ -148,7 +148,7 @@ class Settings(BaseSettings):
     )
 
     # --- Notion API Settings ---
-    notion_api_key: Optional[SecretStr] = Field(
+    notion_api_key: SecretStr | None = Field(
         None, description="Notion API key (internal sync)."
     )
     notion_base_url: str = Field(
@@ -179,7 +179,7 @@ class Settings(BaseSettings):
         "memory",
         description="Type of cache to use ('memory' or 'redis'). Default: memory",
     )
-    redis_url: Optional[str] = Field(
+    redis_url: str | None = Field(
         None, description="Redis URL for caching (redis://host:port/db)."
     )
     cache_default_ttl: int = Field(
@@ -323,12 +323,12 @@ class Settings(BaseSettings):
         return f"{protocol}://{self.memgraph_host}:{self.memgraph_port}"
 
     @property
-    def MEMGRAPH_USERNAME(self) -> Optional[str]:
+    def MEMGRAPH_USERNAME(self) -> str | None:
         """Alias for memgraph_user to match the expected property name in main.py."""
         return self.memgraph_user
 
     @property
-    def MEMGRAPH_PASSWORD(self) -> Optional[SecretStr]:
+    def MEMGRAPH_PASSWORD(self) -> SecretStr | None:
         """Alias for memgraph_password to match the expected property name in main.py."""
         return self.memgraph_password
 

@@ -1,6 +1,5 @@
 import json
 import webbrowser
-from typing import Optional
 
 import httpx
 import typer
@@ -17,7 +16,7 @@ app = typer.Typer(help="Graph exploration commands")
 def neighbors(
     id: str = typer.Option(..., "--id", help="Start node id"),
     depth: int = typer.Option(1, "--depth", help="Traversal depth (1..3)"),
-    types: Optional[str] = typer.Option(None, "--types", help="Comma-separated relationship types"),
+    types: str | None = typer.Option(None, "--types", help="Comma-separated relationship types"),
     json_out: bool = typer.Option(False, "--json", help="Print JSON result"),
 ):
     url = f"{API_BASE_URL}/graph/neighbors"
@@ -36,10 +35,10 @@ def neighbors(
 
 @app.command()
 def export(
-    seed: Optional[str] = typer.Option(None, "--seed", help="Seed id for subgraph export"),
+    seed: str | None = typer.Option(None, "--seed", help="Seed id for subgraph export"),
     depth: int = typer.Option(1, "--depth", help="Traversal depth (1..3)"),
     format: str = typer.Option("json", "--format", help="Export format: json|graphml"),
-    outfile: Optional[str] = typer.Option(None, "--out", help="Write to file path"),
+    outfile: str | None = typer.Option(None, "--out", help="Write to file path"),
 ):
     url = f"{API_BASE_URL}/graph/export"
     params = {"format": format, "depth": depth}
@@ -59,7 +58,7 @@ def export(
 
 @app.command("viz")
 def viz(
-    seed: Optional[str] = typer.Option(None, "--seed", help="Starting node for visualization"),
+    seed: str | None = typer.Option(None, "--seed", help="Starting node for visualization"),
     port: int = typer.Option(8000, "--port", help="API server port"),
     host: str = typer.Option("localhost", "--host", help="API server host"),
     open_browser: bool = typer.Option(True, "--open/--no-open", help="Open browser automatically"),
@@ -67,9 +66,9 @@ def viz(
     """Open interactive graph visualization in browser."""
     base_url = f"http://{host}:{port}/api/v1/graph/viz"
     url = f"{base_url}?seed={seed}" if seed else base_url
-    
+
     print(f"Graph visualization URL: {url}")
-    
+
     if open_browser:
         try:
             webbrowser.open(url)

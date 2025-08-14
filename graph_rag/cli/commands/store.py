@@ -25,13 +25,13 @@ def _process_store_lines(
 ) -> list[str]:
     """Pure function: process store input lines to output JSON lines."""
     settings = Settings()
-    from graph_rag.infrastructure.graph_stores.memgraph_store import (
-        MemgraphGraphRepository,
-    )
+    from graph_rag.core.entity_extractor import SpacyEntityExtractor
     from graph_rag.infrastructure.document_processor.simple_processor import (
         SimpleDocumentProcessor,
     )
-    from graph_rag.core.entity_extractor import SpacyEntityExtractor
+    from graph_rag.infrastructure.graph_stores.memgraph_store import (
+        MemgraphGraphRepository,
+    )
 
     repo = MemgraphGraphRepository(settings)
     processor = SimpleDocumentProcessor()
@@ -53,9 +53,9 @@ def _process_store_lines(
     )
 
     outputs: list[str] = []
-    import json as _json
-    import inspect as _inspect
     import asyncio as _asyncio
+    import inspect as _inspect
+    import json as _json
     from pathlib import Path as _Path
 
     for raw in lines:

@@ -1,27 +1,31 @@
-import logging
 import asyncio
-import time
+import logging
 import re
+import time
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 
+from graph_rag.api.metrics import (
+    inc_ingested_chunks,
+    inc_ingested_vectors,
+    observe_ingest_latency,
+)
 from graph_rag.core.interfaces import (
     DocumentProcessor,
     EmbeddingService,
     EntityExtractor,
     GraphRepository,
     VectorStore,
+)
+from graph_rag.core.interfaces import (
     ImageProcessor as ImageProcessorProtocol,
+)
+from graph_rag.core.interfaces import (
     PDFAnalyzer as PDFAnalyzerProtocol,
 )
 from graph_rag.domain.models import Chunk, Document, Relationship
-from graph_rag.api.metrics import (
-    inc_ingested_chunks,
-    inc_ingested_vectors,
-    observe_ingest_latency,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +53,8 @@ class IngestionService:
         graph_store: GraphRepository,
         embedding_service: EmbeddingService,
         vector_store: VectorStore,
-        image_processor: Optional[ImageProcessorProtocol] = None,
-        pdf_analyzer: Optional[PDFAnalyzerProtocol] = None,
+        image_processor: ImageProcessorProtocol | None = None,
+        pdf_analyzer: PDFAnalyzerProtocol | None = None,
     ):
         """
         Initializes the IngestionService.
@@ -76,7 +80,7 @@ class IngestionService:
             vision_info += f", image_processor: {type(image_processor).__name__}"
         if self.pdf_analyzer:
             vision_info += f", pdf_analyzer: {type(pdf_analyzer).__name__}"
-        
+
         logger.info(
             f"IngestionService initialized with processor: {type(document_processor).__name__}, "
             f"extractor: {type(entity_extractor).__name__}, store: {type(graph_store).__name__}, "
@@ -88,7 +92,7 @@ class IngestionService:
         document_id: str,
         content: str,
         metadata: dict[str, Any],
-        max_tokens_per_chunk: Optional[int] = None,
+        max_tokens_per_chunk: int | None = None,
         generate_embeddings: bool = True,  # Add flag to control embedding generation
         replace_existing: bool = True,
     ) -> IngestionResult:
@@ -551,7 +555,7 @@ class IngestionService:
             return []
 
     def _split_into_chunks_old(
-        self, content: str, document_id: str, max_tokens_per_chunk: Optional[int] = None
+        self, content: str, document_id: str, max_tokens_per_chunk: int | None = None
     ) -> list[Chunk]:
         """
         Split document content into chunks.
@@ -616,74 +620,74 @@ class IngestionService:
         """
         enhanced_content = content
         enhanced_metadata = dict(metadata) if metadata else {}
-        
+
         # Check if this is a PDF document and we have PDF analyzer
         source_path = metadata.get("source_path") or metadata.get("file_path")
         is_pdf = False
-        
+
         if source_path:
             is_pdf = (
-                source_path.lower().endswith('.pdf') or 
+                source_path.lower().endswith('.pdf') or
                 enhanced_metadata.get("type") == "pdf" or
                 enhanced_metadata.get("content_type") == "application/pdf"
             )
-        
+
         # Process PDF with vision capabilities
         if is_pdf and self.pdf_analyzer and source_path:
             try:
                 logger.info(f"Processing PDF with vision analysis: {source_path}")
                 pdf_result = await self.pdf_analyzer.extract_content(source_path)
-                
+
                 if pdf_result:
                     # Combine original content with PDF extracted content
                     pdf_text = pdf_result.get("text", "")
                     images_text = pdf_result.get("images_text", [])
                     pdf_metadata = pdf_result.get("metadata", {})
-                    
+
                     # Enhance content with PDF text if available
                     if pdf_text.strip():
                         if enhanced_content.strip():
                             enhanced_content = f"{enhanced_content}\n\n--- PDF Content ---\n{pdf_text}"
                         else:
                             enhanced_content = pdf_text
-                    
+
                     # Add image text if available
                     if images_text:
                         image_content = "\n\n--- Text from Images ---\n" + "\n".join(images_text)
                         enhanced_content = f"{enhanced_content}{image_content}"
                         enhanced_metadata["images_text_count"] = len(images_text)
-                    
+
                     # Add PDF metadata
                     enhanced_metadata["pdf_metadata"] = pdf_metadata
                     enhanced_metadata["vision_processed"] = True
-                    
+
                     logger.info(
                         f"PDF vision processing complete for {document_id}: "
                         f"extracted {len(pdf_text)} text chars, {len(images_text)} image texts"
                     )
-                    
+
             except Exception as e:
                 logger.warning(f"PDF vision processing failed for {document_id}: {e}")
-        
+
         # Process individual images if image processor is available
         elif self.image_processor and source_path:
             try:
                 if self.image_processor.is_supported_format(source_path):
                     logger.info(f"Processing image with OCR: {source_path}")
                     ocr_text = await self.image_processor.extract_text_from_image(source_path)
-                    
+
                     if ocr_text.strip():
                         if enhanced_content.strip():
                             enhanced_content = f"{enhanced_content}\n\n--- OCR Text ---\n{ocr_text}"
                         else:
                             enhanced_content = ocr_text
-                            
+
                         enhanced_metadata["ocr_text_length"] = len(ocr_text)
                         enhanced_metadata["vision_processed"] = True
-                        
+
                         logger.info(f"Image OCR complete for {document_id}: extracted {len(ocr_text)} characters")
-                        
+
             except Exception as e:
                 logger.warning(f"Image OCR processing failed for {document_id}: {e}")
-        
+
         return enhanced_content, enhanced_metadata

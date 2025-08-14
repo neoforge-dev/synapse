@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from typing import Optional
 
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
@@ -51,7 +50,7 @@ class SimpleVectorStore(VectorStore):
         self,
         query_vector: list[float],
         limit: int = 10,
-        threshold: Optional[float] = None,
+        threshold: float | None = None,
     ) -> list[SearchResultData]:
         """
         Searches for chunks with embeddings similar to the query vector.
@@ -130,7 +129,7 @@ class SimpleVectorStore(VectorStore):
         logger.debug(f"Vector similarity search returned {len(results)} results.")
         return results
 
-    async def get_chunk_by_id(self, chunk_id: str) -> Optional[ChunkData]:
+    async def get_chunk_by_id(self, chunk_id: str) -> ChunkData | None:
         """
         Retrieves a chunk by its ID.
         Implementation of the VectorStore protocol method (optional).

@@ -1,12 +1,10 @@
-import json
-from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from graph_rag.api.main import create_app
 from graph_rag.api import dependencies as deps
+from graph_rag.api.main import create_app
 
 
 @pytest.mark.unit
@@ -26,7 +24,7 @@ def test_query_ask_happy_path(monkeypatch):
                         self.properties = {"score": score}
 
                 relevant_chunks = [Chunk("c1", "t", "d1", 0.9)]
-            
+
             # include_graph False => just a tuple of empty entities/relationships
             R.graph_context = ([], [])
             R.metadata = {"k": config.get("k")}

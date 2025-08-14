@@ -2,14 +2,13 @@ import pytest
 
 # Skip entire module if mgclient (Memgraph client) isn’t available
 try:
-    import mgclient  # type: ignore
+    pass  # type: ignore
 except Exception:
     pytest.skip("mgclient not available; skipping Memgraph-dependent tests", allow_module_level=True)
 
 pytestmark = pytest.mark.integration
 import uuid
-from typing import Optional
-from unittest.mock import ANY, AsyncMock, MagicMock, call
+from unittest.mock import ANY, AsyncMock, call
 
 import pytest
 
@@ -27,7 +26,7 @@ from graph_rag.core.persistent_kg_builder import PersistentKnowledgeGraphBuilder
 
 # Helper to create mock DocumentData
 def create_mock_document_data(
-    id: str, content: str, metadata: Optional[dict] = None
+    id: str, content: str, metadata: dict | None = None
 ) -> DocumentData:
     return DocumentData(id=id, content=content, metadata=metadata or {})
 
@@ -37,8 +36,8 @@ def create_mock_chunk_data(
     id: str,
     text: str,
     doc_id: str,
-    embedding: Optional[list[float]] = None,
-    metadata: Optional[dict] = None,
+    embedding: list[float] | None = None,
+    metadata: dict | None = None,
 ) -> ChunkData:
     return ChunkData(
         id=id,

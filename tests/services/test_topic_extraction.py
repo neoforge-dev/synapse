@@ -3,8 +3,14 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from graph_rag.core.interfaces import DocumentProcessor, EmbeddingService, EntityExtractor, GraphRepository, VectorStore
-from graph_rag.domain.models import Chunk, Document
+from graph_rag.core.interfaces import (
+    DocumentProcessor,
+    EmbeddingService,
+    EntityExtractor,
+    GraphRepository,
+    VectorStore,
+)
+from graph_rag.domain.models import Document
 from graph_rag.services.ingestion import IngestionService
 
 

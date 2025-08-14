@@ -1,7 +1,7 @@
+import asyncio
 import logging
 from collections.abc import AsyncGenerator
-import asyncio
-from typing import Any, Optional
+from typing import Any
 
 from .protocols import LLMService  # Import the protocol
 
@@ -14,8 +14,8 @@ class MockLLMService(LLMService):
     async def generate_response(
         self,
         prompt: str,
-        context: Optional[str] = None,
-        history: Optional[list[dict[str, str]]] = None,
+        context: str | None = None,
+        history: list[dict[str, str]] | None = None,
     ) -> str:
         logger.info(
             f"MockLLMService: Generating response for prompt: {prompt[:50]}..."
@@ -32,8 +32,8 @@ class MockLLMService(LLMService):
     async def generate_response_stream(
         self,
         prompt: str,
-        context: Optional[str] = None,
-        history: Optional[list[dict[str, str]]] = None,
+        context: str | None = None,
+        history: list[dict[str, str]] | None = None,
     ) -> AsyncGenerator[str, None]:
         logger.info(
             f"MockLLMService: Generating stream for prompt: {prompt[:50]}..."

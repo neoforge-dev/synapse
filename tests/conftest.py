@@ -8,12 +8,13 @@ import os
 import shutil
 import uuid  # <-- Added import
 from collections.abc import AsyncGenerator, Generator
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import AsyncMock  # Add AsyncMock, MagicMock, patch
 
 import nltk  # Add nltk import
 import pytest
 import pytest_asyncio  # Add import
+
 try:
     # Allow hot-path coverage runs to skip heavy spaCy/torch import
     if os.getenv("SKIP_SPACY_IMPORT") == "1":
@@ -81,6 +82,7 @@ from graph_rag.core.interfaces import (  # Corrected import  # Core interfaces
     VectorStore,
 )
 from graph_rag.domain.models import Chunk, Document  # Updated module path
+
 try:
     from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 except Exception:
@@ -201,7 +203,7 @@ def mock_graph_repo() -> AsyncMock:
     )  # Default to no chunks
 
     # Add mock for get_document_by_id used by the search endpoint
-    async def mock_get_document_by_id(document_id: str) -> Optional[Document]:
+    async def mock_get_document_by_id(document_id: str) -> Document | None:
         # Simulate returning mock Document objects for specific IDs used in search tests
         if document_id == "doc_key1":
             return Document(
@@ -251,7 +253,7 @@ def mock_graph_rag_engine() -> AsyncMock:
 
     # Define the mock query method with the expected signature
     async def mock_query(
-        query_text: str, k=None, config: Optional[dict[str, Any]] = None
+        query_text: str, k=None, config: dict[str, Any] | None = None
     ) -> QueryResult:  # Correct type hint
         # Handle k parameter, default to 3 if not provided
         actual_k = k if k is not None else (config.get("k", 3) if config else 3)
@@ -496,8 +498,12 @@ async def test_client(
     try:
         from graph_rag.api.main import (
             get_graph_repository as main_get_graph_repository,
-            get_vector_store as main_get_vector_store,
+        )
+        from graph_rag.api.main import (
             get_ingestion_service as main_get_ingestion_service,
+        )
+        from graph_rag.api.main import (
+            get_vector_store as main_get_vector_store,
         )
 
         app.dependency_overrides[main_get_graph_repository] = lambda: mock_graph_repo
@@ -643,7 +649,7 @@ async def memgraph_connection() -> AsyncGenerator[AsyncDriver, None]:
     )  # Assuming Memgraph uses same vars for simplicity
     password = os.getenv("NEO4J_PASSWORD")
 
-    driver: Optional[AsyncDriver] = None
+    driver: AsyncDriver | None = None
     max_attempts = 5
     delay = 3  # seconds
 

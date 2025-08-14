@@ -154,7 +154,7 @@ class FaissVectorStore(VectorStore):
         q = _normalize(q)
         scores, idxs = self.index.search(q, k=max(1, limit))
         results: list[SearchResultData] = []
-        for score, idx in zip(scores[0].tolist(), idxs[0].tolist()):
+        for score, idx in zip(scores[0].tolist(), idxs[0].tolist(), strict=False):
             if idx < 0 or idx >= len(self._rows):
                 continue
             if threshold is not None and score < threshold:

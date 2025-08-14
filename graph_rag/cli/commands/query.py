@@ -1,7 +1,7 @@
 import json
 import logging
 import sys
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 import typer
@@ -34,7 +34,7 @@ console = Console()
 
 # --- Temporary make_api_request (move to utils) ---
 def make_api_request(
-    url: str, method: str = "POST", payload: Optional[dict[str, Any]] = None
+    url: str, method: str = "POST", payload: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     """Makes a request to the specified API endpoint and handles common errors."""
     logger.info(f"Sending {method} request to {url}...")
@@ -91,7 +91,7 @@ app = typer.Typer(help="Commands for querying the GraphRAG system.")
 @app.command("ask")
 def ask_query(
     query_text: str = typer.Argument(..., help="The natural language question to ask."),
-    k: Optional[int] = typer.Option(
+    k: int | None = typer.Option(
         None, "--k", help="Number of relevant chunks to retrieve (vector search)."
     ),
     show_chunks: bool = typer.Option(

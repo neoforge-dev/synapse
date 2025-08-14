@@ -1,19 +1,18 @@
 import json
+import json as _json
 import logging
 import re
-from typing import Optional
-import json as _json
-from pathlib import Path
 import uuid
+from pathlib import Path
 
 import httpx
 import typer
 
+# from graph_rag.utils.identity import derive_document_id
+from graph_rag.cli.commands.store import _process_store_lines
 from graph_rag.config import Settings
 from graph_rag.infrastructure.notion_client import NotionClient
 from graph_rag.infrastructure.notion_render import render_blocks_to_markdown
-# from graph_rag.utils.identity import derive_document_id
-from graph_rag.cli.commands.store import _process_store_lines
 
 app = typer.Typer(help="Notion API sync utilities")
 logger = logging.getLogger(__name__)
@@ -21,9 +20,9 @@ logger = logging.getLogger(__name__)
 
 @app.command()
 def sync(
-    db_id: Optional[str] = typer.Option(None, "--db", help="Notion database ID"),
-    since: Optional[str] = typer.Option(None, "--since", help="ISO timestamp for incremental sync"),
-    query: Optional[str] = typer.Option(None, "--query", help="Full-text search query"),
+    db_id: str | None = typer.Option(None, "--db", help="Notion database ID"),
+    since: str | None = typer.Option(None, "--since", help="ISO timestamp for incremental sync"),
+    query: str | None = typer.Option(None, "--query", help="Full-text search query"),
     limit: int = typer.Option(100, "--limit", help="Max pages to fetch"),
     embeddings: bool = typer.Option(False, "--embeddings/--no-embeddings", help="Generate embeddings while storing"),
     replace: bool = typer.Option(True, "--replace/--no-replace", help="Replace existing document chunks"),
@@ -34,12 +33,12 @@ def sync(
         "--attachments",
         help="Attachment handling policy: ignore|link|download",
     ),
-    download_path: Optional[Path] = typer.Option(
+    download_path: Path | None = typer.Option(
         None, "--download-path", help="Directory to save downloaded attachments"
     ),
     # Safety: preview-only execution that prints the plan (adds/updates/deletes) and exits
     dry_run: bool = typer.Option(False, "--dry-run", help="Preview planned changes only"),
-    state_file: Optional[Path] = typer.Option(None, "--state-file", help="Path to save/load incremental sync state"),
+    state_file: Path | None = typer.Option(None, "--state-file", help="Path to save/load incremental sync state"),
     save_state: bool = typer.Option(True, "--save-state/--no-save-state", help="Persist latest cursor/time for next run"),
 ):
     """Sync pages from Notion; when --json is omitted, store directly via local ingestion pipeline."""
@@ -57,11 +56,11 @@ def sync(
     include_assets = attachments in {"link", "download"}
 
     fetched = 0
-    cursor: Optional[str] = None
+    cursor: str | None = None
     # Load previous state if available and since not provided
     state_path = state_file or Path("~/.graph_rag/notion_sync_state.json").expanduser()
     context_key = f"db:{db_id}" if db_id else f"search:{query or ''}"
-    last_seen_time: Optional[str] = None
+    last_seen_time: str | None = None
     # Track per-page last_edited_time for diffing in dry-run
     prior_pages: dict[str, str] = {}
     if since:

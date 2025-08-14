@@ -1,12 +1,11 @@
 import json
 import logging
+import os
 import sys
 
 import httpx
 import typer
 from click import echo as click_echo
-
-import os
 
 # Allow overriding API base URL via env var for flexibility
 API_BASE_URL = os.getenv("SYNAPSE_API_BASE_URL", "http://localhost:8000/api/v1")

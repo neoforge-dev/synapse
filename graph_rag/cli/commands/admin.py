@@ -1,11 +1,11 @@
 import json
 import logging
-import sys
+import os
 import subprocess
+import sys
 
 import httpx
 import typer
-import os
 
 API_BASE_URL = os.getenv("SYNAPSE_API_BASE_URL", "http://localhost:8000")
 HEALTH_URL = f"{API_BASE_URL}/health"

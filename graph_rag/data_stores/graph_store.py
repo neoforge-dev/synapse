@@ -1,4 +1,4 @@
-from typing import Any, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel
 
@@ -36,12 +36,12 @@ class GraphStore(Protocol):
         source_node_id: str,
         target_node_id: str,
         rel_type: str,
-        properties: Optional[dict[str, Any]] = None,
+        properties: dict[str, Any] | None = None,
     ) -> None:
         """Adds a relationship between two existing nodes (matched by 'id')."""
         ...
 
-    async def get_node_by_id(self, node_id: str) -> Optional[dict[str, Any]]:
+    async def get_node_by_id(self, node_id: str) -> dict[str, Any] | None:
         """Retrieves a node's properties by its ID."""
         ...
 
@@ -49,14 +49,14 @@ class GraphStore(Protocol):
         self,
         start_node_id: str,
         max_depth: int = 1,
-        relationship_types: Optional[list[str]] = None,
+        relationship_types: list[str] | None = None,
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """Queries a subgraph starting from a node.
         Returns a tuple: (list_of_nodes, list_of_relationships)."""
         ...
 
     async def detect_communities(
-        self, algorithm: str = "louvain", write_property: Optional[str] = None
+        self, algorithm: str = "louvain", write_property: str | None = None
     ) -> list[dict[str, Any]]:
         """Runs a community detection algorithm (requires MAGE).
         Returns list of nodes with their community IDs.
@@ -65,13 +65,13 @@ class GraphStore(Protocol):
         ...
 
     async def execute_read(
-        self, query: str, parameters: Optional[dict[str, Any]] = None
+        self, query: str, parameters: dict[str, Any] | None = None
     ) -> list[Any]:
         """Executes a read-only Cypher query."""
         ...
 
     async def execute_write(
-        self, query: str, parameters: Optional[dict[str, Any]] = None
+        self, query: str, parameters: dict[str, Any] | None = None
     ) -> Any:
         """Executes a write Cypher query."""
         ...

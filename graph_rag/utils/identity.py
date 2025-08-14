@@ -1,8 +1,7 @@
 import hashlib
 import re
 from pathlib import Path
-from typing import Any, Tuple
-
+from typing import Any
 
 _UUID_DASHED_RE = re.compile(
     r"(?i)([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
@@ -40,7 +39,7 @@ def _extract_uuid_from_name(name: str) -> str | None:
 
 def derive_document_id(
     path: Path, content: str, metadata: dict[str, Any] | None = None
-) -> Tuple[str, str, float]:
+) -> tuple[str, str, float]:
     """
     Derive a stable canonical document_id for a file/page.
 

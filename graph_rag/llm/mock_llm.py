@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from .protocols import LLMService
 
@@ -10,9 +10,9 @@ class MockLLMService(LLMService):
         self,
         prompt: str,
         context: str = "",
-        system_prompt: Optional[str] = None,
-        history: Optional[list[dict[str, str]]] = None,
-        config: Optional[dict[str, Any]] = None,
+        system_prompt: str | None = None,
+        history: list[dict[str, str]] | None = None,
+        config: dict[str, Any] | None = None,
     ) -> str:
         """Returns a predefined mock response."""
         return f"Mock response for prompt: '{prompt[:50]}...'"
@@ -21,16 +21,16 @@ class MockLLMService(LLMService):
         self,
         prompt: str,
         context: str = "",
-        system_prompt: Optional[str] = None,
-        history: Optional[list[dict[str, str]]] = None,
-        config: Optional[dict[str, Any]] = None,
+        system_prompt: str | None = None,
+        history: list[dict[str, str]] | None = None,
+        config: dict[str, Any] | None = None,
     ):
         """Yields a predefined mock streaming response."""
         response = f"Mock stream response for prompt: '{prompt[:50]}...'"
         yield response
 
     async def extract_entities_relationships(
-        self, text: str, config: Optional[dict[str, Any]] = None
+        self, text: str, config: dict[str, Any] | None = None
     ) -> dict[str, list[dict[str, Any]]]:
         """Returns predefined mock entities and relationships."""
         return {"entities": [], "relationships": []}

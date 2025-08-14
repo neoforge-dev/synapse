@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from neo4j import AsyncDriver
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 def create_test_document(
     doc_id: str = "test_doc_1",
     content: str = "Test document content",
-    metadata: Optional[dict[str, Any]] = None,
+    metadata: dict[str, Any] | None = None,
 ) -> Document:
     """Creates a test document instance matching the Pydantic model."""
     if metadata is None:
@@ -32,7 +32,7 @@ def create_test_chunk(
     chunk_id: str = "test_chunk_1",
     content: str = "Test chunk text",
     doc_id: str = "test_doc_1",
-    embedding: Optional[list[float]] = None,
+    embedding: list[float] | None = None,
 ) -> Chunk:
     """Creates a test chunk instance matching the Pydantic model."""
     if embedding is None:
@@ -49,7 +49,7 @@ def create_test_entity(
     entity_id: str = "test_entity_1",
     name: str = "Test Entity",
     entity_type: str = "PERSON",
-    metadata: Optional[dict[str, Any]] = None,
+    metadata: dict[str, Any] | None = None,
 ) -> Entity:
     """Creates a test entity instance matching the Pydantic model."""
     props = {"name": name}
@@ -63,7 +63,7 @@ def create_test_relationship(
     target: Node,
     rel_type: str = "RELATED_TO",
     rel_id: str = "test_rel_1",
-    metadata: Optional[dict[str, Any]] = None,
+    metadata: dict[str, Any] | None = None,
 ) -> Relationship:
     """Creates a test relationship (Edge) instance matching the Pydantic model."""
     props = {}

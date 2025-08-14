@@ -7,7 +7,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 import httpx
 import typer
@@ -24,7 +23,7 @@ DEFAULT_DEV_COMPOSE_FILE = "docker-compose.dev.yml"
 
 @app.command("up")
 def compose_up(
-    compose_file: Optional[str] = typer.Option(None, "--compose", "-c", help="Path to docker-compose.yml"),
+    compose_file: str | None = typer.Option(None, "--compose", "-c", help="Path to docker-compose.yml"),
     detached: bool = typer.Option(True, "--detached/--no-detached", "-d", help="Run in detached mode"),
     dev: bool = typer.Option(False, "--dev", help="Use development compose file"),
     start_docker: bool = typer.Option(True, "--start-docker/--no-start-docker", help="Auto-start Docker Desktop on macOS"),
@@ -45,23 +44,23 @@ def compose_up(
         compose_path = Path(DEFAULT_DEV_COMPOSE_FILE)
     else:
         compose_path = Path(DEFAULT_COMPOSE_FILE)
-    
+
     if not compose_path.exists():
         console.print(f"[red]Compose file not found: {compose_path}[/red]")
         raise typer.Exit(1)
-    
+
     console.print(f"[blue]Using compose file: {compose_path}[/blue]")
-    
+
     # Ensure Docker is running
     try:
         _ensure_docker_running(start_docker, wait_timeout)
     except Exception as e:
         console.print(f"[red]Docker error: {e}[/red]")
         raise typer.Exit(1)
-    
+
     # Build compose command
     cmd = ["docker", "compose", "-f", str(compose_path)]
-    
+
     if pull:
         console.print("[blue]Pulling latest images...[/blue]")
         try:
@@ -69,35 +68,35 @@ def compose_up(
             console.print("[green]✅ Images pulled successfully[/green]")
         except subprocess.CalledProcessError as e:
             console.print(f"[yellow]Warning: Failed to pull images: {e}[/yellow]")
-    
+
     # Start services
     up_cmd = cmd + ["up"]
     if detached:
         up_cmd.append("-d")
     if build:
         up_cmd.append("--build")
-    
+
     console.print(f"[blue]Starting services: {' '.join(up_cmd)}[/blue]")
-    
+
     try:
         result = subprocess.run(up_cmd, check=True, capture_output=True, text=True)
         console.print("[green]✅ Services started successfully[/green]")
-        
+
         if result.stdout:
             console.print(result.stdout)
-            
+
     except subprocess.CalledProcessError as e:
         console.print(f"[red]Failed to start services: {e}[/red]")
         if e.stderr:
             console.print(e.stderr)
         raise typer.Exit(1)
-    
+
     if not wait_services:
         return
-    
+
     # Wait for services to be ready
     console.print("[blue]Waiting for services to be ready...[/blue]")
-    
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -110,7 +109,7 @@ def compose_up(
         else:
             progress.update(memgraph_task, description="❌ Memgraph timeout")
             console.print("[yellow]Warning: Memgraph may not be ready[/yellow]")
-        
+
         # Wait for API
         api_task = progress.add_task("Waiting for API...", total=None)
         if _wait_for_api(wait_timeout):
@@ -118,20 +117,20 @@ def compose_up(
         else:
             progress.update(api_task, description="❌ API timeout")
             console.print("[yellow]Warning: API may not be ready[/yellow]")
-    
+
     # Show status
     status(compose_file=str(compose_path), dev=dev)
 
 
 @app.command("down")
 def compose_down(
-    compose_file: Optional[str] = typer.Option(None, "--compose", "-c", help="Path to docker-compose.yml"),
+    compose_file: str | None = typer.Option(None, "--compose", "-c", help="Path to docker-compose.yml"),
     dev: bool = typer.Option(False, "--dev", help="Use development compose file"),
     volumes: bool = typer.Option(False, "--volumes", "-v", help="Remove volumes"),
     remove_orphans: bool = typer.Option(True, "--remove-orphans/--keep-orphans", help="Remove orphan containers"),
 ):
     """Stop and remove the Synapse GraphRAG stack."""
-    
+
     # Determine compose file
     if compose_file:
         compose_path = Path(compose_file)
@@ -139,28 +138,28 @@ def compose_down(
         compose_path = Path(DEFAULT_DEV_COMPOSE_FILE)
     else:
         compose_path = Path(DEFAULT_COMPOSE_FILE)
-    
+
     if not compose_path.exists():
         console.print(f"[red]Compose file not found: {compose_path}[/red]")
         raise typer.Exit(1)
-    
+
     # Build command
     cmd = ["docker", "compose", "-f", str(compose_path), "down"]
-    
+
     if volumes:
         cmd.append("--volumes")
     if remove_orphans:
         cmd.append("--remove-orphans")
-    
+
     console.print(f"[blue]Stopping services: {' '.join(cmd)}[/blue]")
-    
+
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
         console.print("[green]✅ Services stopped successfully[/green]")
-        
+
         if result.stdout:
             console.print(result.stdout)
-            
+
     except subprocess.CalledProcessError as e:
         console.print(f"[red]Failed to stop services: {e}[/red]")
         if e.stderr:
@@ -170,11 +169,11 @@ def compose_down(
 
 @app.command("status")
 def status(
-    compose_file: Optional[str] = typer.Option(None, "--compose", "-c", help="Path to docker-compose.yml"),
+    compose_file: str | None = typer.Option(None, "--compose", "-c", help="Path to docker-compose.yml"),
     dev: bool = typer.Option(False, "--dev", help="Use development compose file"),
 ):
     """Show status of Synapse GraphRAG services."""
-    
+
     # Determine compose file
     if compose_file:
         compose_path = Path(compose_file)
@@ -182,18 +181,18 @@ def status(
         compose_path = Path(DEFAULT_DEV_COMPOSE_FILE)
     else:
         compose_path = Path(DEFAULT_COMPOSE_FILE)
-    
+
     if not compose_path.exists():
         console.print(f"[red]Compose file not found: {compose_path}[/red]")
         return
-    
+
     # Get service status
     cmd = ["docker", "compose", "-f", str(compose_path), "ps", "--format", "json"]
-    
+
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
         services_data = []
-        
+
         # Parse JSON output (one JSON object per line)
         for line in result.stdout.strip().split('\n'):
             if line.strip():
@@ -201,24 +200,24 @@ def status(
                     services_data.append(json.loads(line))
                 except json.JSONDecodeError:
                     continue
-        
+
         if not services_data:
             console.print("[yellow]No services running[/yellow]")
             return
-        
+
         # Create status table
         table = Table(title="Synapse GraphRAG Services Status")
         table.add_column("Service", style="bold")
         table.add_column("Status")
         table.add_column("Health")
         table.add_column("Ports")
-        
+
         for service in services_data:
             name = service.get("Name", "unknown")
             state = service.get("State", "unknown")
             health = service.get("Health", "N/A")
             ports = service.get("Publishers", [])
-            
+
             # Format status with colors
             if state == "running":
                 status_display = "[green]Running[/green]"
@@ -226,7 +225,7 @@ def status(
                 status_display = "[red]Exited[/red]"
             else:
                 status_display = f"[yellow]{state.title()}[/yellow]"
-            
+
             # Format health
             if health == "healthy":
                 health_display = "[green]✅ Healthy[/green]"
@@ -236,7 +235,7 @@ def status(
                 health_display = "[yellow]🔄 Starting[/yellow]"
             else:
                 health_display = health
-            
+
             # Format ports
             port_strings = []
             for port_info in ports:
@@ -246,36 +245,36 @@ def status(
                     if published and target:
                         port_strings.append(f"{published}:{target}")
             ports_display = ", ".join(port_strings) if port_strings else "N/A"
-            
+
             table.add_row(name, status_display, health_display, ports_display)
-        
+
         console.print(table)
-        
+
         # Additional health checks
         console.print("\n[bold]Service Health Checks:[/bold]")
-        
+
         # Check Memgraph
         memgraph_status = "✅ Ready" if _check_memgraph() else "❌ Not ready"
         console.print(f"Memgraph (Bolt): {memgraph_status}")
-        
+
         # Check API
         api_status = "✅ Ready" if _check_api() else "❌ Not ready"
         console.print(f"GraphRAG API: {api_status}")
-        
+
     except subprocess.CalledProcessError as e:
         console.print(f"[red]Failed to get service status: {e}[/red]")
 
 
 @app.command("logs")
 def logs(
-    service: Optional[str] = typer.Argument(None, help="Service name to show logs for"),
-    compose_file: Optional[str] = typer.Option(None, "--compose", "-c", help="Path to docker-compose.yml"),
+    service: str | None = typer.Argument(None, help="Service name to show logs for"),
+    compose_file: str | None = typer.Option(None, "--compose", "-c", help="Path to docker-compose.yml"),
     dev: bool = typer.Option(False, "--dev", help="Use development compose file"),
     follow: bool = typer.Option(False, "--follow", "-f", help="Follow log output"),
-    tail: Optional[int] = typer.Option(None, "--tail", help="Number of lines to show from end of logs"),
+    tail: int | None = typer.Option(None, "--tail", help="Number of lines to show from end of logs"),
 ):
     """Show logs for Synapse GraphRAG services."""
-    
+
     # Determine compose file
     if compose_file:
         compose_path = Path(compose_file)
@@ -283,23 +282,23 @@ def logs(
         compose_path = Path(DEFAULT_DEV_COMPOSE_FILE)
     else:
         compose_path = Path(DEFAULT_COMPOSE_FILE)
-    
+
     if not compose_path.exists():
         console.print(f"[red]Compose file not found: {compose_path}[/red]")
         raise typer.Exit(1)
-    
+
     # Build command
     cmd = ["docker", "compose", "-f", str(compose_path), "logs"]
-    
+
     if follow:
         cmd.append("--follow")
     if tail:
         cmd.extend(["--tail", str(tail)])
     if service:
         cmd.append(service)
-    
+
     console.print(f"[blue]Showing logs: {' '.join(cmd)}[/blue]")
-    
+
     try:
         # Use Popen for streaming output
         process = subprocess.Popen(cmd)
@@ -311,12 +310,12 @@ def logs(
 
 @app.command("restart")
 def restart(
-    service: Optional[str] = typer.Argument(None, help="Service name to restart (or all if not specified)"),
-    compose_file: Optional[str] = typer.Option(None, "--compose", "-c", help="Path to docker-compose.yml"),
+    service: str | None = typer.Argument(None, help="Service name to restart (or all if not specified)"),
+    compose_file: str | None = typer.Option(None, "--compose", "-c", help="Path to docker-compose.yml"),
     dev: bool = typer.Option(False, "--dev", help="Use development compose file"),
 ):
     """Restart Synapse GraphRAG services."""
-    
+
     # Determine compose file
     if compose_file:
         compose_path = Path(compose_file)
@@ -324,18 +323,18 @@ def restart(
         compose_path = Path(DEFAULT_DEV_COMPOSE_FILE)
     else:
         compose_path = Path(DEFAULT_COMPOSE_FILE)
-    
+
     if not compose_path.exists():
         console.print(f"[red]Compose file not found: {compose_path}[/red]")
         raise typer.Exit(1)
-    
+
     # Build command
     cmd = ["docker", "compose", "-f", str(compose_path), "restart"]
     if service:
         cmd.append(service)
-    
+
     console.print(f"[blue]Restarting services: {' '.join(cmd)}[/blue]")
-    
+
     try:
         subprocess.run(cmd, check=True)
         console.print("[green]✅ Services restarted successfully[/green]")
@@ -394,7 +393,7 @@ def _wait_for_memgraph(timeout: int = 60) -> bool:
                 return True
         except OSError:
             time.sleep(1.0)
-    
+
     return False
 
 
@@ -407,7 +406,7 @@ def _wait_for_api(timeout: int = 60) -> bool:
     """Wait for GraphRAG API to be ready."""
     api_url = os.getenv("SYNAPSE_API_BASE_URL", "http://localhost:8000")
     health_url = f"{api_url}/health"
-    
+
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
@@ -420,7 +419,7 @@ def _wait_for_api(timeout: int = 60) -> bool:
         except Exception:
             pass
         time.sleep(2.0)
-    
+
     return False
 
 

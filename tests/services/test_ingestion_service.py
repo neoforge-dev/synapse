@@ -22,7 +22,6 @@ from graph_rag.infrastructure.document_processor.simple_processor import ChunkSp
 
 # Service Under Test
 from graph_rag.services.ingestion import IngestionResult, IngestionService
-from graph_rag.domain.models import Document as DomainDocument
 
 # -- Fixtures --
 

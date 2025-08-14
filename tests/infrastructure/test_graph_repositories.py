@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 try:
-    import mgclient  # type: ignore
+    pass  # type: ignore
 except Exception:
     pytest.skip("mgclient not available; skipping Memgraph repository tests", allow_module_level=True)
 

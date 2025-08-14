@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from graph_rag.utils.identity import derive_document_id, _hash_content
+from graph_rag.utils.identity import _hash_content, derive_document_id
 
 
 def test_metadata_id_priority(tmp_path: Path):

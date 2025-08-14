@@ -1,26 +1,24 @@
 import logging
-from typing import Optional
 
 import typer
 
 from graph_rag import __version__  # Assume version is defined in __init__.py
 from graph_rag.cli.commands.admin import app as admin_app
-from graph_rag.cli.commands.admin import up as admin_up
+from graph_rag.cli.commands.compose import app as compose_app
+from graph_rag.cli.commands.config import app as config_app
+from graph_rag.cli.commands.discover import discover_command
+from graph_rag.cli.commands.graph import app as graph_app
 
 # Import command functions directly
 from graph_rag.cli.commands.ingest import ingest_command
-from graph_rag.cli.commands.discover import discover_command
-from graph_rag.cli.commands.parse import parse_command
-from graph_rag.cli.commands.store import store_command
-from graph_rag.cli.commands.search import search_query
-from graph_rag.cli.commands.suggest import run_suggest as suggest_command
-from graph_rag.cli.commands.query import app as query_app
-from graph_rag.cli.commands.graph import app as graph_app
-from graph_rag.cli.commands.notion import app as notion_app
-from graph_rag.cli.commands.config import app as config_app
-from graph_rag.cli.commands.mcp import app as mcp_app
-from graph_rag.cli.commands.compose import app as compose_app
 from graph_rag.cli.commands.init import app as init_app
+from graph_rag.cli.commands.mcp import app as mcp_app
+from graph_rag.cli.commands.notion import app as notion_app
+from graph_rag.cli.commands.parse import parse_command
+from graph_rag.cli.commands.query import app as query_app
+from graph_rag.cli.commands.search import search_query
+from graph_rag.cli.commands.store import store_command
+from graph_rag.cli.commands.suggest import run_suggest as suggest_command
 from graph_rag.config import get_settings  # Import factory
 
 settings = get_settings()  # Get settings instance
@@ -60,7 +58,7 @@ app.add_typer(init_app, name="init")
 # Top-level convenience: synapse up (delegates to compose up with enhanced features)
 @app.command("up")
 def up(
-    compose: Optional[str] = typer.Option(None, "--compose", help="Path to docker-compose.yml"),
+    compose: str | None = typer.Option(None, "--compose", help="Path to docker-compose.yml"),
     detached: bool = typer.Option(True, "--detached/--no-detached", help="Run docker compose up -d"),
     dev: bool = typer.Option(False, "--dev", help="Use development compose file"),
     start_docker: bool = typer.Option(True, "--start-docker/--no-start-docker", help="Auto-start Docker Desktop on macOS"),
@@ -71,7 +69,7 @@ def up(
 ):
     """Bring up the Synapse GraphRAG stack with enhanced health checks and monitoring."""
     from graph_rag.cli.commands.compose import compose_up
-    
+
     compose_up(
         compose_file=compose,
         detached=detached,
@@ -86,13 +84,13 @@ def up(
 
 @app.command("down")
 def down(
-    compose: Optional[str] = typer.Option(None, "--compose", help="Path to docker-compose.yml"),
+    compose: str | None = typer.Option(None, "--compose", help="Path to docker-compose.yml"),
     dev: bool = typer.Option(False, "--dev", help="Use development compose file"),
     volumes: bool = typer.Option(False, "--volumes", "-v", help="Remove volumes"),
 ):
     """Stop the Synapse GraphRAG stack."""
     from graph_rag.cli.commands.compose import compose_down
-    
+
     compose_down(
         compose_file=compose,
         dev=dev,
@@ -110,7 +108,7 @@ def version_callback(value: bool):
 @app.callback()
 def main_callback(
     ctx: typer.Context,
-    version: Optional[bool] = typer.Option(
+    version: bool | None = typer.Option(
         None,
         "--version",
         "-V",

@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from typing import Optional
-
 try:  # optional dependency
-    from prometheus_client import Counter, Gauge, Histogram, CollectorRegistry
+    from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 except Exception:  # pragma: no cover - metrics are optional
     Counter = None  # type: ignore
     Gauge = None  # type: ignore
@@ -11,19 +9,19 @@ except Exception:  # pragma: no cover - metrics are optional
     CollectorRegistry = None  # type: ignore
 
 # Module-level handles (initialized by init_metrics)
-ASK_TOTAL: Optional["Counter"] = None
-INGEST_TOTAL: Optional["Counter"] = None
-LLM_REL_INFERRED: Optional["Counter"] = None
-LLM_REL_PERSISTED: Optional["Counter"] = None
-INGESTION_CHUNKS_TOTAL: Optional["Counter"] = None
-INGESTION_VECTORS_TOTAL: Optional["Counter"] = None
-QUERY_LATENCY_SECONDS: Optional["Histogram"] = None
-INGEST_LATENCY_SECONDS: Optional["Histogram"] = None
-VECTOR_STORE_SIZE: Optional["Gauge"] = None
-GRAPH_CHUNK_COUNT: Optional["Gauge"] = None
+ASK_TOTAL: Counter | None = None
+INGEST_TOTAL: Counter | None = None
+LLM_REL_INFERRED: Counter | None = None
+LLM_REL_PERSISTED: Counter | None = None
+INGESTION_CHUNKS_TOTAL: Counter | None = None
+INGESTION_VECTORS_TOTAL: Counter | None = None
+QUERY_LATENCY_SECONDS: Histogram | None = None
+INGEST_LATENCY_SECONDS: Histogram | None = None
+VECTOR_STORE_SIZE: Gauge | None = None
+GRAPH_CHUNK_COUNT: Gauge | None = None
 
 
-def init_metrics(registry: Optional["CollectorRegistry"]) -> None:
+def init_metrics(registry: CollectorRegistry | None) -> None:
     """Initialize counters and histograms on the provided registry.
 
     If prometheus_client is not available or registry is None, this is a no-op.

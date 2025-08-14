@@ -1,7 +1,8 @@
 import pytest
+
 from graph_rag.api.dependencies import MockEmbeddingService
-from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
 from graph_rag.core.interfaces import ChunkData, SearchResultData
+from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
 
 
 @pytest.mark.asyncio

@@ -5,10 +5,10 @@ This module provides functions to generate interactive HTML and SVG visualizatio
 of multi-step reasoning processes.
 """
 
-import json
 import html
+import json
 import logging
-from typing import Any, Dict
+
 from graph_rag.core.reasoning_engine import ReasoningResult
 
 logger = logging.getLogger(__name__)
@@ -29,13 +29,13 @@ def generate_reasoning_html(reasoning_result: ReasoningResult) -> str:
     """
     if reasoning_result is None:
         raise ValueError("reasoning_result cannot be None")
-    
+
     # Convert reasoning result to JSON-serializable format
     viz_data = reasoning_result.get_visualization()
-    
+
     # Safely encode the data as JSON for embedding in HTML
     json_data = json.dumps(viz_data, ensure_ascii=False, indent=2)
-    
+
     html_template = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -408,7 +408,7 @@ def generate_reasoning_html(reasoning_result: ReasoningResult) -> str:
     </script>
 </body>
 </html>"""
-    
+
     return html_template
 
 
@@ -425,22 +425,22 @@ def generate_reasoning_svg(reasoning_result: ReasoningResult) -> str:
         SVG content as a string
     """
     steps = reasoning_result.reasoning_chain.steps
-    
+
     # Calculate dimensions
     step_width = 250
     step_height = 80
     step_spacing = 120
     margin = 50
-    
+
     total_width = step_width + (2 * margin)
     total_height = len(steps) * (step_height + step_spacing) + margin
-    
+
     # Start building SVG
     svg_parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" '
         f'width="{total_width}" height="{total_height}" '
         f'viewBox="0 0 {total_width} {total_height}">',
-        
+
         # Add styles
         '<defs>',
         '<style>',
@@ -451,32 +451,32 @@ def generate_reasoning_svg(reasoning_result: ReasoningResult) -> str:
         '.step-name { font-weight: bold; font-size: 14px; }',
         '.arrow { stroke: #667eea; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }',
         '</style>',
-        
+
         # Arrow marker
         '<marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">',
         '<polygon points="0 0, 10 3.5, 0 7" fill="#667eea" />',
         '</marker>',
         '</defs>'
     ]
-    
+
     # Add title
     svg_parts.extend([
         f'<text x="{total_width//2}" y="30" text-anchor="middle" class="step-name" font-size="16">',
         f'{html.escape(reasoning_result.question[:80] + ("..." if len(reasoning_result.question) > 80 else ""))}',
         '</text>'
     ])
-    
+
     # Draw steps
     for i, step in enumerate(steps):
         y = margin + 50 + i * (step_height + step_spacing)
         x = margin
-        
+
         # Determine step style based on status
         step_class = f"step-box step-{step.status}" if step.status in ['completed', 'failed'] else "step-box"
-        
+
         # Draw step rectangle
         svg_parts.append(f'<rect x="{x}" y="{y}" width="{step_width}" height="{step_height}" class="{step_class}"/>')
-        
+
         # Add step name
         step_name = step.name.replace('_', ' ').title()
         svg_parts.extend([
@@ -484,14 +484,14 @@ def generate_reasoning_svg(reasoning_result: ReasoningResult) -> str:
             f'{html.escape(step_name[:30] + ("..." if len(step_name) > 30 else ""))}',
             '</text>'
         ])
-        
+
         # Add step status
         svg_parts.extend([
             f'<text x="{x + step_width//2}" y="{y + 45}" text-anchor="middle" class="step-text">',
             f'Status: {html.escape(step.status)}',
             '</text>'
         ])
-        
+
         # Add brief answer if available
         if step.result and step.result.answer:
             answer_brief = step.result.answer[:40] + ("..." if len(step.result.answer) > 40 else "")
@@ -500,33 +500,33 @@ def generate_reasoning_svg(reasoning_result: ReasoningResult) -> str:
                 f'{html.escape(answer_brief)}',
                 '</text>'
             ])
-        
+
         # Draw arrow to next step (if not the last step)
         if i < len(steps) - 1:
             arrow_start_y = y + step_height
             arrow_end_y = arrow_start_y + step_spacing - 10
             arrow_x = x + step_width // 2
-            
+
             svg_parts.append(
                 f'<line x1="{arrow_x}" y1="{arrow_start_y}" x2="{arrow_x}" y2="{arrow_end_y}" class="arrow"/>'
             )
-    
+
     # Add final answer box if available
     if reasoning_result.final_answer:
         final_y = margin + 50 + len(steps) * (step_height + step_spacing)
         svg_parts.extend([
             f'<rect x="{margin}" y="{final_y}" width="{step_width}" height="{step_height}" '
             f'fill="#f093fb" stroke="#f5576c" stroke-width="2" rx="8"/>',
-            
+
             f'<text x="{margin + step_width//2}" y="{final_y + 25}" text-anchor="middle" class="step-text step-name" fill="white">',
             'Final Answer',
             '</text>',
-            
+
             f'<text x="{margin + step_width//2}" y="{final_y + 45}" text-anchor="middle" class="step-text" fill="white" font-size="10">',
             f'{html.escape(reasoning_result.final_answer[:50] + ("..." if len(reasoning_result.final_answer) > 50 else ""))}',
             '</text>'
         ])
-        
+
         # Draw arrow to final answer
         if steps:
             last_step_y = margin + 50 + (len(steps) - 1) * (step_height + step_spacing) + step_height
@@ -534,7 +534,7 @@ def generate_reasoning_svg(reasoning_result: ReasoningResult) -> str:
             svg_parts.append(
                 f'<line x1="{arrow_x}" y1="{last_step_y}" x2="{arrow_x}" y2="{final_y - 10}" class="arrow"/>'
             )
-    
+
     svg_parts.append('</svg>')
-    
+
     return '\n'.join(svg_parts)

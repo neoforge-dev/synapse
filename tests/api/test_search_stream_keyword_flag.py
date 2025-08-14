@@ -1,10 +1,9 @@
-import asyncio
 import json
 import os
+from unittest.mock import AsyncMock
 
 import pytest
 from httpx import AsyncClient
-from unittest.mock import AsyncMock
 
 
 @pytest.mark.asyncio

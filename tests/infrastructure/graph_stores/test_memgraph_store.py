@@ -5,7 +5,6 @@ import os
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
-from typing import Optional
 
 import pytest
 
@@ -43,7 +42,7 @@ async def memgraph_repo() -> AsyncGenerator[MemgraphGraphRepository, None]:
         )
 
     # driver: Optional[AsyncDriver] = None # Driver no longer created here
-    repo: Optional[MemgraphGraphRepository] = None
+    repo: MemgraphGraphRepository | None = None
     try:
         # Instantiate the repository - it reads config from settings internally
         repo = MemgraphGraphRepository()

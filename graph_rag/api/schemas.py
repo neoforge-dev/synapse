@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -25,7 +25,7 @@ class DocumentResultSchema(BaseModel):
 class SearchResultSchema(BaseModel):
     chunk: ChunkResultSchema
     score: float
-    document: Optional[DocumentResultSchema] = None  # Include simplified doc info
+    document: DocumentResultSchema | None = None  # Include simplified doc info
 
 
 # --- Ingestion Schemas ---
@@ -34,7 +34,7 @@ class SearchResultSchema(BaseModel):
 class DocumentIngestRequest(BaseModel):
     content: str
     metadata: dict[str, Any] = Field(default_factory=dict)
-    document_id: Optional[str] = None  # Allow client to specify ID (optional)
+    document_id: str | None = None  # Allow client to specify ID (optional)
 
 
 class IngestionResponse(BaseModel):
@@ -58,18 +58,18 @@ class ErrorDetail(BaseModel):
     """Standard error response detail."""
 
     message: str
-    type: Optional[str] = None
+    type: str | None = None
 
 
 class SearchQueryResponse(BaseModel):
     query: str
     search_type: str
     results: list[SearchResultSchema] = []
-    llm_response: Optional[str] = None
-    graph_context: Optional[str] = None
+    llm_response: str | None = None
+    graph_context: str | None = None
     # Fields specifically for batch responses
-    status_code: Optional[int] = None
-    error: Optional[ErrorDetail] = None
+    status_code: int | None = None
+    error: ErrorDetail | None = None
 
 
 class SearchBatchQueryRequest(BaseModel):
@@ -119,13 +119,13 @@ class CreateResponse(BaseModel):
 class DocumentCreate(BaseModel):
     """Schema for creating a new document."""
 
-    id: Optional[str] = Field(
+    id: str | None = Field(
         default=None, description="Optional client-provided ID for the document."
     )  # Add optional ID
     content: str = Field(
         ..., min_length=1, description="The text content of the document."
     )  # Add validation
-    metadata: Optional[dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 class DocumentResponse(BaseModel):
@@ -133,9 +133,9 @@ class DocumentResponse(BaseModel):
 
     id: str
     metadata: dict[str, Any] = Field(default_factory=dict)  # Direct metadata field
-    type: Optional[str] = None  # Add type to match test expectations
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    type: str | None = None  # Add type to match test expectations
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class DocumentMetadataUpdate(BaseModel):

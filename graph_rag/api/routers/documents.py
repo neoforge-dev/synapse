@@ -1,15 +1,14 @@
 import logging  # Import logging
 import uuid
-from typing import Annotated, Optional
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from graph_rag.core.interfaces import GraphRepository, VectorStore
-from graph_rag.domain.models import Entity
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
 # Defer schema import
 # from graph_rag.api import schemas
 from graph_rag.api import schemas  # Restore top-level import
-from fastapi import Request
+from graph_rag.core.interfaces import GraphRepository, VectorStore
+from graph_rag.domain.models import Entity
 
 
 # Lazy wrappers to avoid circular import with app factory
@@ -92,7 +91,7 @@ def create_documents_router() -> APIRouter:
         repo: Annotated[
             GraphRepository, Depends(_state_get_graph_repository)
         ],  # Depend on state-aware getter
-        limit: Optional[int] = Query(
+        limit: int | None = Query(
             100, description="Limit the number of documents returned", ge=1, le=1000
         ),
         # ) -> List['schemas.DocumentResponse']: # Use forward reference string in type hint - REMOVE

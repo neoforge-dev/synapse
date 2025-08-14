@@ -2,7 +2,7 @@ import asyncio
 import logging
 import re  # Added import
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 from graph_rag.core.interfaces import ExtractedEntity, ExtractionResult
 from graph_rag.models import Document, Entity, ProcessedDocument, Relationship
@@ -113,7 +113,7 @@ class SpacyEntityExtractor(EntityExtractor):
 
     # Implement the new interface method
     async def extract_from_text(
-        self, text: str, context: Optional[dict[str, Any]] = None
+        self, text: str, context: dict[str, Any] | None = None
     ) -> ExtractionResult:
         """Extracts entities from a text string using spaCy NER."""
         if not self.nlp:

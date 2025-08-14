@@ -3,7 +3,7 @@
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from neo4j import GraphDatabase
 from pydantic import BaseModel
@@ -38,7 +38,7 @@ class DebugContext(BaseModel):
     system_state: SystemState
     hypotheses: list[dict[str, Any]]
     verification_steps: list[dict[str, Any]]
-    resolution: Optional[dict[str, Any]] = None
+    resolution: dict[str, Any] | None = None
 
 
 class GraphDebugger:
@@ -252,7 +252,7 @@ class GraphDebugger:
         return investigation, debug_context
 
     async def handle_persistent_graph_error(
-        self, error: Exception, count: int, query: Optional[str] = None
+        self, error: Exception, count: int, query: str | None = None
     ) -> list[str]:
         """Handle persistent graph-related errors."""
         if count >= 2:

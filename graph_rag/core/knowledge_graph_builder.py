@@ -1,7 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Optional
 
 from graph_rag.core.graph_store import GraphStore
 from graph_rag.core.interfaces import (
@@ -97,7 +96,7 @@ class InMemoryKnowledgeGraphBuilder(KnowledgeGraphBuilder):
 
         # Link structures
         self.doc_chunk_links: dict[str, set[str]] = defaultdict(set)
-        self.chunk_doc_links: dict[str, Optional[str]] = {}
+        self.chunk_doc_links: dict[str, str | None] = {}
         self.chunk_entity_links: dict[str, set[str]] = defaultdict(set)
         self.entity_chunk_links: dict[str, set[str]] = defaultdict(set)
 

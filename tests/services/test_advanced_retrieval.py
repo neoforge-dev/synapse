@@ -1,26 +1,26 @@
 """Tests for advanced retrieval patterns."""
 
-import pytest
 from unittest.mock import AsyncMock, Mock
-from typing import List
 
+import pytest
+
+from graph_rag.core.interfaces import ChunkData, GraphRepository, SearchResultData, VectorStore
 from graph_rag.services.advanced_retrieval import (
     AdvancedRetrievalService,
-    RetrievalStrategy,
+    QueryAnalyzer,
     QueryComplexity,
     RetrievalContext,
     RetrievalResult,
-    QueryAnalyzer
+    RetrievalStrategy,
 )
 from graph_rag.services.search import AdvancedSearchService, HybridSearchResult, SearchStrategy
-from graph_rag.core.interfaces import SearchResultData, ChunkData, VectorStore, GraphRepository
 
 
 @pytest.fixture
 def mock_search_service():
     """Mock advanced search service."""
     mock = AsyncMock(spec=AdvancedSearchService)
-    
+
     # Default search result
     def create_search_result(query, **kwargs):
         return HybridSearchResult(
@@ -38,7 +38,7 @@ def mock_search_service():
                 SearchResultData(
                     chunk=ChunkData(
                         id=f"chunk_{(hash(query) + 1) % 1000}",
-                        document_id="doc2", 
+                        document_id="doc2",
                         text=f"Another result for: {query}",
                         embedding=[0.2, 0.3, 0.4],
                         metadata={"topics": ["data_science"], "entities": ["TensorFlow"]}
@@ -52,7 +52,7 @@ def mock_search_service():
             total_keyword_results=1,
             execution_time_ms=100.0
         )
-    
+
     mock.search.side_effect = create_search_result
     return mock
 
@@ -97,12 +97,12 @@ def test_query_analyzer():
     """Test query analysis functionality."""
     analyzer = QueryAnalyzer()
     context = RetrievalContext()
-    
+
     # Test simple query
     simple_analysis = analyzer.analyze_query("Python", context)
     assert simple_analysis["complexity"] == QueryComplexity.SIMPLE
     assert simple_analysis["intent"] == "general"
-    
+
     # Test complex query
     complex_analysis = analyzer.analyze_query(
         "Compare the differences between machine learning and deep learning approaches",
@@ -111,7 +111,7 @@ def test_query_analyzer():
     assert complex_analysis["complexity"] in [QueryComplexity.MODERATE, QueryComplexity.COMPLEX]
     assert complex_analysis["intent"] == "comparison"
     assert not complex_analysis["requires_multi_hop"]  # No explicit relationship indicators
-    
+
     # Test multi-hop query
     multihop_analysis = analyzer.analyze_query(
         "What is the relationship between neural networks and deep learning?",
@@ -124,16 +124,16 @@ def test_query_analyzer():
 def test_query_complexity_assessment():
     """Test query complexity assessment."""
     analyzer = QueryAnalyzer()
-    
+
     # Simple queries
     assert analyzer._assess_complexity("Python", ["python"]) == QueryComplexity.SIMPLE
     assert analyzer._assess_complexity("Hello world", ["hello", "world"]) == QueryComplexity.SIMPLE
-    
-    # Moderate queries  
+
+    # Moderate queries
     moderate_query = "How machine learning works"  # Shorter query with one complex indicator
     moderate_words = moderate_query.lower().split()
     assert analyzer._assess_complexity(moderate_query, moderate_words) == QueryComplexity.MODERATE
-    
+
     # Complex queries
     complex_query = "Compare and contrast different machine learning algorithms and explain their various applications"
     complex_words = complex_query.lower().split()
@@ -143,12 +143,12 @@ def test_query_complexity_assessment():
 def test_entity_extraction():
     """Test entity extraction from queries."""
     analyzer = QueryAnalyzer()
-    
+
     # Test with proper nouns
     entities = analyzer._extract_entities("What is TensorFlow and PyTorch?")
     assert "TensorFlow" in entities
     assert "PyTorch" in entities
-    
+
     # Test with quoted phrases
     entities = analyzer._extract_entities('Explain "machine learning" concepts')
     assert "machine learning" in entities
@@ -159,21 +159,21 @@ async def test_multi_hop_retrieval(advanced_retrieval_service, mock_search_servi
     """Test multi-hop retrieval strategy."""
     query = "What is the relationship between Python and machine learning?"
     context = RetrievalContext()
-    
+
     result = await advanced_retrieval_service.advanced_retrieve(
         query,
         strategy=RetrievalStrategy.MULTI_HOP,
         context=context,
         limit=5
     )
-    
+
     assert isinstance(result, RetrievalResult)
     assert result.strategy_used == RetrievalStrategy.MULTI_HOP
     assert result.hops_performed >= 1
     assert len(result.results) > 0
     assert result.confidence_score > 0
     assert "hop" in result.explanation.lower()
-    
+
     # Verify search service was called multiple times
     assert mock_search_service.search.call_count >= 1
 
@@ -213,9 +213,9 @@ async def test_adaptive_retrieval(advanced_retrieval_service, mock_search_servic
                 total_keyword_results=0,
                 execution_time_ms=50.0
             )
-    
+
     mock_search_service.search.side_effect = adaptive_search_side_effect
-    
+
     query = "Machine learning concepts"
     result = await advanced_retrieval_service.advanced_retrieve(
         query,
@@ -223,11 +223,11 @@ async def test_adaptive_retrieval(advanced_retrieval_service, mock_search_servic
         context=RetrievalContext(),
         limit=5
     )
-    
+
     assert result.strategy_used == RetrievalStrategy.ADAPTIVE
     assert "adaptive" in result.explanation.lower()
     assert len(result.results) > 0
-    
+
     # Should have tried multiple strategies due to poor initial results
     assert mock_search_service.search.call_count > 1
 
@@ -236,18 +236,18 @@ async def test_adaptive_retrieval(advanced_retrieval_service, mock_search_servic
 async def test_context_aware_retrieval(advanced_retrieval_service, sample_context):
     """Test context-aware retrieval strategy."""
     query = "neural networks"
-    
+
     result = await advanced_retrieval_service.advanced_retrieve(
         query,
         strategy=RetrievalStrategy.CONTEXT_AWARE,
         context=sample_context,
         limit=5
     )
-    
+
     assert result.strategy_used == RetrievalStrategy.CONTEXT_AWARE
     assert "context" in result.explanation.lower()
     assert len(result.results) > 0
-    
+
     # Verify search was called with expanded query
     advanced_retrieval_service.search_service.search.assert_called()
     call_args = advanced_retrieval_service.search_service.search.call_args[1]
@@ -259,18 +259,18 @@ async def test_context_aware_retrieval(advanced_retrieval_service, sample_contex
 async def test_ensemble_retrieval(advanced_retrieval_service, mock_search_service):
     """Test ensemble retrieval strategy."""
     query = "data science concepts"
-    
+
     result = await advanced_retrieval_service.advanced_retrieve(
         query,
         strategy=RetrievalStrategy.ENSEMBLE,
         context=RetrievalContext(),
         limit=5
     )
-    
+
     assert result.strategy_used == RetrievalStrategy.ENSEMBLE
     assert "ensemble" in result.explanation.lower()
     assert len(result.results) > 0
-    
+
     # Should have called search multiple times with different strategies
     assert mock_search_service.search.call_count >= 3
 
@@ -282,7 +282,7 @@ async def test_incremental_retrieval(advanced_retrieval_service, mock_search_ser
     def incremental_search_side_effect(query, **kwargs):
         limit = kwargs.get('limit', 10)
         num_results = min(limit // 2, 3)  # Return fewer results initially
-        
+
         results = []
         for i in range(num_results):
             results.append(SearchResultData(
@@ -294,7 +294,7 @@ async def test_incremental_retrieval(advanced_retrieval_service, mock_search_ser
                 ),
                 score=0.8 - (i * 0.1)
             ))
-        
+
         return HybridSearchResult(
             results=results,
             strategy=SearchStrategy.HYBRID,
@@ -303,9 +303,9 @@ async def test_incremental_retrieval(advanced_retrieval_service, mock_search_ser
             total_keyword_results=0,
             execution_time_ms=50.0
         )
-    
+
     mock_search_service.search.side_effect = incremental_search_side_effect
-    
+
     query = "programming languages"
     result = await advanced_retrieval_service.advanced_retrieve(
         query,
@@ -313,7 +313,7 @@ async def test_incremental_retrieval(advanced_retrieval_service, mock_search_ser
         context=RetrievalContext(),
         limit=5
     )
-    
+
     assert result.strategy_used == RetrievalStrategy.INCREMENTAL
     assert "incremental" in result.explanation.lower()
     assert len(result.results) > 0
@@ -323,18 +323,18 @@ async def test_incremental_retrieval(advanced_retrieval_service, mock_search_ser
 async def test_concept_expansion_retrieval(advanced_retrieval_service, mock_search_service):
     """Test concept expansion retrieval strategy."""
     query = "artificial intelligence"
-    
+
     result = await advanced_retrieval_service.advanced_retrieve(
         query,
         strategy=RetrievalStrategy.CONCEPT_EXPANSION,
         context=RetrievalContext(),
         limit=5
     )
-    
+
     assert result.strategy_used == RetrievalStrategy.CONCEPT_EXPANSION
     assert "concept" in result.explanation.lower()
     assert len(result.results) > 0
-    
+
     # Should have made multiple search calls (initial + concept searches)
     assert mock_search_service.search.call_count > 1
 
@@ -349,7 +349,7 @@ async def test_automatic_strategy_selection(advanced_retrieval_service):
         limit=5
     )
     assert simple_result.strategy_used in [RetrievalStrategy.INCREMENTAL, RetrievalStrategy.ADAPTIVE]
-    
+
     # Test complex query - should select adaptive or ensemble
     complex_result = await advanced_retrieval_service.advanced_retrieve(
         "Compare and contrast different machine learning algorithms and explain their applications",
@@ -357,7 +357,7 @@ async def test_automatic_strategy_selection(advanced_retrieval_service):
         limit=5
     )
     assert complex_result.strategy_used in [RetrievalStrategy.ADAPTIVE, RetrievalStrategy.ENSEMBLE]
-    
+
     # Test with conversation history - should select context-aware
     context_with_history = RetrievalContext(
         conversation_history=["What is machine learning?", "How does it work?"]
@@ -377,13 +377,13 @@ def test_text_similarity():
         vector_store=Mock(),
         graph_repository=Mock()
     )
-    
+
     # Identical texts
     assert service._text_similarity("hello world", "hello world") == 1.0
-    
+
     # Completely different texts
     assert service._text_similarity("hello world", "goodbye universe") == 0.0
-    
+
     # Partially similar texts
     similarity = service._text_similarity("machine learning", "machine algorithms")
     assert 0 < similarity < 1
@@ -397,10 +397,10 @@ def test_entity_extraction_from_text():
         vector_store=Mock(),
         graph_repository=Mock()
     )
-    
+
     text = "TensorFlow and PyTorch are popular Machine Learning frameworks used by Google and Facebook."
     entities = service._extract_entities_from_text(text)
-    
+
     assert "TensorFlow" in entities
     assert "PyTorch" in entities
     assert "Machine" in entities  # Individual words from compound entities
@@ -418,10 +418,10 @@ def test_keyword_extraction():
         vector_store=Mock(),
         graph_repository=Mock()
     )
-    
+
     text = "Machine learning algorithms are powerful tools for data analysis and prediction."
     keywords = service._extract_keywords_from_text(text)
-    
+
     assert "machine" in keywords
     assert "learning" in keywords
     assert "algorithms" in keywords
@@ -439,15 +439,15 @@ def test_query_expansion_with_context():
         vector_store=Mock(),
         graph_repository=Mock()
     )
-    
+
     context = RetrievalContext(
         conversation_history=["What is machine learning?", "How does neural networks work?"],
         domain_context="artificial_intelligence",
         preferences={"topics": ["deep_learning", "programming"]}
     )
-    
+
     expanded_query = service._expand_query_with_context("Python", context)
-    
+
     # Should contain original query
     assert "Python" in expanded_query
     # Should be longer than original
@@ -455,7 +455,7 @@ def test_query_expansion_with_context():
     # Should contain some context terms
     expanded_lower = expanded_query.lower()
     context_found = any(term in expanded_lower for term in [
-        "machine", "learning", "neural", "networks", "artificial_intelligence", 
+        "machine", "learning", "neural", "networks", "artificial_intelligence",
         "deep_learning", "programming"
     ])
     assert context_found
@@ -468,7 +468,7 @@ def test_result_deduplication():
         vector_store=Mock(),
         graph_repository=Mock()
     )
-    
+
     # Create duplicate results
     results = [
         SearchResultData(
@@ -484,9 +484,9 @@ def test_result_deduplication():
             score=0.7
         ),
     ]
-    
+
     unique_results = service._deduplicate_results(results)
-    
+
     assert len(unique_results) == 2
     assert unique_results[0].chunk.id == "chunk1"
     assert unique_results[1].chunk.id == "chunk2"
@@ -501,7 +501,7 @@ def test_confidence_calculation():
         vector_store=Mock(),
         graph_repository=Mock()
     )
-    
+
     # High-quality results
     high_quality_results = [
         SearchResultData(
@@ -513,19 +513,19 @@ def test_confidence_calculation():
             score=0.8
         )
     ]
-    
+
     analysis = {
         "complexity": QueryComplexity.SIMPLE,
         "recommended_strategies": [RetrievalStrategy.ADAPTIVE]
     }
-    
+
     confidence = service._calculate_confidence(
         high_quality_results, analysis, RetrievalStrategy.ADAPTIVE
     )
-    
+
     assert 0.0 <= confidence <= 1.0
     assert confidence > 0.5  # Should be reasonably confident
-    
+
     # Empty results should have zero confidence
     empty_confidence = service._calculate_confidence([], analysis, RetrievalStrategy.ADAPTIVE)
     assert empty_confidence == 0.0
@@ -538,7 +538,7 @@ def test_context_relevance_calculation():
         vector_store=Mock(),
         graph_repository=Mock()
     )
-    
+
     result = SearchResultData(
         chunk=ChunkData(
             id="chunk1",
@@ -548,15 +548,15 @@ def test_context_relevance_calculation():
         ),
         score=0.8
     )
-    
+
     context = RetrievalContext(
         conversation_history=["What is machine learning?"],
         preferences={"topics": ["machine_learning", "programming"]},
         domain_context="computer science"
     )
-    
+
     relevance = service._calculate_context_relevance(result, context)
-    
+
     assert 0.0 <= relevance <= 1.0
     assert relevance > 0.0  # Should have some relevance
 
@@ -574,7 +574,7 @@ async def test_retrieval_result_properties():
             score=0.7
         )
     ]
-    
+
     retrieval_result = RetrievalResult(
         results=results,
         strategy_used=RetrievalStrategy.ENSEMBLE,
@@ -583,10 +583,10 @@ async def test_retrieval_result_properties():
         confidence_score=0.85,
         explanation="Test retrieval"
     )
-    
+
     assert retrieval_result.result_count == 2
     assert retrieval_result.avg_score == 0.8  # (0.9 + 0.7) / 2
-    
+
     # Test with empty results
     empty_result = RetrievalResult(
         results=[],
@@ -596,7 +596,7 @@ async def test_retrieval_result_properties():
         confidence_score=0.0,
         explanation="No results"
     )
-    
+
     assert empty_result.result_count == 0
     assert empty_result.avg_score == 0.0
 
@@ -608,7 +608,7 @@ def test_retrieval_context_initialization():
     assert context.conversation_history == []
     assert context.preferences == {}
     assert context.previous_results == []
-    
+
     # Test with values
     context_with_values = RetrievalContext(
         user_id="user123",

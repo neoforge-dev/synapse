@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any
 
 import neo4j.time  # Import neo4j.time for type checking
 from neo4j import (
@@ -291,7 +291,7 @@ class MemgraphRepository(GraphStore):
             updated_at=updated_at,
         )
 
-    async def get_entity_by_id(self, entity_id: str) -> Optional[Entity]:
+    async def get_entity_by_id(self, entity_id: str) -> Entity | None:
         """Retrieves a single entity by its unique ID using async execution."""
         # Fetch the node itself and its labels for type
         query = """
@@ -323,7 +323,7 @@ class MemgraphRepository(GraphStore):
             raise
 
     def _map_edge_to_relationship(
-        self, edge_record: Union[Record, Neo4jRelationship]
+        self, edge_record: Record | Neo4jRelationship
     ) -> Relationship:
         """Maps a neo4j Record or neo4j.graph.Relationship to a domain Relationship object."""
         properties = {}
@@ -414,7 +414,7 @@ class MemgraphRepository(GraphStore):
     async def get_neighbors(
         self,
         entity_id: str,
-        relationship_types: Optional[list[str]] = None,
+        relationship_types: list[str] | None = None,
         direction: str = "both",
     ) -> tuple[list[Entity], list[Relationship]]:
         """Retrieves neighbors and relationships connected to an entity."""
@@ -467,7 +467,7 @@ class MemgraphRepository(GraphStore):
             return [], []  # Return empty lists on error
 
     async def search_entities_by_properties(
-        self, properties: dict[str, Any], limit: Optional[int] = None
+        self, properties: dict[str, Any], limit: int | None = None
     ) -> list[Entity]:
         """Searches for entities matching specific properties."""
         # Check if 'type' is specified to use as a label constraint
@@ -624,7 +624,7 @@ class MemgraphRepository(GraphStore):
             )
             # Decide if this should raise an error
 
-    async def get_document_by_id(self, document_id: str) -> Optional[Document]:
+    async def get_document_by_id(self, document_id: str) -> Document | None:
         """Retrieves a document by its ID."""
         # Placeholder implementation
         logger.info(f"[Placeholder] Getting document by ID {document_id}")

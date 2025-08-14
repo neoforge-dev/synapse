@@ -1192,7 +1192,7 @@ async def test_query_search_type_vector_only(
     query_text = "test vector search"
     mock_chunk = create_mock_chunk_data(id="c1", text="vector result", score=0.1)
     mock_result = create_mock_search_result(mock_chunk, 0.9)
-    
+
     # Mock vector store to return different results for vector vs keyword
     async def mock_search_side_effect(query, top_k, search_type="vector"):
         if search_type == "vector":
@@ -1200,19 +1200,19 @@ async def test_query_search_type_vector_only(
         elif search_type == "keyword":
             return []  # Should not be called for vector-only
         return []
-    
+
     mock_vector_store.search.side_effect = mock_search_side_effect
     mock_llm_service.generate_response.return_value = "Vector search answer"
-    
+
     # Act
     config = {"search_type": "vector", "include_graph": False, "k": 3}
     result = await rag_engine.query(query_text, config=config)
-    
+
     # Assert
     assert result.answer == "Vector search answer"
     assert len(result.relevant_chunks) == 1
     assert result.relevant_chunks[0].text == "vector result"
-    
+
     # Should only call vector search, never keyword
     mock_vector_store.search.assert_called_once_with(query_text, top_k=3, search_type="vector")
 
@@ -1227,7 +1227,7 @@ async def test_query_search_type_keyword_only(
     query_text = "test keyword search"
     mock_chunk = create_mock_chunk_data(id="c1", text="keyword result", score=0.1)
     mock_result = create_mock_search_result(mock_chunk, 0.8)
-    
+
     # Mock vector store to return different results for vector vs keyword
     async def mock_search_side_effect(query, top_k, search_type="vector"):
         if search_type == "keyword":
@@ -1235,19 +1235,19 @@ async def test_query_search_type_keyword_only(
         elif search_type == "vector":
             return []  # Should not be called for keyword-only
         return []
-    
+
     mock_vector_store.search.side_effect = mock_search_side_effect
     mock_llm_service.generate_response.return_value = "Keyword search answer"
-    
+
     # Act
     config = {"search_type": "keyword", "include_graph": False, "k": 3}
     result = await rag_engine.query(query_text, config=config)
-    
+
     # Assert
     assert result.answer == "Keyword search answer"
     assert len(result.relevant_chunks) == 1
     assert result.relevant_chunks[0].text == "keyword result"
-    
+
     # Should only call keyword search, never vector
     mock_vector_store.search.assert_called_once_with(query_text, top_k=3, search_type="keyword")
 
@@ -1260,41 +1260,41 @@ async def test_query_search_type_hybrid_blending(
 ):
     """Test search_type='hybrid' blends vector and keyword results based on blend_keyword_weight."""
     query_text = "test hybrid search"
-    
+
     # Mock different results for vector vs keyword
     vector_chunk = create_mock_chunk_data(id="v1", text="vector result", score=0.1)
     vector_result = create_mock_search_result(vector_chunk, 0.9)
-    
-    keyword_chunk = create_mock_chunk_data(id="k1", text="keyword result", score=0.1) 
+
+    keyword_chunk = create_mock_chunk_data(id="k1", text="keyword result", score=0.1)
     keyword_result = create_mock_search_result(keyword_chunk, 0.7)
-    
+
     async def mock_search_side_effect(query, top_k, search_type="vector"):
         if search_type == "vector":
             return [vector_result]
         elif search_type == "keyword":
             return [keyword_result]
         return []
-    
+
     mock_vector_store.search.side_effect = mock_search_side_effect
     mock_llm_service.generate_response.return_value = "Hybrid search answer"
-    
+
     # Act: Test with blend_keyword_weight=0.3 (30% keyword, 70% vector)
     config = {
-        "search_type": "hybrid", 
-        "include_graph": False, 
+        "search_type": "hybrid",
+        "include_graph": False,
         "k": 3,
         "blend_keyword_weight": 0.3
     }
     result = await rag_engine.query(query_text, config=config)
-    
+
     # Assert
     assert result.answer == "Hybrid search answer"
-    
+
     # Should call both vector and keyword search
     assert mock_vector_store.search.call_count == 2
     mock_vector_store.search.assert_any_call(query_text, top_k=3, search_type="vector")
     mock_vector_store.search.assert_any_call(query_text, top_k=3, search_type="keyword")
-    
+
     # Results should be blended (exact blending logic will be tested in implementation)
     assert len(result.relevant_chunks) >= 1
 
@@ -1307,29 +1307,29 @@ async def test_query_no_answer_min_score_threshold(
 ):
     """Test no_answer_min_score returns no-answer message when top score is below threshold."""
     query_text = "test low score query"
-    
+
     # Mock low-score result
     low_score_chunk = create_mock_chunk_data(id="c1", text="low relevance", score=0.1)
     low_score_result = create_mock_search_result(low_score_chunk, 0.2)  # Score below threshold
-    
+
     mock_vector_store.search.return_value = [low_score_result]
-    
+
     # Act: Set threshold higher than the mock result score
     config = {
         "search_type": "vector",
-        "include_graph": False, 
+        "include_graph": False,
         "k": 3,
         "no_answer_min_score": 0.5  # Threshold higher than 0.2
     }
     result = await rag_engine.query(query_text, config=config)
-    
+
     # Assert: Should return no-answer message without calling LLM
     assert "No relevant information found" in result.answer
     assert len(result.relevant_chunks) == 0
     mock_llm_service.generate_response.assert_not_called()
 
 
-@pytest.mark.asyncio 
+@pytest.mark.asyncio
 async def test_query_no_answer_min_score_passes_threshold(
     rag_engine: SimpleGraphRAGEngine,
     mock_vector_store: AsyncMock,
@@ -1337,23 +1337,23 @@ async def test_query_no_answer_min_score_passes_threshold(
 ):
     """Test no_answer_min_score allows processing when top score meets threshold."""
     query_text = "test high score query"
-    
+
     # Mock high-score result
     high_score_chunk = create_mock_chunk_data(id="c1", text="high relevance", score=0.1)
     high_score_result = create_mock_search_result(high_score_chunk, 0.8)  # Score above threshold
-    
+
     mock_vector_store.search.return_value = [high_score_result]
     mock_llm_service.generate_response.return_value = "High score answer"
-    
+
     # Act: Set threshold lower than the mock result score
     config = {
         "search_type": "vector",
         "include_graph": False,
-        "k": 3, 
+        "k": 3,
         "no_answer_min_score": 0.5  # Threshold lower than 0.8
     }
     result = await rag_engine.query(query_text, config=config)
-    
+
     # Assert: Should process normally and call LLM
     assert result.answer == "High score answer"
     assert len(result.relevant_chunks) == 1
@@ -1375,23 +1375,23 @@ async def test_llm_relationship_extraction_and_persistence_enabled(
 ):
     """Test LLM relationship extraction and persistence when enabled with confidence gating."""
     query_text = "Alice knows Bob"
-    
+
     # Mock vector store
     chunk_data = create_mock_chunk_data(id="c1", text="Alice works with Bob at the office.", score=0.1)
     search_result = create_mock_search_result(chunk_data, 0.9)
     mock_vector_store.search.return_value = [search_result]
-    
+
     # Mock entity extraction
     extracted_alice = create_mock_extracted_entity(id="ext_alice", label="PERSON", text="Alice")
     extracted_bob = create_mock_extracted_entity(id="ext_bob", label="PERSON", text="Bob")
     mock_entity_extractor.extract_from_text.return_value = ExtractionResult(
         entities=[extracted_alice, extracted_bob], relationships=[]
     )
-    
+
     # Mock graph entities
     graph_alice = create_mock_graph_entity(id="graph_alice", type="PERSON", name="Alice")
     graph_bob = create_mock_graph_entity(id="graph_bob", type="PERSON", name="Bob")
-    
+
     async def mock_search_props(props: dict, limit=None):
         name = props.get("name")
         if name == "Alice":
@@ -1399,10 +1399,10 @@ async def test_llm_relationship_extraction_and_persistence_enabled(
         elif name == "Bob":
             return [graph_bob]
         return []
-    
+
     mock_graph_repository.search_entities_by_properties.side_effect = mock_search_props
     mock_graph_repository.get_neighbors.return_value = ([graph_alice, graph_bob], [])
-    
+
     # Mock LLM relationship extraction
     mock_llm_relationships = [
         {"source_name": "alice", "target_name": "bob", "type": "WORKS_WITH", "confidence": 0.85},
@@ -1411,14 +1411,14 @@ async def test_llm_relationship_extraction_and_persistence_enabled(
     ]
     mock_llm_service.extract_entities_relationships.return_value = ([], mock_llm_relationships)
     mock_llm_service.generate_response.return_value = "Answer with LLM relationships"
-    
+
     # Patch settings for this test
     import graph_rag.core.graph_rag_engine as engine_module
     original_enable = engine_module.settings.enable_llm_relationships
     original_min_conf = engine_module.settings.llm_rel_min_confidence
     engine_module.settings.enable_llm_relationships = True
     engine_module.settings.llm_rel_min_confidence = 0.7
-    
+
     try:
         # Act
         config = {
@@ -1428,13 +1428,13 @@ async def test_llm_relationship_extraction_and_persistence_enabled(
             "k": 1
         }
         result = await rag_engine.query(query_text, config=config)
-        
+
         # Assert LLM relationship extraction was called
         mock_llm_service.extract_entities_relationships.assert_called_once_with(chunk_data.text)
-        
+
         # Assert persistence calls were made for relationships above threshold
         assert mock_graph_repository.execute_query.call_count == 2  # WORKS_WITH (0.85) and KNOWS (0.90)
-        
+
         # Check that MERGE queries were executed
         cypher_calls = mock_graph_repository.execute_query.call_args_list
         for call in cypher_calls:
@@ -1443,17 +1443,17 @@ async def test_llm_relationship_extraction_and_persistence_enabled(
             assert "evidence_count" in cypher
             assert params["props"]["extractor"] == "llm"
             assert params["props"]["confidence"] >= 0.7  # Above threshold
-        
+
         # Assert metrics were tracked in config
         assert config["llm_relations_inferred_total"] == 3  # All relationships inferred
         assert config["llm_relations_persisted_total"] == 2  # Only above threshold persisted
-        
+
         # Assert graph context includes LLM relationships
         assert result.graph_context is not None
         entities, relationships = result.graph_context
         llm_rels = [r for r in relationships if r.properties.get("extractor") == "llm"]
         assert len(llm_rels) == 3  # All inferred relationships added to context
-        
+
     finally:
         # Restore settings
         engine_module.settings.enable_llm_relationships = original_enable
@@ -1470,23 +1470,23 @@ async def test_llm_relationship_persistence_disabled(
 ):
     """Test that LLM relationships are not persisted when feature is disabled."""
     query_text = "Alice knows Bob"
-    
+
     # Mock vector store
     chunk_data = create_mock_chunk_data(id="c1", text="Alice works with Bob.", score=0.1)
     search_result = create_mock_search_result(chunk_data, 0.9)
     mock_vector_store.search.return_value = [search_result]
-    
+
     # Mock entity extraction
     extracted_alice = create_mock_extracted_entity(id="ext_alice", label="PERSON", text="Alice")
     extracted_bob = create_mock_extracted_entity(id="ext_bob", label="PERSON", text="Bob")
     mock_entity_extractor.extract_from_text.return_value = ExtractionResult(
         entities=[extracted_alice, extracted_bob], relationships=[]
     )
-    
+
     # Mock graph entities
     graph_alice = create_mock_graph_entity(id="graph_alice", type="PERSON", name="Alice")
     graph_bob = create_mock_graph_entity(id="graph_bob", type="PERSON", name="Bob")
-    
+
     async def mock_search_props(props: dict, limit=None):
         name = props.get("name")
         if name == "Alice":
@@ -1494,22 +1494,22 @@ async def test_llm_relationship_persistence_disabled(
         elif name == "Bob":
             return [graph_bob]
         return []
-    
+
     mock_graph_repository.search_entities_by_properties.side_effect = mock_search_props
     mock_graph_repository.get_neighbors.return_value = ([graph_alice, graph_bob], [])
-    
+
     # Mock LLM relationship extraction
     mock_llm_relationships = [
         {"source_name": "alice", "target_name": "bob", "type": "KNOWS", "confidence": 0.90},
     ]
     mock_llm_service.extract_entities_relationships.return_value = ([], mock_llm_relationships)
     mock_llm_service.generate_response.return_value = "Answer without persistence"
-    
+
     # Patch settings to disable persistence
     import graph_rag.core.graph_rag_engine as engine_module
     original_enable = engine_module.settings.enable_llm_relationships
     engine_module.settings.enable_llm_relationships = False
-    
+
     try:
         # Act
         config = {
@@ -1519,23 +1519,23 @@ async def test_llm_relationship_persistence_disabled(
             "k": 1
         }
         result = await rag_engine.query(query_text, config=config)
-        
+
         # Assert LLM extraction still occurred
         mock_llm_service.extract_entities_relationships.assert_called_once()
-        
+
         # Assert NO persistence calls were made
         mock_graph_repository.execute_query.assert_not_called()
-        
+
         # Assert metrics show inference but no persistence
         assert config.get("llm_relations_inferred_total", 0) == 1
         assert config.get("llm_relations_persisted_total", 0) == 0
-        
+
         # Assert relationships still added to context
         assert result.graph_context is not None
         entities, relationships = result.graph_context
         llm_rels = [r for r in relationships if r.properties.get("extractor") == "llm"]
         assert len(llm_rels) == 1
-        
+
     finally:
         engine_module.settings.enable_llm_relationships = original_enable
 
@@ -1550,23 +1550,23 @@ async def test_llm_relationship_deduplication(
 ):
     """Test that duplicate LLM relationships are deduplicated during persistence."""
     query_text = "Alice knows Bob multiple times"
-    
+
     # Mock vector store
     chunk_data = create_mock_chunk_data(id="c1", text="Alice knows Bob. Alice is friends with Bob.", score=0.1)
     search_result = create_mock_search_result(chunk_data, 0.9)
     mock_vector_store.search.return_value = [search_result]
-    
+
     # Mock entity extraction
     extracted_alice = create_mock_extracted_entity(id="ext_alice", label="PERSON", text="Alice")
     extracted_bob = create_mock_extracted_entity(id="ext_bob", label="PERSON", text="Bob")
     mock_entity_extractor.extract_from_text.return_value = ExtractionResult(
         entities=[extracted_alice, extracted_bob], relationships=[]
     )
-    
+
     # Mock graph entities
     graph_alice = create_mock_graph_entity(id="graph_alice", type="PERSON", name="Alice")
     graph_bob = create_mock_graph_entity(id="graph_bob", type="PERSON", name="Bob")
-    
+
     async def mock_search_props(props: dict, limit=None):
         name = props.get("name")
         if name == "Alice":
@@ -1574,10 +1574,10 @@ async def test_llm_relationship_deduplication(
         elif name == "Bob":
             return [graph_bob]
         return []
-    
+
     mock_graph_repository.search_entities_by_properties.side_effect = mock_search_props
     mock_graph_repository.get_neighbors.return_value = ([graph_alice, graph_bob], [])
-    
+
     # Mock LLM relationship extraction with duplicates
     mock_llm_relationships = [
         {"source_name": "alice", "target_name": "bob", "type": "KNOWS", "confidence": 0.85},
@@ -1586,14 +1586,14 @@ async def test_llm_relationship_deduplication(
     ]
     mock_llm_service.extract_entities_relationships.return_value = ([], mock_llm_relationships)
     mock_llm_service.generate_response.return_value = "Answer with deduplicated relationships"
-    
+
     # Patch settings
     import graph_rag.core.graph_rag_engine as engine_module
     original_enable = engine_module.settings.enable_llm_relationships
     original_min_conf = engine_module.settings.llm_rel_min_confidence
     engine_module.settings.enable_llm_relationships = True
     engine_module.settings.llm_rel_min_confidence = 0.7
-    
+
     try:
         # Act
         config = {
@@ -1603,20 +1603,20 @@ async def test_llm_relationship_deduplication(
             "k": 1
         }
         result = await rag_engine.query(query_text, config=config)
-        
+
         # Assert persistence calls - should be 2 (KNOWS once, FRIENDS once)
         assert mock_graph_repository.execute_query.call_count == 2
-        
+
         # Assert metrics show all inferred but only unique persisted
         assert config["llm_relations_inferred_total"] == 3  # All relationships inferred
         assert config["llm_relations_persisted_total"] == 2  # Deduplicated persistence
-        
+
         # Assert all relationships added to context (before deduplication)
         assert result.graph_context is not None
         entities, relationships = result.graph_context
         llm_rels = [r for r in relationships if r.properties.get("extractor") == "llm"]
         assert len(llm_rels) == 3  # All added to context
-        
+
     finally:
         engine_module.settings.enable_llm_relationships = original_enable
         engine_module.settings.llm_rel_min_confidence = original_min_conf
@@ -1632,23 +1632,23 @@ async def test_llm_relationship_dry_run_mode(
 ):
     """Test that dry-run mode logs planned relationships but doesn't persist them."""
     query_text = "Alice knows Bob in dry run"
-    
+
     # Mock vector store
     chunk_data = create_mock_chunk_data(id="c1", text="Alice works with Bob.", score=0.1)
     search_result = create_mock_search_result(chunk_data, 0.9)
     mock_vector_store.search.return_value = [search_result]
-    
+
     # Mock entity extraction
     extracted_alice = create_mock_extracted_entity(id="ext_alice", label="PERSON", text="Alice")
     extracted_bob = create_mock_extracted_entity(id="ext_bob", label="PERSON", text="Bob")
     mock_entity_extractor.extract_from_text.return_value = ExtractionResult(
         entities=[extracted_alice, extracted_bob], relationships=[]
     )
-    
+
     # Mock graph entities
     graph_alice = create_mock_graph_entity(id="graph_alice", type="PERSON", name="Alice")
     graph_bob = create_mock_graph_entity(id="graph_bob", type="PERSON", name="Bob")
-    
+
     async def mock_search_props(props: dict, limit=None):
         name = props.get("name")
         if name == "Alice":
@@ -1656,10 +1656,10 @@ async def test_llm_relationship_dry_run_mode(
         elif name == "Bob":
             return [graph_bob]
         return []
-    
+
     mock_graph_repository.search_entities_by_properties.side_effect = mock_search_props
     mock_graph_repository.get_neighbors.return_value = ([graph_alice, graph_bob], [])
-    
+
     # Mock LLM relationship extraction
     mock_llm_relationships = [
         {"source_name": "alice", "target_name": "bob", "type": "KNOWS", "confidence": 0.90},
@@ -1668,14 +1668,14 @@ async def test_llm_relationship_dry_run_mode(
     ]
     mock_llm_service.extract_entities_relationships.return_value = ([], mock_llm_relationships)
     mock_llm_service.generate_response.return_value = "Answer in dry run mode"
-    
+
     # Patch settings
     import graph_rag.core.graph_rag_engine as engine_module
     original_enable = engine_module.settings.enable_llm_relationships
     original_min_conf = engine_module.settings.llm_rel_min_confidence
     engine_module.settings.enable_llm_relationships = True
     engine_module.settings.llm_rel_min_confidence = 0.7
-    
+
     try:
         # Act - dry run mode
         config = {
@@ -1686,13 +1686,13 @@ async def test_llm_relationship_dry_run_mode(
             "k": 1
         }
         result = await rag_engine.query(query_text, config=config)
-        
+
         # Assert LLM extraction occurred
         mock_llm_service.extract_entities_relationships.assert_called_once()
-        
+
         # Assert NO persistence calls were made
         mock_graph_repository.execute_query.assert_not_called()
-        
+
         # Assert planned relationships were recorded in config
         planned = config.get("llm_relationships_planned", [])
         assert len(planned) == 2  # Only above threshold relationships
@@ -1701,11 +1701,11 @@ async def test_llm_relationship_dry_run_mode(
             assert plan["extractor"] == "llm"
             assert plan["source_id"] == graph_alice.id
             assert plan["target_id"] == graph_bob.id
-        
+
         # Assert metrics show inference but no persistence
         assert config.get("llm_relations_inferred_total", 0) == 3
         assert config.get("llm_relations_persisted_total", 0) == 0
-        
+
     finally:
         engine_module.settings.enable_llm_relationships = original_enable
         engine_module.settings.llm_rel_min_confidence = original_min_conf
@@ -1721,23 +1721,23 @@ async def test_llm_relationship_confidence_gating(
 ):
     """Test that only relationships above confidence threshold are persisted."""
     query_text = "Alice knows Bob with varying confidence"
-    
+
     # Mock vector store
     chunk_data = create_mock_chunk_data(id="c1", text="Alice maybe knows Bob.", score=0.1)
     search_result = create_mock_search_result(chunk_data, 0.9)
     mock_vector_store.search.return_value = [search_result]
-    
+
     # Mock entity extraction
     extracted_alice = create_mock_extracted_entity(id="ext_alice", label="PERSON", text="Alice")
     extracted_bob = create_mock_extracted_entity(id="ext_bob", label="PERSON", text="Bob")
     mock_entity_extractor.extract_from_text.return_value = ExtractionResult(
         entities=[extracted_alice, extracted_bob], relationships=[]
     )
-    
+
     # Mock graph entities
     graph_alice = create_mock_graph_entity(id="graph_alice", type="PERSON", name="Alice")
     graph_bob = create_mock_graph_entity(id="graph_bob", type="PERSON", name="Bob")
-    
+
     async def mock_search_props(props: dict, limit=None):
         name = props.get("name")
         if name == "Alice":
@@ -1745,10 +1745,10 @@ async def test_llm_relationship_confidence_gating(
         elif name == "Bob":
             return [graph_bob]
         return []
-    
+
     mock_graph_repository.search_entities_by_properties.side_effect = mock_search_props
     mock_graph_repository.get_neighbors.return_value = ([graph_alice, graph_bob], [])
-    
+
     # Mock LLM relationship extraction with varying confidence
     mock_llm_relationships = [
         {"source_name": "alice", "target_name": "bob", "type": "KNOWS", "confidence": 0.95},  # Above
@@ -1759,14 +1759,14 @@ async def test_llm_relationship_confidence_gating(
     ]
     mock_llm_service.extract_entities_relationships.return_value = ([], mock_llm_relationships)
     mock_llm_service.generate_response.return_value = "Answer with confidence gating"
-    
+
     # Patch settings with specific threshold
     import graph_rag.core.graph_rag_engine as engine_module
     original_enable = engine_module.settings.enable_llm_relationships
     original_min_conf = engine_module.settings.llm_rel_min_confidence
     engine_module.settings.enable_llm_relationships = True
     engine_module.settings.llm_rel_min_confidence = 0.75  # Set threshold at 0.75
-    
+
     try:
         # Act
         config = {
@@ -1776,10 +1776,10 @@ async def test_llm_relationship_confidence_gating(
             "k": 1
         }
         result = await rag_engine.query(query_text, config=config)
-        
+
         # Assert persistence calls - should be 3 (KNOWS, LIKES, WORKS_WITH >= 0.75)
         assert mock_graph_repository.execute_query.call_count == 3
-        
+
         # Verify confidence of persisted relationships
         cypher_calls = mock_graph_repository.execute_query.call_args_list
         persisted_confidences = []
@@ -1788,15 +1788,15 @@ async def test_llm_relationship_confidence_gating(
             confidence = params["props"]["confidence"]
             persisted_confidences.append(confidence)
             assert confidence >= 0.75  # All should be above threshold
-        
+
         assert 0.95 in persisted_confidences
         assert 0.80 in persisted_confidences
         assert 0.75 in persisted_confidences
-        
+
         # Assert metrics
         assert config["llm_relations_inferred_total"] == 5  # All relationships inferred
         assert config["llm_relations_persisted_total"] == 3  # Only above threshold persisted
-        
+
     finally:
         engine_module.settings.enable_llm_relationships = original_enable
         engine_module.settings.llm_rel_min_confidence = original_min_conf
@@ -1812,23 +1812,23 @@ async def test_llm_relationship_entity_mapping_by_name(
 ):
     """Test that LLM relationships map entities by canonical lowercase name."""
     query_text = "Different case names"
-    
+
     # Mock vector store
     chunk_data = create_mock_chunk_data(id="c1", text="ALICE knows bob.", score=0.1)
     search_result = create_mock_search_result(chunk_data, 0.9)
     mock_vector_store.search.return_value = [search_result]
-    
+
     # Mock entity extraction
     extracted_alice = create_mock_extracted_entity(id="ext_alice", label="PERSON", text="ALICE")
     extracted_bob = create_mock_extracted_entity(id="ext_bob", label="PERSON", text="bob")
     mock_entity_extractor.extract_from_text.return_value = ExtractionResult(
         entities=[extracted_alice, extracted_bob], relationships=[]
     )
-    
+
     # Mock graph entities (different case)
     graph_alice = create_mock_graph_entity(id="graph_alice", type="PERSON", name="Alice")
     graph_bob = create_mock_graph_entity(id="graph_bob", type="PERSON", name="Bob")
-    
+
     async def mock_search_props(props: dict, limit=None):
         name = props.get("name")
         if name.lower() == "alice":
@@ -1836,24 +1836,24 @@ async def test_llm_relationship_entity_mapping_by_name(
         elif name.lower() == "bob":
             return [graph_bob]
         return []
-    
+
     mock_graph_repository.search_entities_by_properties.side_effect = mock_search_props
     mock_graph_repository.get_neighbors.return_value = ([graph_alice, graph_bob], [])
-    
+
     # Mock LLM relationship extraction (mixed case)
     mock_llm_relationships = [
         {"source_name": "ALICE", "target_name": "bob", "type": "KNOWS", "confidence": 0.90},
     ]
     mock_llm_service.extract_entities_relationships.return_value = ([], mock_llm_relationships)
     mock_llm_service.generate_response.return_value = "Answer with case mapping"
-    
+
     # Patch settings
     import graph_rag.core.graph_rag_engine as engine_module
     original_enable = engine_module.settings.enable_llm_relationships
     original_min_conf = engine_module.settings.llm_rel_min_confidence
     engine_module.settings.enable_llm_relationships = True
     engine_module.settings.llm_rel_min_confidence = 0.7
-    
+
     try:
         # Act
         config = {
@@ -1863,21 +1863,21 @@ async def test_llm_relationship_entity_mapping_by_name(
             "k": 1
         }
         result = await rag_engine.query(query_text, config=config)
-        
+
         # Assert persistence occurred despite case differences
         assert mock_graph_repository.execute_query.call_count == 1
-        
+
         # Verify relationship properties include normalized names
         cypher, params = mock_graph_repository.execute_query.call_args[0]
         assert params["props"]["source_name"] == "alice"  # Normalized to lowercase
         assert params["props"]["target_name"] == "bob"    # Normalized to lowercase
         assert params["src"] == graph_alice.id
         assert params["tgt"] == graph_bob.id
-        
+
         # Assert metrics
         assert config["llm_relations_inferred_total"] == 1
         assert config["llm_relations_persisted_total"] == 1
-        
+
     finally:
         engine_module.settings.enable_llm_relationships = original_enable
         engine_module.settings.llm_rel_min_confidence = original_min_conf
@@ -1893,45 +1893,45 @@ async def test_llm_relationship_missing_entities_skipped(
 ):
     """Test that relationships involving entities not found in graph are skipped."""
     query_text = "Alice knows Charlie"
-    
+
     # Mock vector store
     chunk_data = create_mock_chunk_data(id="c1", text="Alice knows Charlie.", score=0.1)
     search_result = create_mock_search_result(chunk_data, 0.9)
     mock_vector_store.search.return_value = [search_result]
-    
+
     # Mock entity extraction
     extracted_alice = create_mock_extracted_entity(id="ext_alice", label="PERSON", text="Alice")
     extracted_charlie = create_mock_extracted_entity(id="ext_charlie", label="PERSON", text="Charlie")
     mock_entity_extractor.extract_from_text.return_value = ExtractionResult(
         entities=[extracted_alice, extracted_charlie], relationships=[]
     )
-    
+
     # Mock graph entities - only Alice exists
     graph_alice = create_mock_graph_entity(id="graph_alice", type="PERSON", name="Alice")
-    
+
     async def mock_search_props(props: dict, limit=None):
         name = props.get("name")
         if name == "Alice":
             return [graph_alice]
         return []  # Charlie not found in graph
-    
+
     mock_graph_repository.search_entities_by_properties.side_effect = mock_search_props
     mock_graph_repository.get_neighbors.return_value = ([graph_alice], [])
-    
+
     # Mock LLM relationship extraction
     mock_llm_relationships = [
         {"source_name": "alice", "target_name": "charlie", "type": "KNOWS", "confidence": 0.90},
     ]
     mock_llm_service.extract_entities_relationships.return_value = ([], mock_llm_relationships)
     mock_llm_service.generate_response.return_value = "Answer with missing entity"
-    
+
     # Patch settings
     import graph_rag.core.graph_rag_engine as engine_module
     original_enable = engine_module.settings.enable_llm_relationships
     original_min_conf = engine_module.settings.llm_rel_min_confidence
     engine_module.settings.enable_llm_relationships = True
     engine_module.settings.llm_rel_min_confidence = 0.7
-    
+
     try:
         # Act
         config = {
@@ -1941,20 +1941,20 @@ async def test_llm_relationship_missing_entities_skipped(
             "k": 1
         }
         result = await rag_engine.query(query_text, config=config)
-        
+
         # Assert NO persistence occurred (Charlie not found)
         mock_graph_repository.execute_query.assert_not_called()
-        
+
         # Assert no metrics increment since relationship was skipped before inference
         assert config.get("llm_relations_inferred_total", 0) == 0
         assert config.get("llm_relations_persisted_total", 0) == 0
-        
+
         # Assert no LLM relationships in context
         assert result.graph_context is not None
         entities, relationships = result.graph_context
         llm_rels = [r for r in relationships if r.properties.get("extractor") == "llm"]
         assert len(llm_rels) == 0
-        
+
     finally:
         engine_module.settings.enable_llm_relationships = original_enable
         engine_module.settings.llm_rel_min_confidence = original_min_conf

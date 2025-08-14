@@ -1,17 +1,31 @@
 import logging
 import time
-import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.routing import APIRouter
-# Removed Neo4j AsyncDriver usage; mgclient-based repository handles connectivity
 
+# Removed Neo4j AsyncDriver usage; mgclient-based repository handles connectivity
 # Import Factory Functions from dependencies module
 from graph_rag.api.dependencies import (
     MockEmbeddingService,  # Import from dependencies only, avoid function name collisions
+    create_llm_service,  # LLM factory
+)
+from graph_rag.api.errors import (
+    GraphRAGError,
+    general_exception_handler,
+    graph_rag_exception_handler,
+    http_exception_handler,
+)
+from graph_rag.api.metrics import (
+    init_metrics as _init_business_metrics,
+)
+from graph_rag.api.middleware import (
+    RateLimitMiddleware,
+    RequestLoggingMiddleware,
+    SecurityHeadersMiddleware,
 )
 from graph_rag.api.routers import documents, ingestion, query, search
 from graph_rag.api.routers.admin import create_admin_router
@@ -20,25 +34,10 @@ from graph_rag.api.routers.reasoning import create_reasoning_router
 
 # Local application imports
 from graph_rag.config import get_settings
-from graph_rag.api.errors import (
-    GraphRAGError,
-    general_exception_handler,
-    graph_rag_exception_handler,
-    http_exception_handler,
-)
-from graph_rag.api.middleware import (
-    RequestLoggingMiddleware,
-    SecurityHeadersMiddleware,
-    RateLimitMiddleware,
-)
-from graph_rag.api.metrics import (
-    init_metrics as _init_business_metrics,
-)
 from graph_rag.core.entity_extractor import MockEntityExtractor, SpacyEntityExtractor
 
 # Import Concrete Implementations needed for lifespan setup
 from graph_rag.core.graph_rag_engine import SimpleGraphRAGEngine
-from graph_rag.api.dependencies import create_llm_service  # LLM factory
 
 # Import Core Interfaces/Base Classes directly from their modules
 from graph_rag.core.interfaces import (
@@ -52,6 +51,7 @@ from graph_rag.core.vector_store import MockVectorStore
 from graph_rag.infrastructure.document_processor.simple_processor import (
     SimpleDocumentProcessor,
 )
+
 try:
     from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 except Exception:  # pragma: no cover - allow CI without mgclient
@@ -341,13 +341,13 @@ async def lifespan(app: FastAPI):
             interval = max(
                 60, int(getattr(current_settings, "maintenance_interval_seconds", 86400))
             )
-            
+
             # Create scheduler
             scheduler = MaintenanceScheduler(
                 interval_seconds=interval,
                 log_json=current_settings.api_log_json
             )
-            
+
             # Add FAISS maintenance job if vector store supports it
             if app.state.vector_store and hasattr(app.state.vector_store, "rebuild_index"):
                 faiss_job = FaissMaintenanceJob(
@@ -356,7 +356,7 @@ async def lifespan(app: FastAPI):
                 )
                 scheduler.add_job(faiss_job)
                 logger.info("Added FAISS maintenance job to scheduler")
-            
+
             # Add integrity check job
             if app.state.graph_repository and app.state.vector_store:
                 integrity_job = IntegrityCheckJob(
@@ -367,12 +367,12 @@ async def lifespan(app: FastAPI):
                 )
                 scheduler.add_job(integrity_job)
                 logger.info("Added integrity check job to scheduler")
-            
+
             # Start scheduler
             await scheduler.start()
             app.state.maintenance_scheduler = scheduler
             logger.info(f"Maintenance scheduler started (interval={interval}s)")
-            
+
     except Exception as e:
         logger.warning(f"Failed to initialize maintenance scheduler: {e}; continuing without it")
 
@@ -423,7 +423,7 @@ async def lifespan(app: FastAPI):
 
     # --- Shutdown ---
     logger.info("LIFESPAN SHUTDOWN: Shutting down API...")
-    
+
     # Stop maintenance scheduler
     if hasattr(app.state, "maintenance_scheduler") and app.state.maintenance_scheduler:
         try:
@@ -434,7 +434,7 @@ async def lifespan(app: FastAPI):
                 f"LIFESPAN SHUTDOWN: Error stopping maintenance scheduler: {e}",
                 exc_info=True,
             )
-    
+
     if hasattr(app.state, "neo4j_driver") and app.state.neo4j_driver:
         try:
             await app.state.neo4j_driver.close()
@@ -579,10 +579,10 @@ def create_app() -> FastAPI:
 
     # Add middleware (order matters - last added is executed first)
     settings = get_settings()
-    
+
     # Security headers (outermost)
     app.add_middleware(SecurityHeadersMiddleware)
-    
+
     # Rate limiting (if enabled)
     if getattr(settings, 'enable_rate_limiting', True):
         app.add_middleware(
@@ -590,13 +590,13 @@ def create_app() -> FastAPI:
             requests_per_minute=getattr(settings, 'rate_limit_per_minute', 60),
             requests_per_hour=getattr(settings, 'rate_limit_per_hour', 1000)
         )
-    
+
     # Request logging and metrics
     app.add_middleware(
         RequestLoggingMiddleware,
         enable_metrics=getattr(settings, 'enable_metrics', True)
     )
-    
+
     # CORS (closest to app)
     app.add_middleware(
         CORSMiddleware,
@@ -631,9 +631,9 @@ def create_app() -> FastAPI:
     api_router.include_router(
         query_router, prefix="/query", tags=["Query"]
     )  # Assuming query router needs prefix too
-    api_router.include_router(graph_router, prefix="/graph", tags=["Graph"]) 
+    api_router.include_router(graph_router, prefix="/graph", tags=["Graph"])
     api_router.include_router(admin_router, prefix="/admin", tags=["Admin"])
-    api_router.include_router(reasoning_router, prefix="/reasoning", tags=["Reasoning"]) 
+    api_router.include_router(reasoning_router, prefix="/reasoning", tags=["Reasoning"])
 
     app.include_router(api_router)  # Remove prefix="/api/v1" here
 
@@ -682,43 +682,43 @@ def create_app() -> FastAPI:
     ):
         """Basic health check - returns healthy if core services are initialized."""
         from graph_rag.api.health import HealthStatus
-        
+
         # Basic check: If the dependency injection worked, the engine is available.
         try:
             checked_dependencies = []
             if graph_rag_engine:  # Check if injection succeeded
                 checked_dependencies.append("graph_rag_engine")
-                
+
             # Check if services are using mocks (degraded health)
             is_degraded = False
             degraded_services = []
-            
+
             if hasattr(request.app.state, 'graph_repository'):
                 repo = request.app.state.graph_repository
                 if "Mock" in repo.__class__.__name__:
                     is_degraded = True
                     degraded_services.append("graph_repository")
-                    
+
             if hasattr(request.app.state, 'vector_store'):
                 vs = request.app.state.vector_store
                 if "Mock" in vs.__class__.__name__:
                     is_degraded = True
                     degraded_services.append("vector_store")
-                    
+
             status_value = HealthStatus.DEGRADED if is_degraded else HealthStatus.HEALTHY
-            
+
             result = {
                 "status": status_value,
                 "dependencies": checked_dependencies,
                 "timestamp": time.time()
             }
-            
+
             if is_degraded:
                 result["message"] = f"System running with mock services: {', '.join(degraded_services)}"
                 result["degraded_services"] = degraded_services
-                
+
             return result
-            
+
         except Exception as e:
             logger.error(f"Health check failed: {e}", exc_info=True)
             return {

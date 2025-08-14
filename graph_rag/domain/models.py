@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -10,10 +10,10 @@ class Node(BaseModel):
     id: str = Field(..., description="Unique identifier for the node")
     type: str = Field(..., description="Type of the node")
     properties: dict = Field(default_factory=dict, description="Node properties")
-    created_at: Optional[datetime] = Field(
+    created_at: datetime | None = Field(
         None, description="Timestamp of node creation"
     )
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         None, description="Timestamp of last node update"
     )
 
@@ -26,10 +26,10 @@ class Edge(BaseModel):
     source_id: str = Field(..., description="Source node ID")
     target_id: str = Field(..., description="Target node ID")
     properties: dict = Field(default_factory=dict, description="Edge properties")
-    created_at: Optional[datetime] = Field(
+    created_at: datetime | None = Field(
         None, description="Timestamp of edge creation"
     )
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         None, description="Timestamp of last edge update"
     )
 
@@ -48,10 +48,10 @@ class Chunk(Node):
     type: str = "Chunk"
     text: str = Field(..., description="Chunk text content")
     document_id: str = Field(..., description="Reference to parent document")
-    embedding: Optional[list[float]] = Field(
+    embedding: list[float] | None = Field(
         None, description="Vector embedding of the chunk"
     )
-    metadata: Optional[dict[str, Any]] = Field(
+    metadata: dict[str, Any] | None = Field(
         default=None, description="Optional metadata associated with the chunk."
     )
 
@@ -62,7 +62,7 @@ class Entity(Node):
     type: str = "Entity"
     # Entities might have specific common properties, like 'name'
     # Add them here if needed, otherwise inherits properties dict from Node
-    name: Optional[str] = Field(None, description="Canonical name of the entity")
+    name: str | None = Field(None, description="Canonical name of the entity")
 
 
 # Type alias for clarity where Relationship is expected

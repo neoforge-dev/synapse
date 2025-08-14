@@ -1,10 +1,11 @@
 import json
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from graph_rag.api.main import create_app
 from graph_rag.api import dependencies as deps
+from graph_rag.api.main import create_app
 
 
 @pytest.mark.unit

@@ -1,25 +1,24 @@
 import logging
-from typing import Annotated, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from graph_rag.api.dependencies import (
-    get_graph_repository, 
-    get_vector_store,
-    get_entity_extractor,
+    get_graph_repository,
     get_llm,
+    get_vector_store,
 )
 from graph_rag.api.health import (
     HealthChecker,
     SystemHealth,
-    check_graph_repository,
-    check_vector_store,
-    check_llm_service,
     check_embedding_service,
+    check_graph_repository,
+    check_llm_service,
+    check_vector_store,
 )
-from graph_rag.core.interfaces import GraphRepository, VectorStore, EntityExtractor
+from graph_rag.core.interfaces import GraphRepository, VectorStore
 from graph_rag.llm.protocols import LLMService
-from graph_rag.services.maintenance import IntegrityCheckJob, MaintenanceScheduler
+from graph_rag.services.maintenance import IntegrityCheckJob
 
 logger = logging.getLogger(__name__)
 
@@ -102,22 +101,22 @@ def create_admin_router() -> APIRouter:
         llm_service: Annotated[LLMService, Depends(get_llm)],
     ) -> SystemHealth:
         """Comprehensive health check with detailed component status."""
-        
+
         health_checker = HealthChecker(timeout_seconds=10.0)
-        
+
         # Get embedding service from vector store
         embedding_service = getattr(vector_store, 'embedding_service', None)
-        
+
         # Define health checkers
         checkers = {
             "graph_repository": lambda: check_graph_repository(graph_repo),
             "vector_store": lambda: check_vector_store(vector_store),
             "llm_service": lambda: check_llm_service(llm_service),
         }
-        
+
         if embedding_service:
             checkers["embedding_service"] = lambda: check_embedding_service(embedding_service)
-        
+
         # Add system-level checks
         if hasattr(request.app.state, 'maintenance_scheduler'):
             async def check_maintenance_scheduler():
@@ -133,9 +132,9 @@ def create_admin_router() -> APIRouter:
                     }
                 else:
                     return {"status": "degraded", "message": "Maintenance scheduler not configured"}
-                    
+
             checkers["maintenance_scheduler"] = check_maintenance_scheduler
-        
+
         return await health_checker.check_all(checkers)
 
     @router.get("/performance/stats")
@@ -143,13 +142,13 @@ def create_admin_router() -> APIRouter:
         """Get performance statistics for monitored functions."""
         from graph_rag.api.performance import get_performance_stats
         return get_performance_stats()
-    
+
     @router.get("/cache/stats")
     async def cache_stats() -> dict:
         """Get cache statistics and hit rates."""
         from graph_rag.api.performance import get_cache_stats
         return get_cache_stats()
-    
+
     @router.delete("/cache/clear")
     async def clear_cache() -> dict:
         """Clear all cached data."""
@@ -222,7 +221,7 @@ def create_admin_router() -> APIRouter:
             # Get settings for JSON logging
             settings = getattr(request.app.state, 'settings', None)
             log_json = settings.api_log_json if settings else False
-            
+
             # Create and run integrity check job
             integrity_job = IntegrityCheckJob(
                 graph_repository=graph_repo,
@@ -230,9 +229,9 @@ def create_admin_router() -> APIRouter:
                 sample_size=sample_size,
                 log_json=log_json
             )
-            
+
             result = await integrity_job.run()
-            
+
             # Return result with appropriate status code
             if result.get("result", {}).get("status") == "failed":
                 return {
@@ -246,7 +245,7 @@ def create_admin_router() -> APIRouter:
                     "result": result,
                     "message": "Integrity check completed successfully"
                 }
-                
+
         except Exception as e:
             logger.error(f"manual_integrity_check failed: {e}", exc_info=True)
             raise HTTPException(

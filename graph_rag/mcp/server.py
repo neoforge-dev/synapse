@@ -14,9 +14,10 @@ import json
 import logging
 import os
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any
 
 import httpx
 
@@ -150,7 +151,7 @@ DELETE_DOCUMENT_SCHEMA = {
     "type": "object",
     "properties": {
         "document_id": {
-            "type": "string", 
+            "type": "string",
             "description": "ID of the document to delete",
             "minLength": 1
         }
@@ -169,13 +170,13 @@ class McpTool:
     name: str
     description: str
     handler: Callable[..., Any]
-    input_schema: Dict[str, Any]
+    input_schema: dict[str, Any]
 
 
 class McpError(Exception):
     """Base exception for MCP server errors."""
-    
-    def __init__(self, message: str, code: str = "INTERNAL_ERROR", details: Optional[Dict] = None):
+
+    def __init__(self, message: str, code: str = "INTERNAL_ERROR", details: dict | None = None):
         self.message = message
         self.code = code
         self.details = details or {}
@@ -184,15 +185,15 @@ class McpError(Exception):
 
 class ValidationError(McpError):
     """Exception for input validation errors."""
-    
-    def __init__(self, message: str, field: Optional[str] = None):
+
+    def __init__(self, message: str, field: str | None = None):
         super().__init__(message, "VALIDATION_ERROR", {"field": field})
 
 
 class ConnectionError(McpError):
     """Exception for API connection errors."""
-    
-    def __init__(self, message: str, status_code: Optional[int] = None):
+
+    def __init__(self, message: str, status_code: int | None = None):
         super().__init__(message, "CONNECTION_ERROR", {"status_code": status_code})
 
 
@@ -205,23 +206,23 @@ def _client() -> httpx.Client:
     )
 
 
-def _validate_input(data: Dict[str, Any], schema: Dict[str, Any]) -> Dict[str, Any]:
+def _validate_input(data: dict[str, Any], schema: dict[str, Any]) -> dict[str, Any]:
     """Basic input validation against JSON schema."""
     required = schema.get("required", [])
     properties = schema.get("properties", {})
-    
+
     # Check required fields
     for field in required:
         if field not in data:
             raise ValidationError(f"Missing required field: {field}", field)
-    
+
     # Basic type validation
     validated = {}
     for key, value in data.items():
         if key in properties:
             prop_schema = properties[key]
             prop_type = prop_schema.get("type")
-            
+
             # Type checking
             if prop_type == "string" and not isinstance(value, str):
                 raise ValidationError(f"Field {key} must be a string", key)
@@ -231,7 +232,7 @@ def _validate_input(data: Dict[str, Any], schema: Dict[str, Any]) -> Dict[str, A
                 raise ValidationError(f"Field {key} must be a boolean", key)
             elif prop_type == "array" and not isinstance(value, list):
                 raise ValidationError(f"Field {key} must be an array", key)
-            
+
             # Range validation
             if prop_type == "integer":
                 min_val = prop_schema.get("minimum")
@@ -240,38 +241,38 @@ def _validate_input(data: Dict[str, Any], schema: Dict[str, Any]) -> Dict[str, A
                     raise ValidationError(f"Field {key} must be >= {min_val}", key)
                 if max_val is not None and value > max_val:
                     raise ValidationError(f"Field {key} must be <= {max_val}", key)
-            
+
             # String length validation
             if prop_type == "string":
                 min_len = prop_schema.get("minLength")
                 if min_len is not None and len(value) < min_len:
                     raise ValidationError(f"Field {key} must be at least {min_len} characters", key)
-            
+
             # Array length validation
             if prop_type == "array":
                 min_items = prop_schema.get("minItems")
                 if min_items is not None and len(value) < min_items:
                     raise ValidationError(f"Field {key} must have at least {min_items} items", key)
-            
+
             # Enum validation
             enum_values = prop_schema.get("enum")
             if enum_values and value not in enum_values:
                 raise ValidationError(f"Field {key} must be one of: {', '.join(enum_values)}", key)
-            
+
             validated[key] = value
         else:
             # Allow additional properties for metadata
             validated[key] = value
-    
+
     # Set defaults
     for key, prop_schema in properties.items():
         if key not in validated and "default" in prop_schema:
             validated[key] = prop_schema["default"]
-    
+
     return validated
 
 
-def _ingest_files(paths: List[str], embeddings: bool = True, replace: bool = True, metadata: Optional[Dict] = None) -> Dict[str, Any]:
+def _ingest_files(paths: list[str], embeddings: bool = True, replace: bool = True, metadata: dict | None = None) -> dict[str, Any]:
     """Read files and POST to /ingestion/documents.
 
     Args:
@@ -284,55 +285,55 @@ def _ingest_files(paths: List[str], embeddings: bool = True, replace: bool = Tru
         Dict with success status, results, and error details
     """
     logger.info(f"Ingesting {len(paths)} files with embeddings={embeddings}, replace={replace}")
-    
+
     results = []
     errors = []
     url = f"{API_V1}/ingestion/documents"
-    
+
     try:
         with _client() as client:
             for p in paths:
                 path = Path(p)
-                
+
                 # Validate file exists and is readable
                 if not path.exists():
                     error = {"path": str(path), "error": "file_not_found", "message": f"File does not exist: {path}"}
                     errors.append(error)
                     continue
-                
+
                 if not path.is_file():
                     error = {"path": str(path), "error": "not_a_file", "message": f"Path is not a file: {path}"}
                     errors.append(error)
                     continue
-                
+
                 try:
                     # Read file content
                     content = path.read_text(encoding="utf-8")
                     if not content.strip():
                         logger.warning(f"File is empty: {path}")
-                    
+
                     # Prepare metadata
                     file_metadata = {"source": "mcp", "path": str(path.absolute()), "filename": path.name}
                     if metadata:
                         file_metadata.update(metadata)
-                    
+
                     # Prepare payload
                     payload = {
                         "document_id": str(path.absolute()),
                         "content": content,
                         "metadata": file_metadata,
                     }
-                    
+
                     # Make API call
                     logger.debug(f"Posting document: {path}")
                     response = client.post(url, json=payload)
                     response.raise_for_status()
-                    
+
                     result = response.json()
                     result["path"] = str(path)
                     results.append(result)
                     logger.info(f"Successfully ingested: {path}")
-                    
+
                 except UnicodeDecodeError as e:
                     error = {"path": str(path), "error": "encoding_error", "message": f"Cannot read file as UTF-8: {e}"}
                     errors.append(error)
@@ -343,12 +344,12 @@ def _ingest_files(paths: List[str], embeddings: bool = True, replace: bool = Tru
                 except Exception as e:
                     error = {"path": str(path), "error": "unexpected_error", "message": str(e)}
                     errors.append(error)
-    
+
     except httpx.ConnectError:
         raise ConnectionError(f"Cannot connect to Synapse API at {API_V1}. Is the server running?")
     except Exception as e:
         raise McpError(f"Unexpected error during ingestion: {e}")
-    
+
     return {
         "success": len(errors) == 0,
         "ingested_count": len(results),
@@ -358,7 +359,7 @@ def _ingest_files(paths: List[str], embeddings: bool = True, replace: bool = Tru
     }
 
 
-def _search(query: str, limit: int = 10, search_type: str = "vector", threshold: Optional[float] = None) -> Dict[str, Any]:
+def _search(query: str, limit: int = 10, search_type: str = "vector", threshold: float | None = None) -> dict[str, Any]:
     """Search for relevant chunks using various strategies.
 
     Args:
@@ -371,7 +372,7 @@ def _search(query: str, limit: int = 10, search_type: str = "vector", threshold:
         Search results with chunks, scores, and metadata
     """
     logger.info(f"Searching with query='{query[:50]}...', type={search_type}, limit={limit}")
-    
+
     url = f"{API_V1}/search/query"
     payload = {
         "query": query,
@@ -379,17 +380,17 @@ def _search(query: str, limit: int = 10, search_type: str = "vector", threshold:
         "limit": limit,
         "stream": False
     }
-    
+
     if threshold is not None:
         payload["threshold"] = threshold
-    
+
     try:
         with _client() as client:
             response = client.post(url, json=payload)
             response.raise_for_status()
-            
+
             result = response.json()
-            
+
             # Enhance result with metadata
             enhanced_result = {
                 "query": query,
@@ -399,10 +400,10 @@ def _search(query: str, limit: int = 10, search_type: str = "vector", threshold:
                 "results_count": len(result.get("results", [])),
                 **result
             }
-            
+
             logger.info(f"Found {enhanced_result['results_count']} results")
             return enhanced_result
-    
+
     except httpx.HTTPStatusError as e:
         error_msg = f"Search failed with HTTP {e.response.status_code}: {e.response.text[:200]}"
         raise ConnectionError(error_msg, e.response.status_code)
@@ -412,7 +413,7 @@ def _search(query: str, limit: int = 10, search_type: str = "vector", threshold:
         raise McpError(f"Unexpected error during search: {e}")
 
 
-def _query_answer(question: str, k: int = 5, include_graph: bool = False, stream: bool = False) -> Dict[str, Any]:
+def _query_answer(question: str, k: int = 5, include_graph: bool = False, stream: bool = False) -> dict[str, Any]:
     """Ask a question and get a synthesized answer with sources.
 
     Args:
@@ -425,7 +426,7 @@ def _query_answer(question: str, k: int = 5, include_graph: bool = False, stream
         Answer with sources, confidence, and metadata
     """
     logger.info(f"Answering question: '{question[:50]}...', k={k}, graph={include_graph}")
-    
+
     url = f"{API_V1}/query/ask"
     payload = {
         "text": question,
@@ -433,14 +434,14 @@ def _query_answer(question: str, k: int = 5, include_graph: bool = False, stream
         "include_graph": include_graph,
         "stream": False  # MCP doesn't support streaming
     }
-    
+
     try:
         with _client() as client:
             response = client.post(url, json=payload)
             response.raise_for_status()
-            
+
             result = response.json()
-            
+
             # Enhance result with metadata
             enhanced_result = {
                 "question": question,
@@ -449,10 +450,10 @@ def _query_answer(question: str, k: int = 5, include_graph: bool = False, stream
                 "timestamp": result.get("timestamp"),
                 **result
             }
-            
+
             logger.info(f"Generated answer with {len(result.get('sources', []))} sources")
             return enhanced_result
-    
+
     except httpx.HTTPStatusError as e:
         error_msg = f"Query failed with HTTP {e.response.status_code}: {e.response.text[:200]}"
         raise ConnectionError(error_msg, e.response.status_code)
@@ -462,22 +463,22 @@ def _query_answer(question: str, k: int = 5, include_graph: bool = False, stream
         raise McpError(f"Unexpected error during query: {e}")
 
 
-def _list_documents(limit: int = 20, offset: int = 0) -> Dict[str, Any]:
+def _list_documents(limit: int = 20, offset: int = 0) -> dict[str, Any]:
     """List documents in the knowledge base with pagination."""
     logger.info(f"Listing documents: limit={limit}, offset={offset}")
-    
+
     url = f"{API_V1}/documents/"
     params = {"limit": limit, "offset": offset}
-    
+
     try:
         with _client() as client:
             response = client.get(url, params=params)
             response.raise_for_status()
-            
+
             result = response.json()
             logger.info(f"Found {len(result.get('documents', []))} documents")
             return result
-    
+
     except httpx.HTTPStatusError as e:
         error_msg = f"List documents failed with HTTP {e.response.status_code}: {e.response.text[:200]}"
         raise ConnectionError(error_msg, e.response.status_code)
@@ -487,21 +488,21 @@ def _list_documents(limit: int = 20, offset: int = 0) -> Dict[str, Any]:
         raise McpError(f"Unexpected error listing documents: {e}")
 
 
-def _get_document(document_id: str) -> Dict[str, Any]:
+def _get_document(document_id: str) -> dict[str, Any]:
     """Get a specific document by ID."""
     logger.info(f"Getting document: {document_id}")
-    
+
     url = f"{API_V1}/documents/{document_id}"
-    
+
     try:
         with _client() as client:
             response = client.get(url)
             response.raise_for_status()
-            
+
             result = response.json()
             logger.info(f"Retrieved document: {document_id}")
             return result
-    
+
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
             raise McpError(f"Document not found: {document_id}", "DOCUMENT_NOT_FOUND")
@@ -513,21 +514,21 @@ def _get_document(document_id: str) -> Dict[str, Any]:
         raise McpError(f"Unexpected error getting document: {e}")
 
 
-def _delete_document(document_id: str) -> Dict[str, Any]:
+def _delete_document(document_id: str) -> dict[str, Any]:
     """Delete a document from the knowledge base."""
     logger.info(f"Deleting document: {document_id}")
-    
+
     url = f"{API_V1}/documents/{document_id}"
-    
+
     try:
         with _client() as client:
             response = client.delete(url)
             response.raise_for_status()
-            
+
             result = response.json() if response.content else {"deleted": True, "document_id": document_id}
             logger.info(f"Deleted document: {document_id}")
             return result
-    
+
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
             raise McpError(f"Document not found: {document_id}", "DOCUMENT_NOT_FOUND")
@@ -539,10 +540,10 @@ def _delete_document(document_id: str) -> Dict[str, Any]:
         raise McpError(f"Unexpected error deleting document: {e}")
 
 
-def _system_status() -> Dict[str, Any]:
+def _system_status() -> dict[str, Any]:
     """Get comprehensive system status and health information."""
     logger.info("Getting system status")
-    
+
     try:
         with _client() as client:
             # Get basic health
@@ -550,7 +551,7 @@ def _system_status() -> Dict[str, Any]:
             health_response = client.get(health_url)
             health_response.raise_for_status()
             health_data = health_response.json()
-            
+
             # Try to get detailed health if available
             detailed_health = {}
             try:
@@ -560,7 +561,7 @@ def _system_status() -> Dict[str, Any]:
                     detailed_health = detailed_response.json()
             except Exception:
                 pass  # Detailed health is optional
-            
+
             # Try to get performance stats
             performance_stats = {}
             try:
@@ -570,7 +571,7 @@ def _system_status() -> Dict[str, Any]:
                     performance_stats = perf_response.json()
             except Exception:
                 pass  # Performance stats are optional
-            
+
             # Try to get cache stats
             cache_stats = {}
             try:
@@ -580,24 +581,24 @@ def _system_status() -> Dict[str, Any]:
                     cache_stats = cache_response.json()
             except Exception:
                 pass  # Cache stats are optional
-            
+
             status = {
                 "health": health_data,
                 "api_base_url": DEFAULT_BASE,
                 "api_v1_url": API_V1,
                 "mcp_server": "connected"
             }
-            
+
             if detailed_health:
                 status["detailed_health"] = detailed_health
             if performance_stats:
                 status["performance"] = performance_stats
             if cache_stats:
                 status["cache"] = cache_stats
-            
+
             logger.info("Retrieved comprehensive system status")
             return status
-    
+
     except httpx.HTTPStatusError as e:
         error_msg = f"System status failed with HTTP {e.response.status_code}: {e.response.text[:200]}"
         raise ConnectionError(error_msg, e.response.status_code)
@@ -607,24 +608,24 @@ def _system_status() -> Dict[str, Any]:
         raise McpError(f"Unexpected error getting system status: {e}")
 
 
-def _wrap_handler(handler: Callable, schema: Dict[str, Any]) -> Callable:
+def _wrap_handler(handler: Callable, schema: dict[str, Any]) -> Callable:
     """Wrap a handler function with input validation and error handling."""
-    
-    def wrapper(**kwargs) -> Dict[str, Any]:
+
+    def wrapper(**kwargs) -> dict[str, Any]:
         try:
             # Validate input
             validated_input = _validate_input(kwargs, schema)
-            
+
             # Call handler
             result = handler(**validated_input)
-            
+
             # Ensure result is JSON serializable
             return {
                 "success": True,
                 "data": result,
                 "timestamp": json.dumps(None)  # Will be replaced by actual timestamp
             }
-            
+
         except ValidationError as e:
             logger.error(f"Validation error: {e.message}")
             return {
@@ -668,11 +669,11 @@ def _wrap_handler(handler: Callable, schema: Dict[str, Any]) -> Callable:
                     "code": "INTERNAL_ERROR"
                 }
             }
-    
+
     return wrapper
 
 
-def make_tools() -> List[McpTool]:
+def make_tools() -> list[McpTool]:
     """Create MCP tools with proper validation and error handling."""
     return [
         McpTool(
@@ -737,9 +738,9 @@ def serve(host: str = "127.0.0.1", port: int = 8765, transport: str = "tcp") -> 
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         stream=sys.stderr
     )
-    
+
     logger.info(f"Starting Synapse MCP server on {transport}://{host}:{port}")
-    
+
     try:
         # Deferred imports to avoid hard dependency
         from mcp.server import Server
@@ -767,7 +768,7 @@ def serve(host: str = "127.0.0.1", port: int = 8765, transport: str = "tcp") -> 
     tools = make_tools()
 
     logger.info(f"Registering {len(tools)} MCP tools")
-    
+
     # Register tools with detailed schemas
     for tool in tools:
         server.add_tool(
@@ -795,7 +796,7 @@ def serve(host: str = "127.0.0.1", port: int = 8765, transport: str = "tcp") -> 
         raise
 
 
-def health_check() -> Dict[str, Any]:
+def health_check() -> dict[str, Any]:
     """Check health of MCP server dependencies."""
     status = {
         "mcp_available": False,
@@ -803,7 +804,7 @@ def health_check() -> Dict[str, Any]:
         "tools_count": 0,
         "errors": []
     }
-    
+
     # Check MCP package
     try:
         import mcp
@@ -811,7 +812,7 @@ def health_check() -> Dict[str, Any]:
         status["mcp_version"] = getattr(mcp, "__version__", "unknown")
     except ImportError:
         status["errors"].append("MCP package not installed")
-    
+
     # Check API connectivity
     try:
         with _client() as client:
@@ -822,7 +823,7 @@ def health_check() -> Dict[str, Any]:
             status["api_url"] = DEFAULT_BASE
     except Exception as e:
         status["errors"].append(f"API not available: {e}")
-    
+
     # Count available tools
     try:
         tools = make_tools()
@@ -830,7 +831,7 @@ def health_check() -> Dict[str, Any]:
         status["tools"] = [t.name for t in tools]
     except Exception as e:
         status["errors"].append(f"Error loading tools: {e}")
-    
+
     status["healthy"] = status["mcp_available"] and status["api_available"] and status["tools_count"] > 0
-    
+
     return status

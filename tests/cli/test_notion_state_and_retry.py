@@ -1,11 +1,9 @@
-import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
 from graph_rag.cli.main import app
-
 
 runner = CliRunner()
 

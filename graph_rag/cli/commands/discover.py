@@ -1,7 +1,6 @@
 import fnmatch
 import json
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -11,8 +10,8 @@ app = typer.Typer(help="Discover files for ingestion")
 def _match_globs(
     root: Path,
     candidate: Path,
-    include: Optional[list[str]],
-    exclude: Optional[list[str]],
+    include: list[str] | None,
+    exclude: list[str] | None,
 ) -> bool:
     try:
         rel = candidate.relative_to(root)
@@ -41,11 +40,11 @@ def _match_globs(
 
 @app.command()
 def discover_command(
-    directory: Optional[Path] = typer.Argument(None, help="Directory to search"),
-    include: Optional[list[str]] = typer.Option(
+    directory: Path | None = typer.Argument(None, help="Directory to search"),
+    include: list[str] | None = typer.Option(
         None, "--include", help="Glob pattern to include (repeatable)."
     ),
-    exclude: Optional[list[str]] = typer.Option(
+    exclude: list[str] | None = typer.Option(
         None, "--exclude", help="Glob pattern to exclude (repeatable)."
     ),
     as_json: bool = typer.Option(

@@ -3,11 +3,17 @@ import pytest
 from graph_rag.core.graph_rag_engine import SimpleGraphRAGEngine
 from graph_rag.core.interfaces import (
     ChunkData,
-    EntityExtractor as EntityExtractorProto,
     ExtractedEntity,
     ExtractionResult,
-    GraphRepository as GraphRepositoryProto,
     SearchResultData,
+)
+from graph_rag.core.interfaces import (
+    EntityExtractor as EntityExtractorProto,
+)
+from graph_rag.core.interfaces import (
+    GraphRepository as GraphRepositoryProto,
+)
+from graph_rag.core.interfaces import (
     VectorStore as VectorStoreProto,
 )
 from graph_rag.domain.models import Entity as DomainEntity

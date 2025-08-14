@@ -1,6 +1,4 @@
-import os
 
-import pytest
 
 from graph_rag.config import Settings
 

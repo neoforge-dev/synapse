@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 from datetime import date, datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 # Import specific exceptions if needed, or catch the base mgclient.Error
 # from mgclient import OperationalError, DatabaseError # Example
@@ -69,10 +69,10 @@ class MemgraphConnectionConfig(BaseSettings):  # Inherit from BaseSettings
         "127.0.0.1", description="Hostname or IP address of the Memgraph instance."
     )
     port: int = Field(7687, description="Port number for the Memgraph instance.")
-    user: Optional[str] = Field(
+    user: str | None = Field(
         None, description="Username for Memgraph connection (if required)."
     )
-    password: Optional[SecretStr] = Field(
+    password: SecretStr | None = Field(
         None, description="Password for Memgraph connection (if required)."
     )
     use_ssl: bool = Field(
@@ -85,7 +85,7 @@ class MemgraphConnectionConfig(BaseSettings):  # Inherit from BaseSettings
         2, ge=1, description="Delay in seconds between Memgraph retries."
     )
 
-    def __init__(self, settings_obj: Optional[Settings] = None, **kwargs):
+    def __init__(self, settings_obj: Settings | None = None, **kwargs):
         """
         Initializes MemgraphConnectionConfig.
         Prioritizes values from settings_obj if provided, otherwise loads from env or defaults.
@@ -111,13 +111,13 @@ class MemgraphConnectionConfig(BaseSettings):  # Inherit from BaseSettings
 class MemgraphGraphRepository(GraphStore, GraphRepository):
     """Optimized Memgraph implementation of both GraphStore and GraphRepository interfaces."""
 
-    def __init__(self, settings_obj: Optional[Settings] = None):
+    def __init__(self, settings_obj: Settings | None = None):
         """Initializes the repository, establishing connection parameters."""
         if settings_obj is None:
             # Ensure we get a Settings instance if None is passed
             settings_obj = get_settings()
         self.config = MemgraphConnectionConfig(settings_obj=settings_obj)
-        self._connection: Optional[mgclient.Connection] = (
+        self._connection: mgclient.Connection | None = (
             None  # Added connection attribute
         )
         # mgclient uses synchronous connect, connection pooling is handled internally or needs manual management
@@ -201,14 +201,14 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
             raise
 
     async def execute_query(
-        self, query: str, params: Optional[dict[str, Any]] = None
+        self, query: str, params: dict[str, Any] | None = None
     ) -> list[dict[str, Any]]:
         """Executes a Cypher query and returns results.
         Uses the existing connection if available, otherwise creates a temporary one.
         """
         loop = asyncio.get_running_loop()
-        conn_to_use: Optional[mgclient.Connection] = None
-        cursor: Optional[mgclient.Cursor] = None
+        conn_to_use: mgclient.Connection | None = None
+        cursor: mgclient.Cursor | None = None
         is_temporary_connection = False
 
         try:
@@ -240,7 +240,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
             for row in results_raw:
                 try:
                     logger.debug(f"Processing row type: {type(row)}, Content: {row}")
-                    dict_results.append(dict(zip(column_names, row)))
+                    dict_results.append(dict(zip(column_names, row, strict=False)))
                 except TypeError as te:
                     logger.error(
                         f"TypeError processing row: {row}. Error: {te}", exc_info=True
@@ -344,7 +344,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
             logger.error(f"Failed to add document {document.id}: {e}", exc_info=True)
             raise
 
-    async def get_document_by_id(self, document_id: str) -> Optional[Document]:
+    async def get_document_by_id(self, document_id: str) -> Document | None:
         """Retrieves a document by its ID, returning a Document object or None."""
         logger.debug(f"Attempting to retrieve document with ID: {document_id}")
         query = """
@@ -437,7 +437,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
     # Helper method for robust datetime parsing
     def _parse_datetime(
         self, value: Any, obj_id: str, field_name: str
-    ) -> Optional[datetime]:
+    ) -> datetime | None:
         if value is None:
             return None
         try:
@@ -643,7 +643,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
             logger.error(f"Failed to bulk add nodes: {e}", exc_info=True)
             raise
 
-    async def get_node_by_id(self, node_id: str) -> Optional[Node]:
+    async def get_node_by_id(self, node_id: str) -> Node | None:
         """Retrieves a node by its ID, determining its type (Document, Chunk, or Entity)."""
         query = """
         MATCH (n {id: $node_id})
@@ -805,7 +805,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
     async def search_nodes_by_properties(
         self,
         properties: dict[str, Any],
-        node_type: Optional[str] = None,
+        node_type: str | None = None,
         limit: int = 10,
     ) -> list[Node]:
         """Searches for nodes matching given properties, optionally filtering by type."""
@@ -1059,7 +1059,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
             f"Bulk processed {len(entities)} entities and {len(relationships)} relationships"
         )
 
-    async def get_entity_by_id(self, entity_id: str) -> Optional[Entity]:
+    async def get_entity_by_id(self, entity_id: str) -> Entity | None:
         """Retrieves a single entity by its unique ID with error handling."""
         try:
             node = await self.get_node_by_id(entity_id)
@@ -1099,7 +1099,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
     async def get_neighbors(
         self,
         entity_id: str,
-        relationship_types: Optional[list[str]] = None,
+        relationship_types: list[str] | None = None,
         direction: str = "both",
     ) -> tuple[list[Entity], list[Relationship]]:
         """Retrieves neighbors and relationships for a given entity ID."""
@@ -1307,7 +1307,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
             return [], []  # Return empty lists on error
 
     async def search_entities_by_properties(
-        self, properties: dict[str, Any], limit: Optional[int] = None
+        self, properties: dict[str, Any], limit: int | None = None
     ) -> list[Entity]:
         """Searches for entities matching specific properties."""
         # Check if 'type' is specified to use as a label constraint
@@ -1482,7 +1482,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
             await self.add_chunk(chunk)
         logger.info(f"Added {len(chunks)} chunks to graph store")
 
-    async def get_chunk_by_id(self, chunk_id: str) -> Optional[Chunk]:
+    async def get_chunk_by_id(self, chunk_id: str) -> Chunk | None:
         """Retrieves a chunk by its ID."""
         query = """
         MATCH (c:Chunk {id: $id})
@@ -1520,7 +1520,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
 
     async def update_node_properties(
         self, node_id: str, properties: dict[str, Any]
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Updates properties of an existing node."""
         query = """
         MATCH (n {id: $id})
@@ -1553,7 +1553,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
                 continue
 
     async def detect_communities(
-        self, algorithm: str = "louvain", write_property: Optional[str] = None
+        self, algorithm: str = "louvain", write_property: str | None = None
     ) -> list[dict[str, Any]]:
         """Runs a community detection algorithm (requires MAGE).
         Returns list of nodes with their community IDs.
@@ -1619,7 +1619,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
         self,
         start_node_id: str,
         max_depth: int = 1,
-        relationship_types: Optional[list[str]] = None,
+        relationship_types: list[str] | None = None,
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """Queries a subgraph starting from a node."""
         # Build relationship type filter if specified
@@ -1672,21 +1672,21 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
             return [], []
 
     async def execute_read(
-        self, query: str, parameters: Optional[dict[str, Any]] = None
+        self, query: str, parameters: dict[str, Any] | None = None
     ) -> list[Any]:
         """Executes a read-only Cypher query."""
         # For this implementation, we use the same execute_query method
         return await self.execute_query(query, parameters)
 
     async def execute_write(
-        self, query: str, parameters: Optional[dict[str, Any]] = None
+        self, query: str, parameters: dict[str, Any] | None = None
     ) -> Any:
         """Executes a write query. Wraps execute_query for semantic clarity."""
         return await self.execute_query(query, parameters)
 
     async def get_relationship_by_id(
         self, relationship_id: str
-    ) -> Optional[Relationship]:
+    ) -> Relationship | None:
         """Retrieves a relationship by its assigned ID property."""
         logger.debug(f"Getting relationship by ID: {relationship_id}")
         query = """

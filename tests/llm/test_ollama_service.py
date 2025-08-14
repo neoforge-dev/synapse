@@ -1,9 +1,10 @@
 """Tests for Ollama LLM service implementation."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 import json
-import aiohttp
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from graph_rag.llm.ollama_service import OllamaService
 
 
@@ -57,7 +58,7 @@ class TestOllamaService:
     def test_format_prompt_basic(self, ollama_service):
         """Test basic prompt formatting."""
         prompt = ollama_service._format_prompt("What is AI?")
-        
+
         assert "Human: What is AI?" in prompt
         assert "Assistant:" in prompt
 
@@ -67,7 +68,7 @@ class TestOllamaService:
             "What is AI?",
             context="AI stands for Artificial Intelligence"
         )
-        
+
         assert "Context:" in prompt
         assert "AI stands for Artificial Intelligence" in prompt
         assert "Human: What is AI?" in prompt
@@ -80,9 +81,9 @@ class TestOllamaService:
             {"role": "assistant", "content": "Hello!"},
             {"role": "user", "content": "How are you?"}
         ]
-        
+
         prompt = ollama_service._format_prompt("Fine, thanks", history=history)
-        
+
         assert "Conversation History:" in prompt
         assert "User: Hi" in prompt
         assert "Assistant: Hello!" in prompt
@@ -96,9 +97,9 @@ class TestOllamaService:
             {"role": "assistant", "content": ""},  # Empty content
             {"role": "user", "content": None}  # None content
         ]
-        
+
         prompt = ollama_service._format_prompt("Test", history=history)
-        
+
         assert "User: Valid message" in prompt
         # Empty/None content should not appear
         assert "Assistant:" not in prompt or "Assistant: \n" not in prompt
@@ -110,19 +111,19 @@ class TestOllamaService:
             "response": "This is a test response from Ollama",
             "done": True
         }
-        
+
         with patch('aiohttp.ClientSession') as mock_session_class:
             mock_session = AsyncMock()
             mock_response = AsyncMock()
             mock_response.status = 200
             mock_response.json.return_value = mock_response_data
-            
+
             mock_session.post.return_value.__aenter__.return_value = mock_response
             mock_session_class.return_value.__aenter__.return_value = mock_session
             mock_session_class.return_value.__aexit__.return_value = None
-            
+
             result = await ollama_service.generate_response("Test prompt")
-            
+
             assert result == "This is a test response from Ollama"
             mock_session.post.assert_called_once()
 
@@ -133,19 +134,19 @@ class TestOllamaService:
             "response": "",
             "done": True
         }
-        
+
         with patch('aiohttp.ClientSession') as mock_session_class:
             mock_session = AsyncMock()
             mock_response = AsyncMock()
             mock_response.status = 200
             mock_response.json.return_value = mock_response_data
-            
+
             mock_session.post.return_value.__aenter__.return_value = mock_response
             mock_session_class.return_value.__aenter__.return_value = mock_session
             mock_session_class.return_value.__aexit__.return_value = None
-            
+
             result = await ollama_service.generate_response("Test prompt")
-            
+
             assert "I apologize, but I couldn't generate a response" in result
 
     @pytest.mark.asyncio
@@ -156,13 +157,13 @@ class TestOllamaService:
             mock_response = AsyncMock()
             mock_response.status = 500
             mock_response.text.return_value = "Internal Server Error"
-            
+
             mock_session.post.return_value.__aenter__.return_value = mock_response
             mock_session_class.return_value.__aenter__.return_value = mock_session
             mock_session_class.return_value.__aexit__.return_value = None
-            
+
             result = await ollama_service.generate_response("Test prompt")
-            
+
             assert "Ollama API error 500: Internal Server Error" in result
 
     @pytest.mark.asyncio
@@ -172,19 +173,19 @@ class TestOllamaService:
             "response": "Response with token limit",
             "done": True
         }
-        
+
         with patch('aiohttp.ClientSession') as mock_session_class:
             mock_session = AsyncMock()
             mock_response = AsyncMock()
             mock_response.status = 200
             mock_response.json.return_value = mock_response_data
-            
+
             mock_session.post.return_value.__aenter__.return_value = mock_response
             mock_session_class.return_value.__aenter__.return_value = mock_session
             mock_session_class.return_value.__aexit__.return_value = None
-            
+
             await custom_ollama_service.generate_response("Test prompt")
-            
+
             # Check that max_tokens was included in payload
             call_args = mock_session.post.call_args
             payload = call_args[1]['json']
@@ -198,25 +199,25 @@ class TestOllamaService:
             b'{"response": "world!", "done": false}\n',
             b'{"response": "", "done": true}\n',
         ]
-        
+
         with patch('aiohttp.ClientSession') as mock_session_class:
             mock_session = AsyncMock()
             mock_response = AsyncMock()
             mock_response.status = 200
-            
+
             async def mock_content():
                 for chunk in mock_chunks:
                     yield chunk
-            
+
             mock_response.content = mock_content()
             mock_session.post.return_value.__aenter__.return_value = mock_response
             mock_session_class.return_value.__aenter__.return_value = mock_session
             mock_session_class.return_value.__aexit__.return_value = None
-            
+
             result_parts = []
             async for part in ollama_service.generate_response_stream("Test prompt"):
                 result_parts.append(part)
-            
+
             assert result_parts == ["Hello ", "world!"]
 
     @pytest.mark.asyncio
@@ -227,15 +228,15 @@ class TestOllamaService:
             mock_response = AsyncMock()
             mock_response.status = 404
             mock_response.text.return_value = "Model not found"
-            
+
             mock_session.post.return_value.__aenter__.return_value = mock_response
             mock_session_class.return_value.__aenter__.return_value = mock_session
             mock_session_class.return_value.__aexit__.return_value = None
-            
+
             result_parts = []
             async for part in ollama_service.generate_response_stream("Test prompt"):
                 result_parts.append(part)
-            
+
             assert len(result_parts) == 1
             assert "Ollama API error 404: Model not found" in result_parts[0]
 
@@ -247,25 +248,25 @@ class TestOllamaService:
             b'invalid json\n',  # Should be skipped
             b'{"response": " world!", "done": true}\n',
         ]
-        
+
         with patch('aiohttp.ClientSession') as mock_session_class:
             mock_session = AsyncMock()
             mock_response = AsyncMock()
             mock_response.status = 200
-            
+
             async def mock_content():
                 for chunk in mock_chunks:
                     yield chunk
-            
+
             mock_response.content = mock_content()
             mock_session.post.return_value.__aenter__.return_value = mock_response
             mock_session_class.return_value.__aenter__.return_value = mock_session
             mock_session_class.return_value.__aexit__.return_value = None
-            
+
             result_parts = []
             async for part in ollama_service.generate_response_stream("Test prompt"):
                 result_parts.append(part)
-            
+
             # Should skip malformed JSON and continue
             assert result_parts == ["Hello", " world!"]
 
@@ -281,28 +282,28 @@ class TestOllamaService:
                 {"source": "e1", "target": "e2", "type": "WORKS_AT", "properties": {}}
             ]
         }
-        
+
         mock_response_data = {
             "response": json.dumps(json_response),
             "done": True
         }
-        
+
         with patch('aiohttp.ClientSession') as mock_session_class:
             mock_session = AsyncMock()
             mock_response = AsyncMock()
             mock_response.status = 200
             mock_response.json.return_value = mock_response_data
-            
+
             mock_session.post.return_value.__aenter__.return_value = mock_response
             mock_session_class.return_value.__aenter__.return_value = mock_session
             mock_session_class.return_value.__aexit__.return_value = None
-            
+
             entities, relationships = await ollama_service.extract_entities_relationships("John works at Acme")
-            
+
             assert len(entities) == 2
             assert entities[0]["name"] == "John"
             assert entities[1]["name"] == "Acme"
-            
+
             assert len(relationships) == 1
             assert relationships[0]["type"] == "WORKS_AT"
 
@@ -313,19 +314,19 @@ class TestOllamaService:
             "response": "Invalid JSON response from model",
             "done": True
         }
-        
+
         with patch('aiohttp.ClientSession') as mock_session_class:
             mock_session = AsyncMock()
             mock_response = AsyncMock()
             mock_response.status = 200
             mock_response.json.return_value = mock_response_data
-            
+
             mock_session.post.return_value.__aenter__.return_value = mock_response
             mock_session_class.return_value.__aenter__.return_value = mock_session
             mock_session_class.return_value.__aexit__.return_value = None
-            
+
             entities, relationships = await ollama_service.extract_entities_relationships("Test text")
-            
+
             assert entities == []
             assert relationships == []
 
@@ -335,19 +336,19 @@ class TestOllamaService:
         mock_response_data = {
             "embedding": [0.1, 0.2, 0.3, 0.4]
         }
-        
+
         with patch('aiohttp.ClientSession') as mock_session_class:
             mock_session = AsyncMock()
             mock_response = AsyncMock()
             mock_response.status = 200
             mock_response.json.return_value = mock_response_data
-            
+
             mock_session.post.return_value.__aenter__.return_value = mock_response
             mock_session_class.return_value.__aenter__.return_value = mock_session
             mock_session_class.return_value.__aexit__.return_value = None
-            
+
             result = await ollama_service.embed_text("Test text")
-            
+
             assert result == [0.1, 0.2, 0.3, 0.4]
 
     @pytest.mark.asyncio
@@ -357,13 +358,13 @@ class TestOllamaService:
             mock_session = AsyncMock()
             mock_response = AsyncMock()
             mock_response.status = 404  # Embeddings not supported
-            
+
             mock_session.post.return_value.__aenter__.return_value = mock_response
             mock_session_class.return_value.__aenter__.return_value = mock_session
             mock_session_class.return_value.__aexit__.return_value = None
-            
+
             result = await ollama_service.embed_text("Test text")
-            
+
             # Should return hash-based fallback
             assert len(result) == 768
             assert all(isinstance(x, float) for x in result)
@@ -373,7 +374,7 @@ class TestOllamaService:
         """Test text embedding fallback when exception occurs."""
         with patch('aiohttp.ClientSession', side_effect=Exception("Network error")):
             result = await ollama_service.embed_text("Test text")
-            
+
             # Should return hash-based fallback
             assert len(result) == 768
             assert all(isinstance(x, float) for x in result)
@@ -384,12 +385,12 @@ class TestOllamaService:
         # Initially zero
         usage = await ollama_service.get_token_usage()
         assert usage == {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-        
+
         # Simulate some usage
         ollama_service._token_usage["prompt_tokens"] = 100
         ollama_service._token_usage["completion_tokens"] = 50
         ollama_service._token_usage["total_tokens"] = 150
-        
+
         usage = await ollama_service.get_token_usage()
         assert usage["prompt_tokens"] == 100
         assert usage["completion_tokens"] == 50
@@ -401,10 +402,10 @@ class TestOllamaService:
         ollama_service._token_usage["prompt_tokens"] = 100
         ollama_service._token_usage["completion_tokens"] = 50
         ollama_service._token_usage["total_tokens"] = 150
-        
+
         # Reset
         ollama_service.reset_token_usage()
-        
+
         # Should be zero
         assert ollama_service._token_usage["prompt_tokens"] == 0
         assert ollama_service._token_usage["completion_tokens"] == 0
@@ -417,15 +418,15 @@ class TestOllamaService:
             mock_session = AsyncMock()
             mock_response = AsyncMock()
             mock_response.status = 200
-            
+
             # Mock the context manager for both session and response
             mock_session.get.return_value.__aenter__.return_value = mock_response
             mock_session.get.return_value.__aexit__.return_value = None
             mock_session_class.return_value.__aenter__.return_value = mock_session
             mock_session_class.return_value.__aexit__.return_value = None
-            
+
             result = await ollama_service.health_check()
-            
+
             assert result is True
             mock_session.get.assert_called_once_with("http://localhost:11434/api/tags")
 
@@ -436,13 +437,13 @@ class TestOllamaService:
             mock_session = AsyncMock()
             mock_response = AsyncMock()
             mock_response.status = 503
-            
+
             mock_session.get.return_value.__aenter__.return_value = mock_response
             mock_session_class.return_value.__aenter__.return_value = mock_session
             mock_session_class.return_value.__aexit__.return_value = None
-            
+
             result = await ollama_service.health_check()
-            
+
             assert result is False
 
     @pytest.mark.asyncio
@@ -450,7 +451,7 @@ class TestOllamaService:
         """Test health check with exception."""
         with patch('aiohttp.ClientSession', side_effect=Exception("Connection error")):
             result = await ollama_service.health_check()
-            
+
             assert result is False
 
     @pytest.mark.asyncio
@@ -463,21 +464,21 @@ class TestOllamaService:
                 {"name": "codellama:13b"}
             ]
         }
-        
+
         with patch('aiohttp.ClientSession') as mock_session_class:
             mock_session = AsyncMock()
             mock_response = AsyncMock()
             mock_response.status = 200
             mock_response.json.return_value = mock_response_data
-            
+
             # Mock the context manager for both session and response
             mock_session.get.return_value.__aenter__.return_value = mock_response
             mock_session.get.return_value.__aexit__.return_value = None
             mock_session_class.return_value.__aenter__.return_value = mock_session
             mock_session_class.return_value.__aexit__.return_value = None
-            
+
             models = await ollama_service.list_models()
-            
+
             assert models == ["llama3.2:3b", "llama3.2:7b", "codellama:13b"]
 
     @pytest.mark.asyncio
@@ -487,15 +488,15 @@ class TestOllamaService:
             mock_session = AsyncMock()
             mock_response = AsyncMock()
             mock_response.status = 500
-            
+
             # Mock the context manager for both session and response
             mock_session.get.return_value.__aenter__.return_value = mock_response
             mock_session.get.return_value.__aexit__.return_value = None
             mock_session_class.return_value.__aenter__.return_value = mock_session
             mock_session_class.return_value.__aexit__.return_value = None
-            
+
             models = await ollama_service.list_models()
-            
+
             assert models == []
 
     @pytest.mark.asyncio
@@ -503,5 +504,5 @@ class TestOllamaService:
         """Test model listing with exception."""
         with patch('aiohttp.ClientSession', side_effect=Exception("Network error")):
             models = await ollama_service.list_models()
-            
+
             assert models == []

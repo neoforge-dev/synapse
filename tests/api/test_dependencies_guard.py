@@ -1,8 +1,7 @@
 import pytest
-from httpx import AsyncClient
-from fastapi import status, FastAPI
+from fastapi import FastAPI, status
 from fastapi.routing import APIRoute
-from httpx import ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 
 @pytest.mark.asyncio

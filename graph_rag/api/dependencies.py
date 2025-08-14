@@ -1,6 +1,4 @@
-import asyncio
 import logging
-from collections.abc import AsyncGenerator
 from functools import lru_cache
 from typing import Any
 
@@ -39,8 +37,6 @@ from graph_rag.core.knowledge_graph_builder import (
 )
 
 # Import domain models
-from graph_rag.domain.models import Entity, Relationship
-
 # Remove QueryEngine import
 # from graph_rag.core.query_engine import QueryEngine
 # Import cache implementations
@@ -68,8 +64,8 @@ from graph_rag.infrastructure.graph_stores.mock_graph_store import MockGraphRepo
 
 # from graph_rag.infrastructure.graph_stores.neo4j_store import Neo4jGraphRepository # Remove this line
 from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
-# Avoid importing FAISS at module import time to keep optional dependency lazy
 
+# Avoid importing FAISS at module import time to keep optional dependency lazy
 # Import MockLLMService
 from graph_rag.llm import MockLLMService
 from graph_rag.llm.protocols import LLMService
@@ -78,7 +74,6 @@ from graph_rag.llm.protocols import LLMService
 # NOTE: Avoid importing SentenceTransformerEmbeddingService at module import time
 # to prevent pulling in heavy torch dependencies during lightweight test runs.
 # Import it lazily inside factory when needed.
-
 # Remove PersistentKnowledgeGraphBuilder import if not used elsewhere
 # from graph_rag.core.persistent_kg_builder import PersistentKnowledgeGraphBuilder
 # Service Import
@@ -165,20 +160,20 @@ def get_cache_service(settings: Settings = Depends(get_settings)) -> CacheServic
 
 def create_graph_repository(settings: Settings) -> GraphRepository:
     """Provides a GraphRepository instance with graceful fallbacks. Expects resolved settings."""
-    
+
     # Explicit vector-only mode
     if getattr(settings, 'vector_only_mode', False):
         logger.info("Running in explicit vector-only mode - graph features disabled")
         return MockGraphRepository()
-    
+
     # Check if graph functionality is disabled (legacy setting)
     if getattr(settings, 'disable_graph', False):
         logger.info("Graph functionality disabled via settings, using MockGraphRepository")
         return MockGraphRepository()
-    
+
     # Check if auto-fallback is disabled
     auto_fallback = getattr(settings, 'auto_fallback_vector_mode', True)
-    
+
     # Try to create Memgraph repository if available
     if _MEMGRAPH_AVAILABLE:
         try:
@@ -203,7 +198,7 @@ def create_graph_repository(settings: Settings) -> GraphRepository:
             logger.info("💡 Install mgclient and Docker to enable full graph features")
         else:
             raise ImportError("Memgraph client not available and auto-fallback disabled")
-    
+
     # Fallback to mock repository
     logger.info("Using vector-only mode - some advanced features will be limited")
     return MockGraphRepository()
@@ -214,10 +209,10 @@ def create_llm_service(settings: Settings) -> LLMService:  # Added factory funct
     try:
         llm_type = settings.llm_type.lower()
         logger.info(f"Creating LLMService instance of type: {llm_type}")
-        
+
         if llm_type == "openai":
             from graph_rag.llm.openai_service import OpenAIService
-            
+
             api_key = (
                 settings.openai_api_key.get_secret_value()
                 if settings.openai_api_key
@@ -229,7 +224,7 @@ def create_llm_service(settings: Settings) -> LLMService:  # Added factory funct
                     status_code=503,
                     detail="LLM Service (OpenAI) not configured: API key missing.",
                 )
-            
+
             instance = OpenAIService(
                 api_key=api_key,
                 model=settings.llm_model_name,
@@ -237,10 +232,10 @@ def create_llm_service(settings: Settings) -> LLMService:  # Added factory funct
                 temperature=settings.llm_temperature,
                 timeout=settings.llm_timeout
             )
-            
+
         elif llm_type == "anthropic":
             from graph_rag.llm.anthropic_service import AnthropicService
-            
+
             api_key = (
                 settings.anthropic_api_key.get_secret_value()
                 if settings.anthropic_api_key
@@ -252,7 +247,7 @@ def create_llm_service(settings: Settings) -> LLMService:  # Added factory funct
                     status_code=503,
                     detail="LLM Service (Anthropic) not configured: API key missing.",
                 )
-            
+
             instance = AnthropicService(
                 api_key=api_key,
                 model=settings.llm_model_name,
@@ -260,10 +255,10 @@ def create_llm_service(settings: Settings) -> LLMService:  # Added factory funct
                 temperature=settings.llm_temperature,
                 timeout=settings.llm_timeout
             )
-            
+
         elif llm_type == "ollama":
             from graph_rag.llm.ollama_service import OllamaService
-            
+
             instance = OllamaService(
                 base_url=settings.ollama_base_url,
                 model=settings.llm_model_name,
@@ -271,7 +266,7 @@ def create_llm_service(settings: Settings) -> LLMService:  # Added factory funct
                 temperature=settings.llm_temperature,
                 max_tokens=settings.llm_max_tokens if settings.llm_max_tokens > 0 else None
             )
-            
+
         elif llm_type == "mock":
             instance = MockLLMService()
         else:
@@ -279,7 +274,7 @@ def create_llm_service(settings: Settings) -> LLMService:  # Added factory funct
                 f"Unsupported llm_type '{settings.llm_type}'. Falling back to MockLLMService."
             )
             instance = MockLLMService()
-            
+
     except AttributeError:
         logger.warning(
             "LLM_TYPE not found in settings. Falling back to MockLLMService."
@@ -461,16 +456,16 @@ def create_graph_rag_engine(
 ) -> GraphRAGEngine:
     """Creates a SimpleGraphRAGEngine instance."""
     from graph_rag.services.citation import CitationStyle
-    
+
     # Parse citation style from settings
     citation_style_str = getattr(settings, 'citation_style', 'numeric').lower()
     citation_style = CitationStyle.NUMERIC  # Default
-    
+
     try:
         citation_style = CitationStyle(citation_style_str)
     except ValueError:
         logger.warning(f"Unknown citation style '{citation_style_str}', using numeric")
-    
+
     logger.debug("Creating SimpleGraphRAGEngine instance")
     return SimpleGraphRAGEngine(
         graph_store=graph_repository,

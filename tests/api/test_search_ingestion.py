@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import uuid
-from typing import Optional
 from unittest.mock import AsyncMock
 
 import pytest
@@ -22,8 +21,8 @@ from graph_rag.core.graph_rag_engine import QueryResult
 from graph_rag.core.interfaces import (
     ChunkData,
     GraphRepository,
-    VectorStore,
     SearchResultData,
+    VectorStore,
 )
 
 # Remove direct app import (should be already removed or commented out)
@@ -80,7 +79,7 @@ async def cleanup_document(
 # --- Test Helper for Mocking Engine Query Side Effect ---
 async def create_mock_engine_query_side_effect(
     success_responses: dict[str, QueryResult],
-    failure_queries: Optional[dict[str, Exception]] = None,
+    failure_queries: dict[str, Exception] | None = None,
 ):
     """
     Creates an async side effect function for mock_graph_rag_engine.query.
@@ -93,7 +92,7 @@ async def create_mock_engine_query_side_effect(
     failure_queries = failure_queries or {}
 
     async def _side_effect_fn(
-        query_text: str, config: Optional[dict] = None
+        query_text: str, config: dict | None = None
     ) -> QueryResult:
         # Check for failure first
         if query_text in failure_queries:

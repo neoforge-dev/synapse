@@ -4,7 +4,7 @@ import uuid
 from collections import defaultdict  # Add this import
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
-from typing import Any, Optional, Union
+from typing import Any
 
 from graph_rag.config import get_settings
 from graph_rag.core.interfaces import (
@@ -32,13 +32,16 @@ from graph_rag.llm import (
 
 # from graph_rag.core.node_factory import NodeFactory
 from graph_rag.llm.protocols import LLMService  # Add LLMService import
+from graph_rag.llm.response_models import EnhancedLLMResponse
 from graph_rag.models import Chunk, Entity, Relationship
+from graph_rag.services.citation import CitationService, CitationStyle
+from graph_rag.services.answer_validation import AnswerValidator, ValidationLevel
+from graph_rag.services.prompt_optimization import PromptOptimizer, PromptStyle
+from graph_rag.services.memory import ContextManager
+from graph_rag.services.rerank import CrossEncoderReranker
 from graph_rag.services.search import (
     SearchResult,
 )  # Import SearchResult model too
-from graph_rag.services.rerank import CrossEncoderReranker
-from graph_rag.services.memory import ContextManager
-from graph_rag.services.citation import CitationService, CitationStyle
 
 # from graph_rag.core.prompts import QnAPromptContext # Import QnAPromptContext
 # from graph_rag.core.prompts as prompts # Corrected import alias
@@ -58,12 +61,12 @@ class QueryResult:
     relevant_chunks: list[Chunk] = field(default_factory=list)
     answer: str = ""
     llm_response: str = ""  # Added for test compatibility
-    graph_context: Union[Optional[tuple[list[Entity], list[Relationship]]], str] = (
+    graph_context: tuple[list[Entity], list[Relationship]] | None | str = (
         None  # Support both tuple and string formats
     )
     metadata: dict[str, Any] = field(default_factory=dict)
     # Citation-enhanced fields
-    answer_with_citations: Optional[str] = None
+    answer_with_citations: str | None = None
     citations: list = field(default_factory=list)
     bibliography: dict = field(default_factory=dict)
 
@@ -79,6 +82,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         llm_service: LLMService = None,
         context_manager: ContextManager = None,
         citation_style: CitationStyle = CitationStyle.NUMERIC,
+        validation_level: ValidationLevel = ValidationLevel.MODERATE,
     ):
         """Requires GraphRepository, VectorStore, EntityExtractor, and optionally LLMService."""
         if not isinstance(graph_store, GraphRepository):
@@ -97,6 +101,8 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         self._reranker = CrossEncoderReranker()
         self._context_manager = context_manager
         self._citation_service = CitationService(citation_style)
+        self._answer_validator = AnswerValidator(validation_level)
+        self._prompt_optimizer = PromptOptimizer()
         logger.info(
             f"SimpleGraphRAGEngine initialized with GraphRepository: {type(graph_store).__name__}, VectorStore: {type(vector_store).__name__}, EntityExtractor: {type(entity_extractor).__name__}, LLMService: {type(self._llm_service).__name__}, CitationStyle: {citation_style.value}"
         )
@@ -284,9 +290,9 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         ), filtered_relationships_list  # Return the list
 
     async def _retrieve_and_build_context(
-        self, query_text: str, config: Optional[dict[str, Any]] = None
+        self, query_text: str, config: dict[str, Any] | None = None
     ) -> tuple[
-        list[SearchResultData], Optional[tuple[list[Entity], list[Relationship]]]
+        list[SearchResultData], tuple[list[Entity], list[Relationship]] | None
     ]:
         """Internal method to perform vector search and graph context retrieval. DOES NOT call LLM."""
         logger.info(f"Retrieving context for: '{query_text}' with config: {config}")
@@ -296,7 +302,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
 
         final_entities: list[Entity] = []
         final_relationships: list[Relationship] = []
-        graph_context_tuple: Optional[tuple[list[Entity], list[Relationship]]] = None
+        graph_context_tuple: tuple[list[Entity], list[Relationship]] | None = None
         relevant_chunk_texts: list[str] = []
         retrieved_chunks_full: list[
             SearchResultData
@@ -308,31 +314,31 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
             search_type = config.get("search_type", "vector").lower()
             blend_keyword_weight = float(config.get("blend_keyword_weight", 0.0))
             no_answer_min_score = float(config.get("no_answer_min_score", 0.0))
-            
+
             if search_type == "vector":
                 # Vector-only search
                 logger.debug("Using vector-only search")
                 retrieved = await self._vector_store.search(query_text, top_k=k, search_type="vector")
                 retrieved_chunks_full = retrieved
-                
+
             elif search_type == "keyword":
                 # Keyword-only search
                 logger.debug("Using keyword-only search")
                 retrieved = await self._vector_store.search(query_text, top_k=k, search_type="keyword")
                 retrieved_chunks_full = retrieved
-                
+
             elif search_type == "hybrid":
                 # Hybrid search: blend vector and keyword results
                 logger.debug(f"Using hybrid search with blend_keyword_weight={blend_keyword_weight}")
-                
+
                 # Get results from both search types
                 results_vector = await self._vector_store.search(query_text, top_k=k, search_type="vector")
                 results_keyword = await self._vector_store.search(query_text, top_k=k, search_type="keyword")
-                
+
                 # Convert to dict by chunk id for blending
                 vec_scores = {r.chunk.id: r.score for r in results_vector if r and r.chunk}
                 kw_scores = {r.chunk.id: r.score for r in results_keyword if r and r.chunk}
-                
+
                 # Combine all chunks from both searches
                 combined: dict[str, SearchResultData] = {}
                 for r in results_vector:
@@ -341,23 +347,23 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                 for r in results_keyword:
                     if r and r.chunk:
                         combined.setdefault(r.chunk.id, r)
-                
+
                 # Recompute blended scores: (1-blend_keyword_weight) * vector + blend_keyword_weight * keyword
                 alpha = 1.0 - blend_keyword_weight  # vector weight
                 beta = blend_keyword_weight  # keyword weight
-                
+
                 blended: list[SearchResultData] = []
                 for rid, item in combined.items():
                     vs = vec_scores.get(rid, 0.0)
                     ks = kw_scores.get(rid, 0.0)
                     score = alpha * vs + beta * ks
-                    
+
                     chunk = item.chunk
                     meta = dict(chunk.metadata or {})
                     meta["score_vector"] = vs
                     meta["score_keyword"] = ks
                     meta["score_blended"] = score
-                    
+
                     blended.append(
                         SearchResultData(
                             chunk=ChunkData(
@@ -371,17 +377,17 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                             score=score,
                         )
                     )
-                
+
                 # Sort by blended score
                 blended.sort(key=lambda r: r.score, reverse=True)
                 retrieved_chunks_full = blended[:k]
-                
+
             else:
                 # Fallback to vector search for unknown search types
                 logger.warning(f"Unknown search_type '{search_type}', falling back to vector search")
                 retrieved = await self._vector_store.search(query_text, top_k=k, search_type="vector")
                 retrieved_chunks_full = retrieved
-            
+
             # Apply no-answer threshold check
             if no_answer_min_score > 0.0 and retrieved_chunks_full:
                 top_score = retrieved_chunks_full[0].score if retrieved_chunks_full[0].score is not None else 0.0
@@ -679,11 +685,11 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
     async def answer_query(
         self,
         query_text: str,
-        config: Optional[dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
         # Allow passing pre-fetched context
-        _retrieved_chunks_data: Optional[list[SearchResultData]] = None,
-        _graph_context_tuple: Optional[tuple[list[Entity], list[Relationship]]] = None,
-        conversation_id: Optional[str] = None,
+        _retrieved_chunks_data: list[SearchResultData] | None = None,
+        _graph_context_tuple: tuple[list[Entity], list[Relationship]] | None = None,
+        conversation_id: str | None = None,
     ) -> str:
         """Retrieve context (if not provided), format prompt, and generate an answer using the LLM."""
         logger.info(
@@ -753,13 +759,19 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
             except Exception as e:
                 logger.warning(f"Failed to get conversation context: {e}")
 
-        # 4. Create Prompt and Call LLM
-        style = (config or {}).get("style")
-        style_line = f"\n\nStyle: {style}" if style else ""
-        prompt = (
-            f"Based on the following context, answer the query.{style_line}\\n\\n"
-            f"{conversation_context}"
-            f"Query: {query_text}\\n\\nContext:{context_str}\\n\\nAnswer:"
+        # 4. Create Optimized Prompt and Call LLM
+        style_str = (config or {}).get("style", "analytical")
+        style = self._prompt_optimizer.get_style_from_string(style_str)
+        
+        # Create optimized prompt using the prompt optimizer
+        prompt = self._prompt_optimizer.optimize_prompt_for_context(
+            query=query_text,
+            context=context_str,
+            style=style,
+            conversation_history=conversation_context,
+            confidence_scoring=False,  # Basic query doesn't need confidence scoring
+            citation_required=True,
+            max_length=(config or {}).get("max_response_length")
         )
         logger.debug(f"Sending prompt to LLM (first 100 chars): {prompt[:100]}...")
         try:
@@ -772,12 +784,12 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                 logger.error(f"Unexpected LLM response type: {type(llm_response)}")
                 answer_text = "Error: Could not process response from language model."
             logger.info("Received synthesized answer from LLM.")
-            
+
             # Store context for citation processing
             self._last_answer = answer_text
             self._last_chunks = [c.chunk for c in retrieved_chunks_data if c.chunk] if retrieved_chunks_data else []
             self._last_context_texts = relevant_chunk_texts
-            
+
             return answer_text
         except Exception as llm_err:
             logger.error(
@@ -785,10 +797,180 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
             )
             return f"Error generating answer: {llm_err}"
 
+    async def answer_query_enhanced(
+        self,
+        query_text: str,
+        config: dict[str, Any] | None = None,
+        context_data: tuple | None = None,
+    ) -> EnhancedLLMResponse:
+        """Generate a synthesized answer with confidence scoring and enhanced metadata.
+        
+        Args:
+            query_text: The user's query
+            config: Optional configuration (search_type, limit, etc.)
+            context_data: Optional pre-fetched context data
+            
+        Returns:
+            EnhancedLLMResponse with confidence metrics and metadata
+        """
+        config = config or {}
+        conversation_id = config.get("conversation_id")
+        logger.info(f"Generating enhanced answer for query: '{query_text}'")
+
+        # 1. Retrieve context if not provided
+        retrieved_chunks_data = None
+        graph_context_tuple = None
+        if context_data is None:
+            try:
+                (
+                    retrieved_chunks_data,
+                    graph_context_tuple,
+                ) = await self._retrieve_and_build_context(query_text, config)
+            except Exception as context_err:
+                logger.error(
+                    f"Failed to retrieve context for enhanced answer: {context_err}",
+                    exc_info=True,
+                )
+                # Return error response with low confidence
+                from graph_rag.llm.response_models import ConfidenceLevel, ConfidenceMetrics
+                error_confidence = ConfidenceMetrics(
+                    overall_score=0.1,
+                    level=ConfidenceLevel.VERY_LOW,
+                    context_coverage=0.0,
+                    context_relevance=0.0,
+                    uncertainty_indicators=["context_retrieval_error"],
+                    reasoning=f"Context retrieval failed: {context_err}"
+                )
+                return EnhancedLLMResponse(
+                    text=f"Error retrieving context: {context_err}",
+                    confidence=error_confidence,
+                    has_hallucination_risk=True,
+                    requires_verification=True
+                )
+        else:
+            retrieved_chunks_data, graph_context_tuple = context_data
+            logger.debug("Using pre-fetched context for enhanced answer.")
+
+        # 2. Prepare context for LLM
+        context_str = ""
+        relevant_chunk_texts = []
+        if retrieved_chunks_data:
+            relevant_chunk_texts = [
+                c.chunk.text for c in retrieved_chunks_data if c.chunk
+            ]
+            context_str += "\n\nRelevant Text Chunks:\n"
+            context_str += "\n---\n\n".join(relevant_chunk_texts)
+
+        if graph_context_tuple:
+            entities, relationships = graph_context_tuple
+            context_str += "\n\nRelated Graph Entities:\n"
+            context_str += "\n".join(
+                [f"- {e.id} ({e.type}): {getattr(e, 'name', 'N/A')}" for e in entities]
+            )
+
+        # 3. Add conversation context if available
+        conversation_context = ""
+        if conversation_id and hasattr(self, '_context_manager'):
+            try:
+                conversation_context = await self._context_manager.get_conversation_context(conversation_id)
+                if conversation_context:
+                    conversation_context = f"\n\n{conversation_context}\n\n"
+            except Exception as e:
+                logger.warning(f"Failed to get conversation context: {e}")
+
+        # 4. Create Enhanced Optimized Prompt for confidence scoring
+        style_str = config.get("style", "analytical")
+        style = self._prompt_optimizer.get_style_from_string(style_str)
+
+        # Create enhanced optimized prompt with confidence scoring enabled
+        prompt = self._prompt_optimizer.optimize_prompt_for_context(
+            query=query_text,
+            context=context_str,
+            style=style,
+            conversation_history=conversation_context,
+            confidence_scoring=True,  # Enable confidence scoring for enhanced responses
+            citation_required=True,
+            max_length=config.get("max_response_length")
+        )
+
+        logger.debug(f"Sending enhanced prompt to LLM (first 100 chars): {prompt[:100]}...")
+
+        try:
+            # Check if LLM service supports enhanced responses
+            if hasattr(self._llm_service, 'generate_enhanced_response'):
+                # Get the chunks for confidence calculation
+                context_chunks = [c.chunk for c in retrieved_chunks_data if c.chunk] if retrieved_chunks_data else []
+
+                enhanced_response = await self._llm_service.generate_enhanced_response(
+                    prompt=prompt,
+                    context=context_str,
+                    context_chunks=context_chunks,
+                    query=query_text,
+                    context_texts=relevant_chunk_texts
+                )
+
+                logger.info(f"Generated enhanced answer with confidence: {enhanced_response.confidence.level.value} ({enhanced_response.confidence.overall_score:.2f})")
+
+                # Store context for citation processing
+                self._last_answer = enhanced_response.text
+                self._last_chunks = context_chunks
+                self._last_context_texts = relevant_chunk_texts
+
+                return enhanced_response
+
+            else:
+                # Fallback to standard response with manual confidence calculation
+                logger.info("LLM service doesn't support enhanced responses, using fallback")
+                answer_text = await self._llm_service.generate_response(prompt)
+
+                # Calculate confidence manually
+                from graph_rag.llm.response_models import ConfidenceCalculator
+                context_chunks = [c.chunk for c in retrieved_chunks_data if c.chunk] if retrieved_chunks_data else []
+
+                confidence = ConfidenceCalculator.calculate_confidence(
+                    answer_text=answer_text,
+                    context_chunks=context_chunks,
+                    query=query_text,
+                    context_texts=relevant_chunk_texts
+                )
+
+                # Store context for citation processing
+                self._last_answer = answer_text
+                self._last_chunks = context_chunks
+                self._last_context_texts = relevant_chunk_texts
+
+                return EnhancedLLMResponse(
+                    text=answer_text,
+                    confidence=confidence,
+                    has_hallucination_risk=confidence.overall_score < 0.5,
+                    requires_verification=confidence.level.value in ["low", "very_low"]
+                )
+
+        except Exception as llm_err:
+            logger.error(f"Error generating enhanced response: {llm_err}", exc_info=True)
+
+            # Return error response with very low confidence
+            from graph_rag.llm.response_models import ConfidenceLevel, ConfidenceMetrics
+            error_confidence = ConfidenceMetrics(
+                overall_score=0.1,
+                level=ConfidenceLevel.VERY_LOW,
+                context_coverage=0.0,
+                context_relevance=0.0,
+                uncertainty_indicators=["llm_error"],
+                reasoning=f"LLM error: {llm_err}"
+            )
+
+            return EnhancedLLMResponse(
+                text=f"Error generating answer: {llm_err}",
+                confidence=error_confidence,
+                has_hallucination_risk=True,
+                requires_verification=True
+            )
+
     async def stream_answer(
         self,
         query_text: str,
-        config: Optional[dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
     ) -> AsyncGenerator[str, None]:
         """Stream a synthesized answer using the LLM's streaming interface.
 
@@ -797,7 +979,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         """
         config = config or {}
         conversation_id = config.get("conversation_id")
-        
+
         try:
             retrieved_chunks_data, graph_context_tuple = await self._retrieve_and_build_context(
                 query_text, config
@@ -841,12 +1023,18 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
             except Exception as e:
                 logger.warning(f"Failed to get conversation context for streaming: {e}")
 
-        style = (config or {}).get("style")
-        style_line = f"\n\nStyle: {style}" if style else ""
-        prompt = (
-            f"Based on the following context, answer the query.{style_line}\\n\\n"
-            f"{conversation_context}"
-            f"Query: {query_text}\\n\\nContext:{context_str}\\n\\nAnswer:"
+        # Create optimized prompt for streaming
+        style_str = (config or {}).get("style", "conversational")
+        style = self._prompt_optimizer.get_style_from_string(style_str)
+        
+        prompt = self._prompt_optimizer.optimize_prompt_for_context(
+            query=query_text,
+            context=context_str,
+            style=style,
+            conversation_history=conversation_context,
+            confidence_scoring=False,  # Streaming responses don't typically include confidence scoring
+            citation_required=True,
+            max_length=(config or {}).get("max_response_length")
         )
         try:
             async for chunk in self._llm_service.generate_response_stream(prompt):
@@ -858,16 +1046,16 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
             yield f"\n[error] {llm_err}"
 
     async def query(
-        self, query_text: str, config: Optional[dict[str, Any]] = None
+        self, query_text: str, config: dict[str, Any] | None = None
     ) -> QueryResult:
         logger.info(f"[DEBUG] Entered SimpleGraphRAGEngine.query for: '{query_text}'")
         config = config or {}
         conversation_id = config.get("conversation_id")
 
         retrieved_chunks_data: list[SearchResultData] = []
-        graph_context_tuple: Optional[tuple[list[Entity], list[Relationship]]] = None
+        graph_context_tuple: tuple[list[Entity], list[Relationship]] | None = None
         answer_text: str = "Failed to process query."
-        error_info: Optional[str] = None
+        error_info: str | None = None
 
         # 1. Retrieve context ONCE
         try:
@@ -942,19 +1130,39 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         answer_with_citations = answer_text
         citations = []
         bibliography = {}
-        
+
         if not error_info and final_relevant_chunks and hasattr(self, '_last_answer'):
             try:
                 citation_result = self._citation_service.enhance_answer_with_citations(
-                    answer_text, 
+                    answer_text,
                     final_relevant_chunks,
-                    getattr(self, '_last_context_texts', None)
+                    getattr(self, '_last_context_texts', None),
+                    enable_verification=True  # Enable enhanced verification
                 )
                 answer_with_citations = citation_result.answer_with_citations
                 citations = [c.to_dict() for c in citation_result.citations]
                 bibliography = citation_result.bibliography
-                
+
                 logger.info(f"Enhanced answer with {citation_result.sources_cited}/{citation_result.total_sources} citations")
+                
+                # 5. Validate answer against source chunks
+                try:
+                    validation_result = self._answer_validator.validate_answer(
+                        answer_text,
+                        final_relevant_chunks,
+                        citation_result.citations,
+                        getattr(self, '_last_context_texts', None)
+                    )
+                    
+                    # Store validation results for metadata
+                    self._last_validation_result = validation_result
+                    
+                    logger.info(f"Answer validation: score={validation_result.validation_score:.2f}, valid={validation_result.is_valid}")
+                    
+                except Exception as validation_err:
+                    logger.error(f"Error during answer validation: {validation_err}", exc_info=True)
+                    # Continue without validation if it fails
+                    
             except Exception as citation_err:
                 logger.error(f"Error processing citations: {citation_err}", exc_info=True)
                 # Continue with original answer if citation processing fails
@@ -966,6 +1174,18 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
             "engine_type": self.__class__.__name__,
             "citations": citations,  # Add citations to metadata for backward compatibility
         }
+        
+        # Add validation results if available
+        if hasattr(self, '_last_validation_result'):
+            final_metadata.update({
+                "validation": self._last_validation_result.to_dict(),
+                "answer_quality": {
+                    "is_valid": self._last_validation_result.is_valid,
+                    "validation_score": self._last_validation_result.validation_score,
+                    "hallucination_risk": self._last_validation_result.hallucination_risk,
+                    "requires_fact_check": self._last_validation_result.requires_fact_check,
+                }
+            })
         if error_info:
             final_metadata["error"] = error_info
 
@@ -985,8 +1205,8 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
     async def reason(
         self,
         question: str,
-        steps: Optional[list[Union[str, Any]]] = None,
-        config: Optional[dict[str, Any]] = None
+        steps: list[str | Any] | None = None,
+        config: dict[str, Any] | None = None
     ) -> Any:
         """
         Perform multi-step reasoning for complex questions.
@@ -1005,7 +1225,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         """
         # Import here to avoid circular imports
         from graph_rag.core.reasoning_engine import MultiStepReasoningEngine
-        
+
         reasoning_engine = MultiStepReasoningEngine(self)
         return await reasoning_engine.reason(question=question, steps=steps, config=config)
 
@@ -1141,7 +1361,7 @@ class GraphRAGEngineOrchestrator(GraphRAGEngine):
 
     async def _process_chunk(
         self, chunk: ChunkData
-    ) -> Optional[tuple[ChunkData, ExtractionResult]]:
+    ) -> tuple[ChunkData, ExtractionResult] | None:
         """Helper to process a single chunk: generate embedding and extract entities."""
         try:
             # Generate embedding (assuming generate_embedding takes single text)
@@ -1227,7 +1447,7 @@ class GraphRAGEngineOrchestrator(GraphRAGEngine):
             raise  # Re-raise the exception within the generator
 
     async def query(
-        self, query_text: str, config: Optional[dict[str, Any]] = None
+        self, query_text: str, config: dict[str, Any] | None = None
     ) -> QueryResult:
         """Retrieve context and package into a QueryResult (Placeholder answer)."""
         logger.info(f"Answering query: '{query_text}' with config: {config}")
@@ -1307,8 +1527,8 @@ class GraphRAGEngineOrchestrator(GraphRAGEngine):
         self,
         extracted_entities: list[ExtractedEntity],
         extracted_relationships: list[ExtractedRelationship],
-        config: Optional[dict] = None,
-    ) -> Optional[tuple[list[Entity], list[Relationship]]]:
+        config: dict | None = None,
+    ) -> tuple[list[Entity], list[Relationship]] | None:
         """
         Retrieves related entities and relationships from the graph store
         based on the entities extracted from the vector search results.

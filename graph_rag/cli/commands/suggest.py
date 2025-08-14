@@ -1,6 +1,5 @@
 import json
 import logging
-from typing import Optional
 import os
 
 import httpx
@@ -22,7 +21,7 @@ def _default(
     include_graph: bool = typer.Option(
         False, "--graph/--no-graph", help="Include graph context if available"
     ),
-    style: Optional[str] = typer.Option(
+    style: str | None = typer.Option(
         None,
         "--style",
         help="Optional style profile or tone (e.g. 'concise, analytical')",
@@ -49,7 +48,7 @@ def run_suggest(
     include_graph: bool = typer.Option(
         False, "--graph/--no-graph", help="Include graph context if available"
     ),
-    style: Optional[str] = typer.Option(
+    style: str | None = typer.Option(
         None,
         "--style",
         help="Optional style profile or tone (e.g. 'concise, analytical')",
@@ -96,7 +95,7 @@ def _generate(
     topic: str,
     k: int = 5,
     include_graph: bool = False,
-    style: Optional[str] = None,
+    style: str | None = None,
     count: int = 5,
     json_out: bool = False,
     api_url: str = ASK_URL,

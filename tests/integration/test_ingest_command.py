@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 try:
-    import mgclient  # type: ignore
+    pass  # type: ignore
 except Exception:
     pytest.skip("mgclient not available; skipping ingest integration tests", allow_module_level=True)
 from typer.testing import CliRunner

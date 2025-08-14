@@ -1,12 +1,13 @@
 import time
 from enum import Enum
-from typing import List, Optional, Dict, Any
+from typing import Optional
+
 from pydantic import BaseModel
 
+from graph_rag.core.interfaces import GraphRepository, SearchResultData, VectorStore
 from graph_rag.domain.models import Chunk
 from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
 from graph_rag.services.embedding import EmbeddingService
-from graph_rag.core.interfaces import SearchResultData, VectorStore, GraphRepository
 
 
 class SearchResult(BaseModel):
@@ -111,13 +112,13 @@ class SearchStrategy(Enum):
 class QueryExpansion(BaseModel):
     """Represents an expanded query with additional terms."""
     original_query: str
-    expanded_terms: List[str]
+    expanded_terms: list[str]
     expansion_strategy: str
 
 
 class HybridSearchResult(BaseModel):
     """Result from hybrid search with metadata."""
-    results: List[SearchResultData]
+    results: list[SearchResultData]
     strategy: SearchStrategy
     query: str
     total_vector_results: int
@@ -125,12 +126,12 @@ class HybridSearchResult(BaseModel):
     execution_time_ms: float
     reranked: bool = False
     clustered: bool = False
-    cluster_count: Optional[int] = None
-    
+    cluster_count: int | None = None
+
     @property
     def total_results(self) -> int:
         return len(self.results)
-    
+
     @property
     def avg_score(self) -> float:
         if not self.results:
@@ -140,7 +141,7 @@ class HybridSearchResult(BaseModel):
 
 class QueryExpansionService:
     """Service for expanding queries with synonyms and related terms."""
-    
+
     def __init__(self):
         # Simple synonym/expansion mappings for common terms
         self.expansions = {
@@ -155,25 +156,25 @@ class QueryExpansionService:
             "api": ["application programming interface", "service interface", "endpoint"],
             "database": ["db", "data storage", "persistence", "data store"],
         }
-    
+
     def expand_query(self, query: str) -> QueryExpansion:
         """Expand a query with synonyms and related terms."""
         expanded_terms = []
         query_lower = query.lower()
-        
+
         # Check for exact matches
         if query_lower in self.expansions:
             expanded_terms.extend(self.expansions[query_lower])
-        
+
         # Check for partial matches
         for key, expansions in self.expansions.items():
             if key in query_lower:
                 expanded_terms.extend(expansions)
-        
+
         # Remove duplicates and terms already in query
         expanded_terms = list(set(expanded_terms))
         expanded_terms = [term for term in expanded_terms if term.lower() not in query_lower]
-        
+
         return QueryExpansion(
             original_query=query,
             expanded_terms=expanded_terms,
@@ -183,10 +184,10 @@ class QueryExpansionService:
 
 class AdvancedSearchService:
     """Advanced search service with hybrid search, re-ranking, query expansion, and clustering."""
-    
+
     def __init__(
-        self, 
-        vector_store: VectorStore, 
+        self,
+        vector_store: VectorStore,
         graph_repository: GraphRepository,
         rerank_service: Optional['ReRankingService'] = None,
         clustering_service: Optional['SemanticClusteringService'] = None
@@ -196,7 +197,7 @@ class AdvancedSearchService:
         self.rerank_service = rerank_service
         self.clustering_service = clustering_service
         self.query_expansion_service = QueryExpansionService()
-    
+
     async def search(
         self,
         query: str,
@@ -205,20 +206,20 @@ class AdvancedSearchService:
         expand_query: bool = True,
         rerank: bool = True,
         cluster: bool = False,
-        cluster_strategy: Optional[str] = None,
+        cluster_strategy: str | None = None,
         diversify_clusters: bool = True,
-        threshold: Optional[float] = None
+        threshold: float | None = None
     ) -> HybridSearchResult:
         """Perform advanced search with the specified strategy."""
         start_time = time.time()
-        
+
         # Expand query if requested
         expanded_query = query
         if expand_query:
             expansion = self.query_expansion_service.expand_query(query)
             if expansion.expanded_terms:
                 expanded_query = f"{query} {' '.join(expansion.expanded_terms[:3])}"  # Add top 3 terms
-        
+
         # Perform search based on strategy
         if strategy == SearchStrategy.VECTOR_ONLY:
             results = await self._vector_search(expanded_query, limit, threshold)
@@ -233,20 +234,20 @@ class AdvancedSearchService:
         else:
             # Default to hybrid for unsupported strategies
             results, vector_count, keyword_count = await self._hybrid_search(expanded_query, limit, threshold)
-        
+
         # Re-rank results if requested and service is available
         reranked = False
         if rerank and self.rerank_service and len(results) > 1:
             from graph_rag.services.rerank import ReRankingStrategy
             results = self.rerank_service.rerank(query, results, ReRankingStrategy.SEMANTIC_SIMILARITY)
             reranked = True
-        
+
         # Cluster results if requested and service is available
         clustered = False
         cluster_count = None
         if cluster and self.clustering_service and len(results) > 3:
             from graph_rag.services.clustering import ClusteringStrategy
-            
+
             # Map string strategy to enum
             strategy_map = {
                 "similarity_threshold": ClusteringStrategy.SIMILARITY_THRESHOLD,
@@ -254,33 +255,33 @@ class AdvancedSearchService:
                 "topic_based": ClusteringStrategy.TOPIC_BASED,
                 "hierarchical": ClusteringStrategy.HIERARCHICAL
             }
-            
+
             clustering_strategy = strategy_map.get(
                 cluster_strategy, ClusteringStrategy.SIMILARITY_THRESHOLD
             )
-            
+
             # Cluster the results
             cluster_result = self.clustering_service.cluster_results(
                 results, strategy=clustering_strategy
             )
-            
+
             # Optionally diversify clusters to get representative results
             if diversify_clusters:
                 cluster_result = self.clustering_service.diversify_clusters(
                     cluster_result, max_per_cluster=max(1, limit // cluster_result.total_clusters)
                 )
-            
+
             # Flatten clusters back to list while preserving cluster information
             flattened_results = []
             for cluster in cluster_result.clusters:
                 flattened_results.extend(cluster)
-            
+
             results = flattened_results
             clustered = True
             cluster_count = cluster_result.total_clusters
-        
+
         execution_time = (time.time() - start_time) * 1000
-        
+
         return HybridSearchResult(
             results=results[:limit],  # Ensure limit is respected
             strategy=strategy,
@@ -292,34 +293,34 @@ class AdvancedSearchService:
             clustered=clustered,
             cluster_count=cluster_count
         )
-    
+
     async def hybrid_search(
-        self, 
-        query: str, 
+        self,
+        query: str,
         limit: int = 10,
-        threshold: Optional[float] = None
+        threshold: float | None = None
     ) -> HybridSearchResult:
         """Convenience method for hybrid search."""
         return await self.search(query, SearchStrategy.HYBRID, limit, threshold=threshold)
-    
+
     async def _vector_search(
-        self, 
-        query: str, 
+        self,
+        query: str,
         limit: int,
-        threshold: Optional[float] = None
-    ) -> List[SearchResultData]:
+        threshold: float | None = None
+    ) -> list[SearchResultData]:
         """Perform vector similarity search."""
         # Increase limit for vector search to allow for filtering
         search_limit = min(limit * 2, 50)
         results = await self.vector_store.search(query, search_limit)
-        
+
         # Apply threshold filtering if specified
         if threshold is not None:
             results = [r for r in results if r.score >= threshold]
-        
+
         return results[:limit]
-    
-    async def _keyword_search(self, query: str, limit: int) -> List[SearchResultData]:
+
+    async def _keyword_search(self, query: str, limit: int) -> list[SearchResultData]:
         """Perform keyword search using graph repository."""
         try:
             results = await self.graph_repository.keyword_search(query, limit)
@@ -327,40 +328,40 @@ class AdvancedSearchService:
         except AttributeError:
             # Fallback if keyword_search is not implemented
             return []
-    
+
     async def _hybrid_search(
-        self, 
-        query: str, 
+        self,
+        query: str,
         limit: int,
-        threshold: Optional[float] = None
-    ) -> tuple[List[SearchResultData], int, int]:
+        threshold: float | None = None
+    ) -> tuple[list[SearchResultData], int, int]:
         """Perform hybrid search combining vector and keyword results."""
         # Perform both searches concurrently for better performance
         import asyncio
-        
+
         # Use higher limits to get more diverse results before combining
         vector_limit = min(limit * 2, 30)
         keyword_limit = min(limit * 2, 30)
-        
+
         vector_task = asyncio.create_task(self._vector_search(query, vector_limit, threshold))
         keyword_task = asyncio.create_task(self._keyword_search(query, keyword_limit))
-        
+
         vector_results, keyword_results = await asyncio.gather(vector_task, keyword_task)
-        
+
         # Deduplicate results by chunk ID
         seen_chunks = set()
         combined_results = []
-        
+
         # Add vector results first (typically higher quality)
         for result in vector_results:
             if result.chunk.id not in seen_chunks:
                 seen_chunks.add(result.chunk.id)
                 combined_results.append(result)
-        
+
         # Add keyword results that aren't already included
         for result in keyword_results:
             if result.chunk.id not in seen_chunks:
                 seen_chunks.add(result.chunk.id)
                 combined_results.append(result)
-        
+
         return combined_results, len(vector_results), len(keyword_results)

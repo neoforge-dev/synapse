@@ -5,7 +5,7 @@ Implements RFC 7807 Problem Details for HTTP APIs for consistent error responses
 
 import logging
 import traceback
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
@@ -16,30 +16,30 @@ logger = logging.getLogger(__name__)
 
 class ProblemDetail(BaseModel):
     """RFC 7807 Problem Details model."""
-    
+
     model_config = {"extra": "allow"}  # Allow additional fields
-    
+
     type: str = "about:blank"
     title: str
     status: int
-    detail: Optional[str] = None
-    instance: Optional[str] = None
-    
+    detail: str | None = None
+    instance: str | None = None
+
     # Additional custom fields
-    error_code: Optional[str] = None
-    timestamp: Optional[str] = None
-    request_id: Optional[str] = None
+    error_code: str | None = None
+    timestamp: str | None = None
+    request_id: str | None = None
 
 
 class GraphRAGError(Exception):
     """Base exception for Graph RAG specific errors."""
-    
+
     def __init__(
         self,
         message: str,
-        error_code: Optional[str] = None,
+        error_code: str | None = None,
         status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR,
-        details: Optional[Dict[str, Any]] = None
+        details: dict[str, Any] | None = None
     ):
         super().__init__(message)
         self.message = message
@@ -50,8 +50,8 @@ class GraphRAGError(Exception):
 
 class ValidationError(GraphRAGError):
     """Validation errors (400)."""
-    
-    def __init__(self, message: str, field: Optional[str] = None, **kwargs):
+
+    def __init__(self, message: str, field: str | None = None, **kwargs):
         super().__init__(message, status_code=status.HTTP_400_BAD_REQUEST, **kwargs)
         if field:
             self.details["field"] = field
@@ -59,7 +59,7 @@ class ValidationError(GraphRAGError):
 
 class NotFoundError(GraphRAGError):
     """Resource not found errors (404)."""
-    
+
     def __init__(self, resource_type: str, resource_id: str, **kwargs):
         message = f"{resource_type} '{resource_id}' not found"
         super().__init__(message, status_code=status.HTTP_404_NOT_FOUND, **kwargs)
@@ -68,15 +68,15 @@ class NotFoundError(GraphRAGError):
 
 class ConflictError(GraphRAGError):
     """Resource conflict errors (409)."""
-    
+
     def __init__(self, message: str, **kwargs):
         super().__init__(message, status_code=status.HTTP_409_CONFLICT, **kwargs)
 
 
 class ServiceUnavailableError(GraphRAGError):
     """Service unavailable errors (503)."""
-    
-    def __init__(self, service_name: str, reason: Optional[str] = None, **kwargs):
+
+    def __init__(self, service_name: str, reason: str | None = None, **kwargs):
         message = f"{service_name} is currently unavailable"
         if reason:
             message += f": {reason}"
@@ -88,23 +88,23 @@ class ServiceUnavailableError(GraphRAGError):
 
 class InternalServerError(GraphRAGError):
     """Internal server errors (500)."""
-    
+
     def __init__(self, message: str = "An internal server error occurred", **kwargs):
         super().__init__(message, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, **kwargs)
 
 
 def create_problem_detail(
-    error: Union[GraphRAGError, HTTPException, Exception],
-    request: Optional[Request] = None,
+    error: GraphRAGError | HTTPException | Exception,
+    request: Request | None = None,
     include_traceback: bool = False
 ) -> ProblemDetail:
     """Create a standardized problem detail from an exception."""
     from datetime import datetime
-    
+
     timestamp = datetime.utcnow().isoformat() + "Z"
     request_id = getattr(request.state, "request_id", None) if request else None
     instance = str(request.url) if request else None
-    
+
     if isinstance(error, GraphRAGError):
         problem = ProblemDetail(
             title=error.__class__.__name__.replace("Error", ""),
@@ -115,11 +115,11 @@ def create_problem_detail(
             request_id=request_id,
             instance=instance
         )
-        
+
         # Add custom details
         for key, value in error.details.items():
             setattr(problem, key, value)
-            
+
     elif isinstance(error, HTTPException):
         problem = ProblemDetail(
             title="HTTP Error",
@@ -129,7 +129,7 @@ def create_problem_detail(
             request_id=request_id,
             instance=instance
         )
-        
+
     else:
         # Unexpected exception
         logger.error(f"Unhandled exception: {error}", exc_info=True)
@@ -141,17 +141,17 @@ def create_problem_detail(
             request_id=request_id,
             instance=instance
         )
-        
+
         if include_traceback:
             problem.traceback = traceback.format_exc()  # type: ignore
-    
+
     return problem
 
 
 async def graph_rag_exception_handler(request: Request, exc: GraphRAGError) -> JSONResponse:
     """Exception handler for GraphRAGError exceptions."""
     problem = create_problem_detail(exc, request)
-    
+
     logger.warning(
         f"GraphRAG error: {exc.__class__.__name__}: {exc.message}",
         extra={
@@ -161,7 +161,7 @@ async def graph_rag_exception_handler(request: Request, exc: GraphRAGError) -> J
             "details": exc.details
         }
     )
-    
+
     return JSONResponse(
         status_code=exc.status_code,
         content=problem.model_dump(exclude_none=True),
@@ -172,7 +172,7 @@ async def graph_rag_exception_handler(request: Request, exc: GraphRAGError) -> J
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     """Exception handler for HTTPException."""
     problem = create_problem_detail(exc, request)
-    
+
     return JSONResponse(
         status_code=exc.status_code,
         content=problem.model_dump(exclude_none=True),
@@ -183,7 +183,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Exception handler for unexpected exceptions."""
     problem = create_problem_detail(exc, request, include_traceback=False)  # Never include traceback in production
-    
+
     logger.error(
         f"Unhandled exception: {exc}",
         exc_info=True,
@@ -193,7 +193,7 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
             "method": request.method
         }
     )
-    
+
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=problem.model_dump(exclude_none=True),
@@ -202,21 +202,21 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
 
 
 # Convenience functions for common error patterns
-def raise_not_found(resource_type: str, resource_id: str, error_code: Optional[str] = None) -> None:
+def raise_not_found(resource_type: str, resource_id: str, error_code: str | None = None) -> None:
     """Raise a standardized not found error."""
     raise NotFoundError(resource_type, resource_id, error_code=error_code)
 
 
-def raise_validation_error(message: str, field: Optional[str] = None, error_code: Optional[str] = None) -> None:
+def raise_validation_error(message: str, field: str | None = None, error_code: str | None = None) -> None:
     """Raise a standardized validation error."""
     raise ValidationError(message, field=field, error_code=error_code)
 
 
-def raise_service_unavailable(service_name: str, reason: Optional[str] = None, error_code: Optional[str] = None) -> None:
+def raise_service_unavailable(service_name: str, reason: str | None = None, error_code: str | None = None) -> None:
     """Raise a standardized service unavailable error."""
     raise ServiceUnavailableError(service_name, reason=reason, error_code=error_code)
 
 
-def raise_internal_error(message: str = "An internal server error occurred", error_code: Optional[str] = None) -> None:
+def raise_internal_error(message: str = "An internal server error occurred", error_code: str | None = None) -> None:
     """Raise a standardized internal server error."""
     raise InternalServerError(message, error_code=error_code)

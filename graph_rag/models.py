@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -11,9 +11,9 @@ class Chunk:
     text: str
     document_id: str
     metadata: dict[str, Any] = field(default_factory=dict)
-    embedding: Optional[list[float]] = None  # Optional vector embedding
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    embedding: list[float] | None = None  # Optional vector embedding
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 @dataclass
@@ -24,8 +24,8 @@ class Document:
     content: str
     metadata: dict[str, Any] = field(default_factory=dict)
     chunks: list[Chunk] = field(default_factory=list)
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 @dataclass
@@ -36,8 +36,8 @@ class Entity:
     name: str
     type: str
     metadata: dict[str, Any] = field(default_factory=dict)
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 @dataclass
@@ -48,8 +48,8 @@ class Relationship:
     target: Entity
     type: str
     metadata: dict[str, Any] = field(default_factory=dict)
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 @dataclass

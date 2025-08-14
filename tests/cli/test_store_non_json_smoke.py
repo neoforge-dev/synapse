@@ -1,4 +1,3 @@
-import io
 from typer.testing import CliRunner
 
 from graph_rag.cli.main import app

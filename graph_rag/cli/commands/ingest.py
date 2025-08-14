@@ -1,13 +1,13 @@
 """Command for ingesting documents into the graph database."""
 
 import asyncio
+import fnmatch
 import json
 import logging  # Add logging import
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Optional, Any
-import fnmatch
+from typing import Any
 
 import typer
 import yaml
@@ -27,6 +27,7 @@ from graph_rag.domain.models import Chunk, Entity
 from graph_rag.infrastructure.document_processor.simple_processor import (
     SimpleDocumentProcessor,
 )
+
 # MemgraphGraphRepository now imported via dependency injection for graceful fallback
 from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
 from graph_rag.models import ProcessedDocument
@@ -42,7 +43,7 @@ logging.basicConfig(
 
 async def process_and_store_document(
     file_path: Path,
-    metadata: Optional[dict] = None,
+    metadata: dict | None = None,
     enable_embeddings: bool = False,
     replace_existing: bool = True,
 ) -> None:
@@ -241,7 +242,7 @@ async def ingest(
     file_path: Path = typer.Argument(
         ..., help="Path to the file or directory to ingest"
     ),
-    metadata: Optional[str] = typer.Option(
+    metadata: str | None = typer.Option(
         None, help="JSON string of metadata to attach to the document"
     ),
     meta: list[str] = typer.Option(
@@ -249,7 +250,7 @@ async def ingest(
         "--meta",
         help="Additional metadata entries as key=value (repeatable)",
     ),
-    meta_file: Optional[Path] = typer.Option(
+    meta_file: Path | None = typer.Option(
         None,
         "--meta-file",
         help="Path to YAML or JSON file with metadata to merge",
@@ -761,7 +762,7 @@ async def ingest(
 
 def ingest_command(
     file_path: Path = typer.Argument(..., help="Path to the file to ingest"),
-    metadata: Optional[str] = typer.Option(
+    metadata: str | None = typer.Option(
         None, help="JSON string of metadata to attach to the document"
     ),
     meta: list[str] = typer.Option(
@@ -769,7 +770,7 @@ def ingest_command(
         "--meta",
         help="Additional metadata entries as key=value (repeatable)",
     ),
-    meta_file: Optional[Path] = typer.Option(
+    meta_file: Path | None = typer.Option(
         None,
         "--meta-file",
         help="Path to YAML or JSON file with metadata to merge",

@@ -2,8 +2,8 @@
 
 import logging
 import time
-from typing import Any, Dict, List, Optional
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class HealthStatus(str, Enum):
     """Health status enumeration."""
     HEALTHY = "healthy"
-    DEGRADED = "degraded" 
+    DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
     UNKNOWN = "unknown"
 
@@ -22,10 +22,10 @@ class ComponentHealth(BaseModel):
     """Health status for a single component."""
     name: str
     status: HealthStatus
-    message: Optional[str] = None
-    response_time_ms: Optional[float] = None
-    details: Dict[str, Any] = {}
-    last_checked: Optional[float] = None
+    message: str | None = None
+    response_time_ms: float | None = None
+    details: dict[str, Any] = {}
+    last_checked: float | None = None
 
 
 class SystemHealth(BaseModel):
@@ -33,35 +33,35 @@ class SystemHealth(BaseModel):
     status: HealthStatus
     timestamp: float
     version: str = "1.0.0"
-    components: List[ComponentHealth] = []
-    summary: Dict[str, Any] = {}
+    components: list[ComponentHealth] = []
+    summary: dict[str, Any] = {}
 
 
 class HealthChecker:
     """Comprehensive health checking system."""
-    
+
     def __init__(self, timeout_seconds: float = 5.0):
         self.timeout_seconds = timeout_seconds
-        self.checkers: Dict[str, Any] = {}
-        
+        self.checkers: dict[str, Any] = {}
+
     def register_checker(self, name: str, checker_func):
         """Register a health check function."""
         self.checkers[name] = checker_func
-        
+
     async def check_component(self, name: str, checker_func) -> ComponentHealth:
         """Check health of a single component."""
         start_time = time.time()
-        
+
         try:
             # Run health check with timeout
             import asyncio
             result = await asyncio.wait_for(
-                checker_func(), 
+                checker_func(),
                 timeout=self.timeout_seconds
             )
-            
+
             response_time = (time.time() - start_time) * 1000
-            
+
             if isinstance(result, dict):
                 status = HealthStatus(result.get("status", HealthStatus.HEALTHY))
                 message = result.get("message")
@@ -70,7 +70,7 @@ class HealthChecker:
                 status = HealthStatus.HEALTHY if result else HealthStatus.UNHEALTHY
                 message = None
                 details = {}
-                
+
             return ComponentHealth(
                 name=name,
                 status=status,
@@ -79,7 +79,7 @@ class HealthChecker:
                 details=details,
                 last_checked=time.time()
             )
-            
+
         except asyncio.TimeoutError:
             response_time = (time.time() - start_time) * 1000
             return ComponentHealth(
@@ -89,7 +89,7 @@ class HealthChecker:
                 response_time_ms=response_time,
                 last_checked=time.time()
             )
-            
+
         except Exception as e:
             response_time = (time.time() - start_time) * 1000
             return ComponentHealth(
@@ -100,31 +100,31 @@ class HealthChecker:
                 details={"error_type": e.__class__.__name__},
                 last_checked=time.time()
             )
-    
-    async def check_all(self, checkers: Optional[Dict[str, Any]] = None) -> SystemHealth:
+
+    async def check_all(self, checkers: dict[str, Any] | None = None) -> SystemHealth:
         """Check health of all registered components."""
         checkers = checkers or self.checkers
         components = []
-        
+
         # Run all health checks
         for name, checker_func in checkers.items():
             component_health = await self.check_component(name, checker_func)
             components.append(component_health)
-        
+
         # Determine overall status
         overall_status = self._aggregate_status([c.status for c in components])
-        
+
         # Calculate summary stats
         healthy_count = len([c for c in components if c.status == HealthStatus.HEALTHY])
         degraded_count = len([c for c in components if c.status == HealthStatus.DEGRADED])
         unhealthy_count = len([c for c in components if c.status == HealthStatus.UNHEALTHY])
-        
+
         avg_response_time = None
         if components:
             response_times = [c.response_time_ms for c in components if c.response_time_ms]
             if response_times:
                 avg_response_time = sum(response_times) / len(response_times)
-        
+
         summary = {
             "total_components": len(components),
             "healthy_components": healthy_count,
@@ -132,33 +132,33 @@ class HealthChecker:
             "unhealthy_components": unhealthy_count,
             "avg_response_time_ms": avg_response_time
         }
-        
+
         return SystemHealth(
             status=overall_status,
             timestamp=time.time(),
             components=components,
             summary=summary
         )
-    
-    def _aggregate_status(self, statuses: List[HealthStatus]) -> HealthStatus:
+
+    def _aggregate_status(self, statuses: list[HealthStatus]) -> HealthStatus:
         """Aggregate component statuses into overall system status."""
         if not statuses:
             return HealthStatus.UNKNOWN
-            
+
         if any(s == HealthStatus.UNHEALTHY for s in statuses):
             return HealthStatus.UNHEALTHY
-            
+
         if any(s == HealthStatus.DEGRADED for s in statuses):
             return HealthStatus.DEGRADED
-            
+
         if all(s == HealthStatus.HEALTHY for s in statuses):
             return HealthStatus.HEALTHY
-            
+
         return HealthStatus.UNKNOWN
 
 
 # Pre-built health check functions
-async def check_graph_repository(graph_repo) -> Dict[str, Any]:
+async def check_graph_repository(graph_repo) -> dict[str, Any]:
     """Health check for graph repository."""
     try:
         if hasattr(graph_repo, 'health_check'):
@@ -190,7 +190,7 @@ async def check_graph_repository(graph_repo) -> Dict[str, Any]:
             }
 
 
-async def check_vector_store(vector_store) -> Dict[str, Any]:
+async def check_vector_store(vector_store) -> dict[str, Any]:
     """Health check for vector store."""
     try:
         if hasattr(vector_store, 'health_check'):
@@ -227,7 +227,7 @@ async def check_vector_store(vector_store) -> Dict[str, Any]:
             }
 
 
-async def check_llm_service(llm_service) -> Dict[str, Any]:
+async def check_llm_service(llm_service) -> dict[str, Any]:
     """Health check for LLM service."""
     try:
         if hasattr(llm_service, 'health_check'):
@@ -259,7 +259,7 @@ async def check_llm_service(llm_service) -> Dict[str, Any]:
         }
 
 
-async def check_embedding_service(embedding_service) -> Dict[str, Any]:
+async def check_embedding_service(embedding_service) -> dict[str, Any]:
     """Health check for embedding service."""
     try:
         if hasattr(embedding_service, 'health_check'):

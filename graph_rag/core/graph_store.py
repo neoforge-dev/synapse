@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 from graph_rag.models import Entity, Relationship
 
@@ -43,7 +43,7 @@ class GraphStore(ABC):
     #     pass
 
     @abstractmethod
-    def get_entity_by_id(self, entity_id: str) -> Optional[Entity]:
+    def get_entity_by_id(self, entity_id: str) -> Entity | None:
         """Retrieves a single entity by its unique ID."""
         pass
 
@@ -51,7 +51,7 @@ class GraphStore(ABC):
     def get_neighbors(
         self,
         entity_id: str,
-        relationship_types: Optional[list[str]] = None,
+        relationship_types: list[str] | None = None,
         direction: str = "both",
     ) -> tuple[list[Entity], list[Relationship]]:
         """Retrieves direct neighbors (entities and relationships) of a given entity.
@@ -68,7 +68,7 @@ class GraphStore(ABC):
 
     @abstractmethod
     def search_entities_by_properties(
-        self, properties: dict[str, Any], limit: Optional[int] = None
+        self, properties: dict[str, Any], limit: int | None = None
     ) -> list[Entity]:
         """Searches for entities matching specific properties (e.g., name, type).
 
@@ -170,14 +170,14 @@ class MockGraphStore(GraphStore):
 
     # --- Mock Query Implementations ---
 
-    def get_entity_by_id(self, entity_id: str) -> Optional[Entity]:
+    def get_entity_by_id(self, entity_id: str) -> Entity | None:
         logger.debug(f"MockGraphStore: Getting entity by id: {entity_id}")
         return self.entities.get(entity_id)
 
     def get_neighbors(
         self,
         entity_id: str,
-        relationship_types: Optional[list[str]] = None,
+        relationship_types: list[str] | None = None,
         direction: str = "both",
     ) -> tuple[list[Entity], list[Relationship]]:
         logger.debug(
@@ -218,7 +218,7 @@ class MockGraphStore(GraphStore):
         return list(neighbor_entities.values()), connecting_relationships
 
     def search_entities_by_properties(
-        self, properties: dict[str, Any], limit: Optional[int] = None
+        self, properties: dict[str, Any], limit: int | None = None
     ) -> list[Entity]:
         logger.debug(
             f"MockGraphStore: Searching entities by properties: {properties}, limit: {limit}"

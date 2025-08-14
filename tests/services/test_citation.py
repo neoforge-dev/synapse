@@ -1,13 +1,14 @@
 """Tests for the citation service."""
 
 import pytest
+
 from graph_rag.models import Chunk
 from graph_rag.services.citation import (
-    CitationService, 
-    CitationStyle, 
+    APACitationFormatter,
     CitationMetadata,
+    CitationService,
+    CitationStyle,
     NumericCitationFormatter,
-    APACitationFormatter
 )
 
 
@@ -36,7 +37,7 @@ class TestCitationService:
                 }
             ),
             Chunk(
-                id="chunk2", 
+                id="chunk2",
                 text="Machine learning algorithms can process vast amounts of medical data quickly.",
                 document_id="doc2",
                 metadata={
@@ -53,7 +54,7 @@ class TestCitationService:
         """Test extracting citation metadata from a chunk."""
         chunk = sample_chunks[0]
         metadata = citation_service.extract_metadata_from_chunk(chunk)
-        
+
         assert metadata.chunk_id == "chunk1"
         assert metadata.document_id == "doc1"
         assert metadata.title == "AI in Healthcare"
@@ -67,13 +68,13 @@ class TestCitationService:
         """Test enhancing an answer with citations."""
         answer = "AI is revolutionizing healthcare through better diagnoses. Machine learning processes medical data efficiently."
         context_texts = [chunk.text for chunk in sample_chunks]
-        
+
         result = citation_service.enhance_answer_with_citations(
-            answer, 
+            answer,
             sample_chunks,
             context_texts
         )
-        
+
         assert result.answer_with_citations is not None
         assert len(result.citations) == 2
         assert result.total_sources == 2
@@ -83,9 +84,9 @@ class TestCitationService:
     def test_citation_without_context_texts(self, citation_service, sample_chunks):
         """Test citation enhancement without providing context texts."""
         answer = "AI helps with medical diagnoses."
-        
+
         result = citation_service.enhance_answer_with_citations(answer, sample_chunks)
-        
+
         assert result.answer_with_citations is not None
         assert len(result.citations) == 2
         assert result.total_sources == 2
@@ -93,9 +94,9 @@ class TestCitationService:
     def test_citation_with_empty_chunks(self, citation_service):
         """Test citation enhancement with no chunks."""
         answer = "This is a test answer."
-        
+
         result = citation_service.enhance_answer_with_citations(answer, [])
-        
+
         assert result.answer_with_citations == answer
         assert len(result.citations) == 0
         assert result.total_sources == 0
@@ -104,7 +105,7 @@ class TestCitationService:
         """Test keyword extraction functionality."""
         text = "Artificial intelligence and machine learning are transforming healthcare."
         keywords = citation_service._extract_keywords(text)
-        
+
         assert "artificial" in keywords
         assert "intelligence" in keywords
         assert "machine" in keywords
@@ -119,13 +120,13 @@ class TestCitationService:
         answer = "Machine learning algorithms can process medical data quickly."
         chunk_text = "Machine learning algorithms can process vast amounts of medical data quickly."
         context_texts = [chunk_text]
-        
+
         metadata = CitationMetadata(
             chunk_id="test",
             document_id="test_doc",
             chunk_text=chunk_text
         )
-        
+
         is_referenced = citation_service._is_chunk_referenced(answer, metadata, context_texts)
         assert is_referenced  # Should detect high overlap
 
@@ -138,16 +139,16 @@ class TestCitationFormatters:
         formatter = NumericCitationFormatter()
         metadata = CitationMetadata(
             chunk_id="test",
-            document_id="test_doc", 
+            document_id="test_doc",
             title="Test Article",
             author="Test Author",
             source="Test Source",
             publication_date="2023"
         )
-        
+
         inline = formatter.format_inline_citation(1, metadata)
         assert inline == "[1]"
-        
+
         bibliography = formatter.format_bibliography_entry(1, metadata)
         assert "[1]" in bibliography
         assert "Test Author" in bibliography
@@ -159,14 +160,14 @@ class TestCitationFormatters:
         metadata = CitationMetadata(
             chunk_id="test",
             document_id="test_doc",
-            title="Test Article", 
+            title="Test Article",
             author="Smith, J.",
             publication_date="2023"
         )
-        
+
         inline = formatter.format_inline_citation(1, metadata)
         assert inline == "(Smith, J., 2023)"
-        
+
         bibliography = formatter.format_bibliography_entry(1, metadata)
         assert "Smith, J." in bibliography
         assert "(2023)" in bibliography
@@ -180,7 +181,7 @@ class TestCitationFormatters:
             title="Test Article"
             # No author or date
         )
-        
+
         inline = formatter.format_inline_citation(1, metadata)
         assert inline == '("Test Article")'
 
@@ -214,11 +215,11 @@ class TestCitationMetadata:
             relevance_score=0.95,
             used_in_answer=True
         )
-        
+
         data = metadata.to_dict()
-        
+
         assert data["chunk_id"] == "test_chunk"
-        assert data["document_id"] == "test_doc" 
+        assert data["document_id"] == "test_doc"
         assert data["title"] == "Test Title"
         assert data["author"] == "Test Author"
         assert data["relevance_score"] == 0.95

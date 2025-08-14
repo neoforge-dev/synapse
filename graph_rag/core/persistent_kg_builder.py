@@ -8,6 +8,7 @@ from graph_rag.core.interfaces import (
     ExtractedRelationship,
     KnowledgeGraphBuilder,
 )  # Added GraphRepository
+
 try:
     from graph_rag.infrastructure.graph_stores.memgraph_store import (
         MemgraphGraphRepository,

@@ -7,7 +7,7 @@ import sys  # Import sys
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -20,14 +20,14 @@ class TestFailure(BaseModel):
     error_message: str
     test_file: str
     test_function: str
-    test_parameters: Optional[dict[str, Any]] = None  # Parameters used in the test
+    test_parameters: dict[str, Any] | None = None  # Parameters used in the test
     test_code: str
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
     )
-    traceback_str: Optional[str] = None  # Store traceback as string
-    expected_behavior: Optional[str] = None  # Added field
-    actual_behavior: Optional[str] = None  # Added field
+    traceback_str: str | None = None  # Store traceback as string
+    expected_behavior: str | None = None  # Added field
+    actual_behavior: str | None = None  # Added field
     # traceback: Optional[Any] = None # Store raw traceback object
 
 
@@ -40,7 +40,7 @@ class Investigation(BaseModel):
     implementation_gaps: list[str]
     hypotheses: list[dict[str, Any]]
     verification_steps: list[dict[str, Any]]
-    resolution: Optional[dict[str, Any]] = None
+    resolution: dict[str, Any] | None = None
 
 
 class SeniorDebugProtocol:

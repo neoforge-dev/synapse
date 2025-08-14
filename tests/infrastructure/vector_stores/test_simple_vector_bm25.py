@@ -1,4 +1,3 @@
-import asyncio
 import pytest
 
 from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
@@ -42,6 +41,6 @@ async def test_bm25_respects_deletion():
         ChunkData(id="y", text="beta gamma", document_id="dy"),
     ]
     await vs.add_chunks(chunks)
-    await vs.delete_chunks(["x"])  
+    await vs.delete_chunks(["x"])
     res = await vs.keyword_search("alpha", k=5)
     assert len(res) == 0

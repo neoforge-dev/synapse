@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import math
 from enum import Enum
-from typing import List
 
 from graph_rag.core.interfaces import SearchResultData
 
@@ -27,8 +26,8 @@ class CrossEncoderReranker:
             self._available = False
 
     async def rerank(
-        self, query: str, items: List[SearchResultData], k: int
-    ) -> List[SearchResultData]:
+        self, query: str, items: list[SearchResultData], k: int
+    ) -> list[SearchResultData]:
         if not items:
             return []
         if not self._available:
@@ -41,8 +40,8 @@ class CrossEncoderReranker:
             pairs = [(query, it.chunk.text) for it in items]
             scores = model.predict(pairs)
             # Attach scores and sort
-            rescored: List[SearchResultData] = []
-            for it, s in zip(items, scores):
+            rescored: list[SearchResultData] = []
+            for it, s in zip(items, scores, strict=False):
                 try:
                     it.score = float(s)  # type: ignore[attr-defined]
                     if hasattr(it, "chunk") and hasattr(it.chunk, "metadata"):
@@ -78,9 +77,9 @@ class ReRankingService:
     def rerank(
         self,
         query: str,
-        results: List[SearchResultData],
+        results: list[SearchResultData],
         strategy: ReRankingStrategy = ReRankingStrategy.SEMANTIC_SIMILARITY,
-    ) -> List[SearchResultData]:
+    ) -> list[SearchResultData]:
         """Re-rank search results based on relevance to the query.
         
         Args:
@@ -93,7 +92,7 @@ class ReRankingService:
         """
         if not results:
             return results
-            
+
         if strategy == ReRankingStrategy.CROSS_ENCODER:
             # Use existing cross-encoder implementation
             import asyncio
@@ -107,62 +106,62 @@ class ReRankingService:
         else:
             return self._query_term_frequency_rerank(query, results)
 
-    def _semantic_rerank(self, query: str, results: List[SearchResultData]) -> List[SearchResultData]:
+    def _semantic_rerank(self, query: str, results: list[SearchResultData]) -> list[SearchResultData]:
         """Re-rank based on semantic similarity to query."""
         query_terms = set(query.lower().split())
-        
+
         def semantic_score(result: SearchResultData) -> float:
             text = result.chunk.text.lower()
             text_terms = set(text.split())
-            
+
             # Calculate Jaccard similarity
             intersection = len(query_terms.intersection(text_terms))
             union = len(query_terms.union(text_terms))
             jaccard = intersection / union if union > 0 else 0
-            
+
             # Calculate query coverage (how much of query is covered)
             coverage = intersection / len(query_terms) if query_terms else 0
-            
+
             # Calculate text relevance (inverse document frequency-like measure)
             text_length = len(text_terms)
             relevance = intersection / math.sqrt(text_length) if text_length > 0 else 0
-            
+
             # Combine scores with original search score
             combined = (result.score * 0.4) + (jaccard * 0.2) + (coverage * 0.3) + (relevance * 0.1)
             return combined
-        
+
         reranked = sorted(results, key=semantic_score, reverse=True)
-        
+
         # Update scores
         for result in reranked:
             result.score = semantic_score(result)
-            
+
         return reranked
 
-    def _bm25_rerank(self, query: str, results: List[SearchResultData]) -> List[SearchResultData]:
+    def _bm25_rerank(self, query: str, results: list[SearchResultData]) -> list[SearchResultData]:
         """Re-rank using BM25-inspired scoring."""
         query_terms = query.lower().split()
-        
+
         # Calculate document frequency for each term across all results
         term_doc_freq = {}
         total_docs = len(results)
-        
+
         for result in results:
             text_terms = set(result.chunk.text.lower().split())
             for term in query_terms:
                 if term in text_terms:
                     term_doc_freq[term] = term_doc_freq.get(term, 0) + 1
-        
+
         def bm25_score(result: SearchResultData) -> float:
             text = result.chunk.text.lower()
             text_terms = text.split()
             text_length = len(text_terms)
-            
+
             # BM25 parameters
             k1 = 1.5
             b = 0.75
             avg_doc_length = sum(len(r.chunk.text.split()) for r in results) / len(results)
-            
+
             score = 0.0
             for term in query_terms:
                 if term in text:
@@ -172,93 +171,93 @@ class ReRankingService:
                     df = term_doc_freq.get(term, 0)
                     if df == 0:
                         continue
-                        
+
                     # IDF calculation
                     idf = math.log((total_docs - df + 0.5) / (df + 0.5))
-                    
+
                     # BM25 formula
                     numerator = tf * (k1 + 1)
                     denominator = tf + k1 * (1 - b + b * (text_length / avg_doc_length))
                     score += idf * (numerator / denominator)
-            
+
             # Combine with original score
             return (result.score * 0.3) + (score * 0.7)
-        
+
         reranked = sorted(results, key=bm25_score, reverse=True)
-        
+
         # Update scores
         for result in reranked:
             result.score = bm25_score(result)
-            
+
         return reranked
 
-    def _hybrid_rerank(self, query: str, results: List[SearchResultData]) -> List[SearchResultData]:
+    def _hybrid_rerank(self, query: str, results: list[SearchResultData]) -> list[SearchResultData]:
         """Combine multiple re-ranking strategies."""
         # Apply semantic re-ranking first
         semantic_results = self._semantic_rerank(query, results.copy())
-        
+
         # Apply BM25 re-ranking
         bm25_results = self._bm25_rerank(query, results.copy())
-        
+
         # Create ranking position maps
         semantic_ranks = {r.chunk.id: i for i, r in enumerate(semantic_results)}
         bm25_ranks = {r.chunk.id: i for i, r in enumerate(bm25_results)}
-        
+
         def hybrid_score(result: SearchResultData) -> float:
             semantic_rank = semantic_ranks.get(result.chunk.id, len(results))
             bm25_rank = bm25_ranks.get(result.chunk.id, len(results))
-            
+
             # Rank fusion using reciprocal rank
             semantic_score = 1.0 / (semantic_rank + 1)
             bm25_score = 1.0 / (bm25_rank + 1)
-            
+
             # Combine with original score
             return (result.score * 0.4) + (semantic_score * 0.3) + (bm25_score * 0.3)
-        
+
         reranked = sorted(results, key=hybrid_score, reverse=True)
-        
+
         # Update scores
         for result in reranked:
             result.score = hybrid_score(result)
-            
+
         return reranked
 
-    def _query_term_frequency_rerank(self, query: str, results: List[SearchResultData]) -> List[SearchResultData]:
+    def _query_term_frequency_rerank(self, query: str, results: list[SearchResultData]) -> list[SearchResultData]:
         """Simple re-ranking based on query term frequency."""
         query_terms = query.lower().split()
-        
+
         def term_frequency_score(result: SearchResultData) -> float:
             text = result.chunk.text.lower()
-            
+
             # Count occurrences of each query term
             total_matches = sum(text.count(term) for term in query_terms)
-            
+
             # Normalize by text length
             text_length = len(text.split())
             normalized_tf = total_matches / text_length if text_length > 0 else 0
-            
+
             # Combine with original score
             return (result.score * 0.6) + (normalized_tf * 0.4)
-        
+
         reranked = sorted(results, key=term_frequency_score, reverse=True)
-        
+
         # Update scores
         for result in reranked:
             result.score = term_frequency_score(result)
-            
+
         return reranked
 
     async def rerank_results(
         self,
         query: str,
-        results: List[SearchResultData],
+        results: list[SearchResultData],
         strategy: str = "semantic_similarity",
-    ) -> List[SearchResultData]:
+    ) -> list[SearchResultData]:
         """Legacy async method for backwards compatibility."""
         strategy_enum = ReRankingStrategy.SEMANTIC_SIMILARITY
         try:
             strategy_enum = ReRankingStrategy(strategy)
         except ValueError:
             logger.warning(f"Unknown strategy {strategy}, using semantic_similarity")
-            
+
         return self.rerank(query, results, strategy_enum)

@@ -78,7 +78,7 @@ class EntityExtractor(Protocol):
     """Protocol for extracting entities and relationships from text or documents."""
 
     # Use string forward references for Document and ExtractionResult
-    def extract(self, document: "Document") -> ExtractionResult:
+    def extract(self, document: Document) -> ExtractionResult:
         """Extracts entities and relationships from an entire document object.
 
         Deprecated: Prefer extract_from_text or process documents chunk by chunk.
@@ -374,7 +374,7 @@ class ImageProcessor(Protocol):
         ...
 
 
-@runtime_checkable 
+@runtime_checkable
 class PDFAnalyzer(Protocol):
     """Protocol for PDF analysis with image extraction capabilities."""
 

@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 
@@ -217,7 +217,7 @@ def test_invalid_token_chunk_size():
 
 # Mock DocumentData if needed for tests
 class MockDocumentData:
-    def __init__(self, content: str, metadata: Optional[dict[str, Any]] = None):
+    def __init__(self, content: str, metadata: dict[str, Any] | None = None):
         self.content = content
         self.metadata = metadata or {}
 

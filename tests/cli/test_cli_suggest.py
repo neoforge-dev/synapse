@@ -50,8 +50,9 @@ def test_cli_suggest_http_error_returns_exit_code():
         client.post.return_value = fake_resp
         client_cls.return_value.__enter__.return_value = client
 
-        from graph_rag.cli.commands.suggest import run_suggest
         import typer
+
+        from graph_rag.cli.commands.suggest import run_suggest
 
         try:
             run_suggest(topic="anything", json_out=False)

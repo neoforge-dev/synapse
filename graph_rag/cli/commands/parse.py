@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import typer
 import yaml
@@ -124,12 +124,12 @@ def _parse_front_matter(path: Path) -> dict:
 
 @app.command()
 def parse_command(
-    meta: Optional[list[str]] = typer.Option(
+    meta: list[str] | None = typer.Option(
         None,
         "--meta",
         help="Additional metadata entries key=value or key:=json (repeatable)",
     ),
-    meta_file: Optional[Path] = typer.Option(
+    meta_file: Path | None = typer.Option(
         None, "--meta-file", help="Path to YAML/JSON meta file to merge"
     ),
 ) -> None:

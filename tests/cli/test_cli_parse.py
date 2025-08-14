@@ -1,5 +1,6 @@
-from pathlib import Path
 import json
+from pathlib import Path
+
 from typer.testing import CliRunner
 
 from graph_rag.cli.main import app

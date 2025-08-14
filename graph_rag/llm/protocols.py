@@ -1,5 +1,7 @@
 from collections.abc import AsyncGenerator
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
+
+from .response_models import EnhancedLLMResponse
 
 
 class LLMService(Protocol):
@@ -8,8 +10,8 @@ class LLMService(Protocol):
     async def generate_response(
         self,
         prompt: str,
-        context: Optional[str] = None,
-        history: Optional[list[dict[str, str]]] = None,
+        context: str | None = None,
+        history: list[dict[str, str]] | None = None,
     ) -> str:
         """Generate a response to the given prompt.
 
@@ -26,8 +28,8 @@ class LLMService(Protocol):
     async def generate_response_stream(
         self,
         prompt: str,
-        context: Optional[str] = None,
-        history: Optional[list[dict[str, str]]] = None,
+        context: str | None = None,
+        history: list[dict[str, str]] | None = None,
     ) -> AsyncGenerator[str, None]:
         """Generate a streaming response to the given prompt.
 
@@ -72,5 +74,29 @@ class LLMService(Protocol):
 
         Returns:
             A dictionary containing token usage statistics.
+        """
+        ...
+
+    async def generate_enhanced_response(
+        self,
+        prompt: str,
+        context: str | None = None,
+        history: list[dict[str, str]] | None = None,
+        context_chunks: list[Any] | None = None,
+        query: str | None = None,
+        context_texts: list[str] | None = None,
+    ) -> EnhancedLLMResponse:
+        """Generate an enhanced response with confidence scoring.
+
+        Args:
+            prompt: The input prompt to generate a response for.
+            context: Optional context to consider when generating the response.
+            history: Optional conversation history.
+            context_chunks: Optional chunks used for context (for confidence scoring).
+            query: Optional original query (for confidence scoring).
+            context_texts: Optional context texts (for confidence scoring).
+
+        Returns:
+            EnhancedLLMResponse with confidence metrics and metadata.
         """
         ...

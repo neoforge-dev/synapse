@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -14,7 +14,7 @@ class NotionClient:
     Uses search and database query endpoints to list pages and fetch content.
     """
 
-    def __init__(self, settings: Optional[Settings] = None):
+    def __init__(self, settings: Settings | None = None):
         self.settings = settings or Settings()
         api_key = self.settings.notion_api_key.get_secret_value() if self.settings.notion_api_key else None
         if not api_key:
@@ -42,8 +42,8 @@ class NotionClient:
                     return resp.json()
                 except httpx.HTTPStatusError as e:
                     if e.response is not None and e.response.status_code == 429 and attempt < retries - 1:
-                        import time as _time
                         import random as _rand
+                        import time as _time
                         # Respect client-side QPS and server backoff header if present
                         retry_after = e.response.headers.get("Retry-After") if e.response is not None else None
                         try:
@@ -68,7 +68,7 @@ class NotionClient:
                     except Exception:
                         pass
 
-    def list_pages(self, query: Optional[str] = None, start_cursor: Optional[str] = None, page_size: int = 50) -> dict[str, Any]:
+    def list_pages(self, query: str | None = None, start_cursor: str | None = None, page_size: int = 50) -> dict[str, Any]:
         payload: dict[str, Any] = {"page_size": page_size}
         if query:
             payload["query"] = query
@@ -77,7 +77,7 @@ class NotionClient:
         return self._request("POST", "/search", json=payload)
 
     def query_database(
-        self, database_id: str, start_cursor: Optional[str] = None, page_size: int = 50
+        self, database_id: str, start_cursor: str | None = None, page_size: int = 50
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {"page_size": page_size}
         if start_cursor:

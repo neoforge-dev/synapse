@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 import pymgclient as mgclient  # Memgraph client library
 from graph_rag.core.graph_store import GraphStore
@@ -27,8 +27,8 @@ class MemgraphStore(GraphStore):
         self,
         host: str = DEFAULT_HOST,
         port: int = DEFAULT_PORT,
-        user: Optional[str] = DEFAULT_USER,
-        password: Optional[str] = DEFAULT_PASSWORD,
+        user: str | None = DEFAULT_USER,
+        password: str | None = DEFAULT_PASSWORD,
         use_ssl: bool = DEFAULT_USE_SSL,
         max_retries: int = MAX_RETRIES,
         retry_delay: int = RETRY_DELAY_SECONDS,
@@ -41,7 +41,7 @@ class MemgraphStore(GraphStore):
         self.use_ssl = use_ssl
         self.max_retries = max_retries
         self.retry_delay = retry_delay
-        self._conn: Optional[mgclient.Connection] = None
+        self._conn: mgclient.Connection | None = None
         self._connect()
         logger.info(f"MemgraphStore initialized for {host}:{port}. SSL: {use_ssl}")
 
@@ -100,7 +100,7 @@ class MemgraphStore(GraphStore):
     def _execute_query(
         self,
         query: str,
-        params: Optional[dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
         *,
         read_only: bool = False,
     ) -> list[tuple]:
@@ -176,7 +176,7 @@ class MemgraphStore(GraphStore):
 
     def _relationship_to_relationship(
         self, rel: Any, source_map: dict[int, Entity], target_map: dict[int, Entity]
-    ) -> Optional[Relationship]:
+    ) -> Relationship | None:
         """Converts an mgclient.Relationship to a Relationship object."""
         source_node = source_map.get(rel.start_node.id)
         target_node = target_map.get(rel.end_node.id)
@@ -375,7 +375,7 @@ class MemgraphStore(GraphStore):
 
     # --- Query Methods Implementation ---
 
-    def get_entity_by_id(self, entity_id: str) -> Optional[Entity]:
+    def get_entity_by_id(self, entity_id: str) -> Entity | None:
         """Retrieves a single entity by its unique ID property."""
         cypher = "MATCH (n {id: $id}) RETURN n"
         params = {"id": entity_id}
@@ -405,7 +405,7 @@ class MemgraphStore(GraphStore):
     def get_neighbors(
         self,
         entity_id: str,
-        relationship_types: Optional[list[str]] = None,
+        relationship_types: list[str] | None = None,
         direction: str = "both",
     ) -> tuple[list[Entity], list[Relationship]]:
         """Retrieves direct neighbors using Cypher MATCH."""
@@ -516,7 +516,7 @@ class MemgraphStore(GraphStore):
             raise
 
     def search_entities_by_properties(
-        self, properties: dict[str, Any], limit: Optional[int] = None
+        self, properties: dict[str, Any], limit: int | None = None
     ) -> list[Entity]:
         """Searches for entities matching specific properties using Cypher.
 

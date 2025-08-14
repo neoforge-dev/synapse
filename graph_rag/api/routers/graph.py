@@ -1,8 +1,8 @@
 import logging
-from typing import Annotated, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import PlainTextResponse, HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 
 from graph_rag.api.dependencies import get_graph_repository
 from graph_rag.core.interfaces import GraphRepository
@@ -18,7 +18,7 @@ def create_graph_router() -> APIRouter:
     async def neighbors(
         id: str = Query(..., description="Start node id"),
         depth: int = Query(1, ge=1, le=3, description="Traversal depth (1..3)"),
-        types: Optional[str] = Query(None, description="Comma-separated relationship types"),
+        types: str | None = Query(None, description="Comma-separated relationship types"),
         repo: Annotated[GraphRepository, Depends(get_graph_repository)] = None,
     ) -> dict:
         try:
@@ -79,10 +79,10 @@ def create_graph_router() -> APIRouter:
     @router.get("/export")
     async def export_graph(
         format: str = Query("json", pattern="^(json|graphml)$"),
-        seed: Optional[str] = Query(None, description="Optional seed id to scope export"),
+        seed: str | None = Query(None, description="Optional seed id to scope export"),
         depth: int = Query(1, ge=1, le=3),
-        limit_nodes: Optional[int] = Query(None, ge=1, description="Optional max nodes in export"),
-        limit_edges: Optional[int] = Query(None, ge=1, description="Optional max edges in export"),
+        limit_nodes: int | None = Query(None, ge=1, description="Optional max nodes in export"),
+        limit_edges: int | None = Query(None, ge=1, description="Optional max edges in export"),
         repo: Annotated[GraphRepository, Depends(get_graph_repository)] = None,
     ):
         try:
@@ -144,7 +144,7 @@ def create_graph_router() -> APIRouter:
 
     @router.get("/viz", response_class=HTMLResponse)
     async def graph_visualization(
-        seed: Optional[str] = Query(None, description="Starting node for visualization"),
+        seed: str | None = Query(None, description="Starting node for visualization"),
         depth: int = Query(1, ge=1, le=3, description="Graph traversal depth"),
         repo: Annotated[GraphRepository, Depends(get_graph_repository)] = None,
     ):
@@ -250,10 +250,10 @@ def create_graph_router() -> APIRouter:
 
     @router.get("/viz/data")
     async def graph_visualization_data(
-        seed: Optional[str] = Query(None, description="Starting node"),
+        seed: str | None = Query(None, description="Starting node"),
         depth: int = Query(1, ge=1, le=3, description="Traversal depth"),
-        node_types: Optional[str] = Query(None, description="Comma-separated node types"),
-        edge_types: Optional[str] = Query(None, description="Comma-separated edge types"),
+        node_types: str | None = Query(None, description="Comma-separated node types"),
+        edge_types: str | None = Query(None, description="Comma-separated edge types"),
         repo: Annotated[GraphRepository, Depends(get_graph_repository)] = None,
     ):
         """Graph data endpoint for visualization."""
@@ -263,16 +263,16 @@ def create_graph_router() -> APIRouter:
             else:
                 # Return empty graph for now - in production might want sample data
                 nodes, edges = [], []
-            
+
             # Apply filtering if specified
             if node_types:
                 allowed_node_types = {t.strip() for t in node_types.split(",")}
                 nodes = [n for n in nodes if n.get("type") in allowed_node_types]
-            
+
             if edge_types:
                 allowed_edge_types = {t.strip() for t in edge_types.split(",")}
                 edges = [e for e in edges if e.get("type") in allowed_edge_types]
-            
+
             return {"nodes": nodes, "edges": edges}
         except Exception as e:
             logger.error(f"graph visualization data failed: {e}", exc_info=True)

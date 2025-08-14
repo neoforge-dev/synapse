@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import typer
+
 from graph_rag.cli.commands.store import store_command
 
 

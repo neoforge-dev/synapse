@@ -2,9 +2,6 @@ import json
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from typer.testing import CliRunner
-
-from graph_rag.cli.main import app
 from graph_rag.cli.commands.store import _process_store_lines
 
 

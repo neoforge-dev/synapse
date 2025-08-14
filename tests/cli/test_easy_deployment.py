@@ -1,6 +1,7 @@
 """Test easy deployment commands for onboarding."""
 
 from typer.testing import CliRunner
+
 from graph_rag.cli.main import app
 
 runner = CliRunner()

@@ -1,7 +1,6 @@
 """LLM loader module for dependency injection."""
 
 import logging
-from typing import Optional
 
 # from graph_rag.llm.llm_service import BaseLLM, MockLLMService # OLD import
 from graph_rag.config import get_settings
@@ -26,7 +25,7 @@ MOCK_LLM_PATH = "graph_rag.llm.mock_llm.MockLLMService"
 
 
 def load_llm(
-    llm_type: Optional[str] = None,
+    llm_type: str | None = None,
 ) -> LLMService:  # Return type is the protocol
     """Loads and initializes an LLM service based on configuration."""
     # Use LLM_TYPE setting from config
