@@ -124,6 +124,8 @@ class HybridSearchResult(BaseModel):
     total_keyword_results: int
     execution_time_ms: float
     reranked: bool = False
+    clustered: bool = False
+    cluster_count: Optional[int] = None
     
     @property
     def total_results(self) -> int:
@@ -180,17 +182,19 @@ class QueryExpansionService:
 
 
 class AdvancedSearchService:
-    """Advanced search service with hybrid search, re-ranking, and query expansion."""
+    """Advanced search service with hybrid search, re-ranking, query expansion, and clustering."""
     
     def __init__(
         self, 
         vector_store: VectorStore, 
         graph_repository: GraphRepository,
-        rerank_service: Optional['ReRankingService'] = None
+        rerank_service: Optional['ReRankingService'] = None,
+        clustering_service: Optional['SemanticClusteringService'] = None
     ):
         self.vector_store = vector_store
         self.graph_repository = graph_repository
         self.rerank_service = rerank_service
+        self.clustering_service = clustering_service
         self.query_expansion_service = QueryExpansionService()
     
     async def search(
@@ -200,6 +204,9 @@ class AdvancedSearchService:
         limit: int = 10,
         expand_query: bool = True,
         rerank: bool = True,
+        cluster: bool = False,
+        cluster_strategy: Optional[str] = None,
+        diversify_clusters: bool = True,
         threshold: Optional[float] = None
     ) -> HybridSearchResult:
         """Perform advanced search with the specified strategy."""
@@ -234,6 +241,44 @@ class AdvancedSearchService:
             results = self.rerank_service.rerank(query, results, ReRankingStrategy.SEMANTIC_SIMILARITY)
             reranked = True
         
+        # Cluster results if requested and service is available
+        clustered = False
+        cluster_count = None
+        if cluster and self.clustering_service and len(results) > 3:
+            from graph_rag.services.clustering import ClusteringStrategy
+            
+            # Map string strategy to enum
+            strategy_map = {
+                "similarity_threshold": ClusteringStrategy.SIMILARITY_THRESHOLD,
+                "kmeans": ClusteringStrategy.KMEANS,
+                "topic_based": ClusteringStrategy.TOPIC_BASED,
+                "hierarchical": ClusteringStrategy.HIERARCHICAL
+            }
+            
+            clustering_strategy = strategy_map.get(
+                cluster_strategy, ClusteringStrategy.SIMILARITY_THRESHOLD
+            )
+            
+            # Cluster the results
+            cluster_result = self.clustering_service.cluster_results(
+                results, strategy=clustering_strategy
+            )
+            
+            # Optionally diversify clusters to get representative results
+            if diversify_clusters:
+                cluster_result = self.clustering_service.diversify_clusters(
+                    cluster_result, max_per_cluster=max(1, limit // cluster_result.total_clusters)
+                )
+            
+            # Flatten clusters back to list while preserving cluster information
+            flattened_results = []
+            for cluster in cluster_result.clusters:
+                flattened_results.extend(cluster)
+            
+            results = flattened_results
+            clustered = True
+            cluster_count = cluster_result.total_clusters
+        
         execution_time = (time.time() - start_time) * 1000
         
         return HybridSearchResult(
@@ -243,7 +288,9 @@ class AdvancedSearchService:
             total_vector_results=vector_count,
             total_keyword_results=keyword_count,
             execution_time_ms=execution_time,
-            reranked=reranked
+            reranked=reranked,
+            clustered=clustered,
+            cluster_count=cluster_count
         )
     
     async def hybrid_search(
