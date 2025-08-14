@@ -126,48 +126,6 @@ class MockEmbeddingService(EmbeddingService):
         return self.dimension
 
 
-# Define minimal OpenAILLMService to satisfy import and factory
-class OpenAILLMService(LLMService):
-    """Minimal implementation of OpenAILLMService for dependency resolution."""
-
-    def __init__(self, api_key: str, model_name: str):
-        self.api_key = api_key
-        self.model_name = model_name
-        # Minimal initialization, actual OpenAI client setup would go here
-        logger.info(f"Minimal OpenAILLMService initialized for model {model_name}")
-
-    async def generate_response(self, prompt: str, **kwargs) -> str:
-        logger.warning("OpenAILLMService.generate_response not implemented")
-        # Actual implementation would call OpenAI API
-        return f"Mock OpenAI response for: {prompt}"
-
-    async def generate_response_stream(
-        self, prompt: str, **kwargs
-    ) -> AsyncGenerator[str, None]:
-        logger.warning("OpenAILLMService.generate_response_stream not implemented")
-        yield f"Mock stream part 1 for: {prompt}"
-        await asyncio.sleep(0.1)  # Simulate async behavior
-        yield " Mock stream part 2"
-        # Actual implementation would stream from OpenAI API
-
-    async def extract_entities_relationships(
-        self, text: str, **kwargs
-    ) -> tuple[list[Entity], list[Relationship]]:
-        logger.warning(
-            "OpenAILLMService.extract_entities_relationships not implemented"
-        )
-        # Actual implementation would use OpenAI functions/prompts for extraction
-        return [], []  # Return empty lists
-
-    async def embed_text(self, text: str, **kwargs) -> list[float]:
-        logger.warning("OpenAILLMService.embed_text not implemented")
-        # Actual implementation would call OpenAI embedding endpoint
-        return [0.0] * 1536  # Return dummy embedding vector of expected size
-
-    async def get_token_usage(self) -> dict[str, int]:
-        logger.warning("OpenAILLMService.get_token_usage not implemented")
-        return {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-
 
 # Initialize settings once
 settings = get_settings()
@@ -237,7 +195,10 @@ def create_llm_service(settings: Settings) -> LLMService:  # Added factory funct
     try:
         llm_type = settings.llm_type.lower()
         logger.info(f"Creating LLMService instance of type: {llm_type}")
+        
         if llm_type == "openai":
+            from graph_rag.llm.openai_service import OpenAIService
+            
             api_key = (
                 settings.openai_api_key.get_secret_value()
                 if settings.openai_api_key
@@ -249,10 +210,49 @@ def create_llm_service(settings: Settings) -> LLMService:  # Added factory funct
                     status_code=503,
                     detail="LLM Service (OpenAI) not configured: API key missing.",
                 )
-            # Use OpenAILLMService
-            instance = OpenAILLMService(
-                api_key=api_key, model_name=settings.llm_model_name
+            
+            instance = OpenAIService(
+                api_key=api_key,
+                model=settings.llm_model_name,
+                max_tokens=settings.llm_max_tokens,
+                temperature=settings.llm_temperature,
+                timeout=settings.llm_timeout
             )
+            
+        elif llm_type == "anthropic":
+            from graph_rag.llm.anthropic_service import AnthropicService
+            
+            api_key = (
+                settings.anthropic_api_key.get_secret_value()
+                if settings.anthropic_api_key
+                else None
+            )
+            if not api_key:
+                logger.error("Anthropic API key is not configured.")
+                raise HTTPException(
+                    status_code=503,
+                    detail="LLM Service (Anthropic) not configured: API key missing.",
+                )
+            
+            instance = AnthropicService(
+                api_key=api_key,
+                model=settings.llm_model_name,
+                max_tokens=settings.llm_max_tokens,
+                temperature=settings.llm_temperature,
+                timeout=settings.llm_timeout
+            )
+            
+        elif llm_type == "ollama":
+            from graph_rag.llm.ollama_service import OllamaService
+            
+            instance = OllamaService(
+                base_url=settings.ollama_base_url,
+                model=settings.llm_model_name,
+                timeout=settings.llm_timeout,
+                temperature=settings.llm_temperature,
+                max_tokens=settings.llm_max_tokens if settings.llm_max_tokens > 0 else None
+            )
+            
         elif llm_type == "mock":
             instance = MockLLMService()
         else:
@@ -260,6 +260,7 @@ def create_llm_service(settings: Settings) -> LLMService:  # Added factory funct
                 f"Unsupported llm_type '{settings.llm_type}'. Falling back to MockLLMService."
             )
             instance = MockLLMService()
+            
     except AttributeError:
         logger.warning(
             "LLM_TYPE not found in settings. Falling back to MockLLMService."
@@ -440,12 +441,24 @@ def create_graph_rag_engine(
     settings: Settings,  # Keep settings for potential future use
 ) -> GraphRAGEngine:
     """Creates a SimpleGraphRAGEngine instance."""
+    from graph_rag.services.citation import CitationStyle
+    
+    # Parse citation style from settings
+    citation_style_str = getattr(settings, 'citation_style', 'numeric').lower()
+    citation_style = CitationStyle.NUMERIC  # Default
+    
+    try:
+        citation_style = CitationStyle(citation_style_str)
+    except ValueError:
+        logger.warning(f"Unknown citation style '{citation_style_str}', using numeric")
+    
     logger.debug("Creating SimpleGraphRAGEngine instance")
     return SimpleGraphRAGEngine(
         graph_store=graph_repository,
         vector_store=vector_store,
         entity_extractor=entity_extractor,
         llm_service=llm_service,  # Pass LLM service to engine
+        citation_style=citation_style,
     )
 
 

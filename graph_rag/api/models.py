@@ -95,6 +95,16 @@ class QueryResponse(BaseModel):
         default_factory=dict,
         description="Additional metadata about the query execution.",
     )
+    # Citation-enhanced fields
+    answer_with_citations: Optional[str] = Field(
+        None, description="Answer text enhanced with inline citation markers."
+    )
+    citations: list[dict[str, Any]] = Field(
+        default_factory=list, description="Detailed citation metadata for sources used."
+    )
+    bibliography: dict[str, str] = Field(
+        default_factory=dict, description="Formatted bibliography by citation style."
+    )
 
 
 # --- Ask Models ---

@@ -98,14 +98,43 @@ class Settings(BaseSettings):
     # --- LLM Settings ---
     llm_type: str = Field(
         "mock",
-        description="Type of LLM service to use ('mock', 'openai'). Default: mock",
+        description="Type of LLM service to use ('mock', 'openai', 'anthropic', 'ollama'). Default: mock",
     )
     openai_api_key: Optional[SecretStr] = Field(
         None, description="OpenAI API key for LLM service (if using OpenAI)."
     )
+    anthropic_api_key: Optional[SecretStr] = Field(
+        None, description="Anthropic API key for LLM service (if using Anthropic)."
+    )
+    ollama_base_url: str = Field(
+        "http://localhost:11434",
+        description="Base URL for Ollama server (if using Ollama). Default: http://localhost:11434",
+    )
     llm_model_name: str = Field(
-        "gpt-3.5-turbo",
-        description="Model name for the LLM service. Default: gpt-3.5-turbo",
+        "gpt-4o-mini",
+        description="Model name for the LLM service. Default: gpt-4o-mini",
+    )
+    llm_max_tokens: int = Field(
+        2000,
+        ge=1,
+        description="Maximum tokens for LLM response generation. Default: 2000",
+    )
+    llm_temperature: float = Field(
+        0.3,
+        ge=0.0,
+        le=2.0,
+        description="Temperature for LLM response generation (0.0-2.0). Default: 0.3",
+    )
+    llm_timeout: float = Field(
+        30.0,
+        ge=1.0,
+        description="Timeout in seconds for LLM API calls. Default: 30.0",
+    )
+    
+    # --- Citation Settings ---
+    citation_style: str = Field(
+        "numeric",
+        description="Citation style to use ('numeric', 'apa', 'mla', 'chicago', 'ieee'). Default: numeric",
     )
 
     # --- Notion API Settings ---

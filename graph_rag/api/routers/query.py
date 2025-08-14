@@ -113,6 +113,9 @@ def create_query_router() -> APIRouter:
                 relevant_chunks=api_chunks,
                 graph_context=api_graph_context,
                 metadata=meta_with_citations,
+                answer_with_citations=query_result.answer_with_citations,
+                citations=query_result.citations,
+                bibliography=query_result.bibliography,
             )
 
         except Exception as e:
@@ -187,6 +190,9 @@ def create_query_router() -> APIRouter:
                 relevant_chunks=_to_api_chunks(result),
                 graph_context=_to_api_graph_context(result),
                 metadata=meta_with_citations,
+                answer_with_citations=result.answer_with_citations,
+                citations=result.citations,
+                bibliography=result.bibliography,
             )
         except Exception as e:
             logger.error(

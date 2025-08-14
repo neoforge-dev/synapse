@@ -38,6 +38,7 @@ from graph_rag.services.search import (
 )  # Import SearchResult model too
 from graph_rag.services.rerank import CrossEncoderReranker
 from graph_rag.services.memory import ContextManager
+from graph_rag.services.citation import CitationService, CitationStyle
 
 # from graph_rag.core.prompts import QnAPromptContext # Import QnAPromptContext
 # from graph_rag.core.prompts as prompts # Corrected import alias
@@ -61,6 +62,10 @@ class QueryResult:
         None  # Support both tuple and string formats
     )
     metadata: dict[str, Any] = field(default_factory=dict)
+    # Citation-enhanced fields
+    answer_with_citations: Optional[str] = None
+    citations: list = field(default_factory=list)
+    bibliography: dict = field(default_factory=dict)
 
 
 class SimpleGraphRAGEngine(GraphRAGEngine):
@@ -73,6 +78,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         entity_extractor,
         llm_service: LLMService = None,
         context_manager: ContextManager = None,
+        citation_style: CitationStyle = CitationStyle.NUMERIC,
     ):
         """Requires GraphRepository, VectorStore, EntityExtractor, and optionally LLMService."""
         if not isinstance(graph_store, GraphRepository):
@@ -90,8 +96,9 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         self._entity_extractor = entity_extractor  # Store the extractor
         self._reranker = CrossEncoderReranker()
         self._context_manager = context_manager
+        self._citation_service = CitationService(citation_style)
         logger.info(
-            f"SimpleGraphRAGEngine initialized with GraphRepository: {type(graph_store).__name__}, VectorStore: {type(vector_store).__name__}, EntityExtractor: {type(entity_extractor).__name__}, LLMService: {type(self._llm_service).__name__}"
+            f"SimpleGraphRAGEngine initialized with GraphRepository: {type(graph_store).__name__}, VectorStore: {type(vector_store).__name__}, EntityExtractor: {type(entity_extractor).__name__}, LLMService: {type(self._llm_service).__name__}, CitationStyle: {citation_style.value}"
         )
 
     async def _extract_entities_from_chunks(
@@ -765,6 +772,12 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                 logger.error(f"Unexpected LLM response type: {type(llm_response)}")
                 answer_text = "Error: Could not process response from language model."
             logger.info("Received synthesized answer from LLM.")
+            
+            # Store context for citation processing
+            self._last_answer = answer_text
+            self._last_chunks = [c.chunk for c in retrieved_chunks_data if c.chunk] if retrieved_chunks_data else []
+            self._last_context_texts = relevant_chunk_texts
+            
             return answer_text
         except Exception as llm_err:
             logger.error(
@@ -925,11 +938,33 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                             exc_info=True,
                         )
 
-        # 4. Construct and return QueryResult
+        # 4. Process citations if answer generation was successful
+        answer_with_citations = answer_text
+        citations = []
+        bibliography = {}
+        
+        if not error_info and final_relevant_chunks and hasattr(self, '_last_answer'):
+            try:
+                citation_result = self._citation_service.enhance_answer_with_citations(
+                    answer_text, 
+                    final_relevant_chunks,
+                    getattr(self, '_last_context_texts', None)
+                )
+                answer_with_citations = citation_result.answer_with_citations
+                citations = [c.to_dict() for c in citation_result.citations]
+                bibliography = citation_result.bibliography
+                
+                logger.info(f"Enhanced answer with {citation_result.sources_cited}/{citation_result.total_sources} citations")
+            except Exception as citation_err:
+                logger.error(f"Error processing citations: {citation_err}", exc_info=True)
+                # Continue with original answer if citation processing fails
+
+        # 5. Construct and return QueryResult
         final_metadata = {
             "query": query_text,
             "config": config,
             "engine_type": self.__class__.__name__,
+            "citations": citations,  # Add citations to metadata for backward compatibility
         }
         if error_info:
             final_metadata["error"] = error_info
@@ -942,6 +977,9 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
             relevant_chunks=final_relevant_chunks,
             graph_context=graph_context_tuple,
             metadata=final_metadata,
+            answer_with_citations=answer_with_citations,
+            citations=citations,
+            bibliography=bibliography,
         )
 
     async def reason(
