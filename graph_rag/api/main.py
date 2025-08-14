@@ -16,6 +16,7 @@ from graph_rag.api.dependencies import (
 from graph_rag.api.routers import documents, ingestion, query, search
 from graph_rag.api.routers.admin import create_admin_router
 from graph_rag.api.routers.graph import create_graph_router
+from graph_rag.api.routers.reasoning import create_reasoning_router
 
 # Local application imports
 from graph_rag.config import get_settings
@@ -590,6 +591,7 @@ def create_app() -> FastAPI:
     query_router = query.create_query_router()
     graph_router = create_graph_router()
     admin_router = create_admin_router()
+    reasoning_router = create_reasoning_router()
 
     # Routers - Prefixes are defined within the factory's router
     api_router.include_router(documents_router, prefix="/documents", tags=["Documents"])
@@ -599,7 +601,8 @@ def create_app() -> FastAPI:
         query_router, prefix="/query", tags=["Query"]
     )  # Assuming query router needs prefix too
     api_router.include_router(graph_router, prefix="/graph", tags=["Graph"]) 
-    api_router.include_router(admin_router, prefix="/admin", tags=["Admin"]) 
+    api_router.include_router(admin_router, prefix="/admin", tags=["Admin"])
+    api_router.include_router(reasoning_router, prefix="/reasoning", tags=["Reasoning"]) 
 
     app.include_router(api_router)  # Remove prefix="/api/v1" here
 
