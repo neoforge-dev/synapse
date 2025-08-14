@@ -20,6 +20,17 @@ from graph_rag.api.routers.reasoning import create_reasoning_router
 
 # Local application imports
 from graph_rag.config import get_settings
+from graph_rag.api.errors import (
+    GraphRAGError,
+    general_exception_handler,
+    graph_rag_exception_handler,
+    http_exception_handler,
+)
+from graph_rag.api.middleware import (
+    RequestLoggingMiddleware,
+    SecurityHeadersMiddleware,
+    RateLimitMiddleware,
+)
 from graph_rag.api.metrics import (
     init_metrics as _init_business_metrics,
 )
@@ -566,7 +577,27 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Add CORS middleware
+    # Add middleware (order matters - last added is executed first)
+    settings = get_settings()
+    
+    # Security headers (outermost)
+    app.add_middleware(SecurityHeadersMiddleware)
+    
+    # Rate limiting (if enabled)
+    if getattr(settings, 'enable_rate_limiting', True):
+        app.add_middleware(
+            RateLimitMiddleware,
+            requests_per_minute=getattr(settings, 'rate_limit_per_minute', 60),
+            requests_per_hour=getattr(settings, 'rate_limit_per_hour', 1000)
+        )
+    
+    # Request logging and metrics
+    app.add_middleware(
+        RequestLoggingMiddleware,
+        enable_metrics=getattr(settings, 'enable_metrics', True)
+    )
+    
+    # CORS (closest to app)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -649,74 +680,53 @@ def create_app() -> FastAPI:
         # Use Depends with the state-aware getters
         graph_rag_engine: GraphRAGEngine = Depends(get_graph_rag_engine),
     ):
-        """Performs a health check on the application and its core dependencies."""
+        """Basic health check - returns healthy if core services are initialized."""
+        from graph_rag.api.health import HealthStatus
+        
         # Basic check: If the dependency injection worked, the engine is available.
-        # More specific checks can be added here (e.g., check DB connection status)
-        checked_dependencies = []
-        if graph_rag_engine:  # Check if injection succeeded
-            checked_dependencies.append("graph_rag_engine")
-        # Add checks for other critical dependencies if needed
-        # e.g., try: await graph_repo.ping(); checked_dependencies.append("graph_db") except:
-        # ... handle failure to ping
-
-        # If the dependency injection itself failed, the HTTPException(503) would be raised
-        # by the `get_graph_rag_engine` function.
-        return {"status": "ok", "dependencies": checked_dependencies}
-
-    # --- Middleware ---
-    @app.middleware("http")
-    async def add_request_id(request: Request, call_next):
-        """Adds a unique request ID to each incoming request for tracing."""
-        request_id = str(uuid.uuid4())
-        # You might want to store the request_id in request.state for access in endpoints
-        request.state.request_id = request_id
-        start_time = time.time()
-
-        # Log request start
-        logger.info(f"rid={request_id} path={request.url.path} method={request.method}")
-
-        import time as _t
-        _q_start = _t.time()
-        response = await call_next(request)
-        _q_dur = _t.time() - _q_start
-
-        process_time = time.time() - start_time
-        response.headers["X-Request-ID"] = request_id
-        response.headers["X-Process-Time"] = str(process_time)
-        logger.info(
-            f"rid={request_id} path={request.url.path} method={request.method} status={response.status_code} duration={process_time:.4f}s"
-        )
-        # Record metrics
         try:
-            if settings.enable_metrics and REQUEST_COUNT and REQUEST_LATENCY:
-                REQUEST_COUNT.labels(
-                    request.method, request.url.path, str(response.status_code)
-                ).inc()
-                REQUEST_LATENCY.labels(request.url.path).set(process_time)
-                # Business metrics by path (best-effort)
-                try:
-                    from graph_rag.api.metrics import (
-                        inc_ask_total,
-                        inc_ingest_total,
-                        observe_query_latency,
-                    )
+            checked_dependencies = []
+            if graph_rag_engine:  # Check if injection succeeded
+                checked_dependencies.append("graph_rag_engine")
+                
+            # Check if services are using mocks (degraded health)
+            is_degraded = False
+            degraded_services = []
+            
+            if hasattr(request.app.state, 'graph_repository'):
+                repo = request.app.state.graph_repository
+                if "Mock" in repo.__class__.__name__:
+                    is_degraded = True
+                    degraded_services.append("graph_repository")
+                    
+            if hasattr(request.app.state, 'vector_store'):
+                vs = request.app.state.vector_store
+                if "Mock" in vs.__class__.__name__:
+                    is_degraded = True
+                    degraded_services.append("vector_store")
+                    
+            status_value = HealthStatus.DEGRADED if is_degraded else HealthStatus.HEALTHY
+            
+            result = {
+                "status": status_value,
+                "dependencies": checked_dependencies,
+                "timestamp": time.time()
+            }
+            
+            if is_degraded:
+                result["message"] = f"System running with mock services: {', '.join(degraded_services)}"
+                result["degraded_services"] = degraded_services
+                
+            return result
+            
+        except Exception as e:
+            logger.error(f"Health check failed: {e}", exc_info=True)
+            return {
+                "status": HealthStatus.UNHEALTHY,
+                "message": f"Health check failed: {str(e)}",
+                "timestamp": time.time()
+            }
 
-                    path = request.url.path
-                    if path.endswith("/api/v1/query/ask") or path.endswith(
-                        "/api/v1/query/ask/stream"
-                    ):
-                        inc_ask_total()
-                        observe_query_latency(_q_dur)
-                    if (
-                        path.endswith("/api/v1/ingestion/documents")
-                        and response.status_code == 202
-                    ):
-                        inc_ingest_total()
-                except Exception:
-                    pass
-        except Exception:
-            pass
-        return response
 
     @app.get("/ready", tags=["Status"], status_code=status.HTTP_200_OK)
     async def readiness(request: Request):
@@ -769,29 +779,10 @@ def create_app() -> FastAPI:
         except Exception:
             return JSONResponse(status_code=503, content={"status": "not ready"})
 
-    @app.exception_handler(Exception)
-    async def generic_exception_handler(request: Request, exc: Exception):
-        request_id = getattr(request.state, "request_id", "N/A")
-        logger.exception(f"rid={request_id} Unhandled exception: {exc}", exc_info=True)
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={
-                "detail": f"Internal server error: {exc}",
-                "request_id": request_id,
-            },
-        )
-
-    @app.exception_handler(HTTPException)
-    async def http_exception_handler(request: Request, exc: HTTPException):
-        request_id = getattr(request.state, "request_id", "N/A")
-        logger.warning(
-            f"rid={request_id} HTTP exception for {request.url}: {exc.status_code} - {exc.detail}"
-        )
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={"detail": exc.detail, "request_id": request_id},
-            headers=exc.headers,
-        )
+    # Register standardized error handlers
+    app.add_exception_handler(GraphRAGError, graph_rag_exception_handler)
+    app.add_exception_handler(HTTPException, http_exception_handler)
+    app.add_exception_handler(Exception, general_exception_handler)
 
     return app
 
