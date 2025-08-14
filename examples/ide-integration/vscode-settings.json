@@ -1,0 +1,11 @@
+{
+  "mcp.servers": {
+    "synapse-graph-rag": {
+      "command": "synapse",
+      "args": ["mcp", "start", "--transport", "stdio"],
+      "env": {
+        "SYNAPSE_API_BASE_URL": "http://localhost:8000"
+      }
+    }
+  }
+}

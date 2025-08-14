@@ -115,6 +115,54 @@ QUERY_ANSWER_SCHEMA = {
     "required": ["question"]
 }
 
+LIST_DOCUMENTS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "limit": {
+            "type": "integer",
+            "description": "Maximum number of documents to return",
+            "default": 20,
+            "minimum": 1,
+            "maximum": 100
+        },
+        "offset": {
+            "type": "integer",
+            "description": "Number of documents to skip",
+            "default": 0,
+            "minimum": 0
+        }
+    }
+}
+
+GET_DOCUMENT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "document_id": {
+            "type": "string",
+            "description": "ID of the document to retrieve",
+            "minLength": 1
+        }
+    },
+    "required": ["document_id"]
+}
+
+DELETE_DOCUMENT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "document_id": {
+            "type": "string", 
+            "description": "ID of the document to delete",
+            "minLength": 1
+        }
+    },
+    "required": ["document_id"]
+}
+
+SYSTEM_STATUS_SCHEMA = {
+    "type": "object",
+    "properties": {}
+}
+
 
 @dataclass
 class McpTool:
@@ -414,6 +462,151 @@ def _query_answer(question: str, k: int = 5, include_graph: bool = False, stream
         raise McpError(f"Unexpected error during query: {e}")
 
 
+def _list_documents(limit: int = 20, offset: int = 0) -> Dict[str, Any]:
+    """List documents in the knowledge base with pagination."""
+    logger.info(f"Listing documents: limit={limit}, offset={offset}")
+    
+    url = f"{API_V1}/documents/"
+    params = {"limit": limit, "offset": offset}
+    
+    try:
+        with _client() as client:
+            response = client.get(url, params=params)
+            response.raise_for_status()
+            
+            result = response.json()
+            logger.info(f"Found {len(result.get('documents', []))} documents")
+            return result
+    
+    except httpx.HTTPStatusError as e:
+        error_msg = f"List documents failed with HTTP {e.response.status_code}: {e.response.text[:200]}"
+        raise ConnectionError(error_msg, e.response.status_code)
+    except httpx.ConnectError:
+        raise ConnectionError(f"Cannot connect to Synapse API at {API_V1}. Is the server running?")
+    except Exception as e:
+        raise McpError(f"Unexpected error listing documents: {e}")
+
+
+def _get_document(document_id: str) -> Dict[str, Any]:
+    """Get a specific document by ID."""
+    logger.info(f"Getting document: {document_id}")
+    
+    url = f"{API_V1}/documents/{document_id}"
+    
+    try:
+        with _client() as client:
+            response = client.get(url)
+            response.raise_for_status()
+            
+            result = response.json()
+            logger.info(f"Retrieved document: {document_id}")
+            return result
+    
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            raise McpError(f"Document not found: {document_id}", "DOCUMENT_NOT_FOUND")
+        error_msg = f"Get document failed with HTTP {e.response.status_code}: {e.response.text[:200]}"
+        raise ConnectionError(error_msg, e.response.status_code)
+    except httpx.ConnectError:
+        raise ConnectionError(f"Cannot connect to Synapse API at {API_V1}. Is the server running?")
+    except Exception as e:
+        raise McpError(f"Unexpected error getting document: {e}")
+
+
+def _delete_document(document_id: str) -> Dict[str, Any]:
+    """Delete a document from the knowledge base."""
+    logger.info(f"Deleting document: {document_id}")
+    
+    url = f"{API_V1}/documents/{document_id}"
+    
+    try:
+        with _client() as client:
+            response = client.delete(url)
+            response.raise_for_status()
+            
+            result = response.json() if response.content else {"deleted": True, "document_id": document_id}
+            logger.info(f"Deleted document: {document_id}")
+            return result
+    
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            raise McpError(f"Document not found: {document_id}", "DOCUMENT_NOT_FOUND")
+        error_msg = f"Delete document failed with HTTP {e.response.status_code}: {e.response.text[:200]}"
+        raise ConnectionError(error_msg, e.response.status_code)
+    except httpx.ConnectError:
+        raise ConnectionError(f"Cannot connect to Synapse API at {API_V1}. Is the server running?")
+    except Exception as e:
+        raise McpError(f"Unexpected error deleting document: {e}")
+
+
+def _system_status() -> Dict[str, Any]:
+    """Get comprehensive system status and health information."""
+    logger.info("Getting system status")
+    
+    try:
+        with _client() as client:
+            # Get basic health
+            health_url = f"{DEFAULT_BASE}/health"
+            health_response = client.get(health_url)
+            health_response.raise_for_status()
+            health_data = health_response.json()
+            
+            # Try to get detailed health if available
+            detailed_health = {}
+            try:
+                detailed_url = f"{API_V1}/admin/health/detailed"
+                detailed_response = client.get(detailed_url, timeout=15.0)
+                if detailed_response.status_code == 200:
+                    detailed_health = detailed_response.json()
+            except Exception:
+                pass  # Detailed health is optional
+            
+            # Try to get performance stats
+            performance_stats = {}
+            try:
+                perf_url = f"{API_V1}/admin/performance/stats"
+                perf_response = client.get(perf_url)
+                if perf_response.status_code == 200:
+                    performance_stats = perf_response.json()
+            except Exception:
+                pass  # Performance stats are optional
+            
+            # Try to get cache stats
+            cache_stats = {}
+            try:
+                cache_url = f"{API_V1}/admin/cache/stats"
+                cache_response = client.get(cache_url)
+                if cache_response.status_code == 200:
+                    cache_stats = cache_response.json()
+            except Exception:
+                pass  # Cache stats are optional
+            
+            status = {
+                "health": health_data,
+                "api_base_url": DEFAULT_BASE,
+                "api_v1_url": API_V1,
+                "mcp_server": "connected"
+            }
+            
+            if detailed_health:
+                status["detailed_health"] = detailed_health
+            if performance_stats:
+                status["performance"] = performance_stats
+            if cache_stats:
+                status["cache"] = cache_stats
+            
+            logger.info("Retrieved comprehensive system status")
+            return status
+    
+    except httpx.HTTPStatusError as e:
+        error_msg = f"System status failed with HTTP {e.response.status_code}: {e.response.text[:200]}"
+        raise ConnectionError(error_msg, e.response.status_code)
+    except httpx.ConnectError:
+        raise ConnectionError(f"Cannot connect to Synapse API at {DEFAULT_BASE}. Is the server running?")
+    except Exception as e:
+        raise McpError(f"Unexpected error getting system status: {e}")
+
+
 def _wrap_handler(handler: Callable, schema: Dict[str, Any]) -> Callable:
     """Wrap a handler function with input validation and error handling."""
     
@@ -499,6 +692,30 @@ def make_tools() -> List[McpTool]:
             description="Ask questions and get synthesized answers with source citations. Combines retrieval with language model generation for comprehensive responses.",
             handler=_wrap_handler(_query_answer, QUERY_ANSWER_SCHEMA),
             input_schema=QUERY_ANSWER_SCHEMA
+        ),
+        McpTool(
+            name="list_documents",
+            description="List all documents in the knowledge base with pagination support. Useful for exploring the document collection.",
+            handler=_wrap_handler(_list_documents, LIST_DOCUMENTS_SCHEMA),
+            input_schema=LIST_DOCUMENTS_SCHEMA
+        ),
+        McpTool(
+            name="get_document",
+            description="Retrieve a specific document by its ID. Returns the full document content and metadata.",
+            handler=_wrap_handler(_get_document, GET_DOCUMENT_SCHEMA),
+            input_schema=GET_DOCUMENT_SCHEMA
+        ),
+        McpTool(
+            name="delete_document",
+            description="Delete a document from the knowledge base. This will remove the document and all its associated chunks and embeddings.",
+            handler=_wrap_handler(_delete_document, DELETE_DOCUMENT_SCHEMA),
+            input_schema=DELETE_DOCUMENT_SCHEMA
+        ),
+        McpTool(
+            name="system_status",
+            description="Get comprehensive system status including health, performance metrics, and cache statistics. Useful for monitoring system health.",
+            handler=_wrap_handler(_system_status, SYSTEM_STATUS_SCHEMA),
+            input_schema=SYSTEM_STATUS_SCHEMA
         ),
     ]
 
