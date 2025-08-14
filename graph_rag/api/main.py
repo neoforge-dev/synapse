@@ -127,9 +127,20 @@ async def lifespan(app: FastAPI):
     logger.info("LIFESPAN: Initializing Graph Repository...")
     if not hasattr(app.state, "graph_repository") or app.state.graph_repository is None:
         try:
-            app.state.graph_repository = MemgraphGraphRepository(
-                settings_obj=current_settings
-            )
+            # Handle both real and mock MemgraphGraphRepository classes
+            try:
+                app.state.graph_repository = MemgraphGraphRepository(
+                    settings_obj=current_settings
+                )
+            except TypeError as te:
+                if "takes no arguments" in str(te):
+                    # Fallback to mock class (no arguments)
+                    logger.warning(
+                        "LIFESPAN: MemgraphGraphRepository appears to be mock class, initializing without arguments"
+                    )
+                    app.state.graph_repository = MemgraphGraphRepository()
+                else:
+                    raise
             # Optional: Add a check method to repository if needed
             # await app.state.graph_repository.check_connection()
             logger.info(
