@@ -1,10 +1,44 @@
 # Synapse MCP
 
-Graph-augmented retrieval for your personal knowledge base (Notion/Obsidian) with a modern CLI, FastAPI backend, and upcoming MCP integration.
+**Ask intelligent questions about your personal knowledge base** - Graph-augmented retrieval for Notion/Obsidian with AI-powered answers.
 
-### Quickstart (macOS)
+## 🚀 Quick Start (2 minutes to AI answers!)
 
-Prereqs: Docker Desktop, Python 3.10+, `uv` package manager.
+### Option 1: Full Power (Graph + Vector)
+**Prereqs**: Docker Desktop, Python 3.10+
+
+```bash
+# Install
+pip install synapse-graph-rag
+
+# Start services (auto-detects Docker, starts containers)
+synapse up
+
+# Ingest your notes and ask questions!
+synapse ingest ~/Notes --embeddings
+synapse query ask "What are the main themes in my notes?"
+```
+
+### Option 2: Vector-Only Mode (No Docker required)
+**Perfect for trying out the system without Docker/Memgraph**
+
+```bash
+# Install
+pip install synapse-graph-rag
+
+# Start in vector-only mode
+SYNAPSE_DISABLE_GRAPH=true synapse ingest ~/Notes --embeddings
+SYNAPSE_DISABLE_GRAPH=true synapse query ask "What did I write about AI?"
+```
+
+---
+
+## 📚 Detailed Setup
+
+### Prerequisites
+- Python 3.10+ (3.12 recommended)
+- Docker Desktop (optional - only for full graph features)
+- `uv` package manager (recommended) or `pip`
 
 ```bash
 # 1) Install dev deps

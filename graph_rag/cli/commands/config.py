@@ -31,7 +31,7 @@ def init(
     path: Optional[Path] = typer.Option(None, "--path", help="Path to write configuration files"),
     force: bool = typer.Option(False, "--force", help="Overwrite if exists"),
     interactive: bool = typer.Option(True, "--interactive/--no-interactive", help="Interactive configuration wizard"),
-    setup_type: str = typer.Option("development", "--type", help="Setup type: development, production, mcp-only"),
+    setup_type: str = typer.Option("development", "--type", help="Setup type: development, production, mcp-only, vector-only"),
 ) -> None:
     """Initialize Synapse GraphRAG configuration with interactive setup wizard."""
     
@@ -56,6 +56,11 @@ def init(
     if interactive:
         console.print("[bold]Setup Configuration[/bold]\n")
         
+        # Quick setup choice
+        if Confirm.ask("Use Vector-Only Mode? (No Docker/Memgraph required)", default=False):
+            setup_type = "vector-only"
+            console.print("[green]✅ Vector-only mode selected - no graph database required![/green]\n")
+        
         # API Configuration
         console.print("[bold cyan]API Server Configuration[/bold cyan]")
         config["SYNAPSE_API_HOST"] = Prompt.ask("API Host", default="0.0.0.0")
@@ -66,15 +71,18 @@ def init(
             default="INFO"
         )
         
-        # Memgraph Configuration
-        console.print("\n[bold cyan]Memgraph Database Configuration[/bold cyan]")
-        config["SYNAPSE_MEMGRAPH_HOST"] = Prompt.ask("Memgraph Host", default="127.0.0.1")
-        config["SYNAPSE_MEMGRAPH_PORT"] = Prompt.ask("Memgraph Port", default="7687")
-        config["SYNAPSE_MEMGRAPH_USE_SSL"] = "true" if Confirm.ask("Use SSL for Memgraph?", default=False) else "false"
-        
-        if Confirm.ask("Configure Memgraph authentication?", default=False):
-            config["SYNAPSE_MEMGRAPH_USERNAME"] = Prompt.ask("Username")
-            config["SYNAPSE_MEMGRAPH_PASSWORD"] = Prompt.ask("Password", password=True)
+        # Graph/Memgraph Configuration (skip if vector-only)
+        if setup_type != "vector-only":
+            console.print("\n[bold cyan]Memgraph Database Configuration[/bold cyan]")
+            config["SYNAPSE_MEMGRAPH_HOST"] = Prompt.ask("Memgraph Host", default="127.0.0.1")
+            config["SYNAPSE_MEMGRAPH_PORT"] = Prompt.ask("Memgraph Port", default="7687")
+            config["SYNAPSE_MEMGRAPH_USE_SSL"] = "true" if Confirm.ask("Use SSL for Memgraph?", default=False) else "false"
+            
+            if Confirm.ask("Configure Memgraph authentication?", default=False):
+                config["SYNAPSE_MEMGRAPH_USERNAME"] = Prompt.ask("Username")
+                config["SYNAPSE_MEMGRAPH_PASSWORD"] = Prompt.ask("Password", password=True)
+        else:
+            config["SYNAPSE_DISABLE_GRAPH"] = "true"
         
         # Vector Store Configuration
         console.print("\n[bold cyan]Vector Store Configuration[/bold cyan]")
@@ -139,6 +147,16 @@ def init(
                 "SYNAPSE_API_BASE_URL": "http://localhost:8000",
                 "SYNAPSE_MCP_HOST": "127.0.0.1",
                 "SYNAPSE_MCP_PORT": "8765",
+            })
+        elif setup_type == "vector-only":
+            config.update({
+                "SYNAPSE_API_HOST": "0.0.0.0",
+                "SYNAPSE_API_PORT": "8000",
+                "SYNAPSE_API_LOG_LEVEL": "INFO",
+                "SYNAPSE_DISABLE_GRAPH": "true",
+                "SYNAPSE_VECTOR_STORE_TYPE": "simple",
+                "SYNAPSE_EMBEDDING_PROVIDER": "sentence-transformers",
+                "SYNAPSE_VECTOR_STORE_EMBEDDING_MODEL": "all-MiniLM-L6-v2",
             })
         else:  # development
             config.update({

@@ -31,6 +31,7 @@ from graph_rag.core.interfaces import (
     EmbeddingService,
     EntityExtractor,
     GraphRAGEngine,
+    GraphRepository,
     VectorStore,
 )
 from graph_rag.core.knowledge_graph_builder import (
@@ -57,9 +58,13 @@ from graph_rag.infrastructure.document_processor.simple_processor import (
 # Concrete Implementations (adjust paths as needed)
 try:
     from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+    _MEMGRAPH_AVAILABLE = True
 except Exception:  # pragma: no cover - allow CI without mgclient
     class MemgraphGraphRepository:  # type: ignore
         ...
+    _MEMGRAPH_AVAILABLE = False
+
+from graph_rag.infrastructure.graph_stores.mock_graph_store import MockGraphRepository
 
 # from graph_rag.infrastructure.graph_stores.neo4j_store import Neo4jGraphRepository # Remove this line
 from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
@@ -200,18 +205,31 @@ def get_cache_service(settings: Settings = Depends(get_settings)) -> CacheServic
     return _singletons["cache_service"]
 
 
-def create_graph_repository(settings: Settings) -> MemgraphGraphRepository:
-    """Provides a MemgraphGraphRepository instance. Expects resolved settings."""
-    logger.debug(
-        f"Creating MemgraphGraphRepository instance for {settings.memgraph_host}:{settings.memgraph_port}"
-    )
-    # Ensure MemgraphConnectionConfig is imported if used directly here
-    # from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphConnectionConfig
-    # config = MemgraphConnectionConfig(settings) # No longer need to create config here
-    repo = MemgraphGraphRepository(
-        settings_obj=settings  # Pass the settings object directly
-    )
-    return repo
+def create_graph_repository(settings: Settings) -> GraphRepository:
+    """Provides a GraphRepository instance with graceful fallbacks. Expects resolved settings."""
+    # Check if graph functionality is disabled
+    if getattr(settings, 'disable_graph', False):
+        logger.info("Graph functionality disabled via settings, using MockGraphRepository")
+        return MockGraphRepository()
+    
+    # Try to create Memgraph repository if available
+    if _MEMGRAPH_AVAILABLE:
+        try:
+            logger.debug(
+                f"Creating MemgraphGraphRepository instance for {settings.memgraph_host}:{settings.memgraph_port}"
+            )
+            repo = MemgraphGraphRepository(settings_obj=settings)
+            return repo
+        except Exception as e:
+            logger.warning(
+                f"Failed to create MemgraphGraphRepository ({e}), falling back to MockGraphRepository"
+            )
+    else:
+        logger.warning("Memgraph not available, using MockGraphRepository fallback")
+    
+    # Fallback to mock repository
+    logger.info("Using MockGraphRepository - graph features will be limited")
+    return MockGraphRepository()
 
 
 def create_llm_service(settings: Settings) -> LLMService:  # Added factory function
@@ -397,7 +415,7 @@ def get_vector_store_dependency(settings: Settings) -> any:
 
 # Factory function for KnowledgeGraphBuilder
 def create_knowledge_graph_builder(
-    graph_repo: MemgraphGraphRepository, entity_extractor: EntityExtractor
+    graph_repo: GraphRepository, entity_extractor: EntityExtractor
 ) -> SimpleKnowledgeGraphBuilder:
     logger.debug("Creating SimpleKnowledgeGraphBuilder instance")
     # Ensure we have the correct class name SimpleKnowledgeGraphBuilder
@@ -407,7 +425,7 @@ def create_knowledge_graph_builder(
 
 
 def create_search_service(
-    graph_repo: MemgraphGraphRepository, vector_store: VectorStore
+    graph_repo: GraphRepository, vector_store: VectorStore
 ) -> SearchService:
     logger.debug("Creating SearchService instance")
     return SearchService(graph_repo=graph_repo, vector_store=vector_store)
@@ -415,7 +433,7 @@ def create_search_service(
 
 # Modified to create SimpleGraphRAGEngine
 def create_graph_rag_engine(
-    graph_repository: MemgraphGraphRepository,
+    graph_repository: GraphRepository,
     vector_store: VectorStore,
     entity_extractor: EntityExtractor,
     llm_service: LLMService,  # Added LLM service dependency
@@ -434,7 +452,7 @@ def create_graph_rag_engine(
 def create_ingestion_service(
     document_processor: DocumentProcessor,
     entity_extractor: EntityExtractor,
-    graph_repo: MemgraphGraphRepository,
+    graph_repo: GraphRepository,
     embedding_service: EmbeddingService,
     vector_store: VectorStore,  # Added vector_store argument
 ) -> IngestionService:
@@ -473,7 +491,7 @@ async def get_settings_dep() -> Settings:
 
 async def get_graph_repository(
     settings: Settings = Depends(get_settings_dep),
-) -> MemgraphGraphRepository:
+) -> GraphRepository:
     """Dependency getter for GraphRepository, using singleton pattern."""
     if "graph_repository" not in _singletons:
         _singletons["graph_repository"] = create_graph_repository(settings=settings)
@@ -536,7 +554,7 @@ async def get_llm(
 
 # Added getter for SimpleGraphRAGEngine
 async def get_graph_rag_engine(
-    graph_repo: MemgraphGraphRepository = Depends(get_graph_repository),
+    graph_repo: GraphRepository = Depends(get_graph_repository),
     vector_store: VectorStore = Depends(get_vector_store),
     entity_extractor: EntityExtractor = Depends(get_entity_extractor),
     llm_service: LLMService = Depends(get_llm),  # Add LLM dependency
@@ -557,7 +575,7 @@ async def get_graph_rag_engine(
 
 # Add the missing getter for KnowledgeGraphBuilder
 async def get_knowledge_graph_builder(
-    graph_repo: MemgraphGraphRepository = Depends(get_graph_repository),
+    graph_repo: GraphRepository = Depends(get_graph_repository),
     entity_extractor: EntityExtractor = Depends(get_entity_extractor),
 ) -> SimpleKnowledgeGraphBuilder:
     """Dependency getter for KnowledgeGraphBuilder."""
@@ -590,7 +608,7 @@ async def get_ingestion_service(
 
 # Optional: Add getter for SearchService if needed by API endpoints
 async def get_search_service(
-    graph_repo: MemgraphGraphRepository = Depends(get_graph_repository),
+    graph_repo: GraphRepository = Depends(get_graph_repository),
     vector_store: VectorStore = Depends(get_vector_store),
 ) -> SearchService:
     """Dependency getter for SearchService."""
@@ -621,8 +639,8 @@ async def get_search_service(
 async def close_graph_repository():
     if "graph_repository" in _singletons:
         repo = _singletons["graph_repository"]
-        if isinstance(repo, MemgraphGraphRepository):
-            logger.info("Closing Memgraph connection.")
+        if hasattr(repo, 'close'):
+            logger.info("Closing graph repository connection.")
             await repo.close()  # Assuming close is async
         del _singletons["graph_repository"]  # Remove from singletons
 

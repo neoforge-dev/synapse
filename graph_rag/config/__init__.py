@@ -33,7 +33,10 @@ class Settings(BaseSettings):
     )
     # Example: api_key: Optional[SecretStr] = Field(None, description="Optional API key for securing endpoints.")
 
-    # --- Memgraph Settings ---
+    # --- Graph Database Settings ---
+    disable_graph: bool = Field(
+        False, description="Disable graph functionality and use vector-only mode. Default: False"
+    )
     memgraph_host: str = Field(
         "127.0.0.1", description="Hostname or IP address of the Memgraph instance."
     )
