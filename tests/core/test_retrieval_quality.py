@@ -1,3 +1,5 @@
+import time
+
 import pytest
 
 from graph_rag.core.graph_rag_engine import SimpleGraphRAGEngine
