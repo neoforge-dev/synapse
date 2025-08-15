@@ -59,7 +59,7 @@ class AnthropicService(LLMService):
                 )
             except ImportError:
                 raise ImportError(
-                    "Anthropic package not installed. Install with: pip install anthropic"
+                    "Anthropic package not installed. Install with: uv pip install anthropic"
                 )
         return self._client
 

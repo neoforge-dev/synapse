@@ -40,6 +40,8 @@ dependencies = [
   "scikit-learn>=1.2",
   "neo4j>=5",
   "aiohttp>=3.12.15",
+  "psutil>=5.9",
+  "tenacity>=8.2",
 ]
 keywords = ["rag", "graph", "memgraph", "faiss", "notion", "mcp", "retrieval", "ai", "nlp", "vscode", "claude", "ide"]
 
@@ -70,6 +72,7 @@ dev = [
     "build>=1.0",
     "twine>=4.0",
     "nltk>=3.8",
+    "spacy>=3.7",
 ]
 
 # Documentation

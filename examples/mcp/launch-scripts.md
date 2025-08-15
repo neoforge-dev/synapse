@@ -17,7 +17,7 @@ echo "🚀 Starting Synapse GraphRAG MCP Server..."
 # Check if synapse is installed
 if ! command -v synapse &> /dev/null; then
     echo "❌ Synapse is not installed. Please install with:"
-    echo "   pip install synapse-graph-rag[mcp]"
+    echo "   uv pip install synapse-graph-rag[mcp]"
     echo "   or"
     echo "   brew install synapse-graph-rag"
     exit 1
@@ -74,7 +74,7 @@ Write-Host "🚀 Starting Synapse GraphRAG MCP Server..." -ForegroundColor Green
 # Check if synapse is installed
 if (-not (Get-Command synapse -ErrorAction SilentlyContinue)) {
     Write-Host "❌ Synapse is not installed. Please install with:" -ForegroundColor Red
-    Write-Host "   pip install synapse-graph-rag[mcp]"
+    Write-Host "   uv pip install synapse-graph-rag[mcp]"
     exit 1
 }
 

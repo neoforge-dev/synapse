@@ -14,9 +14,9 @@ UV := uv
 VENV_PYTHON := $(VENV_DIR)/bin/python 
 
 # Add commands for NLTK and spaCy data
-# Use VENV_PYTHON for these commands to avoid issues with uv run environment
+# Use uv to install spaCy model wheel since pip may not be present in uv venv
 DOWNLOAD_NLTK = $(VENV_PYTHON) -m nltk.downloader punkt
-DOWNLOAD_SPACY = $(VENV_PYTHON) -m spacy download en_core_web_sm
+SPACY_MODEL_WHEEL := https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
 
 # Project variables
 VENV_DIR ?= .venv
@@ -42,11 +42,14 @@ help: ## Display this help screen
 install-deps: ## Install Python dependencies for development using uv
 	$(UV) pip install -e .[dev]
 
+install-mcp-deps: ## Install development dependencies including MCP extras
+	$(UV) pip install -e '.[dev,mcp]'
+
 download-nlp-data: install-deps ## Download necessary NLTK and spaCy data models (Requires dependencies installed)
 	@echo "INFO: Downloading NLTK 'punkt'..."
 	$(VENV_DIR)/bin/python -m nltk.downloader punkt
-	@echo "INFO: Downloading spaCy 'en_core_web_sm' model..."
-	$(VENV_DIR)/bin/python -m spacy download en_core_web_sm
+	@echo "INFO: Installing spaCy 'en_core_web_sm' model via wheel..."
+	$(UV) pip install -q $(SPACY_MODEL_WHEEL)
 
 install-dev: install-deps download-nlp-data ## Install dependencies and download NLP data for development
 	@echo "INFO: Development environment setup complete."

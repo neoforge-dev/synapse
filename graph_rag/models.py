@@ -5,15 +5,27 @@ from typing import Any
 
 @dataclass
 class Chunk:
-    """Represents a text chunk derived from a Document."""
+    """Represents a text chunk derived from a Document.
+
+    Accepts either 'text' or 'content' at initialization time for convenience.
+    """
 
     id: str
-    text: str
-    document_id: str
+    # Support both 'text' and legacy 'content' init kwargs
+    text: str | None = None
+    document_id: str | None = None
+    content: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
-    embedding: list[float] | None = None  # Optional vector embedding
+    embedding: list[float] | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+    def __post_init__(self) -> None:
+        # Normalize text/content so both are populated consistently
+        if self.text and not self.content:
+            self.content = self.text
+        elif self.content and not self.text:
+            self.text = self.content
 
 
 @dataclass

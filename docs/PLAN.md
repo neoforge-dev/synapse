@@ -172,7 +172,7 @@ The recent assessment highlights that while the architectural foundations are so
 - Health/readiness split; dependency pings (Memgraph, vector store) with backoff.
 
 ### F) Developer experience and packaging (short-term)
-- `pipx` and Homebrew formula for CLI; prebuilt binaries via PyInstaller for macOS/Linux.
+- `uv` (Astral) as primary package manager; `pipx` optional for global CLI installs; Homebrew formula for CLI; prebuilt binaries via PyInstaller for macOS/Linux.
 - `synapse up`: Docker Compose to start API + Memgraph + optional FAISS sidecar.
 - Example recipes: richer jq/xargs, `ask` pipelines, and MCP usage.
 
@@ -234,7 +234,7 @@ The recent assessment highlights that while the architectural foundations are so
   - Install-and-ingest in <10min; MCP tools for IDEs
 - Deliverables
   - `synapse up` for docker-compose; `synapse config init`
-  - Packaging: pipx, Homebrew tap, optional PyInstaller binaries
+  - Packaging: uv + pipx, Homebrew tap, optional PyInstaller binaries
   - MCP server exposing `ingest_files`, `search`, `query_answer`
 - Tasks
   1) Compose shim (API + Memgraph) and CLI wrapper
@@ -363,7 +363,7 @@ Priorities are trimmed to the smallest set that unblocks daily use (Pareto 20%):
   - Homebrew tap (scripted formula) – tracked in separate repo; add docs placeholder with manual install
   - Release workflow (tag → build wheels → GitHub Release) – minimal skeleton, publish to TestPyPI first
 - Acceptance
-  - New users can pick: pipx install, Docker quickstart, or brew (when ready). One command to bring up Memgraph+API.
+  - New users can pick: uv install, pipx install, Docker quickstart, or brew (when ready). One command to bring up Memgraph+API.
 
 ### P2: Graph API tests
 - Actions

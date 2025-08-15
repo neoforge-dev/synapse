@@ -69,7 +69,7 @@ Key CLI guarantees and UX:
 - `SYNAPSE_API_LOG_JSON`, `SYNAPSE_ENABLE_METRICS`
 
 ### Development Workflow
-- Install: `make install-dev`
+- Install (via Astral uv): `make install-dev`
 - Lint/Type: `make lint` (ruff + mypy on core/services)
 - Format: `make format` (ruff format)
 - Tests: `make test` (unit), `make test-integration`, `make test-memgraph`

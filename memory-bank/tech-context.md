@@ -12,8 +12,8 @@
 - **DI:** FastAPI `Depends`, factories in `graph_rag/api/dependencies.py`.
 
 ## Development Workflow
-- **Dependency Management:** Poetry
-- **Environment:** `pyenv` + Poetry virtual environments
+- **Dependency Management:** Astral `uv`
+- **Environment:** `uv run` and `uv pip` (project-local `.venv`), optional `pyenv` for Python installs
 - **Linting/Formatting:** Ruff
 - **Testing:** Pytest (tools: `pytest-asyncio`, `httpx`, `unittest.mock`)
 - **Configuration:** Pydantic Settings (`graph_rag/config/settings.py`), `.env` files
@@ -35,4 +35,4 @@
 - Pydantic, Pydantic-Settings
 - Sentence-Transformers, SpaCy, NLTK (`punkt`)
 - Tenacity, python-dotenv, aiofiles
-- *(Refer to `pyproject.toml` for specific versions)* 
+- *(Refer to `pyproject.toml` for specific versions)*

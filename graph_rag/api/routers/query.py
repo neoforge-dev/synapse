@@ -116,9 +116,9 @@ def create_query_router() -> APIRouter:
                 relevant_chunks=api_chunks,
                 graph_context=api_graph_context,
                 metadata=meta_with_citations,
-                answer_with_citations=query_result.answer_with_citations,
-                citations=query_result.citations,
-                bibliography=query_result.bibliography,
+                answer_with_citations=getattr(query_result, "answer_with_citations", None),
+                citations=(getattr(query_result, "citations", None) or []),
+                bibliography=(getattr(query_result, "bibliography", None) or {}),
             )
 
         except Exception as e:
@@ -193,9 +193,9 @@ def create_query_router() -> APIRouter:
                 relevant_chunks=_to_api_chunks(result),
                 graph_context=_to_api_graph_context(result),
                 metadata=meta_with_citations,
-                answer_with_citations=result.answer_with_citations,
-                citations=result.citations,
-                bibliography=result.bibliography,
+                answer_with_citations=getattr(result, "answer_with_citations", None),
+                citations=(getattr(result, "citations", None) or []),
+                bibliography=(getattr(result, "bibliography", None) or {}),
             )
         except Exception as e:
             logger.error(
@@ -300,9 +300,9 @@ def create_query_router() -> APIRouter:
                 relevant_chunks=_to_api_chunks(basic_result),
                 graph_context=_to_api_graph_context(basic_result),
                 metadata=meta_with_citations,
-                answer_with_citations=basic_result.answer_with_citations,
-                citations=basic_result.citations,
-                bibliography=basic_result.bibliography,
+                answer_with_citations=getattr(basic_result, "answer_with_citations", None),
+                citations=(getattr(basic_result, "citations", None) or []),
+                bibliography=(getattr(basic_result, "bibliography", None) or {}),
                 input_tokens=enhanced_result.input_tokens,
                 output_tokens=enhanced_result.output_tokens,
                 processing_time=enhanced_result.processing_time,

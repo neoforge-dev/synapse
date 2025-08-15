@@ -747,7 +747,7 @@ def serve(host: str = "127.0.0.1", port: int = 8765, transport: str = "tcp") -> 
         from mcp.types import Tool
     except ImportError as e:  # pragma: no cover
         error_msg = (
-            "MCP package is not installed. Install with: pip install 'synapse-graph-rag[mcp]'"
+            "MCP package is not installed. Install with: uv pip install 'synapse-graph-rag[mcp]'"
         )
         logger.error(error_msg)
         raise RuntimeError(error_msg) from e

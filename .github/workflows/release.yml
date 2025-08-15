@@ -199,6 +199,13 @@ jobs:
         repository-url: https://test.pypi.org/legacy/
         verbose: true
 
+    - name: Test installation from TestPyPI
+      run: |
+        sleep 30  # Wait for package to be available
+        pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ synapse-graph-rag
+        synapse --version
+        synapse --help
+
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest

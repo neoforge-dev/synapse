@@ -6,7 +6,7 @@
 - **Critical Concern:** Some DI guard tests depend on fixture overrides; added plan to temporarily clear overrides per-test when validating true DI getters.
 
 ## What Works Well
-- **Setup & Core:** Poetry, Config, Pydantic Models.
+- **Setup & Core:** Astral `uv`, Config, Pydantic Models.
 - **Infrastructure:** `MemgraphGraphRepository` (CRUD tested, SSL mode attribute error fixed, basic empty label handling for nodes and relationships added), `SimpleVectorStore`, `Spacy/MockEntityExtractor`, `Mock/OpenAILLMService` placeholders.
 - **Services/Engine:** `IngestionService` (basic flow), `SimpleGraphRAGEngine` (good test coverage for helpers & key scenarios), `PersistentKnowledgeGraphBuilder` (refactored tests for its direct API).
 - **API:** FastAPI app, routers, DI via `api/dependencies.py`. Document management (`/api/v1/documents`) endpoint tests are now passing with mocks.

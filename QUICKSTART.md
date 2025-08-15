@@ -9,7 +9,7 @@ Perfect for trying Synapse without any setup complexity.
 
 ```bash
 # Install Synapse 
-pip install synapse-graph-rag
+uv pip install synapse-graph-rag
 
 # Run the interactive setup wizard
 synapse init wizard --quick --vector-only
@@ -26,7 +26,7 @@ Get the complete graph-enhanced experience with relationship extraction and adva
 
 ```bash
 # Install Synapse
-pip install synapse-graph-rag
+uv pip install synapse-graph-rag
 
 # One-command setup with auto-Docker management
 synapse up
@@ -125,7 +125,7 @@ export SYNAPSE_LLM_TYPE=openai  # Set a real provider
 
 **Import errors?**
 ```bash
-pip install --upgrade synapse-graph-rag
+uv pip install --upgrade synapse-graph-rag
 uv pip install -e .[dev]  # For development
 ```
 

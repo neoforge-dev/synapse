@@ -6,7 +6,7 @@ This directory contains configuration examples for integrating Synapse GraphRAG 
 
 1. **Install Synapse GraphRAG**:
    ```bash
-   pip install synapse-graph-rag[mcp]
+   uv pip install synapse-graph-rag[mcp]
    # or
    brew install synapse-graph-rag
    ```

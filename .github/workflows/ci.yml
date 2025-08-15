@@ -207,6 +207,62 @@ jobs:
       env:
         SYNAPSE_API_BASE_URL: http://localhost:8000
 
+  memgraph-integration-optional:
+    name: Optional Memgraph Integration (All Platforms)
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true  # Allow this job to fail without affecting the overall build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.11']  # Single version for faster execution
+    
+    services:
+      memgraph:
+        image: memgraph/memgraph:latest
+        ports:
+          - 7687:7687
+        options: --health-cmd "echo 'SELECT 1;' | mgconsole" --health-interval 10s --health-timeout 5s --health-retries 5
+        # Only run Memgraph service on Linux (Docker not available on GitHub-hosted macOS/Windows)
+        if: matrix.os == 'ubuntu-latest'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+
+    - name: Wait for Memgraph (Linux only)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        timeout 60s bash -c 'until nc -z localhost 7687; do sleep 1; done' || echo "Memgraph connection timeout"
+
+    - name: Test Memgraph integration (Linux with service)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        pytest -m "integration and graph" -v --tb=short -x --maxfail=3
+      env:
+        MEMGRAPH_URI: bolt://localhost:7687
+        PYTHONPATH: .
+
+    - name: Test synapse up command (all platforms)
+      run: |
+        synapse --help
+        synapse compose status || echo "Expected to fail without Docker/Memgraph"
+
+    - name: Test basic CLI functionality (all platforms)
+      run: |
+        synapse config show || echo "Config command test"
+        synapse admin health || echo "Health check test (expected to fail without services)"
+
   build-test:
     name: Build Package Test
     runs-on: ubuntu-latest

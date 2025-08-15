@@ -169,7 +169,7 @@ curl -X POST http://localhost:8765/tools/search \
    - Verify MCP server health: `synapse mcp health`
 
 2. **"Command 'synapse' not found"**
-   - Ensure Synapse is installed: `pip install synapse-graph-rag`
+   - Ensure Synapse is installed: `uv pip install synapse-graph-rag`
    - Check PATH includes the installation directory
 
 3. **"Tools not available"**

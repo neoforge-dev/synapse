@@ -13,8 +13,8 @@ Get up and running with Synapse GraphRAG in under 10 minutes! This guide will he
 ### Option 1: PyPI (Recommended)
 
 ```bash
-# Install with MCP support
-pip install synapse-graph-rag[mcp,all]
+# Install with MCP support (via uv)
+uv pip install synapse-graph-rag[mcp,all]
 
 # Verify installation
 synapse --version
@@ -38,8 +38,8 @@ brew install synapse-graph-rag
 git clone https://github.com/neoforge-ai/synapse-graph-rag.git
 cd synapse-graph-rag
 
-# Install in development mode
-pip install -e ".[dev,mcp,all]"
+# Install in development mode (via uv)
+uv pip install -e ".[dev,mcp,all]"
 ```
 
 ## 2-Minute Setup
@@ -321,7 +321,7 @@ synapse admin integrity-check
 
 2. **"MCP package not installed"**:
    ```bash
-   pip install "synapse-graph-rag[mcp]"
+   uv pip install "synapse-graph-rag[mcp]"
    ```
 
 3. **"API not responding"**:

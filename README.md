@@ -5,11 +5,11 @@
 ## 🚀 Quick Start (2 minutes to AI answers!)
 
 ### Option 1: Full Power (Graph + Vector)
-**Prereqs**: Docker Desktop, Python 3.10+
+**Prereqs**: Docker Desktop, Python 3.10+ (install packages via Astral `uv`)
 
 ```bash
-# Install
-pip install synapse-graph-rag
+# Install (uv recommended)
+uv pip install synapse-graph-rag
 
 # Start services (auto-detects Docker, starts containers)
 synapse up
@@ -23,8 +23,8 @@ synapse query ask "What are the main themes in my notes?"
 **Perfect for trying out the system without Docker/Memgraph**
 
 ```bash
-# Install
-pip install synapse-graph-rag
+# Install (uv recommended)
+uv pip install synapse-graph-rag
 
 # Start in vector-only mode
 SYNAPSE_DISABLE_GRAPH=true synapse ingest ~/Notes --embeddings

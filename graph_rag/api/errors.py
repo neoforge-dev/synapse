@@ -165,7 +165,7 @@ async def graph_rag_exception_handler(request: Request, exc: GraphRAGError) -> J
     return JSONResponse(
         status_code=exc.status_code,
         content=problem.model_dump(exclude_none=True),
-        headers={"Content-Type": "application/problem+json"}
+        media_type="application/problem+json",
     )
 
 
@@ -176,7 +176,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
     return JSONResponse(
         status_code=exc.status_code,
         content=problem.model_dump(exclude_none=True),
-        headers={"Content-Type": "application/problem+json"}
+        media_type="application/problem+json",
     )
 
 
@@ -197,7 +197,7 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=problem.model_dump(exclude_none=True),
-        headers={"Content-Type": "application/problem+json"}
+        media_type="application/problem+json",
     )
 
 

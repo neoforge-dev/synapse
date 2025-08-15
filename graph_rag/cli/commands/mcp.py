@@ -40,7 +40,7 @@ def start_server(
 
             if not status["mcp_available"]:
                 console.print("\n[yellow]Install MCP support with:[/yellow]")
-                console.print("  pip install 'synapse-graph-rag[mcp]'")
+                console.print("  uv pip install 'synapse-graph-rag[mcp]'")
 
             if not status["api_available"]:
                 console.print("\n[yellow]Start the Synapse API server first:[/yellow]")
@@ -105,7 +105,7 @@ def check_health_command():
         # Provide helpful suggestions
         if not status["mcp_available"]:
             console.print("\n[yellow]💡 Install MCP support:[/yellow]")
-            console.print("  pip install 'synapse-graph-rag[mcp]'")
+            console.print("  uv pip install 'synapse-graph-rag[mcp]'")
 
         if not status["api_available"]:
             console.print("\n[yellow]💡 Start the Synapse API server:[/yellow]")
