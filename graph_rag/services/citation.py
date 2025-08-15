@@ -1,12 +1,12 @@
 """Citation system for Graph RAG answer synthesis."""
 
+import difflib
 import logging
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
-import difflib
 
 from graph_rag.models import Chunk
 
@@ -25,21 +25,21 @@ class CitationStyle(Enum):
 @dataclass
 class VerificationResult:
     """Result of chunk verification against answer content."""
-    
+
     # Verification metrics
     is_verified: bool = False
     confidence_score: float = 0.0
     verification_method: str = "keyword_overlap"
-    
+
     # Content analysis
     exact_matches: list[str] = field(default_factory=list)
     paraphrase_matches: list[str] = field(default_factory=list)
     keyword_overlap_ratio: float = 0.0
-    
+
     # Context tracking
     answer_segments: list[str] = field(default_factory=list)  # Parts of answer that use this chunk
     chunk_segments: list[str] = field(default_factory=list)   # Parts of chunk that are referenced
-    
+
     # Quality indicators
     hallucination_risk: bool = False
     unsupported_claims: list[str] = field(default_factory=list)
@@ -478,18 +478,18 @@ class CitationService:
         paraphrase detection, and contextual analysis.
         """
         verified_citations = []
-        
+
         for citation in citations:
             verification = self._perform_enhanced_verification(answer, citation, context_texts)
             citation.verification = verification
             verified_citations.append(citation)
-            
+
             # Log verification results for debugging
             if verification.is_verified:
                 logger.debug(f"Verified chunk {citation.chunk_id}: score={verification.confidence_score:.2f}")
             else:
                 logger.debug(f"Failed to verify chunk {citation.chunk_id}")
-        
+
         return verified_citations
 
     def _perform_enhanced_verification(
@@ -519,17 +519,17 @@ class CitationService:
 
         # 2. Exact phrase matching
         exact_matches = self._find_exact_matches(answer, citation.chunk_text)
-        
+
         # 3. Paraphrase detection (semantic similarity)
         paraphrase_matches = self._find_paraphrase_matches(answer, citation.chunk_text)
-        
+
         # 4. Keyword overlap analysis
         overlap_ratio = self._calculate_keyword_overlap(answer, citation.chunk_text)
-        
+
         # 5. Segment analysis
         answer_segments = self._find_answer_segments(answer, citation.chunk_text)
         chunk_segments = self._find_chunk_segments(citation.chunk_text, answer)
-        
+
         # 6. Hallucination risk assessment
         hallucination_risk, unsupported_claims = self._assess_hallucination_risk(
             answer, citation.chunk_text, exact_matches, paraphrase_matches
@@ -559,15 +559,15 @@ class CitationService:
     def _find_exact_matches(self, answer: str, chunk_text: str, min_length: int = 10) -> list[str]:
         """Find exact phrase matches between answer and chunk."""
         exact_matches = []
-        
+
         # Split into sentences and phrases
         chunk_sentences = re.split(r'[.!?]+', chunk_text)
-        
+
         for sentence in chunk_sentences:
             sentence = sentence.strip()
             if len(sentence) >= min_length and sentence.lower() in answer.lower():
                 exact_matches.append(sentence)
-        
+
         # Also check for exact multi-word phrases
         chunk_words = chunk_text.split()
         for i in range(len(chunk_words) - 2):  # At least 3-word phrases
@@ -575,7 +575,7 @@ class CitationService:
                 phrase = ' '.join(chunk_words[i:j])
                 if len(phrase) >= min_length and phrase.lower() in answer.lower():
                     exact_matches.append(phrase)
-        
+
         return list(set(exact_matches))  # Remove duplicates
 
     def _find_paraphrase_matches(self, answer: str, chunk_text: str) -> list[str]:
@@ -586,82 +586,82 @@ class CitationService:
         more sophisticated NLP models for semantic similarity.
         """
         paraphrase_matches = []
-        
+
         # Split into sentences
         answer_sentences = re.split(r'[.!?]+', answer)
         chunk_sentences = re.split(r'[.!?]+', chunk_text)
-        
+
         for chunk_sentence in chunk_sentences:
             chunk_sentence = chunk_sentence.strip()
             if len(chunk_sentence) < 20:  # Skip very short sentences
                 continue
-                
+
             for answer_sentence in answer_sentences:
                 answer_sentence = answer_sentence.strip()
                 if len(answer_sentence) < 20:
                     continue
-                
+
                 # Use sequence matching to find similar sentences
                 similarity = difflib.SequenceMatcher(
-                    None, 
-                    chunk_sentence.lower().split(), 
+                    None,
+                    chunk_sentence.lower().split(),
                     answer_sentence.lower().split()
                 ).ratio()
-                
+
                 if similarity > 0.6:  # 60% similarity threshold
                     paraphrase_matches.append(f"Chunk: '{chunk_sentence}' → Answer: '{answer_sentence}'")
-        
+
         return paraphrase_matches
 
     def _calculate_keyword_overlap(self, answer: str, chunk_text: str) -> float:
         """Calculate keyword overlap ratio between answer and chunk."""
         chunk_keywords = set(self._extract_keywords(chunk_text))
         answer_keywords = set(self._extract_keywords(answer))
-        
+
         if not chunk_keywords:
             return 0.0
-        
+
         overlap = len(chunk_keywords.intersection(answer_keywords))
         return overlap / len(chunk_keywords)
 
     def _find_answer_segments(self, answer: str, chunk_text: str) -> list[str]:
         """Find segments of the answer that appear to use information from the chunk."""
         segments = []
-        
+
         chunk_keywords = set(self._extract_keywords(chunk_text))
         answer_sentences = re.split(r'[.!?]+', answer)
-        
+
         for sentence in answer_sentences:
             sentence = sentence.strip()
             if not sentence:
                 continue
-                
+
             sentence_keywords = set(self._extract_keywords(sentence))
             overlap = len(chunk_keywords.intersection(sentence_keywords))
-            
+
             if overlap >= 2:  # At least 2 keyword matches
                 segments.append(sentence)
-        
+
         return segments
 
     def _find_chunk_segments(self, chunk_text: str, answer: str) -> list[str]:
         """Find segments of the chunk that appear to be referenced in the answer."""
         segments = []
-        
+
         answer_keywords = set(self._extract_keywords(answer))
         chunk_sentences = re.split(r'[.!?]+', chunk_text)
-        
+
         for sentence in chunk_sentences:
             sentence = sentence.strip()
             if not sentence:
                 continue
-                
+
             sentence_keywords = set(self._extract_keywords(sentence))
             overlap = len(answer_keywords.intersection(sentence_keywords))
-            
+
             if overlap >= 2:  # At least 2 keyword matches
                 segments.append(sentence)
-        
+
         return segments
 
     def _assess_hallucination_risk(
@@ -675,28 +675,28 @@ class CitationService:
         Assess potential hallucination risk by identifying unsupported claims.
         """
         unsupported_claims = []
-        
+
         # Extract factual claims from answer (simplified approach)
         answer_sentences = re.split(r'[.!?]+', answer)
         chunk_keywords = set(self._extract_keywords(chunk_text))
-        
+
         for sentence in answer_sentences:
             sentence = sentence.strip()
             if not sentence:
                 continue
-            
+
             # Check if sentence makes factual claims not supported by chunk
             if self._is_factual_claim(sentence):
                 sentence_keywords = set(self._extract_keywords(sentence))
                 support_ratio = len(sentence_keywords.intersection(chunk_keywords)) / len(sentence_keywords) if sentence_keywords else 0
-                
+
                 # If very low keyword support and no exact/paraphrase matches
                 if support_ratio < 0.3 and not any(match in sentence for match in exact_matches):
                     unsupported_claims.append(sentence)
-        
+
         # Determine hallucination risk
         hallucination_risk = len(unsupported_claims) > 2 or (len(unsupported_claims) > 0 and len(exact_matches) == 0)
-        
+
         return hallucination_risk, unsupported_claims
 
     def _is_factual_claim(self, sentence: str) -> bool:
@@ -709,11 +709,11 @@ class CitationService:
             r'\b\d{4}\b',  # Years
             r'\b(first|second|third|last|most|least)\b'
         ]
-        
+
         for pattern in factual_patterns:
             if re.search(pattern, sentence.lower()):
                 return True
-        
+
         return False
 
     def _calculate_verification_confidence(
@@ -724,22 +724,22 @@ class CitationService:
         answer_segments_count: int
     ) -> float:
         """Calculate overall verification confidence score."""
-        
+
         # Base score from keyword overlap
         confidence = overlap_ratio * 0.4
-        
+
         # Boost for exact matches
         if exact_matches:
             confidence += min(len(exact_matches) * 0.2, 0.4)
-        
+
         # Boost for paraphrase matches
         if paraphrase_matches:
             confidence += min(len(paraphrase_matches) * 0.1, 0.2)
-        
+
         # Boost for answer segments that use the chunk
         if answer_segments_count > 0:
             confidence += min(answer_segments_count * 0.05, 0.2)
-        
+
         return min(1.0, confidence)
 
     def _identify_used_chunks_enhanced(
@@ -749,15 +749,15 @@ class CitationService:
         context_texts: list[str]
     ) -> list[CitationMetadata]:
         """Enhanced version of chunk identification using verification results."""
-        
+
         # Filter to verified chunks first
         verified_citations = [c for c in citations if c.verification.is_verified]
-        
+
         if not verified_citations:
             # Fallback to original method if no chunks verified
             return self._identify_used_chunks(answer, citations, context_texts)
-        
+
         # Sort by verification confidence
         verified_citations.sort(key=lambda c: c.verification.confidence_score, reverse=True)
-        
+
         return verified_citations

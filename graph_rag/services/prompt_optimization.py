@@ -1,11 +1,10 @@
 """Knowledge-optimized prompt templates for Graph RAG synthesis."""
 
 import logging
-from abc import ABC, abstractmethod
+import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
-import re
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ class PromptStyle(Enum):
 class ContextType(Enum):
     """Types of context that can be provided."""
     DOCUMENT_CHUNKS = "document_chunks"
-    GRAPH_ENTITIES = "graph_entities"  
+    GRAPH_ENTITIES = "graph_entities"
     GRAPH_RELATIONSHIPS = "graph_relationships"
     CONVERSATION_HISTORY = "conversation_history"
     MIXED = "mixed"
@@ -33,30 +32,30 @@ class ContextType(Enum):
 @dataclass
 class PromptTemplate:
     """A prompt template with placeholders and formatting rules."""
-    
+
     name: str
     style: PromptStyle
-    context_types: List[ContextType]
-    
+    context_types: list[ContextType]
+
     # Template components
     system_prompt: str
     instruction_template: str
     context_template: str
     query_template: str
-    
+
     # Quality indicators
     confidence_instructions: str = ""
     citation_instructions: str = ""
     uncertainty_handling: str = ""
-    
+
     # Constraints
     max_length_instruction: str = ""
     format_requirements: str = ""
-    
+
     # Metadata
     description: str = ""
-    use_cases: List[str] = field(default_factory=list)
-    
+    use_cases: list[str] = field(default_factory=list)
+
     def format_prompt(
         self,
         query: str,
@@ -66,52 +65,52 @@ class PromptTemplate:
         **kwargs
     ) -> str:
         """Format the complete prompt with provided context."""
-        
+
         # Build system prompt
         system_section = self.system_prompt
-        
+
         # Build instruction section
         instructions = self.instruction_template
         if additional_instructions:
             instructions += f"\n\nAdditional Instructions:\n{additional_instructions}"
-        
+
         # Build context section
         context_section = ""
         if context:
             context_section = self.context_template.format(context=context)
-        
+
         # Build conversation history section
         history_section = ""
         if conversation_history:
             history_section = f"\n\nConversation History:\n{conversation_history}"
-        
+
         # Build query section
         query_section = self.query_template.format(query=query, **kwargs)
-        
+
         # Combine all sections
         full_prompt = f"{system_section}\n\n{instructions}"
-        
+
         if context_section:
             full_prompt += f"\n\n{context_section}"
-        
+
         if history_section:
             full_prompt += history_section
-        
+
         full_prompt += f"\n\n{query_section}"
-        
+
         return full_prompt.strip()
 
 
 class PromptOptimizer:
     """Service for optimizing prompts for knowledge work."""
-    
+
     def __init__(self):
         self.templates = self._create_default_templates()
-        
-    def _create_default_templates(self) -> Dict[str, PromptTemplate]:
+
+    def _create_default_templates(self) -> dict[str, PromptTemplate]:
         """Create the default set of knowledge-optimized prompt templates."""
         templates = {}
-        
+
         # Concise Knowledge Extraction Template
         templates["concise_knowledge"] = PromptTemplate(
             name="concise_knowledge",
@@ -136,7 +135,7 @@ class PromptOptimizer:
             uncertainty_handling="If information is unclear or missing, explicitly state limitations.",
             description="Optimized for quick, accurate fact retrieval from knowledge bases."
         )
-        
+
         # Analytical Deep-Dive Template
         templates["analytical_deep"] = PromptTemplate(
             name="analytical_deep",
@@ -172,7 +171,7 @@ class PromptOptimizer:
             ),
             description="Designed for comprehensive research and analytical tasks."
         )
-        
+
         # Teaching and Explanation Template
         templates["teaching_explanation"] = PromptTemplate(
             name="teaching_explanation",
@@ -209,7 +208,7 @@ class PromptOptimizer:
             max_length_instruction="Aim for comprehensive but accessible explanations.",
             description="Optimized for educational content and complex topic explanations."
         )
-        
+
         # Technical Documentation Template
         templates["technical_docs"] = PromptTemplate(
             name="technical_docs",
@@ -246,7 +245,7 @@ class PromptOptimizer:
             format_requirements="Use proper technical formatting with code blocks and structured information.",
             description="Designed for technical documentation and implementation guidance."
         )
-        
+
         # Executive Summary Template
         templates["executive_summary"] = PromptTemplate(
             name="executive_summary",
@@ -283,7 +282,7 @@ class PromptOptimizer:
             max_length_instruction="Keep response concise but comprehensive for executive consumption.",
             description="Optimized for executive briefings and strategic decision support."
         )
-        
+
         # Scholarly Research Template
         templates["scholarly_research"] = PromptTemplate(
             name="scholarly_research",
@@ -320,12 +319,12 @@ class PromptOptimizer:
             format_requirements="Use academic formatting with proper structure and formal language.",
             description="Designed for academic research and scholarly inquiry."
         )
-        
+
         return templates
-    
+
     def get_template(self, style: PromptStyle, context_type: ContextType = None) -> PromptTemplate:
         """Get the best template for a given style and context type."""
-        
+
         # Map styles to template names
         style_mapping = {
             PromptStyle.CONCISE: "concise_knowledge",
@@ -336,16 +335,16 @@ class PromptOptimizer:
             PromptStyle.SCHOLARLY: "scholarly_research",
             PromptStyle.CONVERSATIONAL: "concise_knowledge",  # Default to concise
         }
-        
+
         template_name = style_mapping.get(style, "concise_knowledge")
         template = self.templates.get(template_name)
-        
+
         if not template:
             logger.warning(f"Template {template_name} not found, using default")
             return self.templates["concise_knowledge"]
-        
+
         return template
-    
+
     def optimize_prompt_for_context(
         self,
         query: str,
@@ -354,7 +353,7 @@ class PromptOptimizer:
         conversation_history: str = "",
         confidence_scoring: bool = True,
         citation_required: bool = True,
-        max_length: Optional[int] = None,
+        max_length: int | None = None,
         **kwargs
     ) -> str:
         """
@@ -372,31 +371,31 @@ class PromptOptimizer:
         Returns:
             Optimized prompt string
         """
-        
+
         # Determine context type
         context_type = self._analyze_context_type(context)
-        
+
         # Get appropriate template
         template = self.get_template(style, context_type)
-        
+
         # Build additional instructions
         additional_instructions = []
-        
+
         if confidence_scoring:
             additional_instructions.append(template.confidence_instructions)
-        
+
         if citation_required:
             additional_instructions.append(template.citation_instructions)
-        
+
         if max_length:
             additional_instructions.append(f"Keep response under {max_length} words.")
-        
+
         # Add uncertainty handling if context is limited
         if len(context.strip()) < 200:  # Very limited context
             additional_instructions.append(template.uncertainty_handling)
-        
+
         additional_instructions_str = "\n".join(filter(None, additional_instructions))
-        
+
         # Format the complete prompt
         optimized_prompt = template.format_prompt(
             query=query,
@@ -405,24 +404,24 @@ class PromptOptimizer:
             additional_instructions=additional_instructions_str,
             **kwargs
         )
-        
+
         return optimized_prompt
-    
+
     def _analyze_context_type(self, context: str) -> ContextType:
         """Analyze the context to determine its primary type."""
-        
+
         if not context.strip():
             return ContextType.MIXED
-        
+
         # Look for patterns that indicate context type
         entity_patterns = [r'Entity:', r'- \w+\s+\(\w+\)', r'entities:']
         relationship_patterns = [r'-\[', r'RELATED_TO', r'relationships:', r'→']
         chunk_patterns = [r'Chunk \d+:', r'Source:', r'Document:']
-        
+
         entity_score = sum(1 for pattern in entity_patterns if re.search(pattern, context, re.IGNORECASE))
         relationship_score = sum(1 for pattern in relationship_patterns if re.search(pattern, context, re.IGNORECASE))
         chunk_score = sum(1 for pattern in chunk_patterns if re.search(pattern, context, re.IGNORECASE))
-        
+
         # Determine dominant type
         if chunk_score > entity_score and chunk_score > relationship_score:
             return ContextType.DOCUMENT_CHUNKS
@@ -432,7 +431,7 @@ class PromptOptimizer:
             return ContextType.GRAPH_RELATIONSHIPS
         else:
             return ContextType.MIXED
-    
+
     def get_style_from_string(self, style_str: str) -> PromptStyle:
         """Convert string to PromptStyle enum."""
         try:
@@ -440,8 +439,8 @@ class PromptOptimizer:
         except ValueError:
             logger.warning(f"Unknown style '{style_str}', defaulting to analytical")
             return PromptStyle.ANALYTICAL
-    
-    def list_available_templates(self) -> List[Dict[str, Any]]:
+
+    def list_available_templates(self) -> list[dict[str, Any]]:
         """List all available templates with their metadata."""
         return [
             {
@@ -453,17 +452,17 @@ class PromptOptimizer:
             }
             for template in self.templates.values()
         ]
-    
+
     def add_custom_template(self, template: PromptTemplate) -> None:
         """Add a custom template to the optimizer."""
         self.templates[template.name] = template
         logger.info(f"Added custom template: {template.name}")
-    
+
     def customize_template(
         self,
         base_template_name: str,
-        modifications: Dict[str, str],
-        new_name: Optional[str] = None
+        modifications: dict[str, str],
+        new_name: str | None = None
     ) -> PromptTemplate:
         """
         Create a customized version of an existing template.
@@ -476,11 +475,11 @@ class PromptOptimizer:
         Returns:
             New customized template
         """
-        
+
         base_template = self.templates.get(base_template_name)
         if not base_template:
             raise ValueError(f"Base template '{base_template_name}' not found")
-        
+
         # Create a copy of the base template
         template_dict = {
             "name": new_name or f"{base_template_name}_custom",
@@ -498,19 +497,19 @@ class PromptOptimizer:
             "description": base_template.description,
             "use_cases": base_template.use_cases.copy(),
         }
-        
+
         # Apply modifications
         for field, value in modifications.items():
             if field in template_dict:
                 template_dict[field] = value
             else:
                 logger.warning(f"Unknown field '{field}' in template customization")
-        
+
         # Create new template
         custom_template = PromptTemplate(**template_dict)
-        
+
         # Add to templates if it has a name
         if new_name:
             self.templates[new_name] = custom_template
-        
+
         return custom_template

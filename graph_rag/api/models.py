@@ -217,26 +217,26 @@ class ConfidenceMetricsResponse(BaseModel):
 
 class AnswerValidationResponse(BaseModel):
     """API response model for answer validation results."""
-    
+
     is_valid: bool = Field(..., description="Whether the answer passed validation.")
     validation_score: float = Field(..., description="Overall validation score (0.0-1.0).")
     validation_level: str = Field(..., description="Validation level used (strict, moderate, lenient).")
-    
+
     # Quality metrics
     total_claims: int = Field(0, description="Total number of claims identified.")
     supported_claims: int = Field(0, description="Number of claims with source support.")
     unsupported_claims: int = Field(0, description="Number of claims without source support.")
     conflicting_claims: int = Field(0, description="Number of claims that conflict with sources.")
-    
+
     # Coverage metrics
     chunk_coverage: float = Field(0.0, description="Portion of source chunks referenced (0.0-1.0).")
     answer_coverage: float = Field(0.0, description="Portion of answer supported by sources (0.0-1.0).")
     citation_completeness: float = Field(0.0, description="Completeness of citations (0.0-1.0).")
-    
+
     # Quality indicators
     hallucination_risk: bool = Field(False, description="Whether answer has hallucination risk.")
     requires_fact_check: bool = Field(False, description="Whether answer requires fact checking.")
-    
+
     # Issues and recommendations
     num_issues: int = Field(0, description="Number of validation issues found.")
     recommendations: list[str] = Field(default_factory=list, description="Recommendations for improvement.")

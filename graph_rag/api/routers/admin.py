@@ -1,4 +1,3 @@
-import logging
 import time
 from typing import Annotated
 
@@ -17,26 +16,23 @@ from graph_rag.api.health import (
     check_llm_service,
     check_vector_store,
 )
-from graph_rag.api.system_metrics import (
-    ApplicationMetrics,
-    SystemResourceMetrics,
-    assess_system_health,
-    get_application_metrics,
-    get_platform_info,
-    get_system_metrics,
-)
 from graph_rag.api.performance_optimization import (
     get_advanced_performance_stats,
     get_optimization_recommendations,
     get_performance_monitor,
     get_query_optimizer,
 )
+from graph_rag.api.system_metrics import (
+    assess_system_health,
+    get_application_metrics,
+    get_platform_info,
+    get_system_metrics,
+)
 from graph_rag.core.interfaces import GraphRepository, VectorStore
 from graph_rag.llm.protocols import LLMService
 from graph_rag.observability import (
     ComponentType,
     LogContext,
-    api_logger,
     get_component_logger,
 )
 from graph_rag.services.maintenance import IntegrityCheckJob
@@ -287,11 +283,11 @@ def create_admin_router() -> APIRouter:
             operation="system_metrics",
             metadata={"endpoint": "/admin/metrics/system"}
         )
-        
+
         try:
             logger.info("Collecting system metrics", context)
             metrics = get_system_metrics()
-            
+
             # Convert dataclass to dict for JSON serialization
             result = {
                 "cpu_percent": metrics.cpu_percent,
@@ -316,10 +312,10 @@ def create_admin_router() -> APIRouter:
                 "process_count": metrics.process_count,
                 "timestamp": metrics.timestamp,
             }
-            
+
             logger.info("System metrics collected successfully", context, cpu_percent=metrics.cpu_percent)
             return result
-            
+
         except Exception as e:
             logger.error("Failed to collect system metrics", context, error=e)
             raise HTTPException(status_code=500, detail=f"Failed to collect system metrics: {str(e)}")
@@ -336,22 +332,22 @@ def create_admin_router() -> APIRouter:
             operation="application_metrics",
             metadata={"endpoint": "/admin/metrics/application"}
         )
-        
+
         try:
             logger.info("Collecting application metrics", context)
-            
+
             # Get cache and performance stats
             from graph_rag.api.performance import get_cache_stats, get_performance_stats
             cache_stats = get_cache_stats()
             performance_stats = get_performance_stats()
-            
+
             metrics = get_application_metrics(
                 vector_store=vector_store,
                 graph_repository=graph_repo,
                 cache_stats=cache_stats,
                 performance_stats=performance_stats
             )
-            
+
             # Convert dataclass to dict for JSON serialization
             result = {
                 "process": {
@@ -376,15 +372,15 @@ def create_admin_router() -> APIRouter:
                 },
                 "timestamp": metrics.timestamp,
             }
-            
+
             logger.info(
-                "Application metrics collected successfully", 
-                context, 
+                "Application metrics collected successfully",
+                context,
                 memory_mb=metrics.process_memory_mb,
                 uptime_hours=metrics.uptime_seconds / 3600
             )
             return result
-            
+
         except Exception as e:
             logger.error("Failed to collect application metrics", context, error=e)
             raise HTTPException(status_code=500, detail=f"Failed to collect application metrics: {str(e)}")
@@ -400,27 +396,27 @@ def create_admin_router() -> APIRouter:
             operation="health_assessment",
             metadata={"endpoint": "/admin/metrics/health-assessment"}
         )
-        
+
         try:
             logger.info("Performing health assessment", context)
-            
+
             # Collect both system and application metrics
             system_metrics = get_system_metrics()
-            
+
             from graph_rag.api.performance import get_cache_stats, get_performance_stats
             cache_stats = get_cache_stats()
             performance_stats = get_performance_stats()
-            
+
             app_metrics = get_application_metrics(
                 vector_store=vector_store,
                 graph_repository=graph_repo,
                 cache_stats=cache_stats,
                 performance_stats=performance_stats
             )
-            
+
             # Assess health based on thresholds
             assessment = assess_system_health(system_metrics, app_metrics)
-            
+
             # Include raw metrics in the response
             result = {
                 "assessment": assessment,
@@ -437,16 +433,16 @@ def create_admin_router() -> APIRouter:
                 },
                 "timestamp": system_metrics.timestamp,
             }
-            
+
             logger.info(
-                f"Health assessment completed: {assessment['status']}", 
+                f"Health assessment completed: {assessment['status']}",
                 context,
                 status=assessment["status"],
                 issue_count=len(assessment["issues"]),
                 warning_count=len(assessment["warnings"])
             )
             return result
-            
+
         except Exception as e:
             logger.error("Failed to perform health assessment", context, error=e)
             raise HTTPException(status_code=500, detail=f"Failed to perform health assessment: {str(e)}")
@@ -459,14 +455,14 @@ def create_admin_router() -> APIRouter:
             operation="platform_info",
             metadata={"endpoint": "/admin/platform/info"}
         )
-        
+
         try:
             logger.info("Collecting platform info", context)
             info = get_platform_info()
-            
+
             logger.info("Platform info collected successfully", context, system=info.get("system"))
             return info
-            
+
         except Exception as e:
             logger.error("Failed to collect platform info", context, error=e)
             raise HTTPException(status_code=500, detail=f"Failed to collect platform info: {str(e)}")
@@ -484,45 +480,45 @@ def create_admin_router() -> APIRouter:
             operation="monitoring_dashboard",
             metadata={"endpoint": "/admin/monitoring/dashboard"}
         )
-        
+
         try:
             logger.info("Generating monitoring dashboard", context)
-            
+
             # Collect all metrics
             system_metrics = get_system_metrics()
-            
+
             from graph_rag.api.performance import get_cache_stats, get_performance_stats
             cache_stats = get_cache_stats()
             performance_stats = get_performance_stats()
-            
+
             app_metrics = get_application_metrics(
                 vector_store=vector_store,
                 graph_repository=graph_repo,
                 cache_stats=cache_stats,
                 performance_stats=performance_stats
             )
-            
+
             # Health assessment
             health_assessment_result = assess_system_health(system_metrics, app_metrics)
-            
+
             # Component health checks
             health_checker = HealthChecker(timeout_seconds=5.0)
             embedding_service = getattr(vector_store, 'embedding_service', None)
-            
+
             component_checkers = {
                 "graph_repository": lambda: check_graph_repository(graph_repo),
                 "vector_store": lambda: check_vector_store(vector_store),
                 "llm_service": lambda: check_llm_service(llm_service),
             }
-            
+
             if embedding_service:
                 component_checkers["embedding_service"] = lambda: check_embedding_service(embedding_service)
-            
+
             component_health = await health_checker.check_all(component_checkers)
-            
+
             # Platform info
             platform_data = get_platform_info()
-            
+
             # Build comprehensive dashboard
             dashboard = {
                 "overview": {
@@ -563,15 +559,15 @@ def create_admin_router() -> APIRouter:
                     "hostname": platform_data.get("hostname"),
                 },
             }
-            
+
             logger.info(
-                "Monitoring dashboard generated successfully", 
+                "Monitoring dashboard generated successfully",
                 context,
                 overall_status=health_assessment_result["status"],
                 component_count=len(component_health.components)
             )
             return dashboard
-            
+
         except Exception as e:
             logger.error("Failed to generate monitoring dashboard", context, error=e)
             raise HTTPException(status_code=500, detail=f"Failed to generate monitoring dashboard: {str(e)}")
@@ -585,17 +581,17 @@ def create_admin_router() -> APIRouter:
             operation="advanced_performance_stats",
             metadata={"endpoint": "/admin/performance/advanced"}
         )
-        
+
         try:
             logger.info("Collecting advanced performance statistics", context)
-            
+
             stats = get_advanced_performance_stats()
             recommendations = get_optimization_recommendations()
-            
+
             # Get slow queries
             monitor = get_performance_monitor()
             slow_queries = monitor.get_slow_queries(limit=10)
-            
+
             result = {
                 "performance_summary": stats,
                 "optimization_recommendations": recommendations,
@@ -619,15 +615,15 @@ def create_admin_router() -> APIRouter:
                     "complexity_cache_size": len(get_query_optimizer().query_complexity_cache),
                 }
             }
-            
+
             logger.info(
-                "Advanced performance statistics collected successfully", 
+                "Advanced performance statistics collected successfully",
                 context,
                 total_queries=stats.get("total_queries", 0),
                 slow_query_count=len(slow_queries)
             )
             return result
-            
+
         except Exception as e:
             logger.error("Failed to collect advanced performance statistics", context, error=e)
             raise HTTPException(status_code=500, detail=f"Failed to collect advanced performance statistics: {str(e)}")
@@ -640,13 +636,13 @@ def create_admin_router() -> APIRouter:
             operation="performance_profiles",
             metadata={"endpoint": "/admin/performance/profiles"}
         )
-        
+
         try:
             logger.info("Collecting performance profiles", context)
-            
+
             monitor = get_performance_monitor()
             operation_types = ["vector", "hybrid", "graph", "keyword"]
-            
+
             profiles = {}
             for op_type in operation_types:
                 profile = monitor.get_performance_profile(op_type)
@@ -664,19 +660,19 @@ def create_admin_router() -> APIRouter:
                         "cache_hit_rate": profile.cache_hit_rate,
                         "success_rate": profile.success_rate,
                     }
-            
+
             result = {
                 "operation_profiles": profiles,
                 "timestamp": time.time(),
             }
-            
+
             logger.info(
-                "Performance profiles collected successfully", 
+                "Performance profiles collected successfully",
                 context,
                 profile_count=len(profiles)
             )
             return result
-            
+
         except Exception as e:
             logger.error("Failed to collect performance profiles", context, error=e)
             raise HTTPException(status_code=500, detail=f"Failed to collect performance profiles: {str(e)}")
@@ -689,16 +685,16 @@ def create_admin_router() -> APIRouter:
             operation="optimization_analysis",
             metadata={"endpoint": "/admin/performance/optimization"}
         )
-        
+
         try:
             logger.info("Performing optimization analysis", context)
-            
+
             optimizer = get_query_optimizer()
             monitor = get_performance_monitor()
-            
+
             # Get optimization recommendations
             recommendations = get_optimization_recommendations()
-            
+
             # Analyze query patterns
             pattern_analysis = {
                 "total_unique_queries": len(optimizer.query_patterns),
@@ -718,10 +714,10 @@ def create_admin_router() -> APIRouter:
                     "high": len([c for c in optimizer.query_complexity_cache.values() if c >= 0.7]),
                 }
             }
-            
+
             # Memory analysis
             memory_stats = monitor.memory_tracker.get_stats()
-            
+
             result = {
                 "recommendations": recommendations,
                 "pattern_analysis": pattern_analysis,
@@ -735,15 +731,15 @@ def create_admin_router() -> APIRouter:
                 },
                 "timestamp": time.time(),
             }
-            
+
             logger.info(
-                "Optimization analysis completed successfully", 
+                "Optimization analysis completed successfully",
                 context,
                 recommendation_count=len(recommendations),
                 pattern_count=len(optimizer.query_patterns)
             )
             return result
-            
+
         except Exception as e:
             logger.error("Failed to perform optimization analysis", context, error=e)
             raise HTTPException(status_code=500, detail=f"Failed to perform optimization analysis: {str(e)}")
@@ -756,35 +752,35 @@ def create_admin_router() -> APIRouter:
             operation="reset_performance_stats",
             metadata={"endpoint": "/admin/performance/reset-stats"}
         )
-        
+
         try:
             logger.info("Resetting performance statistics", context)
-            
+
             # Reset performance monitor
             monitor = get_performance_monitor()
             monitor.query_history.clear()
             monitor.operation_stats.clear()
             monitor.slow_queries.clear()
-            
+
             # Reset query optimizer
             optimizer = get_query_optimizer()
             optimizer.query_patterns.clear()
             optimizer.optimal_k_values.clear()
             optimizer.query_complexity_cache.clear()
-            
+
             # Clear performance cache
             from graph_rag.api.performance import clear_cache
             clear_cache()
-            
+
             result = {
                 "status": "success",
                 "message": "Performance statistics and optimization data reset",
                 "timestamp": time.time(),
             }
-            
+
             logger.info("Performance statistics reset successfully", context)
             return result
-            
+
         except Exception as e:
             logger.error("Failed to reset performance statistics", context, error=e)
             raise HTTPException(status_code=500, detail=f"Failed to reset performance statistics: {str(e)}")

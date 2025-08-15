@@ -1,5 +1,4 @@
 import asyncio  # For potential concurrent processing
-import logging
 import time
 import uuid
 from collections import defaultdict  # Add this import
@@ -7,20 +6,10 @@ from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from typing import Any
 
-# Import structured logging and performance optimization
-from graph_rag.observability import (
-    ComponentType,
-    LogContext,
-    PerformanceTimer,
-    engine_logger,
-    get_component_logger,
-)
 from graph_rag.api.performance_optimization import (
     get_performance_monitor,
     get_query_optimizer,
-    performance_optimize,
 )
-
 from graph_rag.config import get_settings
 from graph_rag.core.interfaces import (
     ChunkData,
@@ -49,10 +38,18 @@ from graph_rag.llm import (
 from graph_rag.llm.protocols import LLMService  # Add LLMService import
 from graph_rag.llm.response_models import EnhancedLLMResponse
 from graph_rag.models import Chunk, Entity, Relationship
-from graph_rag.services.citation import CitationService, CitationStyle
+
+# Import structured logging and performance optimization
+from graph_rag.observability import (
+    ComponentType,
+    LogContext,
+    PerformanceTimer,
+    get_component_logger,
+)
 from graph_rag.services.answer_validation import AnswerValidator, ValidationLevel
-from graph_rag.services.prompt_optimization import PromptOptimizer, PromptStyle
+from graph_rag.services.citation import CitationService, CitationStyle
 from graph_rag.services.memory import ContextManager
+from graph_rag.services.prompt_optimization import PromptOptimizer
 from graph_rag.services.rerank import CrossEncoderReranker
 from graph_rag.services.search import (
     SearchResult,
@@ -119,7 +116,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         self._citation_service = CitationService(citation_style)
         self._answer_validator = AnswerValidator(validation_level)
         self._prompt_optimizer = PromptOptimizer()
-        
+
         # Performance optimization components
         self._performance_monitor = get_performance_monitor()
         self._query_optimizer = get_query_optimizer()
@@ -335,7 +332,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                 "config": config or {},
             }
         )
-        logger.info(f"Starting context retrieval", retrieval_context, query=query_text[:100])
+        logger.info("Starting context retrieval", retrieval_context, query=query_text[:100])
         config = config or {}
         k = config.get("k", 3)
         include_graph = config.get("include_graph", True)
@@ -685,7 +682,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                 "search_type": config.get("search_type", "vector"),
                 "include_graph": include_graph,
             })
-            
+
             logger.info(
                 "Context retrieval completed successfully",
                 retrieval_context,
@@ -817,7 +814,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         # 4. Create Optimized Prompt and Call LLM
         style_str = (config or {}).get("style", "analytical")
         style = self._prompt_optimizer.get_style_from_string(style_str)
-        
+
         # Create optimized prompt using the prompt optimizer
         prompt = self._prompt_optimizer.optimize_prompt_for_context(
             query=query_text,
@@ -1081,7 +1078,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         # Create optimized prompt for streaming
         style_str = (config or {}).get("style", "conversational")
         style = self._prompt_optimizer.get_style_from_string(style_str)
-        
+
         prompt = self._prompt_optimizer.optimize_prompt_for_context(
             query=query_text,
             context=context_str,
@@ -1106,20 +1103,20 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         config = config or {}
         conversation_id = config.get("conversation_id")
         query_id = str(uuid.uuid4())
-        
+
         # Optimize query parameters based on patterns
         if self._query_optimizer.should_use_cache(query_text):
             config.setdefault("cache_enabled", True)
-        
+
         optimal_k = self._query_optimizer.get_optimal_k(query_text)
         config.setdefault("k", optimal_k)
-        
+
         # Start advanced performance tracking
         perf_context = self._performance_monitor.start_query_tracking(
-            query_id, 
+            query_id,
             config.get("search_type", "hybrid")
         )
-        
+
         # Create structured logging context for this query
         query_context = LogContext(
             component=ComponentType.ENGINE,
@@ -1132,14 +1129,14 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                 "config": {k: v for k, v in config.items() if k not in ["conversation_id"]},  # Avoid duplication
             }
         )
-        
-        logger.info(f"Starting GraphRAG query processing", query_context, query=query_text[:100], optimal_k=optimal_k)
+
+        logger.info("Starting GraphRAG query processing", query_context, query=query_text[:100], optimal_k=optimal_k)
 
         retrieved_chunks_data: list[SearchResultData] = []
         graph_context_tuple: tuple[list[Entity], list[Relationship]] | None = None
         answer_text: str = "Failed to process query."
         error_info: str | None = None
-        
+
         # Performance tracking variables
         retrieval_start = time.time()
         retrieval_duration_ms = 0.0
@@ -1158,12 +1155,12 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                     retrieved_chunks_data,
                     graph_context_tuple,
                 ) = await self._retrieve_and_build_context(query_text, config)
-                
+
             retrieval_duration_ms = (time.time() - retrieval_start) * 1000
-            
+
         except Exception as context_err:
             logger.error(
-                f"Failed to retrieve context during query", 
+                "Failed to retrieve context during query",
                 query_context,
                 error=context_err
             )
@@ -1185,7 +1182,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                     conversation_id=conversation_id,
                 )
                 llm_duration_ms = (time.time() - llm_start) * 1000
-                
+
             except Exception as answer_err:
                 logger.error(
                     f"Failed to generate answer during query: {answer_err}",
@@ -1247,7 +1244,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                 bibliography = citation_result.bibliography
 
                 logger.info(f"Enhanced answer with {citation_result.sources_cited}/{citation_result.total_sources} citations")
-                
+
                 # 5. Validate answer against source chunks
                 try:
                     validation_result = self._answer_validator.validate_answer(
@@ -1256,16 +1253,16 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                         citation_result.citations,
                         getattr(self, '_last_context_texts', None)
                     )
-                    
+
                     # Store validation results for metadata
                     self._last_validation_result = validation_result
-                    
+
                     logger.info(f"Answer validation: score={validation_result.validation_score:.2f}, valid={validation_result.is_valid}")
-                    
+
                 except Exception as validation_err:
                     logger.error(f"Error during answer validation: {validation_err}", exc_info=True)
                     # Continue without validation if it fails
-                    
+
             except Exception as citation_err:
                 logger.error(f"Error processing citations: {citation_err}", exc_info=True)
                 # Continue with original answer if citation processing fails
@@ -1277,7 +1274,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
             "engine_type": self.__class__.__name__,
             "citations": citations,  # Add citations to metadata for backward compatibility
         }
-        
+
         # Add validation results if available
         if hasattr(self, '_last_validation_result'):
             final_metadata.update({
@@ -1301,11 +1298,11 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
             "has_error": bool(error_info),
             "answer_length": len(answer_text),
         })
-        
+
         # Complete performance tracking
         try:
             cache_hit = config.get("cache_enabled", False) and not error_info
-            
+
             performance_metrics = self._performance_monitor.finish_query_tracking(
                 perf_context,
                 retrieval_duration_ms=retrieval_duration_ms,
@@ -1318,7 +1315,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                 cache_hit=cache_hit,
                 cache_key=query_context.query_id
             )
-            
+
             # Analyze query pattern for future optimization
             if not error_info:
                 total_duration_ms = performance_metrics.total_duration_ms
@@ -1327,10 +1324,10 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                     len(retrieved_chunks_data),
                     total_duration_ms
                 )
-            
+
         except Exception as perf_err:
             logger.warning(f"Performance tracking error: {perf_err}")
-        
+
         logger.info(
             "Completed GraphRAG query processing",
             query_context,

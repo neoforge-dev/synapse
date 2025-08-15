@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.routing import APIRouter
 
 # Removed Neo4j AsyncDriver usage; mgclient-based repository handles connectivity
@@ -26,12 +26,6 @@ from graph_rag.api.middleware import (
     RateLimitMiddleware,
     RequestLoggingMiddleware,
     SecurityHeadersMiddleware,
-)
-from graph_rag.observability import configure_logging, api_logger
-from graph_rag.observability.middleware import (
-    CorrelationMiddleware,
-    PerformanceMiddleware,
-    RequestSizeMiddleware,
 )
 from graph_rag.api.routers import documents, ingestion, query, search
 from graph_rag.api.routers.admin import create_admin_router
@@ -56,6 +50,12 @@ from graph_rag.core.knowledge_graph_builder import SimpleKnowledgeGraphBuilder
 from graph_rag.core.vector_store import MockVectorStore
 from graph_rag.infrastructure.document_processor.simple_processor import (
     SimpleDocumentProcessor,
+)
+from graph_rag.observability import configure_logging
+from graph_rag.observability.middleware import (
+    CorrelationMiddleware,
+    PerformanceMiddleware,
+    RequestSizeMiddleware,
 )
 
 try:
@@ -596,7 +596,7 @@ def create_app() -> FastAPI:
 
     # Add middleware (order matters - last added is executed first)
     settings = get_settings()
-    
+
     # Configure structured logging
     configure_logging(
         level=getattr(settings, 'log_level', 'INFO'),
@@ -606,7 +606,7 @@ def create_app() -> FastAPI:
 
     # Security headers (outermost)
     app.add_middleware(SecurityHeadersMiddleware)
-    
+
     # Observability middleware (early in chain for correlation tracking)
     app.add_middleware(CorrelationMiddleware, header_name="X-Correlation-ID")
     app.add_middleware(PerformanceMiddleware, slow_request_threshold=5000.0)  # 5 seconds
