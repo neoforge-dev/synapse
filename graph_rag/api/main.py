@@ -27,6 +27,12 @@ from graph_rag.api.middleware import (
     RequestLoggingMiddleware,
     SecurityHeadersMiddleware,
 )
+from graph_rag.observability import configure_logging, api_logger
+from graph_rag.observability.middleware import (
+    CorrelationMiddleware,
+    PerformanceMiddleware,
+    RequestSizeMiddleware,
+)
 from graph_rag.api.routers import documents, ingestion, query, search
 from graph_rag.api.routers.admin import create_admin_router
 from graph_rag.api.routers.graph import create_graph_router
@@ -590,9 +596,21 @@ def create_app() -> FastAPI:
 
     # Add middleware (order matters - last added is executed first)
     settings = get_settings()
+    
+    # Configure structured logging
+    configure_logging(
+        level=getattr(settings, 'log_level', 'INFO'),
+        format_type='json',
+        enable_correlation=True
+    )
 
     # Security headers (outermost)
     app.add_middleware(SecurityHeadersMiddleware)
+    
+    # Observability middleware (early in chain for correlation tracking)
+    app.add_middleware(CorrelationMiddleware, header_name="X-Correlation-ID")
+    app.add_middleware(PerformanceMiddleware, slow_request_threshold=5000.0)  # 5 seconds
+    app.add_middleware(RequestSizeMiddleware, max_request_size=10 * 1024 * 1024)  # 10MB
 
     # Rate limiting (if enabled)
     if getattr(settings, 'enable_rate_limiting', True):

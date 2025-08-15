@@ -6,6 +6,15 @@ from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from typing import Any
 
+# Import structured logging
+from graph_rag.observability import (
+    ComponentType,
+    LogContext,
+    PerformanceTimer,
+    engine_logger,
+    get_component_logger,
+)
+
 from graph_rag.config import get_settings
 from graph_rag.core.interfaces import (
     ChunkData,
@@ -50,7 +59,8 @@ from graph_rag.services.search import (
 #     GRAPH_REPORT_PROMPT,
 # )
 
-logger = logging.getLogger(__name__)
+# Use structured logger for GraphRAG engine
+logger = get_component_logger(ComponentType.ENGINE, "graph_rag_engine")
 settings = get_settings()
 
 
@@ -103,9 +113,20 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         self._citation_service = CitationService(citation_style)
         self._answer_validator = AnswerValidator(validation_level)
         self._prompt_optimizer = PromptOptimizer()
-        logger.info(
-            f"SimpleGraphRAGEngine initialized with GraphRepository: {type(graph_store).__name__}, VectorStore: {type(vector_store).__name__}, EntityExtractor: {type(entity_extractor).__name__}, LLMService: {type(self._llm_service).__name__}, CitationStyle: {citation_style.value}"
+        # Log initialization with structured context
+        context = LogContext(
+            component=ComponentType.ENGINE,
+            operation="initialization",
+            metadata={
+                "graph_store_type": type(graph_store).__name__,
+                "vector_store_type": type(vector_store).__name__,
+                "entity_extractor_type": type(entity_extractor).__name__,
+                "llm_service_type": type(self._llm_service).__name__,
+                "citation_style": citation_style.value,
+                "validation_level": validation_level.value,
+            }
         )
+        logger.info("SimpleGraphRAGEngine initialized successfully", context)
 
     async def _extract_entities_from_chunks(
         self, chunks: list[SearchResultData]
@@ -295,7 +316,16 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         list[SearchResultData], tuple[list[Entity], list[Relationship]] | None
     ]:
         """Internal method to perform vector search and graph context retrieval. DOES NOT call LLM."""
-        logger.info(f"Retrieving context for: '{query_text}' with config: {config}")
+        # Create context for this retrieval operation
+        retrieval_context = LogContext(
+            component=ComponentType.ENGINE,
+            operation="context_retrieval",
+            metadata={
+                "query_length": len(query_text),
+                "config": config or {},
+            }
+        )
+        logger.info(f"Starting context retrieval", retrieval_context, query=query_text[:100])
         config = config or {}
         k = config.get("k", 3)
         include_graph = config.get("include_graph", True)
@@ -636,14 +666,29 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                 logger.debug(f"LLM relationship extraction skipped due to error: {e}")
 
             # 5. Return the retrieved context
+            # Update retrieval context with results
+            retrieval_context.chunk_count = len(retrieved_chunks_full)
+            retrieval_context.metadata.update({
+                "chunks_found": len(retrieved_chunks_full),
+                "graph_entities_found": len(final_entities) if graph_context_tuple else 0,
+                "graph_relationships_found": len(final_relationships) if graph_context_tuple else 0,
+                "search_type": config.get("search_type", "vector"),
+                "include_graph": include_graph,
+            })
+            
             logger.info(
-                f"Context retrieval finished. Found {len(retrieved_chunks_full)} chunks and {len(final_entities) if graph_context_tuple else 0} graph entities."
+                "Context retrieval completed successfully",
+                retrieval_context,
+                chunks_found=len(retrieved_chunks_full),
+                graph_entities=len(final_entities) if graph_context_tuple else 0
             )
             return retrieved_chunks_full, graph_context_tuple
 
         except Exception as e:
             logger.error(
-                f"Error during query processing for '{query_text}': {e}", exc_info=True
+                "Error during context retrieval processing",
+                retrieval_context,
+                error=e
             )
             # Return an empty or error state
             return retrieved_chunks_full, None  # Indicate failure or no context
@@ -1048,24 +1093,46 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
     async def query(
         self, query_text: str, config: dict[str, Any] | None = None
     ) -> QueryResult:
-        logger.info(f"[DEBUG] Entered SimpleGraphRAGEngine.query for: '{query_text}'")
         config = config or {}
         conversation_id = config.get("conversation_id")
+        query_id = str(uuid.uuid4())
+        
+        # Create structured logging context for this query
+        query_context = LogContext(
+            component=ComponentType.ENGINE,
+            operation="query",
+            query_id=query_id,
+            metadata={
+                "query_length": len(query_text),
+                "conversation_id": conversation_id,
+                "config": {k: v for k, v in config.items() if k not in ["conversation_id"]},  # Avoid duplication
+            }
+        )
+        
+        logger.info(f"Starting GraphRAG query processing", query_context, query=query_text[:100])
 
         retrieved_chunks_data: list[SearchResultData] = []
         graph_context_tuple: tuple[list[Entity], list[Relationship]] | None = None
         answer_text: str = "Failed to process query."
         error_info: str | None = None
 
-        # 1. Retrieve context ONCE
+        # 1. Retrieve context ONCE with performance timing
         try:
-            (
-                retrieved_chunks_data,
-                graph_context_tuple,
-            ) = await self._retrieve_and_build_context(query_text, config)
+            with PerformanceTimer(
+                logger,
+                "context_retrieval",
+                context=query_context,
+                threshold_ms=1000.0  # Log if context retrieval takes > 1 second
+            ):
+                (
+                    retrieved_chunks_data,
+                    graph_context_tuple,
+                ) = await self._retrieve_and_build_context(query_text, config)
         except Exception as context_err:
             logger.error(
-                f"Failed to retrieve context during query: {context_err}", exc_info=True
+                f"Failed to retrieve context during query", 
+                query_context,
+                error=context_err
             )
             error_info = f"Context retrieval failed: {context_err}"
             answer_text = f"Error retrieving context: {context_err}"
@@ -1189,8 +1256,21 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         if error_info:
             final_metadata["error"] = error_info
 
+        # Update query context with final results
+        query_context.chunk_count = len(retrieved_chunks_data)
+        query_context.metadata.update({
+            "chunks_retrieved": len(retrieved_chunks_data),
+            "graph_entities": len(graph_context_tuple[0]) if graph_context_tuple else 0,
+            "graph_relationships": len(graph_context_tuple[1]) if graph_context_tuple else 0,
+            "has_error": bool(error_info),
+            "answer_length": len(answer_text),
+        })
+        
         logger.info(
-            f"[DEBUG] Returning QueryResult from SimpleGraphRAGEngine.query for: '{query_text}' with answer: {answer_text}"
+            "Completed GraphRAG query processing",
+            query_context,
+            success=not bool(error_info),
+            answer_preview=answer_text[:100]
         )
         return QueryResult(
             answer=answer_text,
