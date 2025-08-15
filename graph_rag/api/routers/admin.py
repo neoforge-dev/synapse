@@ -16,11 +16,26 @@ from graph_rag.api.health import (
     check_llm_service,
     check_vector_store,
 )
+from graph_rag.api.system_metrics import (
+    ApplicationMetrics,
+    SystemResourceMetrics,
+    assess_system_health,
+    get_application_metrics,
+    get_platform_info,
+    get_system_metrics,
+)
 from graph_rag.core.interfaces import GraphRepository, VectorStore
 from graph_rag.llm.protocols import LLMService
+from graph_rag.observability import (
+    ComponentType,
+    LogContext,
+    api_logger,
+    get_component_logger,
+)
 from graph_rag.services.maintenance import IntegrityCheckJob
 
-logger = logging.getLogger(__name__)
+# Use structured logger for admin endpoints
+logger = get_component_logger(ComponentType.API, "admin")
 
 
 def create_admin_router() -> APIRouter:
@@ -255,5 +270,303 @@ def create_admin_router() -> APIRouter:
                     "type": "application/problem+json"
                 }
             )
+
+    # System Metrics and Monitoring Endpoints
+    @router.get("/metrics/system", response_model=dict)
+    async def system_metrics() -> dict:
+        """Get comprehensive system resource metrics."""
+        context = LogContext(
+            component=ComponentType.API,
+            operation="system_metrics",
+            metadata={"endpoint": "/admin/metrics/system"}
+        )
+        
+        try:
+            logger.info("Collecting system metrics", context)
+            metrics = get_system_metrics()
+            
+            # Convert dataclass to dict for JSON serialization
+            result = {
+                "cpu_percent": metrics.cpu_percent,
+                "cpu_count": metrics.cpu_count,
+                "load_average": metrics.load_average,
+                "memory": {
+                    "total": metrics.memory_total,
+                    "available": metrics.memory_available,
+                    "used": metrics.memory_used,
+                    "percent": metrics.memory_percent,
+                },
+                "disk": {
+                    "total": metrics.disk_total,
+                    "used": metrics.disk_used,
+                    "free": metrics.disk_free,
+                    "percent": metrics.disk_percent,
+                },
+                "network": {
+                    "sent": metrics.network_sent,
+                    "recv": metrics.network_recv,
+                },
+                "process_count": metrics.process_count,
+                "timestamp": metrics.timestamp,
+            }
+            
+            logger.info("System metrics collected successfully", context, cpu_percent=metrics.cpu_percent)
+            return result
+            
+        except Exception as e:
+            logger.error("Failed to collect system metrics", context, error=e)
+            raise HTTPException(status_code=500, detail=f"Failed to collect system metrics: {str(e)}")
+
+    @router.get("/metrics/application", response_model=dict)
+    async def application_metrics(
+        request: Request,
+        vector_store: Annotated[VectorStore, Depends(get_vector_store)],
+        graph_repo: Annotated[GraphRepository, Depends(get_graph_repository)],
+    ) -> dict:
+        """Get comprehensive application-specific metrics."""
+        context = LogContext(
+            component=ComponentType.API,
+            operation="application_metrics",
+            metadata={"endpoint": "/admin/metrics/application"}
+        )
+        
+        try:
+            logger.info("Collecting application metrics", context)
+            
+            # Get cache and performance stats
+            from graph_rag.api.performance import get_cache_stats, get_performance_stats
+            cache_stats = get_cache_stats()
+            performance_stats = get_performance_stats()
+            
+            metrics = get_application_metrics(
+                vector_store=vector_store,
+                graph_repository=graph_repo,
+                cache_stats=cache_stats,
+                performance_stats=performance_stats
+            )
+            
+            # Convert dataclass to dict for JSON serialization
+            result = {
+                "process": {
+                    "memory_mb": metrics.process_memory_mb,
+                    "cpu_percent": metrics.process_cpu_percent,
+                    "thread_count": metrics.thread_count,
+                    "open_files": metrics.open_files,
+                    "uptime_seconds": metrics.uptime_seconds,
+                },
+                "cache": {
+                    "hit_rate": metrics.cache_hit_rate,
+                    "stats": cache_stats,
+                },
+                "storage": {
+                    "vector_store_size": metrics.vector_store_size,
+                    "graph_node_count": metrics.graph_node_count,
+                },
+                "requests": {
+                    "total_requests": metrics.total_requests,
+                    "avg_response_time": metrics.avg_response_time,
+                    "performance_stats": performance_stats,
+                },
+                "timestamp": metrics.timestamp,
+            }
+            
+            logger.info(
+                "Application metrics collected successfully", 
+                context, 
+                memory_mb=metrics.process_memory_mb,
+                uptime_hours=metrics.uptime_seconds / 3600
+            )
+            return result
+            
+        except Exception as e:
+            logger.error("Failed to collect application metrics", context, error=e)
+            raise HTTPException(status_code=500, detail=f"Failed to collect application metrics: {str(e)}")
+
+    @router.get("/metrics/health-assessment")
+    async def health_assessment(
+        vector_store: Annotated[VectorStore, Depends(get_vector_store)],
+        graph_repo: Annotated[GraphRepository, Depends(get_graph_repository)],
+    ) -> dict:
+        """Get comprehensive health assessment based on system and application metrics."""
+        context = LogContext(
+            component=ComponentType.API,
+            operation="health_assessment",
+            metadata={"endpoint": "/admin/metrics/health-assessment"}
+        )
+        
+        try:
+            logger.info("Performing health assessment", context)
+            
+            # Collect both system and application metrics
+            system_metrics = get_system_metrics()
+            
+            from graph_rag.api.performance import get_cache_stats, get_performance_stats
+            cache_stats = get_cache_stats()
+            performance_stats = get_performance_stats()
+            
+            app_metrics = get_application_metrics(
+                vector_store=vector_store,
+                graph_repository=graph_repo,
+                cache_stats=cache_stats,
+                performance_stats=performance_stats
+            )
+            
+            # Assess health based on thresholds
+            assessment = assess_system_health(system_metrics, app_metrics)
+            
+            # Include raw metrics in the response
+            result = {
+                "assessment": assessment,
+                "system_metrics": {
+                    "cpu_percent": system_metrics.cpu_percent,
+                    "memory_percent": system_metrics.memory_percent,
+                    "disk_percent": system_metrics.disk_percent,
+                },
+                "application_metrics": {
+                    "process_memory_mb": app_metrics.process_memory_mb,
+                    "process_cpu_percent": app_metrics.process_cpu_percent,
+                    "avg_response_time": app_metrics.avg_response_time,
+                    "uptime_seconds": app_metrics.uptime_seconds,
+                },
+                "timestamp": system_metrics.timestamp,
+            }
+            
+            logger.info(
+                f"Health assessment completed: {assessment['status']}", 
+                context,
+                status=assessment["status"],
+                issue_count=len(assessment["issues"]),
+                warning_count=len(assessment["warnings"])
+            )
+            return result
+            
+        except Exception as e:
+            logger.error("Failed to perform health assessment", context, error=e)
+            raise HTTPException(status_code=500, detail=f"Failed to perform health assessment: {str(e)}")
+
+    @router.get("/platform/info")
+    async def platform_info() -> dict:
+        """Get platform and environment information."""
+        context = LogContext(
+            component=ComponentType.API,
+            operation="platform_info",
+            metadata={"endpoint": "/admin/platform/info"}
+        )
+        
+        try:
+            logger.info("Collecting platform info", context)
+            info = get_platform_info()
+            
+            logger.info("Platform info collected successfully", context, system=info.get("system"))
+            return info
+            
+        except Exception as e:
+            logger.error("Failed to collect platform info", context, error=e)
+            raise HTTPException(status_code=500, detail=f"Failed to collect platform info: {str(e)}")
+
+    @router.get("/monitoring/dashboard")
+    async def monitoring_dashboard(
+        request: Request,
+        vector_store: Annotated[VectorStore, Depends(get_vector_store)],
+        graph_repo: Annotated[GraphRepository, Depends(get_graph_repository)],
+        llm_service: Annotated[LLMService, Depends(get_llm)],
+    ) -> dict:
+        """Comprehensive monitoring dashboard with all metrics and health data."""
+        context = LogContext(
+            component=ComponentType.API,
+            operation="monitoring_dashboard",
+            metadata={"endpoint": "/admin/monitoring/dashboard"}
+        )
+        
+        try:
+            logger.info("Generating monitoring dashboard", context)
+            
+            # Collect all metrics
+            system_metrics = get_system_metrics()
+            
+            from graph_rag.api.performance import get_cache_stats, get_performance_stats
+            cache_stats = get_cache_stats()
+            performance_stats = get_performance_stats()
+            
+            app_metrics = get_application_metrics(
+                vector_store=vector_store,
+                graph_repository=graph_repo,
+                cache_stats=cache_stats,
+                performance_stats=performance_stats
+            )
+            
+            # Health assessment
+            health_assessment_result = assess_system_health(system_metrics, app_metrics)
+            
+            # Component health checks
+            health_checker = HealthChecker(timeout_seconds=5.0)
+            embedding_service = getattr(vector_store, 'embedding_service', None)
+            
+            component_checkers = {
+                "graph_repository": lambda: check_graph_repository(graph_repo),
+                "vector_store": lambda: check_vector_store(vector_store),
+                "llm_service": lambda: check_llm_service(llm_service),
+            }
+            
+            if embedding_service:
+                component_checkers["embedding_service"] = lambda: check_embedding_service(embedding_service)
+            
+            component_health = await health_checker.check_all(component_checkers)
+            
+            # Platform info
+            platform_data = get_platform_info()
+            
+            # Build comprehensive dashboard
+            dashboard = {
+                "overview": {
+                    "status": health_assessment_result["status"],
+                    "uptime_hours": app_metrics.uptime_seconds / 3600,
+                    "total_requests": app_metrics.total_requests,
+                    "avg_response_time": app_metrics.avg_response_time,
+                    "timestamp": system_metrics.timestamp,
+                },
+                "system_resources": {
+                    "cpu_percent": system_metrics.cpu_percent,
+                    "memory_percent": system_metrics.memory_percent,
+                    "disk_percent": system_metrics.disk_percent,
+                    "process_memory_mb": app_metrics.process_memory_mb,
+                    "thread_count": app_metrics.thread_count,
+                },
+                "components": {
+                    "overall_status": component_health.status,
+                    "component_details": [
+                        {
+                            "name": comp.name,
+                            "status": comp.status,
+                            "response_time_ms": comp.response_time_ms,
+                            "message": comp.message
+                        }
+                        for comp in component_health.components
+                    ]
+                },
+                "storage": {
+                    "vector_store_size": app_metrics.vector_store_size,
+                    "graph_node_count": app_metrics.graph_node_count,
+                    "cache_size": cache_stats.get("size", 0),
+                },
+                "health_assessment": health_assessment_result,
+                "platform": {
+                    "system": platform_data.get("system"),
+                    "python_version": platform_data.get("python_version"),
+                    "hostname": platform_data.get("hostname"),
+                },
+            }
+            
+            logger.info(
+                "Monitoring dashboard generated successfully", 
+                context,
+                overall_status=health_assessment_result["status"],
+                component_count=len(component_health.components)
+            )
+            return dashboard
+            
+        except Exception as e:
+            logger.error("Failed to generate monitoring dashboard", context, error=e)
+            raise HTTPException(status_code=500, detail=f"Failed to generate monitoring dashboard: {str(e)}")
 
     return router
