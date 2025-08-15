@@ -16,8 +16,7 @@ from typing import Dict, List, Tuple, Any
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from graph_rag.infrastructure.graph_stores.memgraph_graph_store import MemgraphGraphStore
-from graph_rag.infrastructure.repositories.graph_repository import GraphRepository
+from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 from graph_rag.config import get_settings
 
 async def main():
@@ -30,9 +29,8 @@ async def main():
     settings.memgraph_port = 7777  # Use custom port
     
     try:
-        # Initialize graph store and repository
-        graph_store = MemgraphGraphStore(settings)
-        graph_repo = GraphRepository(graph_store)
+        # Initialize graph repository
+        graph_repo = MemgraphGraphRepository(settings_obj=settings)
         
         print("\n📊 DOCUMENT STATISTICS")
         print("=" * 50)
@@ -76,15 +74,15 @@ async def main():
         traceback.print_exc()
     finally:
         # Close connections
-        if 'graph_store' in locals():
-            await graph_store.close()
+        if 'graph_repo' in locals():
+            await graph_repo.close()
 
-async def get_document_statistics(graph_repo: GraphRepository) -> Dict[str, Any]:
+async def get_document_statistics(graph_repo: MemgraphGraphRepository) -> Dict[str, Any]:
     """Get comprehensive document statistics"""
     
     # Get total document count
     total_docs_query = "MATCH (d:Document) RETURN count(d) as total"
-    total_docs_result = await graph_repo.graph_store.execute_query(total_docs_query)
+    total_docs_result = await graph_repo.execute_query(total_docs_query)
     total_docs = total_docs_result[0]['total'] if total_docs_result else 0
     
     # Get documents by category
@@ -94,7 +92,7 @@ async def get_document_statistics(graph_repo: GraphRepository) -> Dict[str, Any]
     RETURN d.category as category, count(d) as count 
     ORDER BY count DESC
     """
-    category_result = await graph_repo.graph_store.execute_query(category_query)
+    category_result = await graph_repo.execute_query(category_query)
     categories = {row['category']: row['count'] for row in category_result}
     
     # Get documents by data type
@@ -103,7 +101,7 @@ async def get_document_statistics(graph_repo: GraphRepository) -> Dict[str, Any]
     WHERE d.data_type IS NOT NULL 
     RETURN d.data_type as data_type, count(d) as count
     """
-    type_result = await graph_repo.graph_store.execute_query(type_query)
+    type_result = await graph_repo.execute_query(type_query)
     data_types = {row['data_type']: row['count'] for row in type_result}
     
     # Get chunk statistics
@@ -114,7 +112,7 @@ async def get_document_statistics(graph_repo: GraphRepository) -> Dict[str, Any]
            min(size(c.content)) as min_chunk_size,
            max(size(c.content)) as max_chunk_size
     """
-    chunk_result = await graph_repo.graph_store.execute_query(chunk_query)
+    chunk_result = await graph_repo.execute_query(chunk_query)
     chunk_stats = chunk_result[0] if chunk_result else {}
     
     return {
@@ -124,12 +122,12 @@ async def get_document_statistics(graph_repo: GraphRepository) -> Dict[str, Any]
         'chunk_stats': chunk_stats
     }
 
-async def get_entity_statistics(graph_repo: GraphRepository) -> Dict[str, Any]:
+async def get_entity_statistics(graph_repo: MemgraphGraphRepository) -> Dict[str, Any]:
     """Get entity extraction statistics"""
     
     # Get total entity count
     total_entities_query = "MATCH (e:Entity) RETURN count(e) as total"
-    total_entities_result = await graph_repo.graph_store.execute_query(total_entities_query)
+    total_entities_result = await graph_repo.execute_query(total_entities_query)
     total_entities = total_entities_result[0]['total'] if total_entities_result else 0
     
     # Get entities by type
@@ -139,7 +137,7 @@ async def get_entity_statistics(graph_repo: GraphRepository) -> Dict[str, Any]:
     RETURN e.entity_type as entity_type, count(e) as count 
     ORDER BY count DESC LIMIT 20
     """
-    entity_type_result = await graph_repo.graph_store.execute_query(entity_type_query)
+    entity_type_result = await graph_repo.execute_query(entity_type_query)
     entity_types = {row['entity_type']: row['count'] for row in entity_type_result}
     
     # Get most mentioned entities
@@ -148,7 +146,7 @@ async def get_entity_statistics(graph_repo: GraphRepository) -> Dict[str, Any]:
     RETURN e.name as entity_name, e.entity_type as entity_type, count(r) as mention_count
     ORDER BY mention_count DESC LIMIT 20
     """
-    popular_entities_result = await graph_repo.graph_store.execute_query(popular_entities_query)
+    popular_entities_result = await graph_repo.execute_query(popular_entities_query)
     popular_entities = [
         {'name': row['entity_name'], 'type': row['entity_type'], 'mentions': row['mention_count']}
         for row in popular_entities_result
@@ -160,7 +158,7 @@ async def get_entity_statistics(graph_repo: GraphRepository) -> Dict[str, Any]:
         'popular_entities': popular_entities
     }
 
-async def get_relationship_statistics(graph_repo: GraphRepository) -> Dict[str, Any]:
+async def get_relationship_statistics(graph_repo: MemgraphGraphRepository) -> Dict[str, Any]:
     """Get relationship statistics"""
     
     # Get relationship type counts
@@ -169,7 +167,7 @@ async def get_relationship_statistics(graph_repo: GraphRepository) -> Dict[str, 
     RETURN type(r) as relationship_type, count(r) as count 
     ORDER BY count DESC
     """
-    rel_type_result = await graph_repo.graph_store.execute_query(rel_type_query)
+    rel_type_result = await graph_repo.execute_query(rel_type_query)
     relationship_types = {row['relationship_type']: row['count'] for row in rel_type_result}
     
     # Get documents with most entities
@@ -178,7 +176,7 @@ async def get_relationship_statistics(graph_repo: GraphRepository) -> Dict[str, 
     RETURN d.title as document_title, count(DISTINCT e) as entity_count
     ORDER BY entity_count DESC LIMIT 10
     """
-    doc_entity_result = await graph_repo.graph_store.execute_query(doc_entity_query)
+    doc_entity_result = await graph_repo.execute_query(doc_entity_query)
     docs_with_entities = [
         {'title': row['document_title'], 'entity_count': row['entity_count']}
         for row in doc_entity_result
@@ -189,7 +187,7 @@ async def get_relationship_statistics(graph_repo: GraphRepository) -> Dict[str, 
         'docs_with_most_entities': docs_with_entities
     }
 
-async def get_content_insights(graph_repo: GraphRepository) -> Dict[str, Any]:
+async def get_content_insights(graph_repo: MemgraphGraphRepository) -> Dict[str, Any]:
     """Get content-based insights"""
     
     # Get technology mentions
@@ -200,7 +198,7 @@ async def get_content_insights(graph_repo: GraphRepository) -> Dict[str, Any]:
     RETURN e.name as technology, count(*) as mentions
     ORDER BY mentions DESC LIMIT 15
     """
-    tech_result = await graph_repo.graph_store.execute_query(tech_query)
+    tech_result = await graph_repo.execute_query(tech_query)
     technologies = [{'name': row['technology'], 'mentions': row['mentions']} for row in tech_result]
     
     # Get business concepts
@@ -210,7 +208,7 @@ async def get_content_insights(graph_repo: GraphRepository) -> Dict[str, Any]:
     RETURN e.name as concept, count(*) as mentions
     ORDER BY mentions DESC LIMIT 15
     """
-    business_result = await graph_repo.graph_store.execute_query(business_query)
+    business_result = await graph_repo.execute_query(business_query)
     business_concepts = [{'name': row['concept'], 'mentions': row['mentions']} for row in business_result]
     
     return {
@@ -234,9 +232,12 @@ def print_document_stats(stats: Dict[str, Any]):
         chunk_stats = stats['chunk_stats']
         print(f"\n📝 Chunk Statistics:")
         print(f"   Total Chunks: {chunk_stats.get('total_chunks', 'N/A')}")
-        print(f"   Average Chunk Size: {chunk_stats.get('avg_chunk_size', 'N/A'):.0f} chars")
-        print(f"   Min Chunk Size: {chunk_stats.get('min_chunk_size', 'N/A')} chars")
-        print(f"   Max Chunk Size: {chunk_stats.get('max_chunk_size', 'N/A')} chars")
+        avg_size = chunk_stats.get('avg_chunk_size')
+        min_size = chunk_stats.get('min_chunk_size')
+        max_size = chunk_stats.get('max_chunk_size')
+        print(f"   Average Chunk Size: {avg_size:.0f} chars" if avg_size else "   Average Chunk Size: N/A")
+        print(f"   Min Chunk Size: {min_size} chars" if min_size else "   Min Chunk Size: N/A")
+        print(f"   Max Chunk Size: {max_size} chars" if max_size else "   Max Chunk Size: N/A")
 
 def print_entity_stats(stats: Dict[str, Any]):
     """Print entity statistics"""
@@ -277,7 +278,7 @@ def print_content_insights(insights: Dict[str, Any]):
         for concept in insights['business_concepts']:
             print(f"   {concept['name']}: {concept['mentions']} mentions")
 
-async def generate_visualizations(graph_repo: GraphRepository, doc_stats: Dict, entity_stats: Dict, rel_stats: Dict):
+async def generate_visualizations(graph_repo: MemgraphGraphRepository, doc_stats: Dict, entity_stats: Dict, rel_stats: Dict):
     """Generate visualization files"""
     
     # Create visualizations directory

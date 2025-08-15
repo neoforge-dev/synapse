@@ -14,8 +14,7 @@ from datetime import datetime
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from graph_rag.infrastructure.graph_stores.memgraph_graph_store import MemgraphGraphStore
-from graph_rag.infrastructure.repositories.graph_repository import GraphRepository
+from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 from graph_rag.config import get_settings
 
 async def main():
@@ -28,9 +27,8 @@ async def main():
     settings.memgraph_port = 7777  # Use custom port
     
     try:
-        # Initialize graph store and repository
-        graph_store = MemgraphGraphStore(settings)
-        graph_repo = GraphRepository(graph_store)
+        # Initialize graph repository
+        graph_repo = MemgraphGraphRepository(settings_obj=settings)
         
         print("\n🔍 Extracting graph data...")
         
@@ -50,10 +48,10 @@ async def main():
         traceback.print_exc()
     finally:
         # Close connections
-        if 'graph_store' in locals():
-            await graph_store.close()
+        if 'graph_repo' in locals():
+            await graph_repo.close()
 
-async def extract_graph_structure(graph_repo: GraphRepository) -> Tuple[List[Dict], List[Dict]]:
+async def extract_graph_structure(graph_repo: MemgraphGraphRepository) -> Tuple[List[Dict], List[Dict]]:
     """Extract nodes and edges for visualization"""
     
     # Get sample of most connected entities and documents
@@ -78,7 +76,7 @@ async def extract_graph_structure(graph_repo: GraphRepository) -> Tuple[List[Dic
         connections
     """
     
-    nodes_result = await graph_repo.graph_store.execute_query(nodes_query)
+    nodes_result = await graph_repo.execute_query(nodes_query)
     
     nodes = []
     node_ids = set()
@@ -130,7 +128,7 @@ async def extract_graph_structure(graph_repo: GraphRepository) -> Tuple[List[Dic
     LIMIT 2000
     """
     
-    edges_result = await graph_repo.graph_store.execute_query(edges_query)
+    edges_result = await graph_repo.execute_query(edges_query)
     
     edges = []
     for row in edges_result:

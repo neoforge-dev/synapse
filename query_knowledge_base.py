@@ -14,8 +14,7 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent))
 
 from graph_rag.core.graph_rag_engine import GraphRAGEngine
-from graph_rag.infrastructure.graph_stores.memgraph_graph_store import MemgraphGraphStore
-from graph_rag.infrastructure.repositories.graph_repository import GraphRepository
+from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
 from graph_rag.services.embedding_service import MockEmbeddingService
 from graph_rag.config import get_settings
@@ -41,8 +40,7 @@ async def main():
     
     try:
         # Initialize services
-        graph_store = MemgraphGraphStore(settings)
-        graph_repo = GraphRepository(graph_store)
+        graph_repo = MemgraphGraphRepository(settings_obj=settings)
         vector_store = SimpleVectorStore()
         embedding_service = MockEmbeddingService()
         
@@ -115,8 +113,8 @@ async def main():
         print(f"❌ Connection error: {e}")
     finally:
         # Close connections
-        if 'graph_store' in locals():
-            await graph_store.close()
+        if 'graph_repo' in locals():
+            await graph_repo.close()
 
 async def handle_search(rag_engine: GraphRAGEngine, query: str):
     """Handle vector search query"""
@@ -143,7 +141,7 @@ async def handle_search(rag_engine: GraphRAGEngine, query: str):
     except Exception as e:
         print(f"❌ Search error: {e}")
 
-async def handle_entity_search(graph_repo: GraphRepository, entity_name: str):
+async def handle_entity_search(graph_repo: MemgraphGraphRepository, entity_name: str):
     """Handle entity search"""
     print(f"🏷️  Searching for entity: '{entity_name}'")
     
@@ -156,7 +154,7 @@ async def handle_entity_search(graph_repo: GraphRepository, entity_name: str):
         LIMIT 10
         """
         
-        entities = await graph_repo.graph_store.execute_query(
+        entities = await graph_repo.execute_query(
             entity_query, 
             {"entity_name": entity_name}
         )
@@ -178,7 +176,7 @@ async def handle_entity_search(graph_repo: GraphRepository, entity_name: str):
             LIMIT 5
             """
             
-            related_docs = await graph_repo.graph_store.execute_query(
+            related_docs = await graph_repo.execute_query(
                 related_docs_query,
                 {"entity_id": entity['entity_id']}
             )
@@ -192,7 +190,7 @@ async def handle_entity_search(graph_repo: GraphRepository, entity_name: str):
     except Exception as e:
         print(f"❌ Entity search error: {e}")
 
-async def handle_document_search(graph_repo: GraphRepository, title_query: str):
+async def handle_document_search(graph_repo: MemgraphGraphRepository, title_query: str):
     """Handle document search by title"""
     print(f"📄 Searching for document: '{title_query}'")
     
@@ -205,7 +203,7 @@ async def handle_document_search(graph_repo: GraphRepository, title_query: str):
         LIMIT 10
         """
         
-        documents = await graph_repo.graph_store.execute_query(
+        documents = await graph_repo.execute_query(
             doc_query,
             {"title_query": title_query}
         )
@@ -233,7 +231,7 @@ async def handle_document_search(graph_repo: GraphRepository, title_query: str):
             LIMIT 10
             """
             
-            entities = await graph_repo.graph_store.execute_query(
+            entities = await graph_repo.execute_query(
                 entities_query,
                 {"doc_id": doc['doc_id']}
             )
@@ -245,7 +243,7 @@ async def handle_document_search(graph_repo: GraphRepository, title_query: str):
     except Exception as e:
         print(f"❌ Document search error: {e}")
 
-async def handle_stats(graph_repo: GraphRepository):
+async def handle_stats(graph_repo: MemgraphGraphRepository):
     """Show knowledge base statistics"""
     print("📊 Knowledge Base Statistics")
     print("-" * 40)
@@ -260,14 +258,14 @@ async def handle_stats(graph_repo: GraphRepository):
         ]
         
         for label, query in stats_queries:
-            result = await graph_repo.graph_store.execute_query(query)
+            result = await graph_repo.execute_query(query)
             count = result[0]['count'] if result else 0
             print(f"{label}: {count:,}")
             
     except Exception as e:
         print(f"❌ Stats error: {e}")
 
-async def handle_categories(graph_repo: GraphRepository):
+async def handle_categories(graph_repo: MemgraphGraphRepository):
     """List all document categories"""
     print("📂 Document Categories")
     print("-" * 30)
@@ -280,7 +278,7 @@ async def handle_categories(graph_repo: GraphRepository):
         ORDER BY count DESC
         """
         
-        categories = await graph_repo.graph_store.execute_query(categories_query)
+        categories = await graph_repo.execute_query(categories_query)
         
         if not categories:
             print("📭 No categories found")
@@ -292,7 +290,7 @@ async def handle_categories(graph_repo: GraphRepository):
     except Exception as e:
         print(f"❌ Categories error: {e}")
 
-async def handle_technologies(graph_repo: GraphRepository):
+async def handle_technologies(graph_repo: MemgraphGraphRepository):
     """Find technology mentions"""
     print("💻 Technology Mentions")
     print("-" * 30)
@@ -306,7 +304,7 @@ async def handle_technologies(graph_repo: GraphRepository):
         LIMIT 20
         """
         
-        technologies = await graph_repo.graph_store.execute_query(tech_query)
+        technologies = await graph_repo.execute_query(tech_query)
         
         if not technologies:
             print("📭 No technology mentions found")
@@ -318,7 +316,7 @@ async def handle_technologies(graph_repo: GraphRepository):
     except Exception as e:
         print(f"❌ Technologies error: {e}")
 
-async def handle_business_concepts(graph_repo: GraphRepository):
+async def handle_business_concepts(graph_repo: MemgraphGraphRepository):
     """Find business concept mentions"""
     print("💼 Business Concepts")
     print("-" * 30)
@@ -332,7 +330,7 @@ async def handle_business_concepts(graph_repo: GraphRepository):
         LIMIT 20
         """
         
-        concepts = await graph_repo.graph_store.execute_query(business_query)
+        concepts = await graph_repo.execute_query(business_query)
         
         if not concepts:
             print("📭 No business concepts found")
