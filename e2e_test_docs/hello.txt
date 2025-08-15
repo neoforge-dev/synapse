@@ -1,0 +1,4 @@
+Hello, Synapse!
+
+This is a simple test document for end-to-end CLI ingestion and search.
+If you can find this text via the CLI, the ingestion and retrieval pipeline is working.

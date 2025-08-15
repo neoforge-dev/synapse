@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8001:8000"
+      - "8000:8000"
     environment:
       MEMGRAPH_URI: ${MEMGRAPH_URI:-bolt://memgraph:7687}
       MEMGRAPH_USERNAME: ${MEMGRAPH_USERNAME:-}

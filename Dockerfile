@@ -39,5 +39,5 @@ USER appuser
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Command to run the application
-CMD ["uv", "run", "uvicorn", "graph_rag.api.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+# Command to run the application (use installed site-packages, avoid uv-run isolation)
+CMD ["uvicorn", "graph_rag.api.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
