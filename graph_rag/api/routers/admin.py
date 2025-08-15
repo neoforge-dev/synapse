@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -23,6 +24,12 @@ from graph_rag.api.system_metrics import (
     get_application_metrics,
     get_platform_info,
     get_system_metrics,
+)
+from graph_rag.api.performance_optimization import (
+    get_advanced_performance_stats,
+    get_optimization_recommendations,
+    get_performance_monitor,
+    get_query_optimizer,
 )
 from graph_rag.core.interfaces import GraphRepository, VectorStore
 from graph_rag.llm.protocols import LLMService
@@ -568,5 +575,218 @@ def create_admin_router() -> APIRouter:
         except Exception as e:
             logger.error("Failed to generate monitoring dashboard", context, error=e)
             raise HTTPException(status_code=500, detail=f"Failed to generate monitoring dashboard: {str(e)}")
+
+    # Advanced Performance Optimization Endpoints
+    @router.get("/performance/advanced")
+    async def advanced_performance_stats() -> dict:
+        """Get comprehensive advanced performance statistics."""
+        context = LogContext(
+            component=ComponentType.API,
+            operation="advanced_performance_stats",
+            metadata={"endpoint": "/admin/performance/advanced"}
+        )
+        
+        try:
+            logger.info("Collecting advanced performance statistics", context)
+            
+            stats = get_advanced_performance_stats()
+            recommendations = get_optimization_recommendations()
+            
+            # Get slow queries
+            monitor = get_performance_monitor()
+            slow_queries = monitor.get_slow_queries(limit=10)
+            
+            result = {
+                "performance_summary": stats,
+                "optimization_recommendations": recommendations,
+                "slow_queries": [
+                    {
+                        "query_id": q.query_id,
+                        "query_type": q.query_type,
+                        "total_duration_ms": q.total_duration_ms,
+                        "retrieval_duration_ms": q.retrieval_duration_ms,
+                        "llm_duration_ms": q.llm_duration_ms,
+                        "memory_peak_mb": q.memory_peak_mb,
+                        "chunks_retrieved": q.chunks_retrieved,
+                        "cache_hit": q.cache_hit,
+                        "timestamp": q.timestamp,
+                    }
+                    for q in slow_queries
+                ],
+                "query_optimizer_stats": {
+                    "total_patterns": len(get_query_optimizer().query_patterns),
+                    "optimal_k_mappings": len(get_query_optimizer().optimal_k_values),
+                    "complexity_cache_size": len(get_query_optimizer().query_complexity_cache),
+                }
+            }
+            
+            logger.info(
+                "Advanced performance statistics collected successfully", 
+                context,
+                total_queries=stats.get("total_queries", 0),
+                slow_query_count=len(slow_queries)
+            )
+            return result
+            
+        except Exception as e:
+            logger.error("Failed to collect advanced performance statistics", context, error=e)
+            raise HTTPException(status_code=500, detail=f"Failed to collect advanced performance statistics: {str(e)}")
+
+    @router.get("/performance/profiles")
+    async def performance_profiles() -> dict:
+        """Get performance profiles for different operation types."""
+        context = LogContext(
+            component=ComponentType.API,
+            operation="performance_profiles",
+            metadata={"endpoint": "/admin/performance/profiles"}
+        )
+        
+        try:
+            logger.info("Collecting performance profiles", context)
+            
+            monitor = get_performance_monitor()
+            operation_types = ["vector", "hybrid", "graph", "keyword"]
+            
+            profiles = {}
+            for op_type in operation_types:
+                profile = monitor.get_performance_profile(op_type)
+                if profile:
+                    profiles[op_type] = {
+                        "avg_duration_ms": profile.avg_duration_ms,
+                        "min_duration_ms": profile.min_duration_ms,
+                        "max_duration_ms": profile.max_duration_ms,
+                        "p50_duration_ms": profile.p50_duration_ms,
+                        "p95_duration_ms": profile.p95_duration_ms,
+                        "p99_duration_ms": profile.p99_duration_ms,
+                        "operations_per_second": profile.operations_per_second,
+                        "total_operations": profile.total_operations,
+                        "avg_memory_usage_mb": profile.avg_memory_usage_mb,
+                        "cache_hit_rate": profile.cache_hit_rate,
+                        "success_rate": profile.success_rate,
+                    }
+            
+            result = {
+                "operation_profiles": profiles,
+                "timestamp": time.time(),
+            }
+            
+            logger.info(
+                "Performance profiles collected successfully", 
+                context,
+                profile_count=len(profiles)
+            )
+            return result
+            
+        except Exception as e:
+            logger.error("Failed to collect performance profiles", context, error=e)
+            raise HTTPException(status_code=500, detail=f"Failed to collect performance profiles: {str(e)}")
+
+    @router.get("/performance/optimization")
+    async def optimization_analysis() -> dict:
+        """Get optimization analysis and recommendations."""
+        context = LogContext(
+            component=ComponentType.API,
+            operation="optimization_analysis",
+            metadata={"endpoint": "/admin/performance/optimization"}
+        )
+        
+        try:
+            logger.info("Performing optimization analysis", context)
+            
+            optimizer = get_query_optimizer()
+            monitor = get_performance_monitor()
+            
+            # Get optimization recommendations
+            recommendations = get_optimization_recommendations()
+            
+            # Analyze query patterns
+            pattern_analysis = {
+                "total_unique_queries": len(optimizer.query_patterns),
+                "frequent_queries": [
+                    {"query_hash": hash_val, "frequency": count}
+                    for hash_val, count in optimizer.query_patterns.items()
+                    if count >= 3
+                ],
+                "optimal_k_distribution": {
+                    str(k): len([v for v in optimizer.optimal_k_values.values() if v == k])
+                    for k in range(3, 21)
+                    if any(v == k for v in optimizer.optimal_k_values.values())
+                },
+                "complexity_distribution": {
+                    "low": len([c for c in optimizer.query_complexity_cache.values() if c < 0.3]),
+                    "medium": len([c for c in optimizer.query_complexity_cache.values() if 0.3 <= c < 0.7]),
+                    "high": len([c for c in optimizer.query_complexity_cache.values() if c >= 0.7]),
+                }
+            }
+            
+            # Memory analysis
+            memory_stats = monitor.memory_tracker.get_stats()
+            
+            result = {
+                "recommendations": recommendations,
+                "pattern_analysis": pattern_analysis,
+                "memory_analysis": memory_stats,
+                "cache_efficiency": {
+                    "should_cache_count": len([
+                        q for q in optimizer.query_patterns.keys()
+                        if optimizer.should_use_cache(f"query_{q}")  # Simplified check
+                    ]),
+                    "total_patterns": len(optimizer.query_patterns),
+                },
+                "timestamp": time.time(),
+            }
+            
+            logger.info(
+                "Optimization analysis completed successfully", 
+                context,
+                recommendation_count=len(recommendations),
+                pattern_count=len(optimizer.query_patterns)
+            )
+            return result
+            
+        except Exception as e:
+            logger.error("Failed to perform optimization analysis", context, error=e)
+            raise HTTPException(status_code=500, detail=f"Failed to perform optimization analysis: {str(e)}")
+
+    @router.post("/performance/reset-stats")
+    async def reset_performance_stats() -> dict:
+        """Reset performance statistics and optimization data."""
+        context = LogContext(
+            component=ComponentType.API,
+            operation="reset_performance_stats",
+            metadata={"endpoint": "/admin/performance/reset-stats"}
+        )
+        
+        try:
+            logger.info("Resetting performance statistics", context)
+            
+            # Reset performance monitor
+            monitor = get_performance_monitor()
+            monitor.query_history.clear()
+            monitor.operation_stats.clear()
+            monitor.slow_queries.clear()
+            
+            # Reset query optimizer
+            optimizer = get_query_optimizer()
+            optimizer.query_patterns.clear()
+            optimizer.optimal_k_values.clear()
+            optimizer.query_complexity_cache.clear()
+            
+            # Clear performance cache
+            from graph_rag.api.performance import clear_cache
+            clear_cache()
+            
+            result = {
+                "status": "success",
+                "message": "Performance statistics and optimization data reset",
+                "timestamp": time.time(),
+            }
+            
+            logger.info("Performance statistics reset successfully", context)
+            return result
+            
+        except Exception as e:
+            logger.error("Failed to reset performance statistics", context, error=e)
+            raise HTTPException(status_code=500, detail=f"Failed to reset performance statistics: {str(e)}")
 
     return router
