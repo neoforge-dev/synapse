@@ -8,6 +8,7 @@ from graph_rag.cli.commands.compose import app as compose_app
 from graph_rag.cli.commands.config import app as config_app
 from graph_rag.cli.commands.discover import discover_command
 from graph_rag.cli.commands.graph import app as graph_app
+from graph_rag.cli.commands.insights import app as insights_app
 
 # Import command functions directly
 from graph_rag.cli.commands.ingest import ingest_command
@@ -46,6 +47,7 @@ app.command("store")(store_command)
 app.command("search")(search_query)
 app.add_typer(query_app, name="query")
 app.add_typer(graph_app, name="graph")
+app.add_typer(insights_app, name="insights")
 app.add_typer(notion_app, name="notion")
 app.command("suggest")(suggest_command)
 app.add_typer(config_app, name="config")
