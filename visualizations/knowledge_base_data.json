@@ -1,10 +1,10 @@
 {
   "document_stats": {
-    "total_documents": 155,
+    "total_documents": 0,
     "categories": {},
     "data_types": {},
     "chunk_stats": {
-      "total_chunks": 3325,
+      "total_chunks": 0,
       "avg_chunk_size": null,
       "min_chunk_size": null,
       "max_chunk_size": null
@@ -16,13 +16,8 @@
     "popular_entities": []
   },
   "relationship_stats": {
-    "relationship_types": {
-      "MENTIONS": 4255,
-      "CONTAINS": 3325,
-      "MENTIONS_TOPIC": 3295,
-      "HAS_TOPIC": 149
-    },
+    "relationship_types": {},
     "docs_with_most_entities": []
   },
-  "generated_at": "2025-08-16T04:09:06.572989"
+  "generated_at": "2025-08-16T05:05:07.717563"
 }

@@ -26,7 +26,7 @@ async def main():
     
     # Initialize settings and connections
     settings = get_settings()
-    settings.memgraph_port = 7777  # Use custom port
+    settings.memgraph_port = 7687  # Use standard port
     
     try:
         # Initialize graph repository
