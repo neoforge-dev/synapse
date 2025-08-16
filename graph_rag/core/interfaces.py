@@ -303,6 +303,12 @@ class GraphRepository(Protocol):
         """Creates relationships (e.g., MENTIONS) between a chunk and a list of entities."""
         pass
 
+    async def keyword_search(
+        self, query: str, limit: int = 10
+    ) -> list[SearchResultData]:
+        """Performs keyword search across chunk text content."""
+        ...
+
     # Add other necessary graph operations as needed...
 
 

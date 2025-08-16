@@ -1,13 +1,23 @@
+import logging
 import time
 from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel
 
+from graph_rag.api.errors import (
+    ErrorClassifier,
+    MemgraphConnectionError,
+    VectorStoreError,
+    SearchError,
+    handle_search_error,
+)
 from graph_rag.core.interfaces import GraphRepository, SearchResultData, VectorStore
 from graph_rag.domain.models import Chunk
 from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
 from graph_rag.services.embedding import EmbeddingService
+
+logger = logging.getLogger(__name__)
 
 
 class SearchResult(BaseModel):
@@ -30,7 +40,7 @@ class SearchService:
 
     async def search_chunks(self, query: str, limit: int = 10) -> list[SearchResult]:
         """
-        Search for relevant chunks based on a query string.
+        Search for relevant chunks based on a query string with fallback mechanisms.
 
         Args:
             query: The search query string.
@@ -39,34 +49,40 @@ class SearchService:
         Returns:
             A list of SearchResult objects.
         """
-        # 1. Call repository to get matching chunks
-        matching_chunks: list[Chunk] = await self.repository.search_chunks_by_content(
-            query, limit
-        )
-
-        # 2. Map chunks to SearchResult objects
-        search_results = []
-        for chunk in matching_chunks:
-            # Simple scoring for now: 1.0 for any keyword match
-            # Real implementation would use more sophisticated scoring
-            score = 1.0
-            search_results.append(
-                SearchResult(
-                    chunk_id=chunk.id,
-                    document_id=chunk.document_id,
-                    content=chunk.text,
-                    score=score,
-                )
+        try:
+            # 1. Call repository to get matching chunks
+            matching_chunks: list[Chunk] = await self.repository.search_chunks_by_content(
+                query, limit
             )
 
-        # 3. Return results
-        return search_results
+            # 2. Map chunks to SearchResult objects
+            search_results = []
+            for chunk in matching_chunks:
+                # Simple scoring for now: 1.0 for any keyword match
+                # Real implementation would use more sophisticated scoring
+                score = 1.0
+                search_results.append(
+                    SearchResult(
+                        chunk_id=chunk.id,
+                        document_id=chunk.document_id,
+                        content=chunk.text,
+                        score=score,
+                    )
+                )
+
+            # 3. Return results
+            return search_results
+            
+        except Exception as e:
+            logger.warning(f"Graph search failed: {e}, attempting fallback")
+            # Fallback to simple text matching if available
+            return await self._fallback_search(query, limit)
 
     async def search_chunks_by_similarity(
         self, query: str, limit: int = 10
     ) -> list[SearchResult]:
         """
-        Search for relevant chunks based on semantic similarity.
+        Search for relevant chunks based on semantic similarity with fallback.
 
         Args:
             query: The search query string.
@@ -75,30 +91,128 @@ class SearchService:
         Returns:
             A list of SearchResult objects ordered by similarity score.
         """
-        # 1. Generate embedding for the query
-        query_vector = self.embedding_service.encode(query)
-        if not isinstance(query_vector, list):
-            # Handle potential errors during encoding if needed, though encode raises
-            return []
+        try:
+            # 1. Generate embedding for the query
+            query_vector = await self.embedding_service.encode(query)
+            if not isinstance(query_vector, list):
+                # Handle potential errors during encoding if needed, though encode raises
+                logger.warning("Failed to generate query embedding, falling back to keyword search")
+                return await self.search_chunks(query, limit)
 
-        # 2. Call repository for similarity search
-        # Repository returns List[tuple[Chunk, float]]
-        results_with_scores = await self.repository.search_chunks_by_similarity(
-            query_vector=query_vector, limit=limit
-        )
-
-        # 3. Map results to SearchResult objects
-        search_results = [
-            SearchResult(
-                chunk_id=chunk.id,
-                document_id=chunk.document_id,
-                content=chunk.text,
-                score=score,  # Score is the similarity from the repository
+            # 2. Call repository for similarity search
+            # Repository returns List[tuple[Chunk, float]]
+            results_with_scores = await self.repository.search_chunks_by_similarity(
+                query_vector=query_vector, limit=limit
             )
-            for chunk, score in results_with_scores
-        ]
 
-        return search_results
+            # 3. Map results to SearchResult objects
+            search_results = [
+                SearchResult(
+                    chunk_id=chunk.id,
+                    document_id=chunk.document_id,
+                    content=chunk.text,
+                    score=score,  # Score is the similarity from the repository
+                )
+                for chunk, score in results_with_scores
+            ]
+
+            return search_results
+            
+        except Exception as e:
+            logger.warning(f"Vector similarity search failed: {e}, falling back to keyword search")
+            # Fallback to keyword search when vector search fails
+            return await self.search_chunks(query, limit)
+
+    async def search_with_fallback(
+        self, 
+        query: str, 
+        limit: int = 10, 
+        strategy: str = "hybrid"
+    ) -> list[SearchResult]:
+        """
+        Intelligent search with automatic fallback mechanisms.
+        
+        Args:
+            query: The search query string
+            limit: Maximum number of results to return
+            strategy: Search strategy ("vector", "keyword", "hybrid")
+            
+        Returns:
+            List of SearchResult objects
+        """
+        results = []
+        
+        # Try vector search first if requested
+        if strategy in ["vector", "hybrid"]:
+            try:
+                logger.debug(f"Attempting vector search for: {query}")
+                results = await self.search_chunks_by_similarity(query, limit)
+                if results:
+                    logger.debug(f"Vector search successful: {len(results)} results")
+                    return results
+            except Exception as e:
+                logger.warning(f"Vector search failed: {e}")
+        
+        # Try keyword/graph search if vector failed or was not requested
+        if strategy in ["keyword", "hybrid"] or not results:
+            try:
+                logger.debug(f"Attempting keyword search for: {query}")
+                results = await self.search_chunks(query, limit)
+                if results:
+                    logger.debug(f"Keyword search successful: {len(results)} results")
+                    return results
+            except Exception as e:
+                logger.warning(f"Keyword search failed: {e}")
+        
+        # Final fallback - simple text matching
+        logger.warning("All primary search methods failed, using basic fallback")
+        return await self._fallback_search(query, limit)
+
+    async def _fallback_search(self, query: str, limit: int = 10) -> list[SearchResult]:
+        """
+        Fallback search when all primary methods fail.
+        
+        This performs basic text matching on any available chunks.
+        """
+        try:
+            # Try to get any chunks from the repository
+            all_chunks = await self.repository.get_all_chunks(limit=limit * 3)  # Get more for filtering
+            
+            if not all_chunks:
+                logger.warning("No chunks available for fallback search")
+                return []
+            
+            # Simple text matching
+            query_terms = query.lower().split()
+            results = []
+            
+            for chunk in all_chunks:
+                if not chunk.text:
+                    continue
+                    
+                chunk_text = chunk.text.lower()
+                matches = sum(1 for term in query_terms if term in chunk_text)
+                
+                if matches > 0:
+                    # Simple scoring based on number of term matches
+                    score = matches / len(query_terms)
+                    results.append(
+                        SearchResult(
+                            chunk_id=chunk.id,
+                            document_id=chunk.document_id,
+                            content=chunk.text,
+                            score=score,
+                        )
+                    )
+            
+            # Sort by score and return top results
+            results.sort(key=lambda x: x.score, reverse=True)
+            return results[:limit]
+            
+        except Exception as e:
+            logger.error(f"Fallback search also failed: {e}")
+            # Return empty results rather than crashing
+            return []
 
 
 class SearchStrategy(Enum):

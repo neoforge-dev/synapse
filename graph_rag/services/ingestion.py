@@ -7,6 +7,15 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from graph_rag.api.errors import (
+    ErrorClassifier,
+    IngestionError,
+    MemgraphConnectionError,
+    VectorStoreError,
+    EmbeddingServiceError,
+    handle_ingestion_error,
+)
+
 from graph_rag.api.metrics import (
     inc_ingested_chunks,
     inc_ingested_vectors,
@@ -229,7 +238,11 @@ class IngestionService:
             logger.info(f"Saved document with ID: {document_id}")
         except Exception as e:
             logger.error(f"Failed to save document {document_id}: {e}", exc_info=True)
-            raise  # Re-raise to signal failure
+            # Classify and enhance the error
+            if "connection" in str(e).lower() or "memgraph" in str(e).lower():
+                raise MemgraphConnectionError(reason=f"Failed to save document: {e}")
+            else:
+                handle_ingestion_error(e, document_id, "document_storage")
 
         # 2. Split content into chunks
         chunk_objects = await self._split_into_chunks(document, max_tokens_per_chunk)
@@ -287,8 +300,13 @@ class IngestionService:
                             f"Failed to add chunks to vector store: {vs_e}",
                             exc_info=True,
                         )
-                        # Decide handling: maybe continue without vector store addition?
-                        # For now, log and continue.
+                        # Check if this is a critical vector store error
+                        error_msg = str(vs_e).lower()
+                        if any(keyword in error_msg for keyword in ["disk", "space", "memory", "faiss"]):
+                            raise VectorStoreError(operation="add_chunks", reason=str(vs_e))
+                        else:
+                            # Log warning and continue - vector search won't work but graph search will
+                            logger.warning(f"Vector store unavailable, continuing with graph-only mode: {vs_e}")
 
                 else:
                     logger.error(
@@ -299,15 +317,20 @@ class IngestionService:
                     f"Failed to generate embeddings for document {document_id}: Embedding service missing 'encode' method or similar error: {ae}",
                     exc_info=True,
                 )
-                # Decide how to handle: skip embeddings, raise error?
-                # For now, log error and continue without embeddings
+                # Raise specific embedding service error with recovery suggestions
+                raise EmbeddingServiceError(reason=f"Embedding service configuration error: {ae}")
             except Exception as e:
                 logger.error(
                     f"Failed to generate embeddings for document {document_id}: {e}",
                     exc_info=True,
                 )
-                # Decide how to handle: skip embeddings, raise error?
-                # For now, log error and continue without embeddings
+                # Check if this is a recoverable embedding error
+                error_msg = str(e).lower()
+                if any(keyword in error_msg for keyword in ["memory", "cuda", "torch", "model"]):
+                    raise EmbeddingServiceError(reason=str(e))
+                else:
+                    # For other errors, continue without embeddings but warn user
+                    logger.warning(f"Continuing ingestion without embeddings due to error: {e}")
 
         # 4. Extract entities from chunks and store them
         await self._extract_and_store_entities(chunk_objects, document_id)
@@ -355,8 +378,13 @@ class IngestionService:
                     f"Failed to save chunk {chunk.id} or its relationship for document {document_id}: {e}",
                     exc_info=True,
                 )
-                # Optionally collect failed chunk IDs or raise immediately
-                # For now, continue processing other chunks
+                # Classify the error
+                error_msg = str(e).lower()
+                if "connection" in error_msg or "memgraph" in error_msg:
+                    raise MemgraphConnectionError(reason=f"Failed to save chunk: {e}")
+                else:
+                    # For other errors, continue processing but warn
+                    logger.warning(f"Skipping chunk {chunk.id} due to error: {e}")
 
         # 4b. Project topics as nodes and link to document and chunks
         try:

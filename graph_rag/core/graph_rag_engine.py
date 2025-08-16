@@ -1620,10 +1620,10 @@ class GraphRAGEngineOrchestrator(GraphRAGEngine):
                 Chunk(
                     id=chunk_data.id,
                     document_id=chunk_data.document_id,
-                    content=chunk_data.text,  # Map text to content
+                    text=chunk_data.text,  # Map text to content
                     embedding=chunk_data.embedding,
-                    # score=chunk_data.score # Chunk model might not have score
-                    metadata={"score": chunk_data.score},  # Store score in metadata
+                    score=chunk_data.score,  # Set score directly on the chunk
+                    metadata={"score": chunk_data.score},  # Also store score in metadata for backward compatibility
                 )
             )
 

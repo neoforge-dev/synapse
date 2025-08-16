@@ -765,16 +765,8 @@ async def ingest(
                     f"Successfully processed and stored {file_path} including graph links."
                 )
     except Exception as e:
-        # Emit structured error if --json was requested
-        if as_json:
-            err = {"error": str(e)}
-            try:
-                typer.echo(json.dumps(err, ensure_ascii=False))
-            except Exception:
-                typer.echo('{"error":"ingest failed"}')
-        else:
-            typer.echo(f"Error ingesting document(s): {e}")
-        raise typer.Exit(1)
+        # Use enhanced error handling instead of generic error message
+        CLIErrorHandler.handle_cli_error(e, {"command": "ingest", "as_json": as_json})
 
 
 def ingest_command(
@@ -831,7 +823,7 @@ def ingest_command(
     ),
 ) -> None:
     """Wrapper function to run the async ingest command with options."""
-    asyncio.run(
+    safe_async_run(
         ingest(
             file_path=file_path,
             metadata=metadata,
@@ -845,5 +837,6 @@ def ingest_command(
             as_json=as_json,
             read_stdin=read_stdin,
             json_summary=json_summary,
-        )
+        ),
+        "ingest"
     )
