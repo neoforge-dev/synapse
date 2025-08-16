@@ -272,3 +272,27 @@ def suggest_alternative_workflow(primary_error: GraphRAGError, command_name: str
         console.print("\n🔄 Alternative approaches:", style="bold green")
         for alt in alternatives:
             console.print(f"  {alt}", style="green")
+
+
+def handle_ingestion_error(document_id: str, error: Exception) -> None:
+    """Handle ingestion-specific errors with appropriate guidance."""
+    error_msg = str(error).lower()
+    
+    if "embedding" in error_msg:
+        raise EmbeddingServiceError(
+            reason=str(error),
+            recovery_suggestions=[
+                "Try ingesting without embeddings: --no-embeddings",
+                "Use mock embeddings: --mock-embeddings",
+                "Check embedding service configuration"
+            ]
+        )
+    elif "graph" in error_msg or "memgraph" in error_msg:
+        raise MemgraphConnectionError(reason=str(error))
+    else:
+        raise IngestionError(
+            document_id=document_id,
+            stage="processing",
+            reason=str(error),
+            recoverable=True
+        )
