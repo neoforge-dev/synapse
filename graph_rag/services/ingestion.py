@@ -16,6 +16,7 @@ from graph_rag.core.interfaces import (
     DocumentProcessor,
     EmbeddingService,
     EntityExtractor,
+    ExtractedEntity,
     GraphRepository,
     VectorStore,
 )
@@ -308,7 +309,10 @@ class IngestionService:
                 # Decide how to handle: skip embeddings, raise error?
                 # For now, log error and continue without embeddings
 
-        # 4. Save chunks and create relationships
+        # 4. Extract entities from chunks and store them
+        await self._extract_and_store_entities(chunk_objects, document_id)
+
+        # 5. Save chunks and create relationships
         chunk_ids = []
         for chunk in chunk_objects:
             try:
@@ -449,7 +453,7 @@ class IngestionService:
             inc_ingested_chunks(len(chunk_ids))
         except Exception:
             pass
-        # 5. Return result
+        # 6. Return result
         return IngestionResult(document_id=document_id, chunk_ids=chunk_ids)
 
     async def _retry(
@@ -691,3 +695,107 @@ class IngestionService:
                 logger.warning(f"Image OCR processing failed for {document_id}: {e}")
 
         return enhanced_content, enhanced_metadata
+
+    async def _extract_and_store_entities(self, chunk_objects: list[Chunk], document_id: str) -> None:
+        """Extract entities from chunks and store them in the graph with relationships."""
+        if not self.entity_extractor:
+            logger.debug("No entity extractor configured, skipping entity extraction")
+            return
+
+        logger.info(
+            f"Starting entity extraction for document {document_id} with {len(chunk_objects)} chunks"
+        )
+
+        # Extract entities from all chunks
+        all_entities: dict[str, ExtractedEntity] = {}
+        entity_chunk_mentions: list[tuple[str, str]] = []  # (entity_id, chunk_id) pairs
+
+        for chunk in chunk_objects:
+            if not chunk.text or chunk.text.isspace():
+                continue
+
+            try:
+                # Add context for better entity extraction
+                context = {
+                    "chunk_id": chunk.id,
+                    "document_id": document_id,
+                }
+
+                # Extract entities from chunk text
+                extraction_result = await self.entity_extractor.extract_from_text(
+                    chunk.text, context
+                )
+
+                # Collect unique entities and track chunk-entity relationships
+                for extracted_entity in extraction_result.entities:
+                    entity_id = extracted_entity.id
+                    if entity_id not in all_entities:
+                        all_entities[entity_id] = extracted_entity
+                    
+                    # Track that this chunk mentions this entity
+                    entity_chunk_mentions.append((entity_id, chunk.id))
+
+            except Exception as e:
+                logger.warning(
+                    f"Entity extraction failed for chunk {chunk.id} in document {document_id}: {e}"
+                )
+                continue
+
+        if not all_entities:
+            logger.info(f"No entities extracted from document {document_id}")
+            return
+
+        logger.info(
+            f"Extracted {len(all_entities)} unique entities from document {document_id}"
+        )
+
+        # Store entities in the graph
+        from graph_rag.domain.models import Entity as DomainEntity
+
+        for extracted_entity in all_entities.values():
+            try:
+                # Convert ExtractedEntity to domain Entity
+                domain_entity = DomainEntity(
+                    id=extracted_entity.id,
+                    name=extracted_entity.name or extracted_entity.text,
+                    type=extracted_entity.label,
+                    properties=extracted_entity.metadata or {},
+                )
+
+                await self._retry(
+                    lambda: self.graph_store.add_entity(domain_entity),
+                    attempts=3,
+                    base_delay=0.1,
+                )
+
+            except Exception as e:
+                logger.warning(
+                    f"Failed to store entity {extracted_entity.id} for document {document_id}: {e}"
+                )
+                continue
+
+        # Create MENTIONS relationships between chunks and entities
+        for entity_id, chunk_id in entity_chunk_mentions:
+            try:
+                mentions_relationship = Relationship(
+                    id=str(uuid.uuid4()),
+                    type="MENTIONS",
+                    source_id=chunk_id,
+                    target_id=entity_id,
+                )
+
+                await self._retry(
+                    lambda: self.graph_store.add_relationship(mentions_relationship),
+                    attempts=3,
+                    base_delay=0.1,
+                )
+
+            except Exception as e:
+                logger.warning(
+                    f"Failed to create MENTIONS relationship between chunk {chunk_id} and entity {entity_id}: {e}"
+                )
+                continue
+
+        logger.info(
+            f"Successfully stored {len(all_entities)} entities and {len(entity_chunk_mentions)} MENTIONS relationships for document {document_id}"
+        )
