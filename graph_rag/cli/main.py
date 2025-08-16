@@ -7,6 +7,7 @@ from graph_rag.cli.commands.admin import app as admin_app
 from graph_rag.cli.commands.compose import app as compose_app
 from graph_rag.cli.commands.config import app as config_app
 from graph_rag.cli.commands.discover import discover_command
+from graph_rag.cli.commands.enhanced_search import app as enhanced_search_app
 from graph_rag.cli.commands.graph import app as graph_app
 from graph_rag.cli.commands.insights import app as insights_app
 
@@ -45,6 +46,7 @@ app.command("discover")(discover_command)
 app.command("parse")(parse_command)
 app.command("store")(store_command)
 app.command("search")(search_query)
+app.add_typer(enhanced_search_app, name="explain")
 app.add_typer(query_app, name="query")
 app.add_typer(graph_app, name="graph")
 app.add_typer(insights_app, name="insights")
