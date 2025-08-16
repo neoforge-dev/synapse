@@ -1,71 +1,86 @@
 {
   "document_stats": {
-    "total_documents": 11,
+    "total_documents": 16,
     "categories": {},
     "data_types": {},
     "chunk_stats": {
-      "total_chunks": 639,
+      "total_chunks": 761,
       "avg_chunk_size": null,
       "min_chunk_size": null,
       "max_chunk_size": null
     }
   },
   "entity_stats": {
-    "total_entities": 351,
+    "total_entities": 483,
     "entity_types": {
-      "CARDINAL": 58,
-      "DATE": 22,
+      "CARDINAL": 67,
+      "DATE": 33,
       "EVENT": 1,
       "FAC": 5,
-      "GPE": 23,
+      "GPE": 34,
       "LAW": 15,
       "LOC": 1,
-      "MONEY": 18,
-      "NORP": 5,
-      "ORDINAL": 1,
-      "ORG": 105,
-      "PERCENT": 8,
-      "PERSON": 69,
-      "PRODUCT": 1,
+      "MONEY": 29,
+      "NORP": 7,
+      "ORDINAL": 17,
+      "ORG": 146,
+      "PERCENT": 13,
+      "PERSON": 90,
+      "PRODUCT": 2,
       "QUANTITY": 1,
       "TIME": 1,
-      "WORK_OF_ART": 17
+      "WORK_OF_ART": 21
     },
     "popular_entities": [
       {
         "name": "###",
         "type": "MONEY",
-        "mentions": 57
+        "mentions": 69
       },
       {
         "name": "#",
         "type": "MONEY",
-        "mentions": 36
+        "mentions": 37
       },
       {
         "name": "1",
         "type": "CARDINAL",
-        "mentions": 26
+        "mentions": 29
       },
       {
         "name": "2",
         "type": "CARDINAL",
-        "mentions": 23
+        "mentions": 24
       },
       {
         "name": "3",
         "type": "CARDINAL",
-        "mentions": 17
+        "mentions": 19
       },
       {
         "name": "first",
         "type": "ORDINAL",
-        "mentions": 12
+        "mentions": 13
       },
       {
         "name": "one",
         "type": "CARDINAL",
-        "mentions": 11
+        "mentions": 12
+      },
+      {
+        "name": "CodeSwiftr",
+        "type": "ORG",
+        "mentions": 12
+      },
+      {
+        "name": "5",
+        "type": "CARDINAL",
+        "mentions": 8
+      },
+      {
+        "name": "4",
+        "type": "CARDINAL",
+        "mentions": 8
       },
       {
         "name": "Kubernetes",
@@ -73,18 +88,23 @@
         "mentions": 8
       },
       {
+        "name": "Terraform",
+        "type": "ORG",
+        "mentions": 7
+      },
+      {
         "name": "2.0",
         "type": "CARDINAL",
         "mentions": 7
       },
       {
-        "name": "4",
-        "type": "CARDINAL",
+        "name": "React",
+        "type": "GPE",
         "mentions": 7
       },
       {
-        "name": "today",
-        "type": "DATE",
+        "name": "Django",
+        "type": "PERSON",
         "mentions": 6
       },
       {
@@ -93,60 +113,61 @@
         "mentions": 6
       },
       {
-        "name": "Terraform",
-        "type": "ORG",
-        "mentions": 6
-      },
-      {
         "name": "CI",
         "type": "ORG",
         "mentions": 6
       },
       {
-        "name": "5",
-        "type": "CARDINAL",
+        "name": "today",
+        "type": "DATE",
         "mentions": 6
-      },
-      {
-        "name": "CTO",
-        "type": "ORG",
-        "mentions": 4
-      },
-      {
-        "name": "Tech",
-        "type": "ORG",
-        "mentions": 4
-      },
-      {
-        "name": "7",
-        "type": "CARDINAL",
-        "mentions": 4
-      },
-      {
-        "name": "Scrum",
-        "type": "PRODUCT",
-        "mentions": 4
       },
       {
         "name": "6",
         "type": "CARDINAL",
-        "mentions": 4
+        "mentions": 5
+      },
+      {
+        "name": "Python",
+        "type": "GPE",
+        "mentions": 5
       }
     ]
   },
   "relationship_stats": {
     "relationship_types": {
-      "MENTIONS": 639,
-      "CONTAINS": 639,
-      "MENTIONS_TOPIC": 638,
-      "HAS_TOPIC": 10
+      "MENTIONS": 865,
+      "CONTAINS": 761,
+      "MENTIONS_TOPIC": 759,
+      "HAS_TOPIC": 14
     },
     "docs_with_most_entities": [
       {
         "title": null,
-        "entity_count": 350
+        "entity_count": 482
       }
     ]
   },
-  "generated_at": "2025-08-16T16:32:18.558869"
+  "generated_at": "2025-08-17T02:17:41.687780",
+  "business_intelligence": {
+    "generated_at": "2025-08-17T02:22:06.881041",
+    "entity_analysis": {
+      "total_entities": 0,
+      "entity_distribution": [],
+      "top_entities_by_type": [],
+      "business_entities": []
+    },
+    "business_insights": {
+      "codeswiftr_ecosystem": [],
+      "technology_stack": [],
+      "key_people": [],
+      "client_companies": []
+    },
+    "network_stats": {
+      "total_nodes": 0,
+      "total_edges": 0,
+      "entity_nodes": 0,
+      "document_nodes": 0
+    }
+  }
 }

@@ -1,0 +1,132 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Knowledge Graph Network</title>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        #network { width: 100%; height: 80vh; border: 1px solid #ccc; }
+        .controls { margin: 20px 0; }
+        .stats { background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        button { margin: 5px; padding: 8px 16px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🔗 Knowledge Graph Network Visualization</h1>
+    <p>Generated at: 2025-08-17T02:19:03.519102</p>
+    
+    <div class="stats">
+        <h3>📊 Network Statistics</h3>
+        <p><strong>Nodes:</strong> 16 | <strong>Edges:</strong> 0</p>
+        <p><strong>Node Types:</strong> Document</p>
+        <p><strong>Relationship Types:</strong> </p>
+    </div>
+    
+    <div class="controls">
+        <button onclick="network.fit()">Fit to Screen</button>
+        <button onclick="stabilize()">Stabilize</button>
+        <button onclick="filterEntities()">Show Only Entities</button>
+        <button onclick="filterDocuments()">Show Only Documents</button>
+        <button onclick="showAll()">Show All</button>
+    </div>
+    
+    <div id="network"></div>
+    
+    <script>
+        const nodes = new vis.DataSet([{"id": "1181", "label": "Document_1181", "color": "#2196F3", "size": 50, "title": "Type: Document<br/>Connections: 175"}, {"id": "845", "label": "Document_845", "color": "#2196F3", "size": 50, "title": "Type: Document<br/>Connections: 114"}, {"id": "1048", "label": "Document_1048", "color": "#2196F3", "size": 50, "title": "Type: Document<br/>Connections: 91"}, {"id": "1626", "label": "Document_1626", "color": "#2196F3", "size": 50, "title": "Type: Document<br/>Connections: 72"}, {"id": "1387", "label": "Document_1387", "color": "#2196F3", "size": 50, "title": "Type: Document<br/>Connections: 54"}, {"id": "1720", "label": "Document_1720", "color": "#2196F3", "size": 50, "title": "Type: Document<br/>Connections: 52"}, {"id": "1479", "label": "Document_1479", "color": "#2196F3", "size": 50, "title": "Type: Document<br/>Connections: 48"}, {"id": "1955", "label": "Document_1955", "color": "#2196F3", "size": 50, "title": "Type: Document<br/>Connections: 44"}, {"id": "1572", "label": "Document_1572", "color": "#2196F3", "size": 50, "title": "Type: Document<br/>Connections: 36"}, {"id": "1798", "label": "Document_1798", "color": "#2196F3", "size": 50, "title": "Type: Document<br/>Connections: 33"}, {"id": "1898", "label": "Document_1898", "color": "#2196F3", "size": 50, "title": "Type: Document<br/>Connections: 29"}, {"id": "2137", "label": "Document_2137", "color": "#2196F3", "size": 38, "title": "Type: Document<br/>Connections: 19"}, {"id": "780", "label": "Document_780", "color": "#2196F3", "size": 10, "title": "Type: Document<br/>Connections: 3"}, {"id": "800", "label": "Document_800", "color": "#2196F3", "size": 10, "title": "Type: Document<br/>Connections: 3"}, {"id": "777", "label": "Document_777", "color": "#2196F3", "size": 10, "title": "Type: Document<br/>Connections: 1"}, {"id": "2083", "label": "Document_2083", "color": "#2196F3", "size": 10, "title": "Type: Document<br/>Connections: 1"}]);
+        const edges = new vis.DataSet([]);
+        
+        const allNodes = nodes.get();
+        const allEdges = edges.get();
+        
+        const container = document.getElementById('network');
+        const data = { nodes: nodes, edges: edges };
+        
+        const options = {
+            physics: {
+                enabled: true,
+                stabilization: {iterations: 100},
+                barnesHut: {
+                    gravitationalConstant: -8000,
+                    centralGravity: 0.3,
+                    springLength: 95,
+                    springConstant: 0.04,
+                    damping: 0.09
+                }
+            },
+            nodes: {
+                shape: 'dot',
+                scaling: {
+                    min: 10,
+                    max: 50
+                },
+                font: {
+                    size: 12,
+                    face: 'Arial'
+                }
+            },
+            edges: {
+                width: 2,
+                smooth: {
+                    type: 'continuous'
+                }
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 200
+            }
+        };
+        
+        const network = new vis.Network(container, data, options);
+        
+        // Control functions
+        function stabilize() {
+            network.stabilize();
+        }
+        
+        function filterEntities() {
+            const entityNodes = allNodes.filter(node => node.title.includes('Type: Entity'));
+            const entityNodeIds = new Set(entityNodes.map(n => n.id));
+            const entityEdges = allEdges.filter(edge => 
+                entityNodeIds.has(edge.from) && entityNodeIds.has(edge.to)
+            );
+            
+            nodes.update(entityNodes);
+            edges.update(entityEdges);
+            network.fit();
+        }
+        
+        function filterDocuments() {
+            const docNodes = allNodes.filter(node => node.title.includes('Type: Document'));
+            const docNodeIds = new Set(docNodes.map(n => n.id));
+            const docEdges = allEdges.filter(edge => 
+                docNodeIds.has(edge.from) && docNodeIds.has(edge.to)
+            );
+            
+            nodes.update(docNodes);
+            edges.update(docEdges);
+            network.fit();
+        }
+        
+        function showAll() {
+            nodes.update(allNodes);
+            edges.update(allEdges);
+            network.fit();
+        }
+        
+        // Event handlers
+        network.on("selectNode", function(params) {
+            const nodeId = params.nodes[0];
+            const node = nodes.get(nodeId);
+            console.log('Selected node:', node);
+        });
+        
+        network.on("selectEdge", function(params) {
+            const edgeId = params.edges[0];
+            const edge = edges.get(edgeId);
+            console.log('Selected edge:', edge);
+        });
+    </script>
+</body>
+</html>

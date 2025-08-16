@@ -1,0 +1,160 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Knowledge Graph - Cytoscape</title>
+    <script src="https://unpkg.com/cytoscape@3.21.0/dist/cytoscape.min.js"></script>
+    <script src="https://unpkg.com/cytoscape-cose-bilkent@4.1.0/cytoscape-cose-bilkent.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        #cy { width: 100%; height: 80vh; border: 1px solid #ccc; }
+        .controls { margin: 20px 0; }
+        .stats { background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        button { margin: 5px; padding: 8px 16px; cursor: pointer; }
+        .legend { margin: 20px 0; }
+        .legend-item { display: inline-block; margin: 5px 10px; }
+        .legend-color { width: 20px; height: 20px; display: inline-block; margin-right: 5px; vertical-align: middle; }
+    </style>
+</head>
+<body>
+    <h1>🎯 Knowledge Graph - Advanced Network</h1>
+    <p>Generated at: 2025-08-17T02:19:03.519102</p>
+    
+    <div class="stats">
+        <h3>📊 Network Statistics</h3>
+        <p><strong>Nodes:</strong> 16 | <strong>Edges:</strong> 0</p>
+    </div>
+    
+    <div class="legend">
+        <h4>🎨 Legend</h4>
+        <div class="legend-item">
+            <span class="legend-color" style="background-color: #FF6B6B;"></span>
+            <span>Person</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background-color: #4ECDC4;"></span>
+            <span>Organization</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background-color: #45B7D1;"></span>
+            <span>Product</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background-color: #2196F3;"></span>
+            <span>Document</span>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button onclick="cy.fit()">Fit to Screen</button>
+        <button onclick="runLayout('cose-bilkent')">Hierarchical Layout</button>
+        <button onclick="runLayout('circle')">Circle Layout</button>
+        <button onclick="runLayout('grid')">Grid Layout</button>
+        <button onclick="showCentralNodes()">Show Central Nodes</button>
+    </div>
+    
+    <div id="cy"></div>
+    
+    <script>
+        const cy = cytoscape({
+            container: document.getElementById('cy'),
+            
+            elements: [{"data": {"id": "1181", "label": "Document_1181", "type": "Document", "entity_type": null, "category": null, "connections": 175}, "style": {"background-color": "#2196F3", "width": 50, "height": 50}}, {"data": {"id": "845", "label": "Document_845", "type": "Document", "entity_type": null, "category": null, "connections": 114}, "style": {"background-color": "#2196F3", "width": 50, "height": 50}}, {"data": {"id": "1048", "label": "Document_1048", "type": "Document", "entity_type": null, "category": null, "connections": 91}, "style": {"background-color": "#2196F3", "width": 50, "height": 50}}, {"data": {"id": "1626", "label": "Document_1626", "type": "Document", "entity_type": null, "category": null, "connections": 72}, "style": {"background-color": "#2196F3", "width": 50, "height": 50}}, {"data": {"id": "1387", "label": "Document_1387", "type": "Document", "entity_type": null, "category": null, "connections": 54}, "style": {"background-color": "#2196F3", "width": 50, "height": 50}}, {"data": {"id": "1720", "label": "Document_1720", "type": "Document", "entity_type": null, "category": null, "connections": 52}, "style": {"background-color": "#2196F3", "width": 50, "height": 50}}, {"data": {"id": "1479", "label": "Document_1479", "type": "Document", "entity_type": null, "category": null, "connections": 48}, "style": {"background-color": "#2196F3", "width": 50, "height": 50}}, {"data": {"id": "1955", "label": "Document_1955", "type": "Document", "entity_type": null, "category": null, "connections": 44}, "style": {"background-color": "#2196F3", "width": 50, "height": 50}}, {"data": {"id": "1572", "label": "Document_1572", "type": "Document", "entity_type": null, "category": null, "connections": 36}, "style": {"background-color": "#2196F3", "width": 50, "height": 50}}, {"data": {"id": "1798", "label": "Document_1798", "type": "Document", "entity_type": null, "category": null, "connections": 33}, "style": {"background-color": "#2196F3", "width": 50, "height": 50}}, {"data": {"id": "1898", "label": "Document_1898", "type": "Document", "entity_type": null, "category": null, "connections": 29}, "style": {"background-color": "#2196F3", "width": 50, "height": 50}}, {"data": {"id": "2137", "label": "Document_2137", "type": "Document", "entity_type": null, "category": null, "connections": 19}, "style": {"background-color": "#2196F3", "width": 38, "height": 38}}, {"data": {"id": "780", "label": "Document_780", "type": "Document", "entity_type": null, "category": null, "connections": 3}, "style": {"background-color": "#2196F3", "width": 10, "height": 10}}, {"data": {"id": "800", "label": "Document_800", "type": "Document", "entity_type": null, "category": null, "connections": 3}, "style": {"background-color": "#2196F3", "width": 10, "height": 10}}, {"data": {"id": "777", "label": "Document_777", "type": "Document", "entity_type": null, "category": null, "connections": 1}, "style": {"background-color": "#2196F3", "width": 10, "height": 10}}, {"data": {"id": "2083", "label": "Document_2083", "type": "Document", "entity_type": null, "category": null, "connections": 1}, "style": {"background-color": "#2196F3", "width": 10, "height": 10}}],
+            
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        'label': 'data(label)',
+                        'font-size': '10px',
+                        'text-valign': 'center',
+                        'text-halign': 'center',
+                        'color': '#333',
+                        'text-outline-width': 2,
+                        'text-outline-color': '#fff'
+                    }
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'width': 2,
+                        'curve-style': 'bezier',
+                        'target-arrow-shape': 'triangle',
+                        'target-arrow-color': '#999',
+                        'line-color': '#999'
+                    }
+                },
+                {
+                    selector: 'node:selected',
+                    style: {
+                        'border-width': 3,
+                        'border-color': '#000'
+                    }
+                }
+            ],
+            
+            layout: {
+                name: 'cose-bilkent',
+                animate: true,
+                animationDuration: 1000,
+                fit: true,
+                padding: 30
+            }
+        });
+        
+        // Layout functions
+        function runLayout(layoutName) {
+            const layout = cy.layout({
+                name: layoutName,
+                animate: true,
+                animationDuration: 1000,
+                fit: true,
+                padding: 30
+            });
+            layout.run();
+        }
+        
+        function showCentralNodes() {
+            // Highlight nodes with many connections
+            cy.nodes().forEach(node => {
+                const connections = node.data('connections');
+                if (connections > 5) {
+                    node.style('border-width', '4px');
+                    node.style('border-color', '#ff0000');
+                }
+            });
+        }
+        
+        // Event handlers
+        cy.on('tap', 'node', function(evt) {
+            const node = evt.target;
+            console.log('Node clicked:', node.data());
+            
+            // Highlight neighborhood
+            const neighborhood = node.neighborhood().add(node);
+            cy.elements().removeClass('highlighted').addClass('faded');
+            neighborhood.removeClass('faded').addClass('highlighted');
+        });
+        
+        cy.on('tap', function(evt) {
+            if (evt.target === cy) {
+                // Clicked on background, remove highlighting
+                cy.elements().removeClass('highlighted faded');
+            }
+        });
+        
+        // Add CSS for highlighting
+        cy.style()
+            .selector('.highlighted')
+            .style({
+                'opacity': 1,
+                'z-index': 999
+            })
+            .selector('.faded')
+            .style({
+                'opacity': 0.3
+            })
+            .update();
+    </script>
+</body>
+</html>

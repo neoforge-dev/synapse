@@ -24,7 +24,7 @@ async def main():
     
     # Initialize settings and connections
     settings = get_settings()
-    settings.memgraph_port = 7777  # Use custom port
+    settings.memgraph_port = 7687  # Use default port
     
     try:
         # Initialize graph repository
@@ -58,12 +58,11 @@ async def extract_graph_structure(graph_repo: MemgraphGraphRepository) -> Tuple[
     nodes_query = """
     MATCH (n)
     WHERE n:Entity OR n:Document
-    WITH n, 
-         CASE 
-           WHEN n:Entity THEN size((n)-[]->())
-           WHEN n:Document THEN size((n)-[]->())
-           ELSE 0
-         END as connections
+    OPTIONAL MATCH (n)-[r]->()
+    WITH n, count(r) as out_connections
+    OPTIONAL MATCH ()-[r2]->(n)
+    WITH n, out_connections, count(r2) as in_connections
+    WITH n, (out_connections + in_connections) as connections
     ORDER BY connections DESC
     LIMIT 500
     RETURN 
@@ -86,9 +85,10 @@ async def extract_graph_structure(graph_repo: MemgraphGraphRepository) -> Tuple[
         node_ids.add(node_id)
         
         label = row['labels'][0] if row['labels'] else 'Unknown'
-        name = row.get('name') or row.get('title', f"{label}_{node_id}")
+        name = row.get('name') or row.get('title') or f"{label}_{node_id}"
         
-        # Truncate long names
+        # Ensure name is a string and truncate long names
+        name = str(name) if name is not None else f"{label}_{node_id}"
         if len(name) > 50:
             name = name[:47] + "..."
         

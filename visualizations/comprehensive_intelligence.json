@@ -1,0 +1,154 @@
+{
+  "generated_at": "2025-08-17T02:22:06.881041",
+  "entities": {
+    "total_entities": 0,
+    "entity_distribution": [],
+    "top_entities_by_type": [],
+    "business_entities": []
+  },
+  "relationships": {
+    "relationship_types": [
+      {
+        "relationship_type": "MENTIONS",
+        "frequency": 865
+      },
+      {
+        "relationship_type": "CONTAINS",
+        "frequency": 761
+      },
+      {
+        "relationship_type": "MENTIONS_TOPIC",
+        "frequency": 759
+      },
+      {
+        "relationship_type": "HAS_TOPIC",
+        "frequency": 14
+      }
+    ],
+    "entity_relationships": [],
+    "total_relationships": 2399
+  },
+  "documents": {
+    "documents": [
+      {
+        "title": null,
+        "source": null,
+        "category": null,
+        "entity_count": 0
+      },
+      {
+        "title": null,
+        "source": null,
+        "category": null,
+        "entity_count": 0
+      },
+      {
+        "title": null,
+        "source": null,
+        "category": null,
+        "entity_count": 0
+      },
+      {
+        "title": null,
+        "source": null,
+        "category": null,
+        "entity_count": 0
+      },
+      {
+        "title": null,
+        "source": null,
+        "category": null,
+        "entity_count": 0
+      },
+      {
+        "title": null,
+        "source": null,
+        "category": null,
+        "entity_count": 0
+      },
+      {
+        "title": null,
+        "source": null,
+        "category": null,
+        "entity_count": 0
+      },
+      {
+        "title": null,
+        "source": null,
+        "category": null,
+        "entity_count": 0
+      },
+      {
+        "title": null,
+        "source": null,
+        "category": null,
+        "entity_count": 0
+      },
+      {
+        "title": null,
+        "source": null,
+        "category": null,
+        "entity_count": 0
+      },
+      {
+        "title": null,
+        "source": null,
+        "category": null,
+        "entity_count": 0
+      },
+      {
+        "title": null,
+        "source": null,
+        "category": null,
+        "entity_count": 0
+      },
+      {
+        "title": null,
+        "source": null,
+        "category": null,
+        "entity_count": 0
+      },
+      {
+        "title": null,
+        "source": null,
+        "category": null,
+        "entity_count": 0
+      },
+      {
+        "title": null,
+        "source": null,
+        "category": null,
+        "entity_count": 0
+      },
+      {
+        "title": null,
+        "source": null,
+        "category": null,
+        "entity_count": 0
+      }
+    ],
+    "sources": [
+      {
+        "source": null,
+        "document_count": 16
+      }
+    ],
+    "total_documents": 16
+  },
+  "business_insights": {
+    "codeswiftr_ecosystem": [],
+    "technology_stack": [],
+    "key_people": [],
+    "client_companies": []
+  },
+  "network": {
+    "nodes": [],
+    "edges": [],
+    "stats": {
+      "total_nodes": 0,
+      "total_edges": 0,
+      "entity_nodes": 0,
+      "document_nodes": 0
+    }
+  }
+}

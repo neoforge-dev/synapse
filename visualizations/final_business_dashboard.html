@@ -1,0 +1,533 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🚀 CodeSwiftr Business Intelligence Dashboard</title>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+        
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+        
+        .hero-card {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .hero-number {
+            font-size: 3em;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0;
+        }
+        
+        .hero-label {
+            font-size: 1.2em;
+            color: #666;
+            margin: 10px 0 0 0;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin: 30px 0;
+        }
+        
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 25px;
+            margin: 30px 0;
+        }
+        
+        .card {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .card h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .entity-type {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .entity-type:last-child {
+            border-bottom: none;
+        }
+        
+        .entity-badge {
+            background: #667eea;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .business-insight {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 15px 0;
+        }
+        
+        .business-insight h4 {
+            margin-top: 0;
+            font-size: 1.2em;
+        }
+        
+        .tech-tag {
+            display: inline-block;
+            background: rgba(103, 126, 234, 0.1);
+            color: #667eea;
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 25px;
+            font-size: 0.9em;
+            font-weight: 500;
+            border: 2px solid rgba(103, 126, 234, 0.2);
+        }
+        
+        .popular-entity {
+            background: #f8f9ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .entity-name {
+            font-weight: bold;
+            color: #333;
+            font-size: 1.1em;
+        }
+        
+        .entity-details {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        #network {
+            width: 100%;
+            height: 500px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 15px;
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .network-controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 0 8px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 15px rgba(103, 126, 234, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(103, 126, 234, 0.4);
+        }
+        
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+        
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #28a745;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .summary-box {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 CodeSwiftr Business Intelligence Dashboard</h1>
+        <p><span class="status-indicator"></span>Graph-RAG Knowledge Base Analysis</p>
+        <p>Generated: August 17, 2025 at 02:23 AM</p>
+    </div>
+    
+    <div class="container">
+        <div class="hero-stats">
+            <div class="hero-card">
+                <div class="hero-number">483</div>
+                <div class="hero-label">Business Entities</div>
+            </div>
+            <div class="hero-card">
+                <div class="hero-number">16</div>
+                <div class="hero-label">Documents Analyzed</div>
+            </div>
+            <div class="hero-card">
+                <div class="hero-number">761</div>
+                <div class="hero-label">Knowledge Chunks</div>
+            </div>
+            <div class="hero-card">
+                <div class="hero-number">17</div>
+                <div class="hero-label">Entity Types</div>
+            </div>
+        </div>
+        
+        <div class="summary-box">
+            <h2>🎯 Executive Summary</h2>
+            <p>This dashboard presents a comprehensive analysis of CodeSwiftr's business intelligence extracted from 
+            real-world business documents and professional profiles. The Graph-RAG system has successfully processed 
+            <strong>16 documents</strong> containing <strong>483 business entities</strong> 
+            and generated <strong>761 knowledge chunks</strong> for semantic search and analysis.</p>
+            
+            <div class="business-insight"><h4>🔍 Key Insights Discovered</h4><ul><li>CodeSwiftr identified as primary business entity with technology consulting focus</li><li>Strong emphasis on modern development frameworks and cloud technologies</li><li>Professional network analysis reveals expertise in scaling and development</li><li>Comprehensive business documentation spanning multiple technology domains</li></ul></div>
+        </div>
+        
+        <div class="grid">
+            <div class="card">
+                <h3>📊 Entity Type Distribution</h3>
+                <div class="chart-container">
+                    <canvas id="entityChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🏢 Business Entity Breakdown</h3>
+                
+        <div class="entity-type">
+            <span>CARDINAL</span>
+            <span class="entity-badge">67</span>
+        </div>
+        
+        <div class="entity-type">
+            <span>DATE</span>
+            <span class="entity-badge">33</span>
+        </div>
+        
+        <div class="entity-type">
+            <span>EVENT</span>
+            <span class="entity-badge">1</span>
+        </div>
+        
+        <div class="entity-type">
+            <span>FAC</span>
+            <span class="entity-badge">5</span>
+        </div>
+        
+        <div class="entity-type">
+            <span>GPE</span>
+            <span class="entity-badge">34</span>
+        </div>
+        
+        <div class="entity-type">
+            <span>LAW</span>
+            <span class="entity-badge">15</span>
+        </div>
+        
+        <div class="entity-type">
+            <span>LOC</span>
+            <span class="entity-badge">1</span>
+        </div>
+        
+        <div class="entity-type">
+            <span>MONEY</span>
+            <span class="entity-badge">29</span>
+        </div>
+        
+        <div class="entity-type">
+            <span>NORP</span>
+            <span class="entity-badge">7</span>
+        </div>
+        
+        <div class="entity-type">
+            <span>ORDINAL</span>
+            <span class="entity-badge">17</span>
+        </div>
+        
+        <div class="entity-type">
+            <span>ORG</span>
+            <span class="entity-badge">146</span>
+        </div>
+        
+        <div class="entity-type">
+            <span>PERCENT</span>
+            <span class="entity-badge">13</span>
+        </div>
+        
+        <div class="entity-type">
+            <span>PERSON</span>
+            <span class="entity-badge">90</span>
+        </div>
+        
+        <div class="entity-type">
+            <span>PRODUCT</span>
+            <span class="entity-badge">2</span>
+        </div>
+        
+        <div class="entity-type">
+            <span>QUANTITY</span>
+            <span class="entity-badge">1</span>
+        </div>
+        
+        <div class="entity-type">
+            <span>TIME</span>
+            <span class="entity-badge">1</span>
+        </div>
+        
+        <div class="entity-type">
+            <span>WORK_OF_ART</span>
+            <span class="entity-badge">21</span>
+        </div>
+        
+            </div>
+        </div>
+        
+        <div class="grid">
+            <div class="card">
+                <h3>⭐ Most Mentioned Entities</h3>
+                
+        <div class="popular-entity">
+            <div class="entity-name">first</div>
+            <div class="entity-details">Type: ORDINAL | Mentions: 13</div>
+        </div>
+        
+        <div class="popular-entity">
+            <div class="entity-name">one</div>
+            <div class="entity-details">Type: CARDINAL | Mentions: 12</div>
+        </div>
+        
+        <div class="popular-entity">
+            <div class="entity-name">CodeSwiftr</div>
+            <div class="entity-details">Type: ORG | Mentions: 12</div>
+        </div>
+        
+            </div>
+            
+            <div class="card">
+                <h3>💻 Technology Stack Identified</h3>
+                <div><span class="tech-tag">Kubernetes</span><span class="tech-tag">Terraform</span><span class="tech-tag">React</span><span class="tech-tag">Django</span><span class="tech-tag">CI</span><span class="tech-tag">Python</span></div>
+            </div>
+        </div>
+        
+        <div class="card full-width">
+            <h3>🌐 Knowledge Graph Network</h3>
+            <p>Interactive visualization of the document network and entity relationships.</p>
+            <div class="network-controls">
+                <button class="btn" onclick="network.fit()">🔍 Fit View</button>
+                <button class="btn" onclick="resetNetwork()">🔄 Reset</button>
+                <button class="btn" onclick="showStats()">📊 Show Stats</button>
+            </div>
+            <div id="network"></div>
+        </div>
+        
+        <div class="business-insight">
+            <h4>🚀 Business Intelligence Summary</h4>
+            <p>The analysis reveals CodeSwiftr's focus on technology consulting and development services, 
+            with strong emphasis on modern frameworks and cloud technologies. The knowledge graph 
+            demonstrates comprehensive business documentation and professional expertise across 
+            multiple technology domains.</p>
+        </div>
+    </div>
+    
+    <script>
+        // Network Data
+        const networkData = [{"id": "1181", "label": "Document_1181", "type": "Document", "entity_type": null, "category": null, "connections": 175, "size": 50, "color": "#2196F3", "group": "Document_None"}, {"id": "845", "label": "Document_845", "type": "Document", "entity_type": null, "category": null, "connections": 114, "size": 50, "color": "#2196F3", "group": "Document_None"}, {"id": "1048", "label": "Document_1048", "type": "Document", "entity_type": null, "category": null, "connections": 91, "size": 50, "color": "#2196F3", "group": "Document_None"}, {"id": "1626", "label": "Document_1626", "type": "Document", "entity_type": null, "category": null, "connections": 72, "size": 50, "color": "#2196F3", "group": "Document_None"}, {"id": "1387", "label": "Document_1387", "type": "Document", "entity_type": null, "category": null, "connections": 54, "size": 50, "color": "#2196F3", "group": "Document_None"}, {"id": "1720", "label": "Document_1720", "type": "Document", "entity_type": null, "category": null, "connections": 52, "size": 50, "color": "#2196F3", "group": "Document_None"}, {"id": "1479", "label": "Document_1479", "type": "Document", "entity_type": null, "category": null, "connections": 48, "size": 50, "color": "#2196F3", "group": "Document_None"}, {"id": "1955", "label": "Document_1955", "type": "Document", "entity_type": null, "category": null, "connections": 44, "size": 50, "color": "#2196F3", "group": "Document_None"}, {"id": "1572", "label": "Document_1572", "type": "Document", "entity_type": null, "category": null, "connections": 36, "size": 50, "color": "#2196F3", "group": "Document_None"}, {"id": "1798", "label": "Document_1798", "type": "Document", "entity_type": null, "category": null, "connections": 33, "size": 50, "color": "#2196F3", "group": "Document_None"}, {"id": "1898", "label": "Document_1898", "type": "Document", "entity_type": null, "category": null, "connections": 29, "size": 50, "color": "#2196F3", "group": "Document_None"}, {"id": "2137", "label": "Document_2137", "type": "Document", "entity_type": null, "category": null, "connections": 19, "size": 38, "color": "#2196F3", "group": "Document_None"}, {"id": "780", "label": "Document_780", "type": "Document", "entity_type": null, "category": null, "connections": 3, "size": 10, "color": "#2196F3", "group": "Document_None"}, {"id": "800", "label": "Document_800", "type": "Document", "entity_type": null, "category": null, "connections": 3, "size": 10, "color": "#2196F3", "group": "Document_None"}, {"id": "777", "label": "Document_777", "type": "Document", "entity_type": null, "category": null, "connections": 1, "size": 10, "color": "#2196F3", "group": "Document_None"}, {"id": "2083", "label": "Document_2083", "type": "Document", "entity_type": null, "category": null, "connections": 1, "size": 10, "color": "#2196F3", "group": "Document_None"}];
+        const networkEdges = [];
+        
+        const nodes = new vis.DataSet(networkData);
+        const edges = new vis.DataSet(networkEdges);
+        
+        // Initialize Network
+        const container = document.getElementById('network');
+        const data = { nodes: nodes, edges: edges };
+        
+        const options = {
+            physics: {
+                enabled: true,
+                stabilization: {iterations: 100},
+                barnesHut: {
+                    gravitationalConstant: -5000,
+                    centralGravity: 0.3,
+                    springLength: 95,
+                    springConstant: 0.04,
+                    damping: 0.09
+                }
+            },
+            nodes: {
+                shape: 'dot',
+                scaling: {
+                    min: 20,
+                    max: 50
+                },
+                font: {
+                    size: 12,
+                    face: 'Arial',
+                    color: '#333'
+                },
+                borderWidth: 2,
+                shadow: {
+                    enabled: true,
+                    color: 'rgba(0,0,0,0.2)',
+                    size: 5
+                }
+            },
+            edges: {
+                width: 2,
+                smooth: {
+                    type: 'continuous'
+                },
+                color: {
+                    color: '#848484',
+                    highlight: '#667eea'
+                }
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 200
+            }
+        };
+        
+        const network = new vis.Network(container, data, options);
+        
+        function resetNetwork() {
+            network.fit();
+            network.redraw();
+        }
+        
+        function showStats() {
+            alert(`Network Statistics:\nNodes: ${nodes.length}\nEdges: ${edges.length}`);
+        }
+        
+        // Entity Distribution Chart
+        const entityCtx = document.getElementById('entityChart').getContext('2d');
+        const entityData = [["CARDINAL", 67], ["DATE", 33], ["EVENT", 1], ["FAC", 5], ["GPE", 34], ["LAW", 15], ["LOC", 1], ["MONEY", 29], ["NORP", 7], ["ORDINAL", 17], ["ORG", 146], ["PERCENT", 13], ["PERSON", 90], ["PRODUCT", 2], ["QUANTITY", 1], ["TIME", 1], ["WORK_OF_ART", 21]];
+        
+        if (entityData.length > 0) {
+            new Chart(entityCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: entityData.map(item => item[0]),
+                    datasets: [{
+                        data: entityData.map(item => item[1]),
+                        backgroundColor: [
+                            '#667eea', '#764ba2', '#f093fb', '#f5576c',
+                            '#4facfe', '#00f2fe', '#43e97b', '#38f9d7',
+                            '#ffecd2', '#fcb69f', '#a8edea', '#fed6e3'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Entity Types in Knowledge Base'
+                        }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('entityChart').parentElement.innerHTML = 
+                '<p style="text-align: center; color: #666; padding: 60px;">No entity data available</p>';
+        }
+        
+        // Network event handlers
+        network.on("selectNode", function(params) {
+            console.log('Selected node:', params.nodes[0]);
+        });
+    </script>
+</body>
+</html>

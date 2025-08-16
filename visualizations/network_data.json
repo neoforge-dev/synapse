@@ -1,0 +1,190 @@
+{
+  "nodes": [
+    {
+      "id": "1181",
+      "label": "Document_1181",
+      "type": "Document",
+      "entity_type": null,
+      "category": null,
+      "connections": 175,
+      "size": 50,
+      "color": "#2196F3",
+      "group": "Document_None"
+    },
+    {
+      "id": "845",
+      "label": "Document_845",
+      "type": "Document",
+      "entity_type": null,
+      "category": null,
+      "connections": 114,
+      "size": 50,
+      "color": "#2196F3",
+      "group": "Document_None"
+    },
+    {
+      "id": "1048",
+      "label": "Document_1048",
+      "type": "Document",
+      "entity_type": null,
+      "category": null,
+      "connections": 91,
+      "size": 50,
+      "color": "#2196F3",
+      "group": "Document_None"
+    },
+    {
+      "id": "1626",
+      "label": "Document_1626",
+      "type": "Document",
+      "entity_type": null,
+      "category": null,
+      "connections": 72,
+      "size": 50,
+      "color": "#2196F3",
+      "group": "Document_None"
+    },
+    {
+      "id": "1387",
+      "label": "Document_1387",
+      "type": "Document",
+      "entity_type": null,
+      "category": null,
+      "connections": 54,
+      "size": 50,
+      "color": "#2196F3",
+      "group": "Document_None"
+    },
+    {
+      "id": "1720",
+      "label": "Document_1720",
+      "type": "Document",
+      "entity_type": null,
+      "category": null,
+      "connections": 52,
+      "size": 50,
+      "color": "#2196F3",
+      "group": "Document_None"
+    },
+    {
+      "id": "1479",
+      "label": "Document_1479",
+      "type": "Document",
+      "entity_type": null,
+      "category": null,
+      "connections": 48,
+      "size": 50,
+      "color": "#2196F3",
+      "group": "Document_None"
+    },
+    {
+      "id": "1955",
+      "label": "Document_1955",
+      "type": "Document",
+      "entity_type": null,
+      "category": null,
+      "connections": 44,
+      "size": 50,
+      "color": "#2196F3",
+      "group": "Document_None"
+    },
+    {
+      "id": "1572",
+      "label": "Document_1572",
+      "type": "Document",
+      "entity_type": null,
+      "category": null,
+      "connections": 36,
+      "size": 50,
+      "color": "#2196F3",
+      "group": "Document_None"
+    },
+    {
+      "id": "1798",
+      "label": "Document_1798",
+      "type": "Document",
+      "entity_type": null,
+      "category": null,
+      "connections": 33,
+      "size": 50,
+      "color": "#2196F3",
+      "group": "Document_None"
+    },
+    {
+      "id": "1898",
+      "label": "Document_1898",
+      "type": "Document",
+      "entity_type": null,
+      "category": null,
+      "connections": 29,
+      "size": 50,
+      "color": "#2196F3",
+      "group": "Document_None"
+    },
+    {
+      "id": "2137",
+      "label": "Document_2137",
+      "type": "Document",
+      "entity_type": null,
+      "category": null,
+      "connections": 19,
+      "size": 38,
+      "color": "#2196F3",
+      "group": "Document_None"
+    },
+    {
+      "id": "780",
+      "label": "Document_780",
+      "type": "Document",
+      "entity_type": null,
+      "category": null,
+      "connections": 3,
+      "size": 10,
+      "color": "#2196F3",
+      "group": "Document_None"
+    },
+    {
+      "id": "800",
+      "label": "Document_800",
+      "type": "Document",
+      "entity_type": null,
+      "category": null,
+      "connections": 3,
+      "size": 10,
+      "color": "#2196F3",
+      "group": "Document_None"
+    },
+    {
+      "id": "777",
+      "label": "Document_777",
+      "type": "Document",
+      "entity_type": null,
+      "category": null,
+      "connections": 1,
+      "size": 10,
+      "color": "#2196F3",
+      "group": "Document_None"
+    },
+    {
+      "id": "2083",
+      "label": "Document_2083",
+      "type": "Document",
+      "entity_type": null,
+      "category": null,
+      "connections": 1,
+      "size": 10,
+      "color": "#2196F3",
+      "group": "Document_None"
+    }
+  ],
+  "edges": [],
+  "generated_at": "2025-08-17T02:19:03.519102",
+  "stats": {
+    "total_nodes": 16,
+    "total_edges": 0,
+    "node_types": [
+      "Document"
+    ],
+    "edge_types": []
+  }
+}
