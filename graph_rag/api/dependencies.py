@@ -387,13 +387,14 @@ def create_embedding_service(
             instance = SentenceTransformerEmbeddingService(
                 model_name=settings.vector_store_embedding_model
             )
-        except Exception:
+            logger.info(f"SentenceTransformerEmbeddingService initialized with model: {settings.vector_store_embedding_model}")
+        except Exception as e:
             logger.warning(
-                "SentenceTransformer provider unavailable; falling back to MockEmbeddingService"
+                f"SentenceTransformer provider unavailable; falling back to MockEmbeddingService. Error: {e}"
             )
-            instance = MockEmbeddingService(dimension=10)
+            instance = MockEmbeddingService(dimension=384)  # Use 384 to match real embeddings
     elif embedding_provider == "mock":
-        instance = MockEmbeddingService(dimension=10)
+        instance = MockEmbeddingService(dimension=384)  # Use 384 to match sentence-transformers
     else:
         logger.error(
             f"Unsupported embedding_provider configured: '{settings.embedding_provider}'."
