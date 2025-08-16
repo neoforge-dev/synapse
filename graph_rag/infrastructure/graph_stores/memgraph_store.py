@@ -520,7 +520,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
         try:
             results = await self.execute_query(query, params)
             if results and results[0].get("doc_count", 0) == 1:
-                logger.info(
+                logger.debug(
                     f"Successfully added/updated chunk {chunk.id} for document {chunk.document_id}"
                 )
             else:
@@ -583,7 +583,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
 
         try:
             await self.execute_query(query, params)
-            logger.info(f"Successfully added/updated node {node.id} ({node.type})")
+            logger.debug(f"Successfully added/updated node {node.id} ({node.type})")
         except Exception as e:
             logger.error(f"Failed to add node {node.id}: {e}", exc_info=True)
             raise
@@ -1770,7 +1770,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
         try:
             results = await self.execute_query(query, params)
             created_count = results[0]["created_count"] if results else 0
-            logger.info(
+            logger.debug(
                 f"Created/merged {created_count} MENTIONS relationships for chunk {chunk_id}."
             )
         except Exception as e:
