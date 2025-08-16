@@ -61,8 +61,8 @@ class Settings(BaseSettings):
 
     # --- Vector Store Settings ---
     vector_store_type: str = Field(
-        "simple",
-        description="Type of vector store to use ('simple', 'qdrant', 'mock'). Default: simple",
+        "faiss",
+        description="Type of vector store to use ('simple', 'faiss', 'mock'). Default: faiss",
     )
     vector_store_path: str = Field(
         os.path.expanduser("~/.graph_rag/faiss_store"),

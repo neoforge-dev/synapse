@@ -7,7 +7,7 @@ from typing import Any
 import faiss  # type: ignore
 import numpy as np
 
-from graph_rag.core.interfaces import ChunkData, SearchResultData, VectorStore
+from graph_rag.core.interfaces import ChunkData, EmbeddingService, SearchResultData, VectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +30,13 @@ class FaissVectorStore(VectorStore):
     - Metadata sidecar: meta.json (maps row -> ChunkData minimal fields)
     """
 
-    def __init__(self, path: str, embedding_dimension: int):
+    def __init__(self, path: str, embedding_dimension: int, embedding_service: EmbeddingService | None = None):
         self.base_path = Path(os.path.expanduser(path))
         _ensure_dir(self.base_path)
         self.index_path = self.base_path / "index.faiss"
         self.meta_path = self.base_path / "meta.json"
         self.embedding_dimension = int(embedding_dimension)
+        self.embedding_service = embedding_service
 
         self.index = faiss.IndexFlatIP(self.embedding_dimension)
         self._rows: list[dict[str, Any]] = []
@@ -210,6 +211,48 @@ class FaissVectorStore(VectorStore):
         self.index = faiss.IndexFlatIP(self.embedding_dimension)
         self._rows = []
         self._row_by_chunk_id = {}
+
+    # --- Convenience methods for API compatibility ---
+    async def search(
+        self, query_text: str, top_k: int = 5, search_type: str = "vector"
+    ) -> list[SearchResultData]:
+        """
+        Convenience method that matches SimpleVectorStore's interface.
+        
+        Converts query text to embedding and performs vector search.
+        
+        Args:
+            query_text: The search query text
+            top_k: Number of results to return
+            search_type: Search type (only "vector" is supported)
+            
+        Returns:
+            List of SearchResultData objects
+        """
+        if search_type.lower() != "vector":
+            logger.warning(f"FaissVectorStore only supports vector search, got: {search_type}")
+            return []
+            
+        if not self.embedding_service:
+            logger.error("No embedding service available for text-to-vector conversion")
+            return []
+            
+        try:
+            # Generate embedding for the query text
+            query_embedding = await self.embedding_service.generate_embedding(query_text)
+            if not query_embedding:
+                logger.error(f"Failed to generate embedding for query: '{query_text}'")
+                return []
+                
+            # Use the protocol method to perform the search
+            return await self.search_similar_chunks(
+                query_vector=query_embedding,
+                limit=top_k,
+                threshold=None
+            )
+        except Exception as e:
+            logger.error(f"Error in search for query '{query_text}': {e}", exc_info=True)
+            return []
 
     # --- Maintenance helpers ---
     async def stats(self) -> dict[str, Any]:

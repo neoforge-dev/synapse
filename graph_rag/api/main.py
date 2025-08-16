@@ -221,6 +221,7 @@ async def lifespan(app: FastAPI):
                     embedding_dimension=getattr(
                         embedding_service, "get_embedding_dimension", lambda: 768
                     )(),
+                    embedding_service=embedding_service,
                 )
                 logger.info(
                     "LIFESPAN: Initialized FaissVectorStore at %s",

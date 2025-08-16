@@ -304,7 +304,9 @@ def create_vector_store(settings: Settings) -> VectorStore:
         )
 
         return FaissVectorStore(
-            path=settings.vector_store_path, embedding_dimension=dim
+            path=settings.vector_store_path, 
+            embedding_dimension=dim,
+            embedding_service=embedding_service
         )
     # Add other vector store types here if needed
     # elif vector_store_type == 'qdrant':
