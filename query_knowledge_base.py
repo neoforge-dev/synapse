@@ -13,10 +13,7 @@ from datetime import datetime
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from graph_rag.core.graph_rag_engine import GraphRAGEngine
 from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
-from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
-from graph_rag.services.embedding_service import MockEmbeddingService
 from graph_rag.config import get_settings
 
 async def main():
@@ -41,15 +38,6 @@ async def main():
     try:
         # Initialize services
         graph_repo = MemgraphGraphRepository(settings_obj=settings)
-        vector_store = SimpleVectorStore()
-        embedding_service = MockEmbeddingService()
-        
-        # Initialize GraphRAG engine
-        rag_engine = GraphRAGEngine(
-            graph_repository=graph_repo,
-            vector_store=vector_store,
-            embedding_service=embedding_service
-        )
         
         print(f"✅ Connected to knowledge base")
         
@@ -73,7 +61,7 @@ async def main():
                     if not query:
                         print("❌ Please provide a search query")
                         continue
-                    await handle_search(rag_engine, query)
+                    await handle_search(graph_repo, query)
                     
                 elif command == 'entity':
                     if not query:
@@ -116,27 +104,35 @@ async def main():
         if 'graph_repo' in locals():
             await graph_repo.close()
 
-async def handle_search(rag_engine: GraphRAGEngine, query: str):
-    """Handle vector search query"""
+async def handle_search(graph_repo: MemgraphGraphRepository, query: str):
+    """Handle content search query"""
     print(f"🔍 Searching for: '{query}'")
     
     try:
-        # Use the RAG engine for search
-        chunks = await rag_engine.retrieve_relevant_chunks(query, top_k=5)
+        # Search in chunks for content
+        search_query = """
+        MATCH (c:Chunk)
+        WHERE toLower(c.content) CONTAINS toLower($query)
+        OPTIONAL MATCH (c)-[:BELONGS_TO]->(d:Document)
+        RETURN c.content as content, d.title as document_title, d.category as category
+        LIMIT 10
+        """
         
-        if not chunks:
+        results = await graph_repo.execute_query(search_query, {"query": query})
+        
+        if not results:
             print("📭 No results found")
             return
         
-        print(f"📚 Found {len(chunks)} relevant chunks:")
+        print(f"📚 Found {len(results)} relevant chunks:")
         print("-" * 60)
         
-        for i, chunk in enumerate(chunks, 1):
-            print(f"\n{i}. Document: {chunk.document_id}")
-            content = chunk.content[:200] + "..." if len(chunk.content) > 200 else chunk.content
+        for i, result in enumerate(results, 1):
+            print(f"\n{i}. Document: {result.get('document_title', 'Unknown')}")
+            if result.get('category'):
+                print(f"   Category: {result['category']}")
+            content = result['content'][:200] + "..." if len(result['content']) > 200 else result['content']
             print(f"   Content: {content}")
-            if hasattr(chunk, 'metadata') and chunk.metadata:
-                print(f"   Metadata: {chunk.metadata}")
                 
     except Exception as e:
         print(f"❌ Search error: {e}")
