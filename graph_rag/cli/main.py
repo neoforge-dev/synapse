@@ -4,6 +4,7 @@ import typer
 
 from graph_rag import __version__  # Assume version is defined in __init__.py
 from graph_rag.cli.commands.admin import app as admin_app
+from graph_rag.cli.commands.analytics import app as analytics_app
 from graph_rag.cli.commands.compose import app as compose_app
 from graph_rag.cli.commands.config import app as config_app
 from graph_rag.cli.commands.discover import discover_command
@@ -50,6 +51,7 @@ app.add_typer(enhanced_search_app, name="explain")
 app.add_typer(query_app, name="query")
 app.add_typer(graph_app, name="graph")
 app.add_typer(insights_app, name="insights")
+app.add_typer(analytics_app, name="analytics")
 app.add_typer(notion_app, name="notion")
 app.command("suggest")(suggest_command)
 app.add_typer(config_app, name="config")
