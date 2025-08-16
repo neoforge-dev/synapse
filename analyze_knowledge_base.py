@@ -211,7 +211,7 @@ async def get_content_insights(graph_repo: MemgraphGraphRepository) -> Dict[str,
     MATCH (e)-[:MENTIONS]-(c:Chunk)
     WHERE NOT e:Document AND NOT e:Chunk AND NOT e:Topic 
        AND (labels(e)[0] IN ['ORG', 'PRODUCT', 'TECHNOLOGY'] 
-       OR e.name =~ '(?i).*(react|python|javascript|typescript|docker|kubernetes|aws|azure|api|database|sql|nosql|microservice|blockchain|ai|ml|machine learning|fastapi|django|flask).*')
+       OR toLower(e.name) =~ '.*(react|python|javascript|typescript|docker|kubernetes|aws|azure|api|database|sql|nosql|microservice|blockchain|ai|ml|machine learning|fastapi|django|flask).*')
     RETURN e.name as technology, count(*) as mentions
     ORDER BY mentions DESC LIMIT 15
     """
@@ -222,7 +222,7 @@ async def get_content_insights(graph_repo: MemgraphGraphRepository) -> Dict[str,
     business_query = """
     MATCH (e)-[:MENTIONS]-(c:Chunk)
     WHERE NOT e:Document AND NOT e:Chunk AND NOT e:Topic 
-       AND e.name =~ '(?i).*(strategy|business|client|customer|revenue|growth|marketing|sales|product|service|solution|development|consulting|freelancing|startup|mvp|prototype).*'
+       AND toLower(e.name) =~ '.*(strategy|business|client|customer|revenue|growth|marketing|sales|product|service|solution|development|consulting|freelancing|startup|mvp|prototype).*'
     RETURN e.name as concept, count(*) as mentions
     ORDER BY mentions DESC LIMIT 15
     """
