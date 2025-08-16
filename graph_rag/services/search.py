@@ -12,10 +12,9 @@ from graph_rag.api.errors import (
     SearchError,
     handle_search_error,
 )
-from graph_rag.core.interfaces import GraphRepository, SearchResultData, VectorStore
+from graph_rag.core.interfaces import GraphRepository, SearchResultData, VectorStore, EmbeddingService
 from graph_rag.domain.models import Chunk
 from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
-from graph_rag.services.embedding import EmbeddingService
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +32,9 @@ class SearchService:
     """Service for performing search operations over the graph."""
 
     def __init__(
-        self, repository: MemgraphRepository, embedding_service: EmbeddingService
+        self, graph_repository: GraphRepository, embedding_service: EmbeddingService
     ):
-        self.repository = repository
+        self.repository = graph_repository
         self.embedding_service = embedding_service  # Store the passed instance
 
     async def search_chunks(self, query: str, limit: int = 10) -> list[SearchResult]:
@@ -93,7 +92,7 @@ class SearchService:
         """
         try:
             # 1. Generate embedding for the query
-            query_vector = await self.embedding_service.encode(query)
+            query_vector = await self.embedding_service.generate_embedding(query)
             if not isinstance(query_vector, list):
                 # Handle potential errors during encoding if needed, though encode raises
                 logger.warning("Failed to generate query embedding, falling back to keyword search")

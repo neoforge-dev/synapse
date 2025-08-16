@@ -38,18 +38,17 @@ def mock_graph_repository_with_search():
     return repo
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def mock_embedding_service_for_search():
     """Mock the EmbeddingService used within SearchService."""
-    with patch("graph_rag.services.search.EmbeddingService") as mock_emb_service_cls:
-        mock_instance = mock_emb_service_cls.return_value
-        mock_instance.encode.return_value = (
-            QUERY_VECTOR  # Return a fixed vector for the query
-        )
-        mock_instance.get_embedding_dim.return_value = (
-            EMBEDDING_DIM  # Ensure dim is mocked
-        )
-        yield mock_instance  # Yield the configured instance
+    mock_instance = AsyncMock()
+    mock_instance.generate_embedding.return_value = (
+        QUERY_VECTOR  # Return a fixed vector for the query
+    )
+    mock_instance.get_embedding_dimension.return_value = (
+        EMBEDDING_DIM  # Ensure dim is mocked
+    )
+    return mock_instance
 
 
 # --- Keyword Search Tests ---
@@ -112,7 +111,7 @@ async def test_search_chunks_similarity_calls_embedding_and_repo(
 
     await service.search_chunks_by_similarity(query, limit)
 
-    mock_embedding_service_for_search.encode.assert_called_once_with(query)
+    mock_embedding_service_for_search.generate_embedding.assert_called_once_with(query)
     mock_graph_repository_with_search.search_chunks_by_similarity.assert_called_once_with(
         query_vector=QUERY_VECTOR, limit=limit
     )

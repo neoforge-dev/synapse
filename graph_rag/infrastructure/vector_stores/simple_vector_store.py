@@ -1,9 +1,21 @@
 import asyncio
 import logging
+import os
 
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
 from starlette.concurrency import run_in_threadpool
+
+# Use lightweight implementation in hot coverage mode to avoid scipy import issues
+if os.getenv("SKIP_SPACY_IMPORT") == "1":
+    def cosine_similarity(X, Y=None):
+        """Lightweight cosine similarity implementation using only numpy."""
+        if Y is None:
+            Y = X
+        X_norm = X / np.linalg.norm(X, axis=1, keepdims=True)
+        Y_norm = Y / np.linalg.norm(Y, axis=1, keepdims=True)
+        return np.dot(X_norm, Y_norm.T)
+else:
+    from sklearn.metrics.pairwise import cosine_similarity
 
 # Corrected import path for ChunkData and VectorStore protocol
 from graph_rag.core.interfaces import (

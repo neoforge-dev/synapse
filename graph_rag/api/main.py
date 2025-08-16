@@ -850,6 +850,11 @@ def create_app() -> FastAPI:
     app.add_exception_handler(GraphRAGError, graph_rag_exception_handler)
     app.add_exception_handler(HTTPException, http_exception_handler)
     app.add_exception_handler(Exception, general_exception_handler)
+    
+    # Add catch-all route for undefined API endpoints to ensure RFC 7807 compliance
+    @app.api_route("/api/v1/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+    async def catch_undefined_api_routes(path: str):
+        raise HTTPException(status_code=404, detail=f"Endpoint '/api/v1/{path}' not found")
 
     return app
 
