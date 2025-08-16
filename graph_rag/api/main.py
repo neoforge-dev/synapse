@@ -29,6 +29,7 @@ from graph_rag.api.middleware import (
 )
 from graph_rag.api.routers import documents, ingestion, query, search
 from graph_rag.api.routers.admin import create_admin_router
+from graph_rag.api.routers.dashboard import create_dashboard_router
 from graph_rag.api.routers.graph import create_graph_router
 from graph_rag.api.routers.reasoning import create_reasoning_router
 
@@ -583,6 +584,33 @@ def get_embedding_service(request: Request) -> "EmbeddingService":
     )
 
 
+def get_search_service(request: Request):
+    """Get search service from app state or create from dependencies."""
+    # Check if we have a search service in state
+    if hasattr(request.app.state, "search_service") and request.app.state.search_service:
+        return request.app.state.search_service
+    
+    # Create on-demand from available dependencies
+    try:
+        from graph_rag.services.search import SearchService
+        
+        graph_repo = get_graph_repository(request)
+        vector_store = get_vector_store(request)
+        
+        search_service = SearchService(
+            graph_repository=graph_repo,
+            vector_store=vector_store
+        )
+        
+        # Cache it for future use
+        request.app.state.search_service = search_service
+        return search_service
+        
+    except Exception as e:
+        logger.error(f"Failed to create SearchService: {e}", exc_info=True)
+        raise HTTPException(status_code=503, detail="Search service not available")
+
+
 # --- FastAPI App Creation ---
 def create_app() -> FastAPI:
     """Factory function to create the FastAPI application with all dependencies."""
@@ -651,6 +679,7 @@ def create_app() -> FastAPI:
     search_router = search.create_search_router()
     query_router = query.create_query_router()
     graph_router = create_graph_router()
+    dashboard_router = create_dashboard_router()
     admin_router = create_admin_router()
     reasoning_router = create_reasoning_router()
 
@@ -662,6 +691,7 @@ def create_app() -> FastAPI:
         query_router, prefix="/query", tags=["Query"]
     )  # Assuming query router needs prefix too
     api_router.include_router(graph_router, prefix="/graph", tags=["Graph"])
+    api_router.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])
     api_router.include_router(admin_router, prefix="/admin", tags=["Admin"])
     api_router.include_router(reasoning_router, prefix="/reasoning", tags=["Reasoning"])
 
