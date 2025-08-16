@@ -142,7 +142,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Simple rate limiting middleware (in-memory, not production-ready for distributed systems)."""
 
-    def __init__(self, app, requests_per_minute: int = 60, requests_per_hour: int = 1000):
+    def __init__(self, app, requests_per_minute: int = 300, requests_per_hour: int = 5000):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
         self.requests_per_hour = requests_per_hour

@@ -1218,6 +1218,7 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                             document_id=chunk_data.document_id,
                             metadata=metadata_with_score,
                             embedding=chunk_data.embedding,
+                            score=search_result.score,  # Set score directly on the chunk
                         )
                         final_relevant_chunks.append(chunk_obj)
                     except Exception as mapping_err:

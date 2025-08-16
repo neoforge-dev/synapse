@@ -18,6 +18,14 @@ from graph_rag.api.dependencies import (
     create_vector_store,  # Add vector store factory
     create_embedding_service,  # Add embedding service factory
 )
+from graph_rag.cli.error_handler import (
+    CLIErrorHandler,
+    handle_cli_error,
+    handle_connection_error,
+    handle_file_error,
+    handle_ingestion_error,
+    safe_async_run,
+)
 from graph_rag.config import Settings
 from graph_rag.core.entity_extractor import SpacyEntityExtractor
 from graph_rag.core.interfaces import (
@@ -78,8 +86,11 @@ async def process_and_store_document(
     vector_store = create_vector_store(settings)
 
     try:
-        # Connect to database
-        await repo.connect()
+        # Connect to database with error handling
+        try:
+            await repo.connect()
+        except Exception as e:
+            handle_connection_error("Memgraph database", e, "ingest")
 
         # Create ingestion service - Corrected signature
         service = IngestionService(
@@ -91,24 +102,34 @@ async def process_and_store_document(
             vector_store=vector_store,  # Provide the created store
         )
 
-        # Read file content and derive stable document_id
-        content = file_path.read_text()
-        derived_id, id_source, _ = derive_document_id(
-            file_path, content, metadata or {}
-        )
-        document_id = derived_id
+        # Read file content and derive stable document_id with error handling
+        try:
+            content = file_path.read_text()
+        except Exception as e:
+            handle_file_error(str(file_path), e)
+            
+        try:
+            derived_id, id_source, _ = derive_document_id(
+                file_path, content, metadata or {}
+            )
+            document_id = derived_id
+        except Exception as e:
+            handle_ingestion_error(e, str(file_path), "document_id_generation")
         # Attach id_source for observability
         meta_with_id = dict(metadata or {})
         meta_with_id.setdefault("id_source", id_source)
 
-        # 1. Basic ingestion (Doc + Chunks)
-        await service.ingest_document(
-            document_id=document_id,
-            content=content,
-            metadata=meta_with_id,
-            generate_embeddings=enable_embeddings,
-            replace_existing=replace_existing,
-        )
+        # 1. Basic ingestion (Doc + Chunks) with error handling
+        try:
+            await service.ingest_document(
+                document_id=document_id,
+                content=content,
+                metadata=meta_with_id,
+                generate_embeddings=enable_embeddings,
+                replace_existing=replace_existing,
+            )
+        except Exception as e:
+            handle_ingestion_error(e, document_id, "document_ingestion")
 
         # 2. Retrieve chunks
         chunk_objects: list[Chunk] = await repo.get_chunks_by_document_id(document_id)

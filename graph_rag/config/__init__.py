@@ -223,6 +223,15 @@ class Settings(BaseSettings):
     enable_metrics: bool = Field(
         True, description="Expose /metrics Prometheus endpoint."
     )
+    enable_rate_limiting: bool = Field(
+        False, description="Enable rate limiting middleware. Default: False"
+    )
+    rate_limit_per_minute: int = Field(
+        300, description="Rate limit: requests per minute. Default: 300"
+    )
+    rate_limit_per_hour: int = Field(
+        5000, description="Rate limit: requests per hour. Default: 5000"
+    )
 
     # --- LLM-derived relationship persistence ---
     enable_llm_relationships: bool = Field(

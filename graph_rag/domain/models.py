@@ -54,6 +54,7 @@ class Chunk(Node):
     metadata: dict[str, Any] | None = Field(
         default=None, description="Optional metadata associated with the chunk."
     )
+    score: float = Field(default=0.0, description="Search relevance score")
 
 
 class Entity(Node):
