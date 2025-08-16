@@ -125,25 +125,40 @@ async def get_document_statistics(graph_repo: MemgraphGraphRepository) -> Dict[s
 async def get_entity_statistics(graph_repo: MemgraphGraphRepository) -> Dict[str, Any]:
     """Get entity extraction statistics"""
     
-    # Get total entity count
-    total_entities_query = "MATCH (e:Entity) RETURN count(e) as total"
+    # Get all entity type labels (excluding Document, Chunk, Topic)
+    entity_labels_query = """
+    MATCH (n) 
+    WHERE NOT n:Document AND NOT n:Chunk AND NOT n:Topic
+    WITH DISTINCT labels(n) as node_labels
+    UNWIND node_labels as label
+    RETURN label, count(*) as dummy
+    ORDER BY label
+    """
+    entity_labels_result = await graph_repo.execute_query(entity_labels_query)
+    entity_labels = [row['label'] for row in entity_labels_result]
+    
+    # Get total entity count by counting all nodes that are not Document, Chunk, or Topic
+    total_entities_query = """
+    MATCH (e) 
+    WHERE NOT e:Document AND NOT e:Chunk AND NOT e:Topic
+    RETURN count(e) as total
+    """
     total_entities_result = await graph_repo.execute_query(total_entities_query)
     total_entities = total_entities_result[0]['total'] if total_entities_result else 0
     
-    # Get entities by type
-    entity_type_query = """
-    MATCH (e:Entity) 
-    WHERE e.entity_type IS NOT NULL 
-    RETURN e.entity_type as entity_type, count(e) as count 
-    ORDER BY count DESC LIMIT 20
-    """
-    entity_type_result = await graph_repo.execute_query(entity_type_query)
-    entity_types = {row['entity_type']: row['count'] for row in entity_type_result}
+    # Get entities by type (count nodes with each entity label)
+    entity_types = {}
+    for label in entity_labels:
+        query = f"MATCH (e:{label}) RETURN count(e) as count"
+        result = await graph_repo.execute_query(query)
+        if result and result[0]['count'] > 0:
+            entity_types[label] = result[0]['count']
     
-    # Get most mentioned entities
+    # Get most mentioned entities (from all entity types)
     popular_entities_query = """
-    MATCH (e:Entity)-[r:MENTIONS]-(c:Chunk)
-    RETURN e.name as entity_name, e.entity_type as entity_type, count(r) as mention_count
+    MATCH (e)-[r:MENTIONS]-(c:Chunk)
+    WHERE NOT e:Document AND NOT e:Chunk AND NOT e:Topic
+    RETURN e.name as entity_name, labels(e)[0] as entity_type, count(r) as mention_count
     ORDER BY mention_count DESC LIMIT 20
     """
     popular_entities_result = await graph_repo.execute_query(popular_entities_query)
@@ -172,7 +187,8 @@ async def get_relationship_statistics(graph_repo: MemgraphGraphRepository) -> Di
     
     # Get documents with most entities
     doc_entity_query = """
-    MATCH (d:Document)-[:CONTAINS]->(c:Chunk)-[:MENTIONS]->(e:Entity)
+    MATCH (d:Document)-[:CONTAINS]->(c:Chunk)-[:MENTIONS]->(e)
+    WHERE NOT e:Document AND NOT e:Chunk AND NOT e:Topic
     RETURN d.title as document_title, count(DISTINCT e) as entity_count
     ORDER BY entity_count DESC LIMIT 10
     """
@@ -192,9 +208,10 @@ async def get_content_insights(graph_repo: MemgraphGraphRepository) -> Dict[str,
     
     # Get technology mentions
     tech_query = """
-    MATCH (e:Entity)-[:MENTIONS]-(c:Chunk)
-    WHERE e.entity_type IN ['ORG', 'PRODUCT', 'TECHNOLOGY'] 
-       OR e.name =~ '(?i).*(react|python|javascript|typescript|docker|kubernetes|aws|azure|api|database|sql|nosql|microservice|blockchain|ai|ml|machine learning|fastapi|django|flask).*'
+    MATCH (e)-[:MENTIONS]-(c:Chunk)
+    WHERE NOT e:Document AND NOT e:Chunk AND NOT e:Topic 
+       AND (labels(e)[0] IN ['ORG', 'PRODUCT', 'TECHNOLOGY'] 
+       OR e.name =~ '(?i).*(react|python|javascript|typescript|docker|kubernetes|aws|azure|api|database|sql|nosql|microservice|blockchain|ai|ml|machine learning|fastapi|django|flask).*')
     RETURN e.name as technology, count(*) as mentions
     ORDER BY mentions DESC LIMIT 15
     """
@@ -203,8 +220,9 @@ async def get_content_insights(graph_repo: MemgraphGraphRepository) -> Dict[str,
     
     # Get business concepts
     business_query = """
-    MATCH (e:Entity)-[:MENTIONS]-(c:Chunk)
-    WHERE e.name =~ '(?i).*(strategy|business|client|customer|revenue|growth|marketing|sales|product|service|solution|development|consulting|freelancing|startup|mvp|prototype).*'
+    MATCH (e)-[:MENTIONS]-(c:Chunk)
+    WHERE NOT e:Document AND NOT e:Chunk AND NOT e:Topic 
+       AND e.name =~ '(?i).*(strategy|business|client|customer|revenue|growth|marketing|sales|product|service|solution|development|consulting|freelancing|startup|mvp|prototype).*'
     RETURN e.name as concept, count(*) as mentions
     ORDER BY mentions DESC LIMIT 15
     """
@@ -263,7 +281,8 @@ def print_relationship_stats(stats: Dict[str, Any]):
     if stats['docs_with_most_entities']:
         print(f"\n📈 Documents with Most Entities:")
         for doc in stats['docs_with_most_entities']:
-            title = doc['title'][:60] + "..." if len(doc['title']) > 60 else doc['title']
+            title = doc['title'] or "Untitled"
+            title = title[:60] + "..." if len(title) > 60 else title
             print(f"   {title}: {doc['entity_count']} entities")
 
 def print_content_insights(insights: Dict[str, Any]):
