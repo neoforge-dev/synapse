@@ -1,23 +1,147 @@
 {
   "document_stats": {
-    "total_documents": 0,
+    "total_documents": 11,
     "categories": {},
     "data_types": {},
     "chunk_stats": {
-      "total_chunks": 0,
+      "total_chunks": 406,
       "avg_chunk_size": null,
       "min_chunk_size": null,
       "max_chunk_size": null
     }
   },
   "entity_stats": {
-    "total_entities": 0,
-    "entity_types": {},
-    "popular_entities": []
+    "total_entities": 256,
+    "entity_types": {
+      "CARDINAL": 50,
+      "DATE": 12,
+      "FAC": 3,
+      "GPE": 24,
+      "LAW": 2,
+      "MONEY": 7,
+      "NORP": 3,
+      "ORDINAL": 1,
+      "ORG": 86,
+      "PERCENT": 7,
+      "PERSON": 47,
+      "WORK_OF_ART": 14
+    },
+    "popular_entities": [
+      {
+        "name": "###",
+        "type": "MONEY",
+        "mentions": 48
+      },
+      {
+        "name": "1",
+        "type": "CARDINAL",
+        "mentions": 19
+      },
+      {
+        "name": "2",
+        "type": "CARDINAL",
+        "mentions": 18
+      },
+      {
+        "name": "3",
+        "type": "CARDINAL",
+        "mentions": 14
+      },
+      {
+        "name": "#",
+        "type": "MONEY",
+        "mentions": 11
+      },
+      {
+        "name": "Kubernetes",
+        "type": "ORG",
+        "mentions": 10
+      },
+      {
+        "name": "Terraform",
+        "type": "ORG",
+        "mentions": 9
+      },
+      {
+        "name": "first",
+        "type": "ORDINAL",
+        "mentions": 7
+      },
+      {
+        "name": "one",
+        "type": "CARDINAL",
+        "mentions": 6
+      },
+      {
+        "name": "4",
+        "type": "CARDINAL",
+        "mentions": 5
+      },
+      {
+        "name": "today",
+        "type": "DATE",
+        "mentions": 4
+      },
+      {
+        "name": "CSS",
+        "type": "ORG",
+        "mentions": 4
+      },
+      {
+        "name": "Django",
+        "type": "PERSON",
+        "mentions": 4
+      },
+      {
+        "name": "CodeSwiftr",
+        "type": "ORG",
+        "mentions": 3
+      },
+      {
+        "name": "daily",
+        "type": "DATE",
+        "mentions": 3
+      },
+      {
+        "name": "React",
+        "type": "GPE",
+        "mentions": 3
+      },
+      {
+        "name": "5",
+        "type": "CARDINAL",
+        "mentions": 3
+      },
+      {
+        "name": "Tech",
+        "type": "ORG",
+        "mentions": 3
+      },
+      {
+        "name": "3.1",
+        "type": "CARDINAL",
+        "mentions": 2
+      },
+      {
+        "name": "DevOps",
+        "type": "ORG",
+        "mentions": 2
+      }
+    ]
   },
   "relationship_stats": {
-    "relationship_types": {},
-    "docs_with_most_entities": []
+    "relationship_types": {
+      "MENTIONS": 438,
+      "CONTAINS": 406,
+      "MENTIONS_TOPIC": 403,
+      "HAS_TOPIC": 8
+    },
+    "docs_with_most_entities": [
+      {
+        "title": null,
+        "entity_count": 256
+      }
+    ]
   },
-  "generated_at": "2025-08-16T05:07:34.191638"
+  "generated_at": "2025-08-16T11:05:26.437265"
 }

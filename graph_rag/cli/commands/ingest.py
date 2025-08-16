@@ -15,6 +15,8 @@ import yaml
 from graph_rag.api.dependencies import (
     MockEmbeddingService,  # Using Mock by default for CLI
     create_graph_repository,  # Add graceful fallback support
+    create_vector_store,  # Add vector store factory
+    create_embedding_service,  # Add embedding service factory
 )
 from graph_rag.config import Settings
 from graph_rag.core.entity_extractor import SpacyEntityExtractor
@@ -29,7 +31,7 @@ from graph_rag.infrastructure.document_processor.simple_processor import (
 )
 
 # MemgraphGraphRepository now imported via dependency injection for graceful fallback
-from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
+# Vector store now created via factory function instead of direct import
 from graph_rag.models import ProcessedDocument
 from graph_rag.services.ingestion import IngestionService
 from graph_rag.utils.identity import derive_document_id
@@ -60,18 +62,11 @@ async def process_and_store_document(
     processor = SimpleDocumentProcessor()
     extractor = SpacyEntityExtractor()
     builder = SimpleKnowledgeGraphBuilder(graph_store=repo)  # Use repo as graph_store
-    # Create required dependencies (using mock embeddings by default for speed/portability)
-    # Optionally switch to real embeddings when enabled
+    # Create required dependencies (using real embeddings when enabled)
     try:
         if enable_embeddings:
-            # Prefer sentence-transformers via service factory; fallback to mock on failure
-            from graph_rag.services.embedding import (
-                SentenceTransformerEmbeddingService,
-            )
-
-            embedding_service = SentenceTransformerEmbeddingService(
-                model_name=settings.vector_store_embedding_model
-            )
+            # Use the same embedding service factory as the API
+            embedding_service = create_embedding_service(settings)
         else:
             raise RuntimeError("Embeddings disabled")
     except Exception:
@@ -79,7 +74,8 @@ async def process_and_store_document(
         # Use a small dimension for speed
         embedding_service = MockEmbeddingService(dimension=10)
 
-    vector_store = SimpleVectorStore(embedding_service=embedding_service)
+    # Use the same vector store factory as the API for consistency
+    vector_store = create_vector_store(settings)
 
     try:
         # Connect to database
