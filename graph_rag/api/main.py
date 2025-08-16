@@ -29,6 +29,7 @@ from graph_rag.api.middleware import (
 )
 from graph_rag.api.routers import documents, ingestion, query, search
 from graph_rag.api.routers.admin import create_admin_router
+from graph_rag.api.routers.auth import create_auth_router
 from graph_rag.api.routers.dashboard import create_dashboard_router
 from graph_rag.api.routers.graph import create_graph_router
 from graph_rag.api.routers.reasoning import create_reasoning_router
@@ -681,8 +682,12 @@ def create_app() -> FastAPI:
     graph_router = create_graph_router()
     dashboard_router = create_dashboard_router()
     admin_router = create_admin_router()
+    auth_router = create_auth_router()
     reasoning_router = create_reasoning_router()
 
+    # Authentication router (no auth required for auth endpoints)
+    api_router.include_router(auth_router)
+    
     # Routers - Prefixes are defined within the factory's router
     api_router.include_router(documents_router, prefix="/documents", tags=["Documents"])
     api_router.include_router(ingestion_router, prefix="/ingestion", tags=["Ingestion"])

@@ -31,7 +31,23 @@ class Settings(BaseSettings):
     api_log_json: bool = Field(
         False, description="Emit structured JSON logs when true."
     )
-    # Example: api_key: Optional[SecretStr] = Field(None, description="Optional API key for securing endpoints.")
+    
+    # --- Security & Authentication ---
+    jwt_secret_key: SecretStr | None = Field(
+        None, description="JWT secret key for token signing. Should be at least 32 characters."
+    )
+    jwt_algorithm: str = Field(
+        "HS256", description="Algorithm for JWT token signing."
+    )
+    jwt_access_token_expire_minutes: int = Field(
+        30, ge=5, le=1440, description="JWT access token expiration in minutes."
+    )
+    enable_authentication: bool = Field(
+        True, description="Enable authentication for API endpoints. Default: True"
+    )
+    require_auth_for_docs: bool = Field(
+        False, description="Require authentication to access API documentation. Default: False"
+    )
 
     # --- Graph Database Settings ---
     disable_graph: bool = Field(
