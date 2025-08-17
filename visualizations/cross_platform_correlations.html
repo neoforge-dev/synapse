@@ -1,0 +1,595 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cross-Platform Content Correlations</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 1400px; 
+            margin: 0 auto; 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 30px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .header h1 {
+            color: #2c3e50;
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1em;
+            margin: 10px 0 0 0;
+        }
+        .controls { 
+            margin-bottom: 20px; 
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+        .select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+        }
+        .map-container { 
+            border: 2px solid #ecf0f1; 
+            border-radius: 8px; 
+            background: #fafafa;
+        }
+        .tooltip { 
+            position: absolute; 
+            padding: 15px; 
+            background: rgba(44, 62, 80, 0.95); 
+            color: white; 
+            border-radius: 8px; 
+            pointer-events: none; 
+            font-size: 13px;
+            line-height: 1.4;
+            max-width: 300px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .legend { 
+            position: absolute;
+            top: 100px;
+            right: 30px;
+            width: 250px; 
+            padding: 20px; 
+            background: rgba(255,255,255,0.95); 
+            border-radius: 8px; 
+            border: 1px solid #ddd;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        .legend h3 {
+            margin: 0 0 15px 0;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 12px;
+        }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .node { cursor: pointer; transition: all 0.3s ease; }
+        .node:hover { stroke: #2c3e50; stroke-width: 3px; }
+        .link { stroke-opacity: 0.6; transition: all 0.3s ease; }
+        .selected { stroke: #e74c3c; stroke-width: 4px; }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            padding: 15px;
+            background: #ecf0f1;
+            border-radius: 8px;
+        }
+        .stat {
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 Cross-Platform Content Correlations</h1>
+            <p>Flow of content and ideas across LinkedIn, Notion, Blog, Synapse, and GitHub</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-number" id="nodeCount">0</div>
+                <div class="stat-label">Concepts</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number" id="edgeCount">0</div>
+                <div class="stat-label">Relationships</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number" id="selectedCount">0</div>
+                <div class="stat-label">Selected</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <button class="btn" onclick="resetZoom()">🔍 Reset View</button>
+                <button class="btn" onclick="toggleLabels()">🏷️ Toggle Labels</button>
+                <button class="btn" onclick="centerGraph()">🎯 Center Graph</button>
+            </div>
+            <div class="control-group">
+                <label>Filter by type:</label>
+                <select class="select" id="typeFilter" onchange="filterByType()">
+                    <option value="all">All Types</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Layout:</label>
+                <select class="select" id="layoutSelect" onchange="changeLayout()">
+                    <option value="force">Force-Directed</option>
+                    <option value="circular">Circular</option>
+                    <option value="hierarchical">Hierarchical</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="legend">
+            <h3>Legend</h3>
+            <div><strong>Node Size:</strong> Concept importance</div>
+            <div><strong>Edge Width:</strong> Relationship strength</div>
+            <div style="margin: 10px 0;"><strong>Concept Types:</strong></div>
+            <div id="legendItems"></div>
+        </div>
+        
+        <svg class="map-container" width="1000" height="700"></svg>
+    </div>
+    
+    <div class="tooltip" style="opacity: 0;"></div>
+    
+    <script>
+        const data = {
+  "nodes": [
+    {
+      "id": "linkedin",
+      "label": "LinkedIn",
+      "type": "platform",
+      "size": 50,
+      "color": "#0077B5",
+      "x": 100,
+      "y": 100
+    },
+    {
+      "id": "notion",
+      "label": "Notion",
+      "type": "platform",
+      "size": 50,
+      "color": "#000000",
+      "x": 300,
+      "y": 100
+    },
+    {
+      "id": "blog",
+      "label": "Blog",
+      "type": "platform",
+      "size": 50,
+      "color": "#FF5722",
+      "x": 500,
+      "y": 100
+    },
+    {
+      "id": "synapse",
+      "label": "Synapse",
+      "type": "platform",
+      "size": 50,
+      "color": "#74B9FF",
+      "x": 100,
+      "y": 250
+    },
+    {
+      "id": "github",
+      "label": "GitHub",
+      "type": "platform",
+      "size": 50,
+      "color": "#24292e",
+      "x": 300,
+      "y": 250
+    },
+    {
+      "id": "technical_posts",
+      "label": "Technical Posts",
+      "type": "content",
+      "size": 30,
+      "color": "#DDA0DD",
+      "platform": "linkedin"
+    },
+    {
+      "id": "research_notes",
+      "label": "Research Notes",
+      "type": "content",
+      "size": 30,
+      "color": "#DDA0DD",
+      "platform": "notion"
+    },
+    {
+      "id": "published_articles",
+      "label": "Published Articles",
+      "type": "content",
+      "size": 30,
+      "color": "#DDA0DD",
+      "platform": "blog"
+    },
+    {
+      "id": "knowledge_base",
+      "label": "Knowledge Base",
+      "type": "content",
+      "size": 30,
+      "color": "#DDA0DD",
+      "platform": "synapse"
+    },
+    {
+      "id": "code_examples",
+      "label": "Code Examples",
+      "type": "content",
+      "size": 30,
+      "color": "#DDA0DD",
+      "platform": "github"
+    }
+  ],
+  "edges": [
+    {
+      "source": "linkedin",
+      "target": "notion",
+      "type": "draft_to_structured",
+      "weight": 2.0,
+      "color": "#1abc9c"
+    },
+    {
+      "source": "notion",
+      "target": "blog",
+      "type": "research_to_publication",
+      "weight": 2.0,
+      "color": "#1abc9c"
+    },
+    {
+      "source": "blog",
+      "target": "synapse",
+      "type": "content_to_knowledge",
+      "weight": 2.0,
+      "color": "#1abc9c"
+    },
+    {
+      "source": "synapse",
+      "target": "business intelligence",
+      "type": "data_to_insights",
+      "weight": 2.0,
+      "color": "#1abc9c"
+    }
+  ],
+  "metadata": {
+    "title": "Cross-Platform Content Correlations",
+    "description": "Flow of content and ideas across platforms",
+    "platform_count": 5,
+    "correlation_count": 4
+  }
+};
+        
+        // Update stats
+        document.getElementById('nodeCount').textContent = data.nodes.length;
+        document.getElementById('edgeCount').textContent = data.edges.length;
+        
+        // Populate type filter
+        const types = [...new Set(data.nodes.map(n => n.concept_type || n.type))];
+        const typeFilter = document.getElementById('typeFilter');
+        types.forEach(type => {
+            if (type) {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type;
+                typeFilter.appendChild(option);
+            }
+        });
+        
+        // Populate legend
+        const legendItems = document.getElementById('legendItems');
+        types.forEach(type => {
+            if (type) {
+                const node = data.nodes.find(n => (n.concept_type || n.type) === type);
+                if (node) {
+                    const item = document.createElement('div');
+                    item.className = 'legend-item';
+                    item.innerHTML = `<div class="legend-color" style="background-color: ${node.color}"></div>${type}`;
+                    legendItems.appendChild(item);
+                }
+            }
+        });
+        
+        const svg = d3.select("svg");
+        const width = +svg.attr("width");
+        const height = +svg.attr("height");
+        
+        const g = svg.append("g");
+        
+        // Add zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 4])
+            .on("zoom", (event) => g.attr("transform", event.transform));
+        svg.call(zoom);
+        
+        // Create simulation
+        let simulation = d3.forceSimulation()
+            .force("link", d3.forceLink().id(d => d.id).distance(100))
+            .force("charge", d3.forceManyBody().strength(-300))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collision", d3.forceCollide().radius(d => (d.size || 20) / 2 + 5));
+        
+        let link, node, labels;
+        
+        function initGraph() {
+            // Create links
+            link = g.append("g")
+                .attr("class", "links")
+                .selectAll("line")
+                .data(data.edges)
+                .enter().append("line")
+                .attr("class", "link")
+                .attr("stroke", d => d.color)
+                .attr("stroke-width", d => Math.max(1, (d.weight || 1) * 2))
+                .attr("marker-end", "url(#arrowhead)");
+            
+            // Add arrow markers
+            svg.append("defs").append("marker")
+                .attr("id", "arrowhead")
+                .attr("viewBox", "0 -5 10 10")
+                .attr("refX", 15)
+                .attr("refY", 0)
+                .attr("markerWidth", 6)
+                .attr("markerHeight", 6)
+                .attr("orient", "auto")
+                .append("path")
+                .attr("d", "M0,-5L10,0L0,5")
+                .attr("fill", "#999");
+            
+            // Create nodes
+            node = g.append("g")
+                .attr("class", "nodes")
+                .selectAll("circle")
+                .data(data.nodes)
+                .enter().append("circle")
+                .attr("class", "node")
+                .attr("r", d => (d.size || 20) / 2)
+                .attr("fill", d => d.color)
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended));
+            
+            // Add labels
+            labels = g.append("g")
+                .attr("class", "labels")
+                .selectAll("text")
+                .data(data.nodes)
+                .enter().append("text")
+                .text(d => d.label)
+                .attr("font-size", "11px")
+                .attr("font-weight", "500")
+                .attr("dx", d => (d.size || 20) / 2 + 5)
+                .attr("dy", 4)
+                .attr("fill", "#2c3e50");
+            
+            // Add tooltips
+            const tooltip = d3.select(".tooltip");
+            
+            node.on("mouseover", function(event, d) {
+                tooltip.transition().duration(200).style("opacity", .9);
+                let tooltipContent = `<strong>${d.label}</strong><br/>`;
+                if (d.concept_type) tooltipContent += `Type: ${d.concept_type}<br/>`;
+                if (d.platform) tooltipContent += `Platform: ${d.platform}<br/>`;
+                if (d.metadata) {
+                    Object.entries(d.metadata).forEach(([key, value]) => {
+                        if (key !== 'category' && value && typeof value === 'string' && value.length < 100) {
+                            tooltipContent += `${key}: ${value}<br/>`;
+                        }
+                    });
+                }
+                
+                tooltip.html(tooltipContent)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+            })
+            .on("mouseout", function(d) {
+                tooltip.transition().duration(500).style("opacity", 0);
+            })
+            .on("click", function(event, d) {
+                d3.select(this).classed("selected", !d3.select(this).classed("selected"));
+                updateSelectedCount();
+            });
+            
+            // Start simulation
+            simulation
+                .nodes(data.nodes)
+                .on("tick", ticked);
+            
+            simulation.force("link")
+                .links(data.edges);
+        }
+        
+        function ticked() {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+            
+            node
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y);
+            
+            labels
+                .attr("x", d => d.x)
+                .attr("y", d => d.y);
+        }
+        
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+        
+        function resetZoom() {
+            svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
+        }
+        
+        function centerGraph() {
+            const bounds = g.node().getBBox();
+            const centerX = bounds.x + bounds.width / 2;
+            const centerY = bounds.y + bounds.height / 2;
+            const scale = 0.8 / Math.max(bounds.width / width, bounds.height / height);
+            const transform = d3.zoomIdentity
+                .translate(width / 2 - scale * centerX, height / 2 - scale * centerY)
+                .scale(scale);
+            svg.transition().duration(750).call(zoom.transform, transform);
+        }
+        
+        let labelsVisible = true;
+        function toggleLabels() {
+            labelsVisible = !labelsVisible;
+            labels.style("opacity", labelsVisible ? 1 : 0);
+        }
+        
+        function filterByType() {
+            const selectedType = document.getElementById("typeFilter").value;
+            
+            node.style("opacity", d => {
+                return selectedType === "all" || (d.concept_type || d.type) === selectedType ? 1 : 0.2;
+            });
+            
+            labels.style("opacity", d => {
+                const typeVisible = selectedType === "all" || (d.concept_type || d.type) === selectedType;
+                return typeVisible && labelsVisible ? 1 : 0;
+            });
+            
+            link.style("opacity", d => {
+                const sourceVisible = selectedType === "all" || (d.source.concept_type || d.source.type) === selectedType;
+                const targetVisible = selectedType === "all" || (d.target.concept_type || d.target.type) === selectedType;
+                return sourceVisible && targetVisible ? 0.6 : 0.1;
+            });
+        }
+        
+        function changeLayout() {
+            const layout = document.getElementById("layoutSelect").value;
+            
+            if (layout === "circular") {
+                const radius = Math.min(width, height) / 3;
+                const angleStep = (2 * Math.PI) / data.nodes.length;
+                
+                data.nodes.forEach((d, i) => {
+                    const angle = i * angleStep;
+                    d.fx = width / 2 + radius * Math.cos(angle);
+                    d.fy = height / 2 + radius * Math.sin(angle);
+                });
+            } else if (layout === "hierarchical") {
+                // Simple hierarchical layout
+                const levels = {};
+                data.nodes.forEach(d => {
+                    const level = d.metadata?.category || 'default';
+                    if (!levels[level]) levels[level] = [];
+                    levels[level].push(d);
+                });
+                
+                Object.keys(levels).forEach((level, levelIndex) => {
+                    const nodesInLevel = levels[level];
+                    const y = (levelIndex + 1) * (height / (Object.keys(levels).length + 1));
+                    nodesInLevel.forEach((d, nodeIndex) => {
+                        d.fx = (nodeIndex + 1) * (width / (nodesInLevel.length + 1));
+                        d.fy = y;
+                    });
+                });
+            } else {
+                // Force-directed (remove fixed positions)
+                data.nodes.forEach(d => {
+                    d.fx = null;
+                    d.fy = null;
+                });
+            }
+            
+            simulation.alpha(1).restart();
+        }
+        
+        function updateSelectedCount() {
+            const selected = node.filter(function() { return d3.select(this).classed("selected"); });
+            document.getElementById('selectedCount').textContent = selected.size();
+        }
+        
+        // Initialize graph
+        initGraph();
+        
+        // Auto-center after initial layout
+        setTimeout(() => {
+            centerGraph();
+        }, 2000);
+    </script>
+</body>
+</html>
+        

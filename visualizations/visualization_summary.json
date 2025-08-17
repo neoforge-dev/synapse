@@ -1,0 +1,43 @@
+{
+  "created_at": "2025-08-17T23:32:17.309061",
+  "visualizations": [
+    {
+      "name": "Synapse Concept Map",
+      "file": "/Users/bogdan/til/graph-rag-mcp/visualizations/synapse_concept_map.html",
+      "description": "Main concept network showing professional and strategic relationships",
+      "nodes": 20,
+      "edges": 8
+    },
+    {
+      "name": "Professional Journey Flow",
+      "file": "/Users/bogdan/til/graph-rag-mcp/visualizations/professional_journey_flow.html",
+      "description": "Career progression timeline with skills evolution",
+      "stages": 4,
+      "skill_periods": 4
+    },
+    {
+      "name": "Cross-Platform Correlations",
+      "file": "/Users/bogdan/til/graph-rag-mcp/visualizations/cross_platform_correlations.html",
+      "description": "Content flow between platforms",
+      "platforms": 10,
+      "correlations": 4
+    },
+    {
+      "name": "Strategic Insights Network",
+      "file": "/Users/bogdan/til/graph-rag-mcp/visualizations/strategic_insights_network.html",
+      "description": "Business strategy and opportunity relationships",
+      "insights": 8,
+      "relationships": 8
+    }
+  ],
+  "total_concepts": 20,
+  "features": [
+    "Interactive node manipulation and filtering",
+    "Concept type color coding",
+    "Relationship strength visualization",
+    "Zoom and pan capabilities",
+    "Multiple layout algorithms",
+    "Real-time statistics",
+    "Responsive design"
+  ]
+}
