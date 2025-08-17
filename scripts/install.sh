@@ -243,14 +243,19 @@ main() {
     echo "============================================="
     echo
     
-    # Check if Synapse is already installed
+    # Check if Synapse is already installed and working
     if command_exists synapse; then
-        print_success "Synapse is already installed!"
-        synapse --version
-        echo
-        echo "To update, run: brew upgrade synapse-graph-rag (if installed via Homebrew)"
-        echo "Or: pipx upgrade synapse-graph-rag (if installed via pipx)"
-        exit 0
+        if synapse --version >/dev/null 2>&1; then
+            print_success "Synapse is already installed and working!"
+            synapse --version
+            echo
+            echo "To update, run: brew upgrade synapse (if installed via Homebrew)"
+            echo "Or: pipx upgrade synapse-graph-rag (if installed via pipx)"
+            echo "Or: uv pip install --upgrade synapse-graph-rag (if installed via uv)"
+            exit 0
+        else
+            print_warning "Synapse command found but not working properly. Reinstalling..."
+        fi
     fi
     
     # Parse command line arguments

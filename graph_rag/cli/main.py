@@ -6,7 +6,7 @@ from graph_rag import __version__  # Assume version is defined in __init__.py
 from graph_rag.cli.commands.admin import app as admin_app
 from graph_rag.cli.commands.analytics import app as analytics_app
 from graph_rag.cli.commands.compose import app as compose_app
-from graph_rag.cli.commands.concept_map import app as concept_map_app
+# from graph_rag.cli.commands.concept_map import app as concept_map_app  # Temporary disabled due to circular imports
 from graph_rag.cli.commands.config import app as config_app
 from graph_rag.cli.commands.discover import discover_command
 from graph_rag.cli.commands.enhanced_search import app as enhanced_search_app
@@ -60,7 +60,7 @@ app.add_typer(admin_app, name="admin")
 app.add_typer(mcp_app, name="mcp")
 app.add_typer(compose_app, name="compose")
 app.add_typer(init_app, name="init")
-app.add_typer(concept_map_app, name="concept")
+# app.add_typer(concept_map_app, name="concept")  # Temporary disabled due to circular imports
 
 
 # Top-level convenience: synapse up (delegates to compose up with enhanced features)

@@ -16,7 +16,7 @@ from rich.tree import Tree
 from graph_rag.core.brand_safety_analyzer import (
     BrandSafetyAnalyzer,
     BrandSafetyAssessment,
-    RiskLevel,
+    BrandSafetyLevel,
 )
 from graph_rag.core.concept_entity_extractor import BeliefPreferenceExtractor
 from graph_rag.core.concept_extractor import (
@@ -1176,10 +1176,10 @@ def safety_check_cli(
 
         # Safety level display
         safety_colors = {
-            RiskLevel.SAFE: "green",
-            RiskLevel.CAUTION: "yellow",
-            RiskLevel.RISK: "orange",
-            RiskLevel.DANGER: "red"
+            BrandSafetyLevel.SAFE: "green",
+            BrandSafetyLevel.CAUTION: "yellow",
+            BrandSafetyLevel.RISK: "orange",
+            BrandSafetyLevel.DANGER: "red"
         }
 
         safety_color = safety_colors.get(assessment.safety_level, "white")
@@ -1415,11 +1415,11 @@ def risk_dashboard_cli(
         console.print(risk_table)
 
         # High-risk items
-        high_risk_items = [a for a in assessments if a.safety_level in [RiskLevel.RISK, RiskLevel.DANGER]]
+        high_risk_items = [a for a in assessments if a.safety_level in [BrandSafetyLevel.RISK, BrandSafetyLevel.DANGER]]
         if high_risk_items:
             console.print(f"\n⚠️ High-Risk Content ({len(high_risk_items)} items):")
             for i, assessment in enumerate(high_risk_items[:5]):  # Show top 5
-                risk_color = "orange" if assessment.safety_level == RiskLevel.RISK else "red"
+                risk_color = "orange" if assessment.safety_level == BrandSafetyLevel.RISK else "red"
                 console.print(f"   {i+1}. [{risk_color}]{assessment.safety_level.value.upper()}[/{risk_color}] - Risk Score: {assessment.overall_risk_score:.2f}")
 
         if real_time:
@@ -1453,10 +1453,10 @@ def _display_hot_take_analysis(viral_prediction: ViralPrediction, safety_assessm
 
     # Brand safety results
     safety_color = {
-        RiskLevel.SAFE: "green",
-        RiskLevel.CAUTION: "yellow",
-        RiskLevel.RISK: "orange",
-        RiskLevel.DANGER: "red"
+        BrandSafetyLevel.SAFE: "green",
+        BrandSafetyLevel.CAUTION: "yellow",
+        BrandSafetyLevel.RISK: "orange",
+        BrandSafetyLevel.DANGER: "red"
     }.get(safety_assessment.safety_level, "white")
 
     safety_table = Table(title="🛡️ Brand Safety Assessment", style="green")
