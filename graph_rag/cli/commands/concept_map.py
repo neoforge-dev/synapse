@@ -16,6 +16,8 @@ from rich.text import Text
 
 from graph_rag.core.concept_extractor import EnhancedConceptExtractor, LinkedInConceptExtractor, NotionConceptExtractor
 from graph_rag.core.concept_entity_extractor import BeliefPreferenceExtractor
+from graph_rag.core.viral_prediction_engine import ViralPredictionEngine, ViralPrediction
+from graph_rag.core.brand_safety_analyzer import BrandSafetyAnalyzer, BrandSafetyAssessment, RiskLevel
 from graph_rag.core.temporal_tracker import TemporalTracker
 from graph_rag.services.cross_platform_correlator import CrossPlatformCorrelator
 from graph_rag.visualization.concept_mapper import ConceptMapper
@@ -988,6 +990,540 @@ def _display_beliefs_table(result: Dict[str, List], show_context: bool = False):
     console.print(f"   • Beliefs: {len(result['beliefs'])}")
     console.print(f"   • Preferences: {len(result['preferences'])}")
     console.print(f"   • Hot takes: {len(result['hot_takes'])}")
+
+
+# === EPIC 7: HOT TAKE DETECTION & VIRAL PREDICTION CLI COMMANDS ===
+
+@app.command("hot-take-analyze")
+def hot_take_analyze_cli(
+    text: str = typer.Argument(..., help="Hot take text to analyze"),
+    platform: str = typer.Option("general", help="Platform type: general, linkedin, twitter"),
+    output_format: str = typer.Option("visual", help="Output format: visual, json"),
+    save_to: Optional[str] = typer.Option(None, help="Save results to file"),
+    show_details: bool = typer.Option(False, help="Show detailed analysis")
+):
+    """Comprehensive hot take analysis with viral prediction and brand safety (Epic 7)."""
+    
+    async def analyze_async():
+        console.print(Panel("🔥 Epic 7: Hot Take Analysis & Viral Prediction", style="bold red"))
+        console.print(f"Platform: {platform}")
+        console.print(f"Text length: {len(text)} characters")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Analyzing hot take...", total=None)
+            
+            # Initialize engines
+            viral_engine = ViralPredictionEngine()
+            safety_analyzer = BrandSafetyAnalyzer()
+            
+            # Run viral prediction
+            progress.update(task, description="Predicting viral potential...")
+            viral_prediction = await viral_engine.predict_viral_potential(
+                text, platform=platform
+            )
+            
+            # Run brand safety analysis  
+            progress.update(task, description="Assessing brand safety...")
+            safety_assessment = await safety_analyzer.assess_content_safety(
+                text, {"platform": platform}
+            )
+            
+            progress.update(task, description="Generating recommendations...")
+            
+            if output_format == "json":
+                output_data = {
+                    "viral_prediction": {
+                        "overall_score": viral_prediction.overall_score,
+                        "engagement_score": viral_prediction.engagement_score,
+                        "reach_potential": viral_prediction.reach_potential,
+                        "viral_velocity": viral_prediction.viral_velocity,
+                        "controversy_score": viral_prediction.controversy_score,
+                        "platform_optimization": viral_prediction.platform_optimization
+                    },
+                    "brand_safety": {
+                        "safety_level": safety_assessment.safety_level.value,
+                        "overall_risk_score": safety_assessment.overall_risk_score,
+                        "risk_factors": safety_assessment.risk_factors,
+                        "stakeholder_impact": safety_assessment.stakeholder_impact
+                    },
+                    "recommendations": viral_prediction.recommendations
+                }
+                
+                json_output = json.dumps(output_data, indent=2)
+                console.print(json_output)
+                
+                if save_to:
+                    with open(save_to, 'w') as f:
+                        f.write(json_output)
+                    console.print(f"✅ Analysis saved to {save_to}")
+                    
+            else:
+                _display_hot_take_analysis(viral_prediction, safety_assessment, show_details)
+                
+                if save_to:
+                    # Save as JSON even if displayed visually
+                    output_data = {
+                        "viral_prediction": _viral_prediction_to_dict(viral_prediction),
+                        "brand_safety": _safety_assessment_to_dict(safety_assessment)
+                    }
+                    with open(save_to, 'w') as f:
+                        json.dump(output_data, f, indent=2)
+                    console.print(f"✅ Analysis saved to {save_to}")
+    
+    asyncio.run(analyze_async())
+
+
+@app.command("viral-score")
+def viral_score_cli(
+    text: str = typer.Argument(..., help="Text to score for viral potential"),
+    platform: str = typer.Option("general", help="Platform type: general, linkedin, twitter"),
+    show_breakdown: bool = typer.Option(False, help="Show detailed score breakdown")
+):
+    """Quick viral potential scoring for immediate feedback (Epic 7)."""
+    
+    async def score_async():
+        console.print(Panel("⚡ Epic 7: Quick Viral Score", style="bold yellow"))
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Calculating viral score...", total=None)
+            
+            viral_engine = ViralPredictionEngine()
+            prediction = await viral_engine.predict_viral_potential(text, platform=platform)
+            
+            progress.update(task, description="Generating insights...")
+        
+        # Main score display
+        score_color = "green" if prediction.overall_score > 0.7 else "yellow" if prediction.overall_score > 0.4 else "red"
+        console.print(f"\n🎯 Overall Viral Score: [{score_color}]{prediction.overall_score:.2f}[/{score_color}] / 1.00")
+        
+        # Score bar visualization
+        bar_length = 50
+        filled = int(prediction.overall_score * bar_length)
+        bar = "█" * filled + "░" * (bar_length - filled)
+        console.print(f"   [{score_color}]{bar}[/{score_color}]")
+        
+        if show_breakdown:
+            # Detailed breakdown table
+            breakdown_table = Table(title="Viral Score Breakdown", style="cyan")
+            breakdown_table.add_column("Component", style="bold")
+            breakdown_table.add_column("Score", justify="right")
+            breakdown_table.add_column("Impact")
+            
+            components = [
+                ("Engagement Potential", f"{prediction.engagement_score:.2f}", _get_impact_text(prediction.engagement_score)),
+                ("Reach Potential", f"{prediction.reach_potential:.2f}", _get_impact_text(prediction.reach_potential)),
+                ("Viral Velocity", f"{prediction.viral_velocity:.2f}", _get_impact_text(prediction.viral_velocity)),
+                ("Controversy Score", f"{prediction.controversy_score:.2f}", _get_impact_text(prediction.controversy_score))
+            ]
+            
+            for component, score, impact in components:
+                breakdown_table.add_row(component, score, impact)
+            
+            console.print(breakdown_table)
+        
+        # Quick recommendations
+        console.print(f"\n💡 Quick Tips:")
+        for rec in prediction.recommendations[:3]:  # Show top 3
+            console.print(f"   • {rec}")
+    
+    asyncio.run(score_async())
+
+
+@app.command("safety-check")
+def safety_check_cli(
+    text: str = typer.Argument(..., help="Text to check for brand safety"),
+    brand_profile: str = typer.Option("moderate", help="Brand profile: conservative, moderate, aggressive"),
+    show_mitigation: bool = typer.Option(False, help="Show mitigation strategies")
+):
+    """Brand safety assessment for hot takes (Epic 7)."""
+    
+    async def safety_async():
+        console.print(Panel("🛡️ Epic 7: Brand Safety Check", style="bold green"))
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Analyzing brand safety...", total=None)
+            
+            safety_analyzer = BrandSafetyAnalyzer(brand_profile=brand_profile)
+            assessment = await safety_analyzer.assess_content_safety(text)
+            
+            progress.update(task, description="Generating safety report...")
+        
+        # Safety level display
+        safety_colors = {
+            RiskLevel.SAFE: "green",
+            RiskLevel.CAUTION: "yellow", 
+            RiskLevel.RISK: "orange",
+            RiskLevel.DANGER: "red"
+        }
+        
+        safety_color = safety_colors.get(assessment.safety_level, "white")
+        console.print(f"\n🎯 Safety Level: [{safety_color}]{assessment.safety_level.value.upper()}[/{safety_color}]")
+        console.print(f"🎯 Risk Score: {assessment.overall_risk_score:.2f} / 1.00")
+        
+        # Risk factors table
+        if assessment.risk_factors:
+            risk_table = Table(title="Risk Factors", style="orange")
+            risk_table.add_column("Factor", style="bold")
+            risk_table.add_column("Severity")
+            risk_table.add_column("Description")
+            
+            for factor in assessment.risk_factors:
+                severity_color = "red" if "high" in factor.lower() else "yellow" if "medium" in factor.lower() else "green"
+                risk_table.add_row(
+                    factor.split(":")[0] if ":" in factor else factor,
+                    f"[{severity_color}]●[/{severity_color}]",
+                    factor.split(":", 1)[1].strip() if ":" in factor else "Risk detected"
+                )
+            
+            console.print(risk_table)
+        
+        # Stakeholder impact
+        if assessment.stakeholder_impact:
+            console.print(f"\n👥 Stakeholder Impact:")
+            for stakeholder, impact in assessment.stakeholder_impact.items():
+                impact_color = "green" if impact == "positive" else "red" if impact == "negative" else "yellow"
+                console.print(f"   • {stakeholder}: [{impact_color}]{impact}[/{impact_color}]")
+        
+        # Mitigation strategies
+        if show_mitigation and hasattr(assessment, 'mitigation_strategies'):
+            console.print(f"\n🔧 Mitigation Strategies:")
+            for strategy in assessment.mitigation_strategies[:5]:  # Show top 5
+                console.print(f"   • {strategy}")
+    
+    asyncio.run(safety_async())
+
+
+@app.command("optimize-hot-take")
+def optimize_hot_take_cli(
+    text: str = typer.Argument(..., help="Hot take text to optimize"),
+    platform: str = typer.Option("general", help="Platform type: general, linkedin, twitter"),
+    goal: str = typer.Option("engagement", help="Optimization goal: engagement, reach, safety")
+):
+    """Content optimization suggestions for hot takes (Epic 7)."""
+    
+    async def optimize_async():
+        console.print(Panel(f"🚀 Epic 7: Hot Take Optimization - {goal.title()}", style="bold blue"))
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Analyzing optimization potential...", total=None)
+            
+            viral_engine = ViralPredictionEngine()
+            safety_analyzer = BrandSafetyAnalyzer()
+            
+            # Get current scores
+            viral_prediction = await viral_engine.predict_viral_potential(text, platform=platform)
+            safety_assessment = await safety_analyzer.assess_content_safety(text)
+            
+            progress.update(task, description="Generating optimization strategies...")
+            
+            # Generate optimization suggestions
+            optimization_suggestions = await viral_engine.optimize_for_platform(
+                text, platform, goal
+            )
+        
+        # Current performance
+        console.print(f"\n📊 Current Performance:")
+        console.print(f"   • Viral Score: {viral_prediction.overall_score:.2f}")
+        console.print(f"   • Safety Level: {safety_assessment.safety_level.value}")
+        console.print(f"   • Platform: {platform}")
+        
+        # Optimization suggestions tree
+        opt_tree = Tree(f"🎯 {goal.title()} Optimization Strategies")
+        
+        for i, suggestion in enumerate(optimization_suggestions.get('suggestions', [])[:8]):
+            priority = suggestion.get('priority', 'medium')
+            priority_color = "red" if priority == "high" else "yellow" if priority == "medium" else "green"
+            
+            branch = opt_tree.add(f"[{priority_color}]{priority.title()} Priority[/{priority_color}]")
+            branch.add(f"💡 {suggestion.get('action', 'Unknown action')}")
+            
+            if 'expected_improvement' in suggestion:
+                branch.add(f"📈 Expected improvement: +{suggestion['expected_improvement']:.1%}")
+        
+        console.print(opt_tree)
+        
+        # Platform-specific tips
+        platform_tips = {
+            "linkedin": [
+                "Use professional language and industry terminology",
+                "Include a call-to-action for discussion",
+                "Reference business trends or thought leadership"
+            ],
+            "twitter": [
+                "Keep under 280 characters for optimal engagement",
+                "Use relevant hashtags (2-3 maximum)",
+                "Consider thread potential for complex ideas"
+            ],
+            "general": [
+                "Focus on universal appeal and clear messaging",
+                "Use emotional hooks to drive engagement",
+                "Ensure message is platform-agnostic"
+            ]
+        }
+        
+        if platform in platform_tips:
+            console.print(f"\n📱 {platform.title()}-Specific Tips:")
+            for tip in platform_tips[platform]:
+                console.print(f"   • {tip}")
+    
+    asyncio.run(optimize_async())
+
+
+@app.command("trending-analysis")
+def trending_analysis_cli(
+    days_back: int = typer.Option(7, help="Days of trending data to analyze"),
+    platform: str = typer.Option("all", help="Platform filter: all, linkedin, twitter"),
+    min_viral_score: float = typer.Option(0.6, help="Minimum viral score threshold")
+):
+    """Analyze trending hot take patterns and viral content (Epic 7)."""
+    
+    console.print(Panel("📈 Epic 7: Trending Hot Take Analysis", style="bold magenta"))
+    
+    # Mock trending data (in production, this would come from analytics)
+    trending_topics = [
+        {"topic": "AI and Human Collaboration", "viral_score": 0.85, "safety_level": "SAFE", "mentions": 247},
+        {"topic": "Remote Work Evolution", "viral_score": 0.78, "safety_level": "SAFE", "mentions": 189},
+        {"topic": "Sustainable Business Practices", "viral_score": 0.72, "safety_level": "SAFE", "mentions": 156},
+        {"topic": "Leadership Authenticity", "viral_score": 0.69, "safety_level": "CAUTION", "mentions": 134},
+        {"topic": "Tech Industry Criticism", "viral_score": 0.88, "safety_level": "RISK", "mentions": 98}
+    ]
+    
+    # Filter by viral score
+    filtered_topics = [t for t in trending_topics if t["viral_score"] >= min_viral_score]
+    
+    # Trending topics table
+    trending_table = Table(title=f"Trending Topics (Last {days_back} Days)", style="magenta")
+    trending_table.add_column("Topic", style="bold")
+    trending_table.add_column("Viral Score", justify="right")
+    trending_table.add_column("Safety Level")
+    trending_table.add_column("Mentions", justify="right")
+    
+    for topic in filtered_topics:
+        score_color = "green" if topic["viral_score"] > 0.7 else "yellow"
+        safety_color = {"SAFE": "green", "CAUTION": "yellow", "RISK": "orange", "DANGER": "red"}.get(topic["safety_level"], "white")
+        
+        trending_table.add_row(
+            topic["topic"],
+            f"[{score_color}]{topic['viral_score']:.2f}[/{score_color}]",
+            f"[{safety_color}]{topic['safety_level']}[/{safety_color}]",
+            str(topic["mentions"])
+        )
+    
+    console.print(trending_table)
+    
+    # Insights
+    console.print(f"\n💡 Trending Insights:")
+    console.print(f"   • {len(filtered_topics)} topics above {min_viral_score:.1f} viral threshold")
+    console.print(f"   • Average viral score: {sum(t['viral_score'] for t in filtered_topics) / len(filtered_topics):.2f}")
+    console.print(f"   • Safe topics: {len([t for t in filtered_topics if t['safety_level'] == 'SAFE'])}")
+    console.print(f"   • Platform focus: {platform}")
+
+
+@app.command("risk-dashboard")
+def risk_dashboard_cli(
+    content_file: Optional[str] = typer.Option(None, help="JSON file with content to analyze"),
+    real_time: bool = typer.Option(False, help="Enable real-time risk monitoring")
+):
+    """Visual risk assessment dashboard for content portfolio (Epic 7)."""
+    
+    async def dashboard_async():
+        console.print(Panel("📊 Epic 7: Risk Assessment Dashboard", style="bold cyan"))
+        
+        if content_file:
+            try:
+                with open(content_file, 'r') as f:
+                    content_data = json.load(f)
+                console.print(f"📁 Loaded {len(content_data)} content items from {content_file}")
+            except FileNotFoundError:
+                console.print(f"❌ File {content_file} not found, using sample data")
+                content_data = _get_sample_content_data()
+        else:
+            content_data = _get_sample_content_data()
+        
+        safety_analyzer = BrandSafetyAnalyzer()
+        
+        # Analyze all content
+        assessments = []
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Analyzing content portfolio...", total=len(content_data))
+            
+            for item in content_data:
+                assessment = await safety_analyzer.assess_content_safety(item.get('text', ''))
+                assessments.append(assessment)
+                progress.advance(task)
+        
+        # Risk distribution
+        risk_counts = {}
+        for assessment in assessments:
+            level = assessment.safety_level.value
+            risk_counts[level] = risk_counts.get(level, 0) + 1
+        
+        # Risk distribution table
+        risk_table = Table(title="Risk Distribution", style="cyan")
+        risk_table.add_column("Risk Level", style="bold")
+        risk_table.add_column("Count", justify="right")
+        risk_table.add_column("Percentage", justify="right")
+        risk_table.add_column("Status")
+        
+        total_items = len(assessments)
+        for level, count in risk_counts.items():
+            percentage = (count / total_items) * 100
+            color = {"safe": "green", "caution": "yellow", "risk": "orange", "danger": "red"}.get(level, "white")
+            status = "✅" if level == "safe" else "⚠️" if level == "caution" else "❌"
+            
+            risk_table.add_row(
+                f"[{color}]{level.upper()}[/{color}]",
+                str(count),
+                f"{percentage:.1f}%",
+                status
+            )
+        
+        console.print(risk_table)
+        
+        # High-risk items
+        high_risk_items = [a for a in assessments if a.safety_level in [RiskLevel.RISK, RiskLevel.DANGER]]
+        if high_risk_items:
+            console.print(f"\n⚠️ High-Risk Content ({len(high_risk_items)} items):")
+            for i, assessment in enumerate(high_risk_items[:5]):  # Show top 5
+                risk_color = "orange" if assessment.safety_level == RiskLevel.RISK else "red"
+                console.print(f"   {i+1}. [{risk_color}]{assessment.safety_level.value.upper()}[/{risk_color}] - Risk Score: {assessment.overall_risk_score:.2f}")
+        
+        if real_time:
+            console.print(f"\n🔄 Real-time monitoring enabled (press Ctrl+C to stop)")
+            console.print(f"   Monitoring {total_items} content items...")
+            console.print(f"   Risk alerts will appear here...")
+    
+    asyncio.run(dashboard_async())
+
+
+def _display_hot_take_analysis(viral_prediction: ViralPrediction, safety_assessment: BrandSafetyAssessment, show_details: bool):
+    """Helper function to display hot take analysis results."""
+    
+    # Viral prediction results
+    viral_table = Table(title="🔥 Viral Prediction Analysis", style="red")
+    viral_table.add_column("Metric", style="bold")
+    viral_table.add_column("Score", justify="right")
+    viral_table.add_column("Assessment")
+    
+    metrics = [
+        ("Overall Viral Score", f"{viral_prediction.overall_score:.2f}", _get_assessment_text(viral_prediction.overall_score)),
+        ("Engagement Potential", f"{viral_prediction.engagement_score:.2f}", _get_assessment_text(viral_prediction.engagement_score)),
+        ("Reach Potential", f"{viral_prediction.reach_potential:.2f}", _get_assessment_text(viral_prediction.reach_potential)),
+        ("Viral Velocity", f"{viral_prediction.viral_velocity:.2f}", _get_assessment_text(viral_prediction.viral_velocity))
+    ]
+    
+    for metric, score, assessment in metrics:
+        viral_table.add_row(metric, score, assessment)
+    
+    console.print(viral_table)
+    
+    # Brand safety results
+    safety_color = {
+        RiskLevel.SAFE: "green",
+        RiskLevel.CAUTION: "yellow",
+        RiskLevel.RISK: "orange", 
+        RiskLevel.DANGER: "red"
+    }.get(safety_assessment.safety_level, "white")
+    
+    safety_table = Table(title="🛡️ Brand Safety Assessment", style="green")
+    safety_table.add_column("Aspect", style="bold")
+    safety_table.add_column("Result")
+    
+    safety_table.add_row("Safety Level", f"[{safety_color}]{safety_assessment.safety_level.value.upper()}[/{safety_color}]")
+    safety_table.add_row("Risk Score", f"{safety_assessment.overall_risk_score:.2f} / 1.00")
+    
+    console.print(safety_table)
+    
+    if show_details:
+        # Recommendations
+        if hasattr(viral_prediction, 'recommendations') and viral_prediction.recommendations:
+            console.print(f"\n💡 Optimization Recommendations:")
+            for i, rec in enumerate(viral_prediction.recommendations[:5], 1):
+                console.print(f"   {i}. {rec}")
+        
+        # Risk factors
+        if hasattr(safety_assessment, 'risk_factors') and safety_assessment.risk_factors:
+            console.print(f"\n⚠️ Risk Factors:")
+            for factor in safety_assessment.risk_factors[:3]:
+                console.print(f"   • {factor}")
+
+
+def _viral_prediction_to_dict(prediction: ViralPrediction) -> Dict[str, Any]:
+    """Convert ViralPrediction to dictionary."""
+    return {
+        "overall_score": prediction.overall_score,
+        "engagement_score": prediction.engagement_score,
+        "reach_potential": prediction.reach_potential,
+        "viral_velocity": prediction.viral_velocity,
+        "controversy_score": prediction.controversy_score,
+        "recommendations": getattr(prediction, 'recommendations', []),
+        "platform_optimization": getattr(prediction, 'platform_optimization', {})
+    }
+
+
+def _safety_assessment_to_dict(assessment: BrandSafetyAssessment) -> Dict[str, Any]:
+    """Convert BrandSafetyAssessment to dictionary."""
+    return {
+        "safety_level": assessment.safety_level.value,
+        "overall_risk_score": assessment.overall_risk_score,
+        "risk_factors": getattr(assessment, 'risk_factors', []),
+        "stakeholder_impact": getattr(assessment, 'stakeholder_impact', {})
+    }
+
+
+def _get_impact_text(score: float) -> str:
+    """Get impact description for a score."""
+    if score > 0.8:
+        return "[green]High[/green]"
+    elif score > 0.6:
+        return "[yellow]Medium[/yellow]"
+    elif score > 0.4:
+        return "[orange]Low[/orange]"
+    else:
+        return "[red]Very Low[/red]"
+
+
+def _get_assessment_text(score: float) -> str:
+    """Get assessment description for a score."""
+    if score > 0.8:
+        return "[green]Excellent[/green]"
+    elif score > 0.6:
+        return "[yellow]Good[/yellow]"
+    elif score > 0.4:
+        return "[orange]Fair[/orange]"
+    else:
+        return "[red]Poor[/red]"
+
+
+def _get_sample_content_data() -> List[Dict[str, Any]]:
+    """Get sample content data for dashboard."""
+    return [
+        {"text": "AI is transforming the way we work and collaborate", "platform": "linkedin"},
+        {"text": "Remote work is dead - everyone needs to return to office", "platform": "twitter"},
+        {"text": "Sustainable business practices are the future", "platform": "general"},
+        {"text": "Most CEOs have no idea what they're doing", "platform": "twitter"},
+        {"text": "Innovation requires taking calculated risks", "platform": "linkedin"}
+    ]
 
 
 if __name__ == "__main__":
