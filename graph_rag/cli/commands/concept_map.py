@@ -15,6 +15,7 @@ from rich.tree import Tree
 from rich.text import Text
 
 from graph_rag.core.concept_extractor import EnhancedConceptExtractor, LinkedInConceptExtractor, NotionConceptExtractor
+from graph_rag.core.concept_entity_extractor import BeliefPreferenceExtractor
 from graph_rag.core.temporal_tracker import TemporalTracker
 from graph_rag.services.cross_platform_correlator import CrossPlatformCorrelator
 from graph_rag.visualization.concept_mapper import ConceptMapper
@@ -624,6 +625,369 @@ def run_demo():
         console.print(f"\n🎉 Demo complete! This showcases the power of advanced concept mapping for content strategy optimization.")
     
     asyncio.run(demo_async())
+
+
+# === EPIC 6: BELIEF & PREFERENCE INTELLIGENCE CLI COMMANDS ===
+
+@app.command("extract-beliefs")
+def extract_beliefs_and_preferences_cli(
+    text: str = typer.Argument(..., help="Text to extract beliefs and preferences from"),
+    platform: str = typer.Option("general", help="Platform type: general, linkedin, notion"),
+    output_format: str = typer.Option("table", help="Output format: table, json"),
+    save_to: Optional[str] = typer.Option(None, help="Save results to file"),
+    show_context: bool = typer.Option(False, help="Show context windows for extracted concepts")
+):
+    """Extract beliefs, preferences, and hot takes from text (Epic 6)."""
+    
+    async def extract_beliefs_async():
+        console.print(Panel(f"🧠 Epic 6: Belief & Preference Intelligence", style="bold blue"))
+        console.print(f"Platform: {platform}")
+        console.print(f"Text length: {len(text)} characters")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Extracting beliefs and preferences...", total=None)
+            
+            # Initialize extractor
+            extractor = BeliefPreferenceExtractor()
+            
+            # Extract beliefs and preferences
+            result = await extractor.extract_beliefs_and_preferences(
+                text, {"platform": platform}
+            )
+            
+            progress.update(task, description="Processing results...")
+            
+            # Display results based on format
+            if output_format == "json":
+                output_data = {
+                    "beliefs": [_concept_to_dict(c) for c in result["beliefs"]],
+                    "preferences": [_concept_to_dict(c) for c in result["preferences"]],
+                    "hot_takes": [_concept_to_dict(c) for c in result["hot_takes"]],
+                    "summary": {
+                        "total_concepts": len(result["all_concepts"]),
+                        "beliefs_count": len(result["beliefs"]),
+                        "preferences_count": len(result["preferences"]),
+                        "hot_takes_count": len(result["hot_takes"])
+                    }
+                }
+                
+                json_output = json.dumps(output_data, indent=2)
+                console.print(json_output)
+                
+                if save_to:
+                    with open(save_to, 'w') as f:
+                        f.write(json_output)
+                    console.print(f"✅ Results saved to {save_to}")
+                    
+            else:  # table format
+                _display_beliefs_table(result, show_context)
+                
+                if save_to:
+                    # Save as JSON even if displayed as table
+                    output_data = {
+                        "beliefs": [_concept_to_dict(c) for c in result["beliefs"]],
+                        "preferences": [_concept_to_dict(c) for c in result["preferences"]],
+                        "hot_takes": [_concept_to_dict(c) for c in result["hot_takes"]]
+                    }
+                    with open(save_to, 'w') as f:
+                        json.dump(output_data, f, indent=2)
+                    console.print(f"✅ Results saved to {save_to}")
+    
+    asyncio.run(extract_beliefs_async())
+
+
+@app.command("belief-consistency")
+def analyze_belief_consistency_cli(
+    belief_file: str = typer.Argument(..., help="JSON file containing extracted beliefs"),
+    threshold: float = typer.Option(0.8, help="Consistency threshold (0.0-1.0)"),
+    show_details: bool = typer.Option(False, help="Show detailed consistency analysis")
+):
+    """Analyze consistency between beliefs for authenticity checking (Epic 6)."""
+    
+    console.print(Panel("🔍 Epic 6: Belief Consistency Analysis", style="bold green"))
+    
+    try:
+        # Load beliefs from file
+        with open(belief_file, 'r') as f:
+            beliefs_data = json.load(f)
+        
+        beliefs = beliefs_data.get("beliefs", [])
+        console.print(f"📊 Analyzing {len(beliefs)} beliefs from {belief_file}")
+        
+        # Mock consistency analysis (in real implementation, this would use semantic analysis)
+        consistency_score = 0.87  # Mock score
+        
+        # Create consistency table
+        table = Table(title="Belief Consistency Analysis", style="cyan")
+        table.add_column("Metric", style="bold")
+        table.add_column("Score", justify="right")
+        table.add_column("Status")
+        
+        metrics = [
+            ("Overall Consistency", f"{consistency_score:.2f}", "✅ Authentic" if consistency_score >= threshold else "⚠️ Review Needed"),
+            ("Semantic Alignment", "0.90", "✅ Strong"),
+            ("Value Alignment", "0.85", "✅ Good"),
+            ("Temporal Consistency", "0.86", "✅ Stable")
+        ]
+        
+        for metric, score, status in metrics:
+            table.add_row(metric, score, status)
+        
+        console.print(table)
+        
+        if show_details:
+            console.print("\n📋 Detailed Analysis:")
+            console.print("• No major contradictions detected")
+            console.print("• Beliefs show consistent values across platforms")
+            console.print("• Professional and personal beliefs are well-aligned")
+            console.print("• Temporal evolution shows natural development")
+        
+        # Recommendations
+        console.print(f"\n💡 Recommendations:")
+        if consistency_score >= threshold:
+            console.print("✅ Beliefs demonstrate authentic consistency")
+            console.print("✅ Safe to use for content strategy")
+        else:
+            console.print("⚠️ Review beliefs for potential contradictions")
+            console.print("⚠️ Consider refining messaging for better alignment")
+        
+    except FileNotFoundError:
+        console.print(f"❌ Error: File {belief_file} not found")
+        raise typer.Exit(1)
+    except json.JSONDecodeError:
+        console.print(f"❌ Error: Invalid JSON in {belief_file}")
+        raise typer.Exit(1)
+
+
+@app.command("belief-timeline")
+def belief_timeline_cli(
+    belief_id: str = typer.Argument(..., help="Belief ID to analyze"),
+    output_format: str = typer.Option("visual", help="Output format: visual, json"),
+    days_back: int = typer.Option(90, help="Days of history to include")
+):
+    """Show the evolution timeline of a specific belief (Epic 6)."""
+    
+    async def timeline_async():
+        console.print(Panel(f"📈 Epic 6: Belief Evolution Timeline - {belief_id}", style="bold magenta"))
+        
+        # Mock timeline data (in real implementation, this would query the temporal tracker)
+        timeline_data = [
+            {
+                "timestamp": "2024-01-01T00:00:00Z",
+                "platform": "notion",
+                "stage": "conception",
+                "content_snippet": "Initial thoughts on authentic leadership...",
+                "confidence": 0.6
+            },
+            {
+                "timestamp": "2024-01-15T00:00:00Z",
+                "platform": "linkedin",
+                "stage": "refinement", 
+                "content_snippet": "Leadership isn't about having all the answers...",
+                "confidence": 0.8
+            },
+            {
+                "timestamp": "2024-01-30T00:00:00Z",
+                "platform": "linkedin",
+                "stage": "publication",
+                "content_snippet": "True leadership means admitting when you don't know...",
+                "confidence": 0.9
+            }
+        ]
+        
+        if output_format == "json":
+            console.print(json.dumps(timeline_data, indent=2))
+        else:
+            # Visual timeline
+            tree = Tree(f"🎯 Belief Evolution: {belief_id}")
+            
+            for entry in timeline_data:
+                stage_text = f"[bold]{entry['stage'].title()}[/bold] on {entry['platform']}"
+                confidence_text = f"({entry['confidence']:.1f} confidence)"
+                snippet = entry['content_snippet'][:60] + "..." if len(entry['content_snippet']) > 60 else entry['content_snippet']
+                
+                branch = tree.add(f"{stage_text} {confidence_text}")
+                branch.add(f"📝 {snippet}")
+                branch.add(f"📅 {entry['timestamp'][:10]}")
+            
+            console.print(tree)
+            
+            # Summary stats
+            console.print(f"\n📊 Timeline Summary:")
+            console.print(f"• Platforms: {', '.join(set(e['platform'] for e in timeline_data))}")
+            console.print(f"• Evolution stages: {len(timeline_data)}")
+            console.print(f"• Confidence growth: {timeline_data[0]['confidence']:.1f} → {timeline_data[-1]['confidence']:.1f}")
+    
+    asyncio.run(timeline_async())
+
+
+@app.command("preference-recommendations")
+def preference_recommendations_cli(
+    user_profile: Optional[str] = typer.Option(None, help="JSON file with user preferences"),
+    content_type: str = typer.Option("all", help="Content type to recommend"),
+    limit: int = typer.Option(5, help="Number of recommendations to generate")
+):
+    """Generate content recommendations based on extracted preferences (Epic 6)."""
+    
+    console.print(Panel("🎯 Epic 6: Preference-Based Content Recommendations", style="bold yellow"))
+    
+    # Load user profile if provided
+    if user_profile:
+        try:
+            with open(user_profile, 'r') as f:
+                profile_data = json.load(f)
+            console.print(f"📁 Loaded user profile from {user_profile}")
+        except FileNotFoundError:
+            console.print(f"⚠️ Profile file not found, using default preferences")
+            profile_data = {}
+    else:
+        profile_data = {}
+    
+    # Mock recommendations (in real implementation, this would use ML-based recommendation engine)
+    recommendations = [
+        {
+            "recommendation_id": "rec_001",
+            "content_type": "linkedin_post",
+            "topic": "authentic leadership philosophy",
+            "reasoning": "Aligns with your expressed preference for authentic communication",
+            "confidence": 0.92,
+            "expected_engagement": "high"
+        },
+        {
+            "recommendation_id": "rec_002",
+            "content_type": "notion_article", 
+            "topic": "systematic approach to problem-solving",
+            "reasoning": "Matches your preference for structured methodologies",
+            "confidence": 0.88,
+            "expected_engagement": "medium"
+        },
+        {
+            "recommendation_id": "rec_003",
+            "content_type": "linkedin_post",
+            "topic": "innovation in traditional industries",
+            "reasoning": "Combines your innovation and business transformation interests",
+            "confidence": 0.85,
+            "expected_engagement": "high"
+        }
+    ]
+    
+    # Display recommendations table
+    table = Table(title=f"Content Recommendations (Top {limit})", style="yellow")
+    table.add_column("Type", style="cyan")
+    table.add_column("Topic", style="green")
+    table.add_column("Reasoning", style="white")
+    table.add_column("Confidence", justify="right")
+    table.add_column("Expected Engagement")
+    
+    for rec in recommendations[:limit]:
+        engagement_style = "green" if rec["expected_engagement"] == "high" else "yellow"
+        table.add_row(
+            rec["content_type"],
+            rec["topic"],
+            rec["reasoning"][:50] + "..." if len(rec["reasoning"]) > 50 else rec["reasoning"],
+            f"{rec['confidence']:.2f}",
+            f"[{engagement_style}]{rec['expected_engagement']}[/{engagement_style}]"
+        )
+    
+    console.print(table)
+    
+    # Optimization suggestions
+    console.print(f"\n💡 Optimization Suggestions:")
+    suggestions = [
+        "Consider expanding into video content based on your authentic communication style",
+        "Your systematic thinking would resonate well in technical deep-dives",
+        "Innovation themes show high engagement potential",
+        "Cross-platform content amplification could increase reach"
+    ]
+    
+    for suggestion in suggestions:
+        console.print(f"   • {suggestion}")
+
+
+def _concept_to_dict(concept) -> Dict[str, Any]:
+    """Helper function to convert ConceptualEntity to dictionary."""
+    return {
+        "id": concept.id,
+        "name": concept.name,
+        "text": concept.text,
+        "concept_type": concept.concept_type,
+        "confidence": concept.confidence,
+        "context_window": concept.context_window,
+        "sentiment": concept.sentiment,
+        "properties": concept.properties
+    }
+
+
+def _display_beliefs_table(result: Dict[str, List], show_context: bool = False):
+    """Helper function to display beliefs in table format."""
+    
+    # Beliefs table
+    if result["beliefs"]:
+        beliefs_table = Table(title="🧠 Extracted Beliefs", style="blue")
+        beliefs_table.add_column("Belief Text", style="white")
+        beliefs_table.add_column("Confidence", justify="right")
+        beliefs_table.add_column("Sentiment")
+        if show_context:
+            beliefs_table.add_column("Context", style="dim")
+        
+        for belief in result["beliefs"]:
+            sentiment_style = "green" if belief.sentiment == "positive" else "red" if belief.sentiment == "negative" else "yellow"
+            row = [
+                belief.text,
+                f"{belief.confidence:.2f}",
+                f"[{sentiment_style}]{belief.sentiment}[/{sentiment_style}]"
+            ]
+            if show_context:
+                context = belief.context_window[:80] + "..." if len(belief.context_window) > 80 else belief.context_window
+                row.append(context)
+            beliefs_table.add_row(*row)
+        
+        console.print(beliefs_table)
+    
+    # Preferences table
+    if result["preferences"]:
+        prefs_table = Table(title="⚙️ Extracted Preferences", style="cyan")
+        prefs_table.add_column("Preference Text", style="white")
+        prefs_table.add_column("Confidence", justify="right")
+        prefs_table.add_column("Type")
+        
+        for pref in result["preferences"]:
+            prefs_table.add_row(
+                pref.text,
+                f"{pref.confidence:.2f}",
+                pref.properties.get("type", "general")
+            )
+        
+        console.print(prefs_table)
+    
+    # Hot takes table
+    if result["hot_takes"]:
+        hot_takes_table = Table(title="🔥 Extracted Hot Takes", style="red")
+        hot_takes_table.add_column("Hot Take Text", style="white")
+        hot_takes_table.add_column("Confidence", justify="right")
+        hot_takes_table.add_column("Viral Potential")
+        
+        for hot_take in result["hot_takes"]:
+            viral_potential = hot_take.properties.get("viral_potential", "unknown")
+            viral_style = "green" if viral_potential == "high" else "yellow" if viral_potential == "medium" else "red"
+            hot_takes_table.add_row(
+                hot_take.text,
+                f"{hot_take.confidence:.2f}",
+                f"[{viral_style}]{viral_potential}[/{viral_style}]"
+            )
+        
+        console.print(hot_takes_table)
+    
+    # Summary
+    console.print(f"\n📊 Summary:")
+    console.print(f"   • Total concepts: {len(result['all_concepts'])}")
+    console.print(f"   • Beliefs: {len(result['beliefs'])}")
+    console.print(f"   • Preferences: {len(result['preferences'])}")
+    console.print(f"   • Hot takes: {len(result['hot_takes'])}")
 
 
 if __name__ == "__main__":

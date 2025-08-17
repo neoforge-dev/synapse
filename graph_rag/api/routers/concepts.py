@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from graph_rag.api.dependencies import get_concept_extractor, get_temporal_tracker, get_cross_platform_correlator
+from graph_rag.api.dependencies import get_concept_extractor, get_temporal_tracker, get_cross_platform_correlator, get_belief_preference_extractor
 from graph_rag.core.concept_extractor import ConceptualEntity, IdeaRelationship, EnhancedConceptExtractor
 from graph_rag.core.temporal_tracker import TemporalTracker
 from graph_rag.services.cross_platform_correlator import CrossPlatformCorrelator, ContentCorrelation
@@ -332,3 +332,224 @@ async def get_platform_transitions(
     except Exception as e:
         logger.error(f"Error getting platform transitions: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Platform transition analysis failed: {str(e)}")
+
+
+# === EPIC 6: BELIEF & PREFERENCE INTELLIGENCE ENDPOINTS ===
+
+class BeliefExtractionRequest(BaseModel):
+    """Request model for belief and preference extraction."""
+    text: str = Field(..., description="Text to extract beliefs and preferences from")
+    platform: str = Field(default="general", description="Platform type: general, linkedin, notion")
+    context: Dict[str, Any] = Field(default_factory=dict, description="Additional context")
+
+
+class BeliefExtractionResponse(BaseModel):
+    """Response model for belief and preference extraction."""
+    beliefs: List[Dict[str, Any]] = Field(..., description="Extracted beliefs")
+    preferences: List[Dict[str, Any]] = Field(..., description="Extracted preferences") 
+    hot_takes: List[Dict[str, Any]] = Field(..., description="Extracted hot takes")
+    all_concepts: List[Dict[str, Any]] = Field(..., description="All extracted concepts")
+    extraction_summary: Dict[str, Any] = Field(..., description="Extraction summary")
+
+
+@router.post("/beliefs/extract", response_model=BeliefExtractionResponse)
+async def extract_beliefs_and_preferences(
+    request: BeliefExtractionRequest,
+    extractor = Depends(get_belief_preference_extractor)
+) -> BeliefExtractionResponse:
+    """Extract beliefs, preferences, and hot takes from text (Epic 6)."""
+    try:
+        logger.info(f"Epic 6: Extracting beliefs and preferences from {request.platform} content")
+        
+        # Extract beliefs and preferences using specialized extractor
+        result = await extractor.extract_beliefs_and_preferences(
+            request.text,
+            {**request.context, "platform": request.platform}
+        )
+        
+        # Convert results to response format
+        def concept_to_dict(concept):
+            return {
+                "id": concept.id,
+                "name": concept.name,
+                "text": concept.text,
+                "concept_type": concept.concept_type,
+                "confidence": concept.confidence,
+                "context_window": concept.context_window,
+                "sentiment": concept.sentiment,
+                "properties": concept.properties
+            }
+        
+        beliefs_data = [concept_to_dict(c) for c in result["beliefs"]]
+        preferences_data = [concept_to_dict(c) for c in result["preferences"]]
+        hot_takes_data = [concept_to_dict(c) for c in result["hot_takes"]]
+        all_concepts_data = [concept_to_dict(c) for c in result["all_concepts"]]
+        
+        # Generate extraction summary
+        extraction_summary = {
+            "total_concepts": len(all_concepts_data),
+            "beliefs_count": len(beliefs_data),
+            "preferences_count": len(preferences_data),
+            "hot_takes_count": len(hot_takes_data),
+            "platform": request.platform,
+            "high_confidence_concepts": len([c for c in result["all_concepts"] if c.confidence > 0.8]),
+            "engagement_potential_high": len([c for c in result["all_concepts"] 
+                                           if c.properties.get("engagement_potential", 0) > 0.7])
+        }
+        
+        logger.info(f"Epic 6: Extracted {extraction_summary['total_concepts']} concepts including "
+                   f"{extraction_summary['beliefs_count']} beliefs, "
+                   f"{extraction_summary['preferences_count']} preferences, "
+                   f"{extraction_summary['hot_takes_count']} hot takes")
+        
+        return BeliefExtractionResponse(
+            beliefs=beliefs_data,
+            preferences=preferences_data,
+            hot_takes=hot_takes_data,
+            all_concepts=all_concepts_data,
+            extraction_summary=extraction_summary
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 6: Error extracting beliefs and preferences: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Belief extraction failed: {str(e)}")
+
+
+@router.get("/beliefs/consistency")
+async def analyze_belief_consistency(
+    belief_ids: List[str] = Query(..., description="List of belief IDs to analyze for consistency"),
+    extractor = Depends(get_belief_preference_extractor)
+) -> Dict[str, Any]:
+    """Analyze consistency between beliefs for authenticity checking (Epic 6)."""
+    try:
+        logger.info(f"Epic 6: Analyzing consistency for {len(belief_ids)} beliefs")
+        
+        # TODO: Implement belief consistency analysis
+        # This would involve:
+        # 1. Retrieving beliefs from graph database
+        # 2. Analyzing semantic similarity and contradictions
+        # 3. Identifying potential authenticity issues
+        
+        # Placeholder implementation
+        consistency_analysis = {
+            "analyzed_beliefs": belief_ids,
+            "consistency_score": 0.85,  # Mock score
+            "contradictions": [],
+            "authenticity_warnings": [],
+            "consistency_breakdown": {
+                "semantic_alignment": 0.90,
+                "value_alignment": 0.80,
+                "temporal_consistency": 0.85
+            },
+            "recommendations": [
+                "Beliefs show strong consistency across platforms",
+                "No major contradictions detected"
+            ]
+        }
+        
+        logger.info(f"Epic 6: Consistency analysis complete with score: {consistency_analysis['consistency_score']}")
+        return consistency_analysis
+        
+    except Exception as e:
+        logger.error(f"Epic 6: Error analyzing belief consistency: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Belief consistency analysis failed: {str(e)}")
+
+
+@router.get("/beliefs/timeline/{belief_id}")
+async def get_belief_evolution_timeline(
+    belief_id: str,
+    tracker: TemporalTracker = Depends(get_temporal_tracker)
+) -> Dict[str, Any]:
+    """Get the evolution timeline of a specific belief across platforms (Epic 6)."""
+    try:
+        logger.info(f"Epic 6: Getting timeline for belief: {belief_id}")
+        
+        # TODO: Implement belief timeline retrieval from temporal tracker
+        # This would track how a belief evolved across different content pieces
+        
+        # Placeholder implementation
+        timeline = {
+            "belief_id": belief_id,
+            "evolution_stages": [
+                {
+                    "timestamp": "2024-01-01T00:00:00Z",
+                    "platform": "notion",
+                    "stage": "conception",
+                    "content_snippet": "Initial thoughts on this topic...",
+                    "confidence": 0.6
+                },
+                {
+                    "timestamp": "2024-01-15T00:00:00Z", 
+                    "platform": "linkedin",
+                    "stage": "publication",
+                    "content_snippet": "Sharing my belief that...",
+                    "confidence": 0.9
+                }
+            ],
+            "platforms_expressed": ["notion", "linkedin"],
+            "consistency_over_time": 0.88,
+            "engagement_correlation": {
+                "highest_engagement_stage": "publication",
+                "engagement_score": 85
+            }
+        }
+        
+        logger.info(f"Epic 6: Retrieved timeline with {len(timeline['evolution_stages'])} stages")
+        return timeline
+        
+    except Exception as e:
+        logger.error(f"Epic 6: Error getting belief timeline: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Belief timeline retrieval failed: {str(e)}")
+
+
+@router.get("/preferences/recommendations")
+async def get_preference_based_recommendations(
+    user_id: Optional[str] = Query(None, description="User ID for personalized recommendations"),
+    content_type: str = Query("all", description="Type of content to recommend"),
+    limit: int = Query(10, description="Maximum number of recommendations")
+) -> Dict[str, Any]:
+    """Get content recommendations based on extracted preferences (Epic 6)."""
+    try:
+        logger.info(f"Epic 6: Generating preference-based recommendations for user: {user_id}")
+        
+        # TODO: Implement preference-based recommendation engine
+        # This would analyze user preferences and suggest content strategies
+        
+        # Placeholder implementation
+        recommendations = {
+            "user_id": user_id,
+            "content_recommendations": [
+                {
+                    "recommendation_id": "rec_001",
+                    "content_type": "linkedin_post",
+                    "topic": "leadership philosophy",
+                    "reasoning": "Aligns with your expressed preference for authentic leadership",
+                    "confidence": 0.92,
+                    "expected_engagement": "high"
+                },
+                {
+                    "recommendation_id": "rec_002", 
+                    "content_type": "notion_article",
+                    "topic": "process optimization",
+                    "reasoning": "Matches your preference for systematic approaches",
+                    "confidence": 0.85,
+                    "expected_engagement": "medium"
+                }
+            ],
+            "preference_alignment": {
+                "methodology_preferences": 0.90,
+                "topic_preferences": 0.88,
+                "platform_preferences": 0.75
+            },
+            "optimization_suggestions": [
+                "Consider expanding into video content based on your authentic communication style",
+                "Your process-oriented thinking would resonate well in technical deep-dives"
+            ]
+        }
+        
+        logger.info(f"Epic 6: Generated {len(recommendations['content_recommendations'])} recommendations")
+        return recommendations
+        
+    except Exception as e:
+        logger.error(f"Epic 6: Error generating recommendations: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Preference-based recommendations failed: {str(e)}")

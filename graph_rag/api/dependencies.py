@@ -665,6 +665,39 @@ async def get_concept_extractor() -> Any:
     return _singletons["concept_extractor"]
 
 
+async def get_concept_entity_extractor(
+    traditional_extractor: EntityExtractor = Depends(get_entity_extractor)
+) -> Any:
+    """Dependency getter for ConceptEntityExtractor that combines traditional NER with concept extraction."""
+    from graph_rag.core.concept_entity_extractor import ConceptEntityExtractor
+    
+    cache_key = f"concept_entity_extractor_{id(traditional_extractor)}"
+    if cache_key not in _singletons:
+        _singletons[cache_key] = ConceptEntityExtractor(
+            traditional_extractor=traditional_extractor,
+            use_advanced_concepts=True
+        )
+        logger.debug("Created ConceptEntityExtractor instance")
+    
+    return _singletons[cache_key]
+
+
+async def get_belief_preference_extractor(
+    traditional_extractor: EntityExtractor = Depends(get_entity_extractor)
+) -> Any:
+    """Dependency getter for BeliefPreferenceExtractor specialized for Epic 6."""
+    from graph_rag.core.concept_entity_extractor import BeliefPreferenceExtractor
+    
+    cache_key = f"belief_preference_extractor_{id(traditional_extractor)}"
+    if cache_key not in _singletons:
+        _singletons[cache_key] = BeliefPreferenceExtractor(
+            traditional_extractor=traditional_extractor
+        )
+        logger.debug("Created BeliefPreferenceExtractor instance for Epic 6")
+    
+    return _singletons[cache_key]
+
+
 async def get_temporal_tracker() -> Any:
     """Dependency getter for TemporalTracker."""
     from graph_rag.core.temporal_tracker import TemporalTracker
