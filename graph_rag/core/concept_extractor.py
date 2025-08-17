@@ -5,35 +5,39 @@ import logging
 import re
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Set, Tuple
-from dataclasses import dataclass, field
 from datetime import datetime
+from pydantic import Field
 
 from graph_rag.core.interfaces import ExtractedEntity, ExtractionResult
-from graph_rag.models import Document, Entity, ProcessedDocument, Relationship
+from graph_rag.domain.models import Entity
+from graph_rag.models import Document, ProcessedDocument, Relationship
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class ConceptualEntity(ExtractedEntity):
+class ConceptualEntity(Entity):
     """Extended entity for conceptual ideas and themes."""
-    concept_type: str = "IDEA"  # IDEA, THEME, STRATEGY, PRINCIPLE, etc.
-    confidence: float = 0.0
-    context_window: str = ""
-    temporal_markers: List[str] = field(default_factory=list)
-    related_concepts: List[str] = field(default_factory=list)
-    sentiment: Optional[str] = None
+    type: str = "ConceptualEntity"
+    concept_type: str = Field(default="IDEA", description="Type of concept: IDEA, THEME, STRATEGY, etc.")
+    confidence: float = Field(default=0.0, description="Confidence score for extracted concept")
+    context_window: str = Field(default="", description="Text context where concept was found")
+    temporal_markers: List[str] = Field(default_factory=list, description="Time-related indicators")
+    related_concepts: List[str] = Field(default_factory=list, description="Related concept IDs")
+    sentiment: Optional[str] = Field(default=None, description="Sentiment of the concept")
+    text: str = Field(..., description="Original text span of the concept")
     
     
-@dataclass 
 class IdeaRelationship:
     """Represents relationships between ideas/concepts."""
-    source_concept: str
-    target_concept: str
-    relationship_type: str  # BUILDS_UPON, CONTRADICTS, INFLUENCES, EVOLVES_TO
-    confidence: float = 0.0
-    evidence_text: str = ""
-    temporal_order: Optional[int] = None
+    def __init__(self, source_concept: str, target_concept: str, 
+                 relationship_type: str, confidence: float = 0.0,
+                 evidence_text: str = "", temporal_order: Optional[int] = None):
+        self.source_concept = source_concept
+        self.target_concept = target_concept
+        self.relationship_type = relationship_type  # BUILDS_UPON, CONTRADICTS, INFLUENCES, EVOLVES_TO
+        self.confidence = confidence
+        self.evidence_text = evidence_text
+        self.temporal_order = temporal_order
 
 
 class ConceptExtractor(ABC):
@@ -145,11 +149,10 @@ class EnhancedConceptExtractor(ConceptExtractor):
                         id=f"{concept_type}:{concept_text.lower().replace(' ', '_')}",
                         name=concept_text,
                         text=concept_text,
-                        label=concept_type,
                         concept_type=concept_type,
                         confidence=0.7,  # Rule-based gets medium confidence
                         context_window=context_window,
-                        metadata=context or {}
+                        properties=context or {}
                     )
                     concepts.append(concept)
                     
@@ -172,11 +175,10 @@ class EnhancedConceptExtractor(ConceptExtractor):
                         id=f"{concept_type}:{chunk.text.lower().replace(' ', '_')}",
                         name=chunk.text,
                         text=chunk.text,
-                        label=concept_type,
                         concept_type=concept_type,
                         confidence=0.6,
                         context_window=str(chunk.sent) if chunk.sent else "",
-                        metadata=context or {}
+                        properties=context or {}
                     )
                     concepts.append(concept)
                     
@@ -230,10 +232,9 @@ class EnhancedConceptExtractor(ConceptExtractor):
                         id=f"linkedin_{concept_type}:{concept_text.lower().replace(' ', '_')}",
                         name=concept_text,
                         text=concept_text,
-                        label=concept_type,
                         concept_type=concept_type,
                         confidence=0.8,  # High confidence for platform-specific patterns
-                        metadata={**context, "platform": "linkedin"}
+                        properties={**context, "platform": "linkedin"}
                     )
                     concepts.append(concept)
                     
@@ -258,10 +259,9 @@ class EnhancedConceptExtractor(ConceptExtractor):
                     id=f"notion_KNOWLEDGE:{concept_text.lower().replace(' ', '_')}",
                     name=concept_text,
                     text=concept_text,
-                    label="KNOWLEDGE",
                     concept_type="KNOWLEDGE",
                     confidence=0.7,
-                    metadata={**context, "platform": "notion"}
+                    properties={**context, "platform": "notion"}
                 )
                 concepts.append(concept)
                 
@@ -421,10 +421,9 @@ class LinkedInConceptExtractor(EnhancedConceptExtractor):
                     id=f"linkedin_ENGAGEMENT:{concept_text.lower()}",
                     name=concept_text,
                     text=concept_text,
-                    label="ENGAGEMENT",
                     concept_type="ENGAGEMENT",
                     confidence=0.9,
-                    metadata={**context, "platform": "linkedin", "type": "engagement"}
+                    properties={**context, "platform": "linkedin", "type": "engagement"}
                 )
                 concepts.append(concept)
                 
@@ -467,10 +466,9 @@ class NotionConceptExtractor(EnhancedConceptExtractor):
                     id=f"notion_KNOWLEDGE:{concept_text.lower()}",
                     name=concept_text,
                     text=concept_text,
-                    label="KNOWLEDGE",
                     concept_type="KNOWLEDGE",
                     confidence=0.8,
-                    metadata={**context, "platform": "notion", "type": "knowledge"}
+                    properties={**context, "platform": "notion", "type": "knowledge"}
                 )
                 concepts.append(concept)
                 
