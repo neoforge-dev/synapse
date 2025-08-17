@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from graph_rag.api.dependencies import get_concept_extractor, get_temporal_tracker, get_cross_platform_correlator, get_belief_preference_extractor
+from graph_rag.api.dependencies import get_concept_extractor, get_temporal_tracker, get_cross_platform_correlator, get_belief_preference_extractor, get_viral_prediction_engine, get_brand_safety_analyzer
 from graph_rag.core.concept_extractor import ConceptualEntity, IdeaRelationship, EnhancedConceptExtractor
 from graph_rag.core.temporal_tracker import TemporalTracker
 from graph_rag.services.cross_platform_correlator import CrossPlatformCorrelator, ContentCorrelation
@@ -553,3 +553,683 @@ async def get_preference_based_recommendations(
     except Exception as e:
         logger.error(f"Epic 6: Error generating recommendations: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Preference-based recommendations failed: {str(e)}")
+
+
+# === EPIC 7.3: HOT TAKE API ENDPOINTS WITH VIRAL PREDICTION + BRAND SAFETY ===
+
+class HotTakeAnalysisRequest(BaseModel):
+    """Request model for comprehensive hot take analysis."""
+    text: str = Field(..., description="Hot take text to analyze")
+    platform: str = Field(default="general", description="Platform: linkedin, twitter, general")
+    brand_profile: str = Field(default="moderate", description="Brand safety profile: conservative, moderate, aggressive")
+    context: Dict[str, Any] = Field(default_factory=dict, description="Additional context")
+
+
+class QuickScoreRequest(BaseModel):
+    """Request model for quick viral scoring."""
+    text: str = Field(..., description="Content text for quick scoring")
+    platform: str = Field(default="general", description="Platform for optimization")
+
+
+class OptimizationRequest(BaseModel):
+    """Request model for content optimization."""
+    text: str = Field(..., description="Content to optimize")
+    target_platform: str = Field(..., description="Target platform for optimization")
+    optimization_goals: List[str] = Field(default_factory=list, description="Specific optimization goals")
+
+
+class BatchAnalysisRequest(BaseModel):
+    """Request model for batch hot take analysis."""
+    content_items: List[Dict[str, str]] = Field(..., description="List of content items with text and platform")
+    brand_profile: str = Field(default="moderate", description="Brand safety profile")
+
+
+class HotTakeAnalysisResponse(BaseModel):
+    """Comprehensive hot take analysis response."""
+    content_id: str = Field(..., description="Unique content identifier")
+    platform: str = Field(..., description="Analysis platform")
+    
+    # Viral prediction results
+    viral_score: float = Field(..., description="Overall viral potential (0.0-1.0)")
+    engagement_score: float = Field(..., description="Predicted engagement rate")
+    reach_potential: float = Field(..., description="Potential audience reach")
+    viral_velocity: float = Field(..., description="Speed of content spread")
+    
+    # Brand safety results
+    safety_level: str = Field(..., description="Brand safety level: SAFE/CAUTION/RISK/DANGER")
+    risk_score: float = Field(..., description="Overall risk score (0.0-1.0)")
+    toxicity_score: float = Field(..., description="Content toxicity score")
+    controversy_score: float = Field(..., description="Controversy potential")
+    
+    # Integrated analysis
+    risk_adjusted_viral_score: float = Field(..., description="Viral score adjusted for safety risks")
+    recommendation: str = Field(..., description="Publication recommendation")
+    confidence: float = Field(..., description="Analysis confidence level")
+    
+    # Detailed insights
+    key_features: List[str] = Field(default_factory=list, description="Key viral features identified")
+    risk_factors: List[str] = Field(default_factory=list, description="Identified risk factors")
+    crisis_triggers: List[str] = Field(default_factory=list, description="Potential crisis triggers")
+    
+    # Actionable recommendations
+    improvement_suggestions: List[str] = Field(default_factory=list, description="Content improvement suggestions")
+    content_modifications: List[str] = Field(default_factory=list, description="Safety-focused modifications")
+    approval_workflow: List[str] = Field(default_factory=list, description="Required approval steps")
+    
+    # Timing and optimization
+    optimal_posting_time: Optional[str] = Field(default=None, description="Suggested posting time")
+    platform_optimization_score: float = Field(..., description="Platform-specific optimization score")
+    
+    analysis_timestamp: str = Field(..., description="Analysis timestamp")
+
+
+class QuickScoreResponse(BaseModel):
+    """Quick viral scoring response."""
+    content_id: str = Field(..., description="Content identifier")
+    viral_score: float = Field(..., description="Quick viral potential score")
+    engagement_score: float = Field(..., description="Engagement prediction")
+    safety_level: str = Field(..., description="Quick safety assessment")
+    recommendation: str = Field(..., description="Immediate recommendation")
+    confidence: float = Field(..., description="Score confidence")
+    analysis_time_ms: float = Field(..., description="Analysis time in milliseconds")
+
+
+class OptimizationResponse(BaseModel):
+    """Content optimization response."""
+    original_score: float = Field(..., description="Original viral score")
+    optimized_strategies: List[Dict[str, Any]] = Field(..., description="Platform-specific optimization strategies")
+    improvement_potential: float = Field(..., description="Potential score improvement")
+    priority_actions: List[str] = Field(..., description="High-priority optimization actions")
+    platform_insights: Dict[str, Any] = Field(default_factory=dict, description="Platform-specific insights")
+    estimated_impact: Dict[str, float] = Field(default_factory=dict, description="Estimated impact of changes")
+
+
+class TrendingResponse(BaseModel):
+    """Trending hot take patterns response."""
+    trending_patterns: List[Dict[str, Any]] = Field(..., description="Current trending patterns")
+    viral_themes: List[str] = Field(..., description="Viral content themes")
+    platform_trends: Dict[str, Any] = Field(default_factory=dict, description="Platform-specific trends")
+    recommendation_score: float = Field(..., description="Trend alignment score")
+    analysis_period: str = Field(..., description="Analysis time period")
+
+
+class BatchAnalysisResponse(BaseModel):
+    """Batch analysis response."""
+    total_analyzed: int = Field(..., description="Total content items analyzed")
+    analysis_summary: Dict[str, Any] = Field(..., description="Batch analysis summary")
+    individual_results: List[HotTakeAnalysisResponse] = Field(..., description="Individual analysis results")
+    comparative_insights: Dict[str, Any] = Field(default_factory=dict, description="Comparative analysis insights")
+    batch_recommendations: List[str] = Field(default_factory=list, description="Batch-level recommendations")
+
+
+class SafetyCheckResponse(BaseModel):
+    """Brand safety validation response."""
+    content_id: str = Field(..., description="Content identifier")
+    safety_level: str = Field(..., description="Safety classification")
+    risk_dimensions: Dict[str, float] = Field(..., description="Multi-dimensional risk scores")
+    stakeholder_impact: Dict[str, str] = Field(..., description="Impact on stakeholder groups")
+    crisis_risk: Dict[str, Any] = Field(..., description="Crisis escalation assessment")
+    mitigation_strategy: Dict[str, Any] = Field(..., description="Risk mitigation recommendations")
+    approval_required: bool = Field(..., description="Whether approval is required")
+    monitoring_required: bool = Field(..., description="Whether monitoring is required")
+
+
+class AnalyticsResponse(BaseModel):
+    """Hot take performance analytics response."""
+    performance_metrics: Dict[str, float] = Field(..., description="Overall performance metrics")
+    trend_analysis: Dict[str, Any] = Field(..., description="Performance trend analysis")
+    comparative_benchmarks: Dict[str, float] = Field(..., description="Industry/platform benchmarks")
+    success_factors: List[str] = Field(..., description="Key success factors identified")
+    optimization_opportunities: List[str] = Field(..., description="Optimization opportunities")
+    predictive_insights: Dict[str, Any] = Field(default_factory=dict, description="Predictive performance insights")
+
+
+@router.post("/hot-takes/analyze", response_model=HotTakeAnalysisResponse)
+async def analyze_hot_take(
+    request: HotTakeAnalysisRequest,
+    viral_engine = Depends(get_viral_prediction_engine),
+    safety_analyzer = Depends(get_brand_safety_analyzer),
+    belief_extractor = Depends(get_belief_preference_extractor)
+) -> HotTakeAnalysisResponse:
+    """Comprehensive hot take analysis combining viral prediction and brand safety assessment (Epic 7.3)."""
+    try:
+        start_time = asyncio.get_event_loop().time()
+        
+        logger.info(f"Epic 7.3: Analyzing hot take for {request.platform} platform with {request.brand_profile} brand profile")
+        
+        # Extract platform enum
+        from graph_rag.core.viral_prediction_engine import Platform
+        platform_map = {"linkedin": Platform.LINKEDIN, "twitter": Platform.TWITTER, "general": Platform.GENERAL}
+        platform = platform_map.get(request.platform.lower(), Platform.GENERAL)
+        
+        # Extract brand profile enum
+        from graph_rag.core.brand_safety_analyzer import BrandProfile
+        profile_map = {"conservative": BrandProfile.CONSERVATIVE, "moderate": BrandProfile.MODERATE, "aggressive": BrandProfile.AGGRESSIVE}
+        brand_profile = profile_map.get(request.brand_profile.lower(), BrandProfile.MODERATE)
+        
+        # Extract concepts for context
+        concept_result = await belief_extractor.extract_beliefs_and_preferences(request.text, {**request.context, "platform": request.platform})
+        concepts = concept_result.get("all_concepts", [])
+        hot_takes = concept_result.get("hot_takes", [])
+        
+        # Generate content ID
+        content_id = f"hottake_{hash(request.text[:100])}_{int(start_time)}"
+        
+        # Run viral prediction and brand safety analysis in parallel
+        viral_task = viral_engine.predict_viral_potential(request.text, platform, content_id, request.context)
+        safety_task = safety_analyzer.assess_brand_safety(request.text, platform, content_id, concepts, request.context)
+        
+        viral_prediction, safety_assessment = await asyncio.gather(viral_task, safety_task)
+        
+        # Generate recommendation based on combined analysis
+        recommendation = _generate_publication_recommendation(viral_prediction, safety_assessment)
+        
+        # Calculate risk-adjusted viral score
+        risk_adjusted_score = viral_prediction.overall_viral_score * (1.0 - safety_assessment.risk_score.overall * 0.5)
+        
+        # Determine optimal posting time
+        optimal_time = viral_prediction.optimal_posting_time.isoformat() if viral_prediction.optimal_posting_time else None
+        
+        # Combine improvement suggestions
+        combined_suggestions = viral_prediction.improvement_suggestions + safety_assessment.content_modifications
+        
+        end_time = asyncio.get_event_loop().time()
+        analysis_time = (end_time - start_time) * 1000
+        
+        logger.info(f"Epic 7.3: Analysis complete in {analysis_time:.2f}ms - Viral: {viral_prediction.overall_viral_score:.2f}, Safety: {safety_assessment.safety_level.value}, Risk-Adjusted: {risk_adjusted_score:.2f}")
+        
+        return HotTakeAnalysisResponse(
+            content_id=content_id,
+            platform=request.platform,
+            viral_score=viral_prediction.overall_viral_score,
+            engagement_score=viral_prediction.engagement_score,
+            reach_potential=viral_prediction.reach_potential,
+            viral_velocity=viral_prediction.viral_velocity,
+            safety_level=safety_assessment.safety_level.value.upper(),
+            risk_score=safety_assessment.risk_score.overall,
+            toxicity_score=safety_assessment.toxicity_assessment.toxicity_score,
+            controversy_score=safety_assessment.controversy_analysis.controversy_score,
+            risk_adjusted_viral_score=risk_adjusted_score,
+            recommendation=recommendation,
+            confidence=min(viral_prediction.confidence, safety_assessment.confidence),
+            key_features=viral_prediction.key_features,
+            risk_factors=safety_assessment.risk_factors,
+            crisis_triggers=safety_assessment.crisis_triggers,
+            improvement_suggestions=viral_prediction.improvement_suggestions,
+            content_modifications=safety_assessment.content_modifications,
+            approval_workflow=safety_assessment.approval_workflow,
+            optimal_posting_time=optimal_time,
+            platform_optimization_score=viral_prediction.platform_optimization_score,
+            analysis_timestamp=datetime.utcnow().isoformat()
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 7.3: Error analyzing hot take: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Hot take analysis failed: {str(e)}")
+
+
+@router.post("/hot-takes/quick-score", response_model=QuickScoreResponse)
+async def quick_score_hot_take(
+    request: QuickScoreRequest,
+    viral_engine = Depends(get_viral_prediction_engine),
+    safety_analyzer = Depends(get_brand_safety_analyzer)
+) -> QuickScoreResponse:
+    """Fast viral scoring for immediate feedback (Epic 7.3)."""
+    try:
+        start_time = asyncio.get_event_loop().time()
+        
+        # Extract platform enum
+        from graph_rag.core.viral_prediction_engine import Platform
+        platform_map = {"linkedin": Platform.LINKEDIN, "twitter": Platform.TWITTER, "general": Platform.GENERAL}
+        platform = platform_map.get(request.platform.lower(), Platform.GENERAL)
+        
+        content_id = f"quick_{hash(request.text[:50])}_{int(start_time)}"
+        
+        # Run quick predictions in parallel
+        viral_task = viral_engine.predict_viral_potential(request.text, platform, content_id)
+        safety_task = safety_analyzer.assess_brand_safety(request.text, platform, content_id)
+        
+        viral_prediction, safety_assessment = await asyncio.gather(viral_task, safety_task)
+        
+        # Quick recommendation
+        if safety_assessment.safety_level.value == "danger":
+            recommendation = "❌ DO NOT PUBLISH - High risk content"
+        elif safety_assessment.safety_level.value == "risk":
+            recommendation = "⚠️ REQUIRES APPROVAL - Significant risks identified"
+        elif viral_prediction.overall_viral_score > 0.7 and safety_assessment.safety_level.value in ["safe", "caution"]:
+            recommendation = "🚀 HIGH VIRAL POTENTIAL - Consider publishing"
+        elif viral_prediction.overall_viral_score > 0.5:
+            recommendation = "📈 MODERATE POTENTIAL - Good for engagement"
+        else:
+            recommendation = "📝 LOW VIRAL POTENTIAL - Consider optimization"
+        
+        end_time = asyncio.get_event_loop().time()
+        analysis_time = (end_time - start_time) * 1000
+        
+        return QuickScoreResponse(
+            content_id=content_id,
+            viral_score=viral_prediction.overall_viral_score,
+            engagement_score=viral_prediction.engagement_score,
+            safety_level=safety_assessment.safety_level.value.upper(),
+            recommendation=recommendation,
+            confidence=min(viral_prediction.confidence, safety_assessment.confidence),
+            analysis_time_ms=analysis_time
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 7.3: Error in quick scoring: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Quick scoring failed: {str(e)}")
+
+
+@router.post("/hot-takes/optimize", response_model=OptimizationResponse)
+async def optimize_hot_take(
+    request: OptimizationRequest,
+    viral_engine = Depends(get_viral_prediction_engine)
+) -> OptimizationResponse:
+    """Content optimization suggestions for hot takes (Epic 7.3)."""
+    try:
+        # Extract platform enum
+        from graph_rag.core.viral_prediction_engine import Platform
+        platform_map = {"linkedin": Platform.LINKEDIN, "twitter": Platform.TWITTER, "general": Platform.GENERAL}
+        target_platform = platform_map.get(request.target_platform.lower(), Platform.GENERAL)
+        
+        # Get original score
+        original_prediction = await viral_engine.predict_viral_potential(request.text, target_platform)
+        
+        # Get platform-specific optimizations
+        optimization_strategies = await viral_engine.optimize_for_platform(request.text, target_platform)
+        
+        # Estimate improvement potential
+        improvement_potential = min(0.3, (1.0 - original_prediction.overall_viral_score) * 0.6)
+        
+        # Priority actions based on analysis
+        priority_actions = []
+        if original_prediction.engagement_score < 0.5:
+            priority_actions.append("Add stronger call-to-action elements")
+        if original_prediction.controversy_score < 0.3:
+            priority_actions.append("Consider more provocative but safe angles")
+        if original_prediction.platform_optimization_score < 0.6:
+            priority_actions.extend(optimization_strategies.get('optimizations', [])[:2])
+        
+        # Estimated impact of changes
+        estimated_impact = {
+            "engagement_boost": improvement_potential * 0.4,
+            "reach_improvement": improvement_potential * 0.3,
+            "viral_velocity_gain": improvement_potential * 0.2,
+            "platform_fit_enhancement": improvement_potential * 0.1
+        }
+        
+        return OptimizationResponse(
+            original_score=original_prediction.overall_viral_score,
+            optimized_strategies=[optimization_strategies],
+            improvement_potential=improvement_potential,
+            priority_actions=priority_actions,
+            platform_insights=optimization_strategies,
+            estimated_impact=estimated_impact
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 7.3: Error optimizing content: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Content optimization failed: {str(e)}")
+
+
+@router.get("/hot-takes/trending", response_model=TrendingResponse)
+async def get_trending_patterns() -> TrendingResponse:
+    """Get trending hot take patterns and viral themes (Epic 7.3)."""
+    try:
+        # Mock trending analysis - in production would analyze recent viral content
+        trending_patterns = [
+            {
+                "pattern": "contrarian_business_takes",
+                "viral_score": 0.85,
+                "engagement_rate": 0.12,
+                "examples": ["remote work criticism", "startup bubble warnings"]
+            },
+            {
+                "pattern": "leadership_authenticity",
+                "viral_score": 0.72,
+                "engagement_rate": 0.08,
+                "examples": ["vulnerable leadership", "failure stories"]
+            },
+            {
+                "pattern": "industry_disruption",
+                "viral_score": 0.78,
+                "engagement_rate": 0.10,
+                "examples": ["AI job displacement", "traditional industry obsolescence"]
+            }
+        ]
+        
+        viral_themes = [
+            "authentic leadership challenges",
+            "remote work effectiveness debates",
+            "AI impact on careers",
+            "startup culture criticism",
+            "traditional vs modern approaches"
+        ]
+        
+        platform_trends = {
+            "linkedin": {
+                "top_theme": "professional authenticity",
+                "engagement_peak_hours": ["9-11 AM", "1-3 PM", "6-8 PM"],
+                "viral_content_types": ["personal stories", "controversial opinions", "industry insights"]
+            },
+            "twitter": {
+                "top_theme": "tech industry takes",
+                "engagement_peak_hours": ["8-10 AM", "12-2 PM", "7-9 PM"],
+                "viral_content_types": ["hot takes", "threads", "contrarian views"]
+            }
+        }
+        
+        return TrendingResponse(
+            trending_patterns=trending_patterns,
+            viral_themes=viral_themes,
+            platform_trends=platform_trends,
+            recommendation_score=0.82,
+            analysis_period="Last 7 days"
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 7.3: Error getting trending patterns: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Trending analysis failed: {str(e)}")
+
+
+@router.post("/hot-takes/batch-analyze", response_model=BatchAnalysisResponse)
+async def batch_analyze_hot_takes(
+    request: BatchAnalysisRequest,
+    viral_engine = Depends(get_viral_prediction_engine),
+    safety_analyzer = Depends(get_brand_safety_analyzer),
+    belief_extractor = Depends(get_belief_preference_extractor)
+) -> BatchAnalysisResponse:
+    """Batch processing for multiple hot takes (Epic 7.3)."""
+    try:
+        logger.info(f"Epic 7.3: Starting batch analysis of {len(request.content_items)} items")
+        
+        individual_results = []
+        viral_scores = []
+        safety_levels = []
+        
+        for i, item in enumerate(request.content_items):
+            try:
+                # Create individual analysis request
+                analysis_request = HotTakeAnalysisRequest(
+                    text=item.get("text", ""),
+                    platform=item.get("platform", "general"),
+                    brand_profile=request.brand_profile
+                )
+                
+                # Analyze individual item
+                result = await analyze_hot_take(analysis_request, viral_engine, safety_analyzer, belief_extractor)
+                individual_results.append(result)
+                viral_scores.append(result.viral_score)
+                safety_levels.append(result.safety_level)
+                
+            except Exception as e:
+                logger.warning(f"Epic 7.3: Error analyzing batch item {i}: {e}")
+                continue
+        
+        # Generate batch analytics
+        avg_viral_score = sum(viral_scores) / len(viral_scores) if viral_scores else 0.0
+        safety_distribution = {level: safety_levels.count(level) for level in set(safety_levels)}
+        
+        high_potential_count = sum(1 for score in viral_scores if score > 0.7)
+        risky_content_count = sum(1 for level in safety_levels if level in ["RISK", "DANGER"])
+        
+        analysis_summary = {
+            "total_processed": len(individual_results),
+            "average_viral_score": avg_viral_score,
+            "high_potential_content": high_potential_count,
+            "risky_content": risky_content_count,
+            "safety_distribution": safety_distribution,
+            "batch_processing_success_rate": len(individual_results) / len(request.content_items) if request.content_items else 0.0
+        }
+        
+        comparative_insights = {
+            "best_performing_content": max(individual_results, key=lambda x: x.viral_score, default=None),
+            "highest_risk_content": max(individual_results, key=lambda x: x.risk_score, default=None),
+            "platform_performance": _analyze_platform_performance(individual_results),
+            "content_type_insights": _analyze_content_types(individual_results)
+        }
+        
+        batch_recommendations = []
+        if high_potential_count > 0:
+            batch_recommendations.append(f"📈 {high_potential_count} items show high viral potential - prioritize these")
+        if risky_content_count > 0:
+            batch_recommendations.append(f"⚠️ {risky_content_count} items require safety review")
+        if avg_viral_score < 0.4:
+            batch_recommendations.append("🔧 Overall viral potential is low - consider content optimization strategies")
+        
+        logger.info(f"Epic 7.3: Batch analysis complete - {len(individual_results)}/{len(request.content_items)} processed successfully")
+        
+        return BatchAnalysisResponse(
+            total_analyzed=len(individual_results),
+            analysis_summary=analysis_summary,
+            individual_results=individual_results,
+            comparative_insights=comparative_insights,
+            batch_recommendations=batch_recommendations
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 7.3: Error in batch analysis: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Batch analysis failed: {str(e)}")
+
+
+@router.post("/hot-takes/safety-check", response_model=SafetyCheckResponse)
+async def safety_check_hot_take(
+    request: HotTakeAnalysisRequest,
+    safety_analyzer = Depends(get_brand_safety_analyzer),
+    belief_extractor = Depends(get_belief_preference_extractor)
+) -> SafetyCheckResponse:
+    """Brand safety validation for hot takes (Epic 7.3)."""
+    try:
+        # Extract platform and brand profile
+        from graph_rag.core.viral_prediction_engine import Platform
+        from graph_rag.core.brand_safety_analyzer import BrandProfile
+        
+        platform_map = {"linkedin": Platform.LINKEDIN, "twitter": Platform.TWITTER, "general": Platform.GENERAL}
+        platform = platform_map.get(request.platform.lower(), Platform.GENERAL)
+        
+        profile_map = {"conservative": BrandProfile.CONSERVATIVE, "moderate": BrandProfile.MODERATE, "aggressive": BrandProfile.AGGRESSIVE}
+        brand_profile = profile_map.get(request.brand_profile.lower(), BrandProfile.MODERATE)
+        
+        # Extract concepts for context
+        concept_result = await belief_extractor.extract_beliefs_and_preferences(request.text, {**request.context, "platform": request.platform})
+        concepts = concept_result.get("all_concepts", [])
+        
+        content_id = f"safety_{hash(request.text[:100])}_{int(asyncio.get_event_loop().time())}"
+        
+        # Perform brand safety assessment
+        safety_assessment = await safety_analyzer.assess_brand_safety(request.text, platform, content_id, concepts, request.context)
+        
+        # Format response
+        risk_dimensions = {
+            "reputational": safety_assessment.risk_score.reputational,
+            "legal": safety_assessment.risk_score.legal,
+            "financial": safety_assessment.risk_score.financial,
+            "operational": safety_assessment.risk_score.operational
+        }
+        
+        stakeholder_impact = {
+            "customers": safety_assessment.stakeholder_analysis.customers.value,
+            "employees": safety_assessment.stakeholder_analysis.employees.value,
+            "investors": safety_assessment.stakeholder_analysis.investors.value,
+            "partners": safety_assessment.stakeholder_analysis.partners.value,
+            "general_public": safety_assessment.stakeholder_analysis.general_public.value
+        }
+        
+        crisis_risk = {
+            "escalation_probability": safety_assessment.crisis_risk.escalation_probability,
+            "viral_amplification_risk": safety_assessment.crisis_risk.viral_amplification_risk,
+            "media_attention_risk": safety_assessment.crisis_risk.media_attention_risk,
+            "response_urgency": safety_assessment.crisis_risk.response_urgency,
+            "crisis_triggers": safety_assessment.crisis_risk.crisis_triggers
+        }
+        
+        mitigation_strategy = {
+            "priority": safety_assessment.mitigation_strategy.priority,
+            "actions": safety_assessment.mitigation_strategy.actions,
+            "alternative_approaches": safety_assessment.mitigation_strategy.alternative_approaches,
+            "decision_deadline": safety_assessment.mitigation_strategy.decision_deadline.isoformat() if safety_assessment.mitigation_strategy.decision_deadline else None
+        }
+        
+        return SafetyCheckResponse(
+            content_id=content_id,
+            safety_level=safety_assessment.safety_level.value.upper(),
+            risk_dimensions=risk_dimensions,
+            stakeholder_impact=stakeholder_impact,
+            crisis_risk=crisis_risk,
+            mitigation_strategy=mitigation_strategy,
+            approval_required=safety_assessment.mitigation_strategy.approval_required,
+            monitoring_required=safety_assessment.mitigation_strategy.monitoring_required
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 7.3: Error in safety check: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Safety check failed: {str(e)}")
+
+
+@router.get("/hot-takes/analytics", response_model=AnalyticsResponse)
+async def get_hot_take_analytics(
+    days: int = Query(30, description="Number of days for analytics"),
+    platform: Optional[str] = Query(None, description="Platform filter")
+) -> AnalyticsResponse:
+    """Hot take performance analytics (Epic 7.3)."""
+    try:
+        # Mock analytics - in production would analyze historical data
+        performance_metrics = {
+            "average_viral_score": 0.65,
+            "average_engagement_rate": 0.08,
+            "content_safety_score": 0.82,
+            "approval_rate": 0.75,
+            "crisis_avoidance_rate": 0.95
+        }
+        
+        trend_analysis = {
+            "viral_score_trend": "increasing",
+            "engagement_trend": "stable",
+            "risk_trend": "decreasing",
+            "trending_topics": ["AI impact", "remote work", "leadership authenticity"],
+            "optimal_posting_times": ["9-11 AM", "1-3 PM", "6-8 PM"]
+        }
+        
+        comparative_benchmarks = {
+            "industry_average_viral": 0.45,
+            "platform_average_engagement": 0.06,
+            "competitor_safety_score": 0.78,
+            "market_controversy_tolerance": 0.55
+        }
+        
+        success_factors = [
+            "Authentic personal stories",
+            "Contrarian but respectful viewpoints",
+            "Industry-specific insights",
+            "Timely responses to trends",
+            "Strategic controversy within safety bounds"
+        ]
+        
+        optimization_opportunities = [
+            "Increase emotional intensity while maintaining safety",
+            "Better timing alignment with platform peak hours",
+            "Enhanced call-to-action elements",
+            "Improved platform-specific optimization",
+            "Strategic use of trending topics"
+        ]
+        
+        predictive_insights = {
+            "next_viral_trend": "workplace mental health discussions",
+            "emerging_risk_areas": ["AI ethics debates", "economic uncertainty topics"],
+            "optimal_content_mix": "60% insights, 25% hot takes, 15% personal stories",
+            "predicted_engagement_growth": 0.12
+        }
+        
+        return AnalyticsResponse(
+            performance_metrics=performance_metrics,
+            trend_analysis=trend_analysis,
+            comparative_benchmarks=comparative_benchmarks,
+            success_factors=success_factors,
+            optimization_opportunities=optimization_opportunities,
+            predictive_insights=predictive_insights
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 7.3: Error getting analytics: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Analytics retrieval failed: {str(e)}")
+
+
+# === HELPER FUNCTIONS FOR EPIC 7.3 ===
+
+def _generate_publication_recommendation(viral_prediction, safety_assessment) -> str:
+    """Generate publication recommendation based on viral and safety analysis."""
+    safety_level = safety_assessment.safety_level.value
+    viral_score = viral_prediction.overall_viral_score
+    risk_score = safety_assessment.risk_score.overall
+    
+    if safety_level == "danger":
+        return "🚫 DO NOT PUBLISH - Content poses significant brand safety risks"
+    elif safety_level == "risk":
+        return "⚠️ REQUIRES SENIOR APPROVAL - High-risk content with potential consequences"
+    elif safety_level == "caution" and viral_score > 0.8:
+        return "🔍 REVIEW RECOMMENDED - High viral potential but requires careful monitoring"
+    elif viral_score > 0.7 and risk_score < 0.3:
+        return "🚀 PUBLISH WITH CONFIDENCE - High viral potential, low risk"
+    elif viral_score > 0.5 and risk_score < 0.5:
+        return "📈 GOOD TO PUBLISH - Solid viral potential with manageable risk"
+    elif viral_score < 0.3:
+        return "📝 CONSIDER OPTIMIZATION - Low viral potential, optimize before publishing"
+    else:
+        return "✅ STANDARD APPROVAL - Moderate potential, standard review process"
+
+
+def _analyze_platform_performance(results: List[HotTakeAnalysisResponse]) -> Dict[str, Any]:
+    """Analyze performance by platform."""
+    platform_data = {}
+    for result in results:
+        platform = result.platform
+        if platform not in platform_data:
+            platform_data[platform] = {"scores": [], "safety_levels": []}
+        platform_data[platform]["scores"].append(result.viral_score)
+        platform_data[platform]["safety_levels"].append(result.safety_level)
+    
+    performance = {}
+    for platform, data in platform_data.items():
+        performance[platform] = {
+            "average_viral_score": sum(data["scores"]) / len(data["scores"]) if data["scores"] else 0.0,
+            "content_count": len(data["scores"]),
+            "safety_distribution": {level: data["safety_levels"].count(level) for level in set(data["safety_levels"])}
+        }
+    
+    return performance
+
+
+def _analyze_content_types(results: List[HotTakeAnalysisResponse]) -> Dict[str, Any]:
+    """Analyze performance by content characteristics."""
+    high_viral = [r for r in results if r.viral_score > 0.7]
+    high_risk = [r for r in results if r.risk_score > 0.6]
+    
+    return {
+        "high_viral_characteristics": {
+            "count": len(high_viral),
+            "average_engagement": sum(r.engagement_score for r in high_viral) / len(high_viral) if high_viral else 0.0,
+            "common_features": _extract_common_features([r.key_features for r in high_viral])
+        },
+        "high_risk_characteristics": {
+            "count": len(high_risk),
+            "common_risks": _extract_common_features([r.risk_factors for r in high_risk]),
+            "average_toxicity": sum(r.toxicity_score for r in high_risk) / len(high_risk) if high_risk else 0.0
+        }
+    }
+
+
+def _extract_common_features(feature_lists: List[List[str]]) -> List[str]:
+    """Extract commonly occurring features across multiple lists."""
+    if not feature_lists:
+        return []
+    
+    feature_counts = {}
+    for features in feature_lists:
+        for feature in features:
+            feature_counts[feature] = feature_counts.get(feature, 0) + 1
+    
+    # Return features that appear in at least 25% of lists
+    threshold = max(1, len(feature_lists) * 0.25)
+    common_features = [feature for feature, count in feature_counts.items() if count >= threshold]
+    return sorted(common_features, key=lambda x: feature_counts[x], reverse=True)[:5]
