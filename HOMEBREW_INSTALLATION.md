@@ -86,7 +86,20 @@ brew info neoforge-dev/synapse/synapse
 
 ### macOS Beta Compatibility
 
-If you're running macOS beta (26.x), Homebrew may show warnings but should still work. If you encounter issues, use the manual installation method above.
+If you're running macOS beta (26.x), Homebrew may show warnings and installation might fail due to Tier 2 support status. In this case, use the manual installation method:
+
+```bash
+# Clone and install manually
+git clone https://github.com/neoforge-dev/synapse.git
+cd synapse
+uv pip install -e .
+```
+
+### Installation Status
+
+✅ **Homebrew tap published**: `neoforge-dev/synapse`  
+✅ **Formula available**: `brew install neoforge-dev/synapse/synapse`  
+⚠️ **macOS 26 compatibility**: Use manual installation for beta macOS versions
 
 ---
 

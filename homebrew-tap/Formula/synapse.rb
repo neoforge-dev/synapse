@@ -14,15 +14,14 @@ class Synapse < Formula
   depends_on "pkg-config" => :build
 
   def install
-    virtualenv_install_with_resources
-
-    # Install pymgclient separately since it's a local dependency
-    cd "pymgclient" do
-      system libexec/"bin/pip", "install", "-e", "."
-    end
-
-    # Generate shell completions
-    generate_completions_from_executable(bin/"synapse", "--help", shells: [:bash, :zsh, :fish])
+    # Create virtualenv
+    virtualenv_create(libexec, "python3.12")
+    
+    # Install the main package with dependencies
+    system libexec/"bin/pip", "install", "."
+    
+    # Create wrapper
+    (bin/"synapse").write_env_script libexec/"bin/synapse", PATH: "#{libexec}/bin:$PATH"
 
     # Create necessary directories
     (etc/"synapse").mkpath
