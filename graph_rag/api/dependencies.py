@@ -722,6 +722,36 @@ async def get_cross_platform_correlator(
     return correlator
 
 
+async def get_brand_safety_analyzer(
+    brand_profile: str = "moderate"
+) -> Any:
+    """Dependency getter for BrandSafetyAnalyzer."""
+    from graph_rag.core.brand_safety_analyzer import BrandSafetyAnalyzer, BrandProfile
+    
+    # Parse brand profile
+    try:
+        profile = BrandProfile(brand_profile.lower())
+    except ValueError:
+        profile = BrandProfile.MODERATE
+    
+    # Create analyzer with specified profile
+    analyzer = BrandSafetyAnalyzer(profile)
+    logger.debug(f"Created BrandSafetyAnalyzer instance with {profile.value} profile")
+    
+    return analyzer
+
+
+async def get_viral_prediction_engine() -> Any:
+    """Dependency getter for ViralPredictionEngine."""
+    from graph_rag.core.viral_prediction_engine import ViralPredictionEngine
+    
+    if "viral_prediction_engine" not in _singletons:
+        _singletons["viral_prediction_engine"] = ViralPredictionEngine()
+        logger.debug("Created ViralPredictionEngine instance")
+    
+    return _singletons["viral_prediction_engine"]
+
+
 # --- Authentication Dependencies (Example) ---
 # Example API Key Auth (adjust as needed)
 # api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)

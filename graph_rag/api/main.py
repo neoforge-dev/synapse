@@ -34,6 +34,7 @@ from graph_rag.api.routers.concepts import router as concepts_router
 from graph_rag.api.routers.dashboard import create_dashboard_router
 from graph_rag.api.routers.graph import create_graph_router
 from graph_rag.api.routers.reasoning import create_reasoning_router
+from graph_rag.api.routers.brand_safety import router as brand_safety_router
 
 # Local application imports
 from graph_rag.config import get_settings
@@ -701,6 +702,7 @@ def create_app() -> FastAPI:
     api_router.include_router(admin_router, prefix="/admin", tags=["Admin"])
     api_router.include_router(reasoning_router, prefix="/reasoning", tags=["Reasoning"])
     api_router.include_router(concepts_router, tags=["Concepts"])
+    api_router.include_router(brand_safety_router, tags=["Brand Safety"])
 
     app.include_router(api_router)  # Remove prefix="/api/v1" here
 

@@ -8,4 +8,6 @@ __all__ = [
     "interfaces",
     "knowledge_graph_builder",
     "persistent_kg_builder",
+    "viral_prediction_engine",
+    "brand_safety_analyzer",
 ]
