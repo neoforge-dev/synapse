@@ -5,16 +5,13 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from graph_rag.api.errors import (
-    ErrorClassifier,
-    MemgraphConnectionError,
-    VectorStoreError,
-    SearchError,
-    handle_search_error,
+from graph_rag.core.interfaces import (
+    EmbeddingService,
+    GraphRepository,
+    SearchResultData,
+    VectorStore,
 )
-from graph_rag.core.interfaces import GraphRepository, SearchResultData, VectorStore, EmbeddingService
 from graph_rag.domain.models import Chunk
-from graph_rag.infrastructure.repositories.graph_repository import MemgraphRepository
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +68,7 @@ class SearchService:
 
             # 3. Return results
             return search_results
-            
+
         except Exception as e:
             logger.warning(f"Graph search failed: {e}, attempting fallback")
             # Fallback to simple text matching if available
@@ -116,16 +113,16 @@ class SearchService:
             ]
 
             return search_results
-            
+
         except Exception as e:
             logger.warning(f"Vector similarity search failed: {e}, falling back to keyword search")
             # Fallback to keyword search when vector search fails
             return await self.search_chunks(query, limit)
 
     async def search_with_fallback(
-        self, 
-        query: str, 
-        limit: int = 10, 
+        self,
+        query: str,
+        limit: int = 10,
         strategy: str = "hybrid"
     ) -> list[SearchResult]:
         """
@@ -140,7 +137,7 @@ class SearchService:
             List of SearchResult objects
         """
         results = []
-        
+
         # Try vector search first if requested
         if strategy in ["vector", "hybrid"]:
             try:
@@ -151,7 +148,7 @@ class SearchService:
                     return results
             except Exception as e:
                 logger.warning(f"Vector search failed: {e}")
-        
+
         # Try keyword/graph search if vector failed or was not requested
         if strategy in ["keyword", "hybrid"] or not results:
             try:
@@ -162,7 +159,7 @@ class SearchService:
                     return results
             except Exception as e:
                 logger.warning(f"Keyword search failed: {e}")
-        
+
         # Final fallback - simple text matching
         logger.warning("All primary search methods failed, using basic fallback")
         return await self._fallback_search(query, limit)
@@ -176,22 +173,22 @@ class SearchService:
         try:
             # Try to get any chunks from the repository
             all_chunks = await self.repository.get_all_chunks(limit=limit * 3)  # Get more for filtering
-            
+
             if not all_chunks:
                 logger.warning("No chunks available for fallback search")
                 return []
-            
+
             # Simple text matching
             query_terms = query.lower().split()
             results = []
-            
+
             for chunk in all_chunks:
                 if not chunk.text:
                     continue
-                    
+
                 chunk_text = chunk.text.lower()
                 matches = sum(1 for term in query_terms if term in chunk_text)
-                
+
                 if matches > 0:
                     # Simple scoring based on number of term matches
                     score = matches / len(query_terms)
@@ -203,11 +200,11 @@ class SearchService:
                             score=score,
                         )
                     )
-            
+
             # Sort by score and return top results
             results.sort(key=lambda x: x.score, reverse=True)
             return results[:limit]
-            
+
         except Exception as e:
             logger.error(f"Fallback search also failed: {e}")
             # Return empty results rather than crashing

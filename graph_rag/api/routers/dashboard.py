@@ -1,15 +1,14 @@
 """Business Intelligence Dashboard API endpoints."""
 
 import logging
-from typing import Dict, List, Any, Annotated
-from datetime import datetime, timedelta
+from datetime import datetime
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse
 
-from graph_rag.api.dependencies import get_graph_repository, get_search_service
+from graph_rag.api.dependencies import get_graph_repository
 from graph_rag.core.interfaces import GraphRepository
-from graph_rag.services.search import SearchService
 
 logger = logging.getLogger(__name__)
 
@@ -530,7 +529,7 @@ def create_dashboard_router() -> APIRouter:
         dashboard: str = Query("executive", description="Dashboard type: executive, operational, strategic"),
         timeframe: str = Query("30d", description="Timeframe: 7d, 30d, 90d, 1y"),
         repo: Annotated[GraphRepository, Depends(get_graph_repository)] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get dashboard data for dynamic updates."""
         try:
             # Basic graph statistics (simplified for demo)
@@ -566,7 +565,7 @@ def create_dashboard_router() -> APIRouter:
                     }
                 ]
             }
-            
+
             return data
         except Exception as e:
             logger.error(f"Dashboard data failed: {e}", exc_info=True)

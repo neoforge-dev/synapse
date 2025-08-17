@@ -649,12 +649,12 @@ class MemgraphRepository(GraphStore):
         self, query: str, limit: int = 10
     ) -> list["SearchResultData"]:
         """Performs keyword search across chunk text content using case-insensitive CONTAINS."""
-        from graph_rag.core.interfaces import SearchResultData, ChunkData
-        
+        from graph_rag.core.interfaces import ChunkData, SearchResultData
+
         # Simple keyword search using Cypher CONTAINS for case-insensitive text matching
         # This could be enhanced with full-text indexing in production
         query_lower = query.lower()
-        
+
         # Use toLower() instead of (?i) for Memgraph compatibility
         cypher_query = """
         MATCH (c:Chunk)
@@ -663,20 +663,20 @@ class MemgraphRepository(GraphStore):
         ORDER BY size(c.text) ASC
         LIMIT $limit
         """
-        
+
         params = {"query_lower": query_lower, "limit": limit}
-        
+
         try:
             result, _, _ = await self._driver.execute_query(cypher_query, params)
             search_results = []
-            
+
             for record in result:
                 chunk_node = record["c"]
-                
+
                 # Extract properties from the node
                 if hasattr(chunk_node, "properties"):
                     props = chunk_node.properties
-                    
+
                     # Create ChunkData from node properties
                     chunk_data = ChunkData(
                         id=props.get("id", ""),
@@ -685,21 +685,21 @@ class MemgraphRepository(GraphStore):
                         metadata=props.get("metadata", {}),
                         embedding=props.get("embedding"),
                     )
-                    
+
                     # Calculate simple score based on keyword matches
                     # This is a basic scoring - could be enhanced with TF-IDF or BM25
                     text_lower = chunk_data.text.lower()
                     score = text_lower.count(query_lower) / max(len(text_lower.split()), 1)
-                    
+
                     search_result = SearchResultData(
                         chunk=chunk_data,
                         score=score
                     )
                     search_results.append(search_result)
-            
+
             logger.debug(f"Keyword search for '{query}' returned {len(search_results)} results")
             return search_results
-            
+
         except Exception as e:
             logger.error(f"Error performing keyword search for '{query}': {e}", exc_info=True)
             return []

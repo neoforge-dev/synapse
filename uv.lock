@@ -3293,13 +3293,13 @@ requires-dist = [
     { name = "scikit-learn", specifier = ">=1.2" },
     { name = "sentence-transformers", marker = "extra == 'llm'", specifier = ">=2.2" },
     { name = "spacy", marker = "extra == 'dev'", specifier = ">=3.7" },
-    { name = "synapse-graph-rag", extras = ["faiss", "llm", "mcp"], marker = "extra == 'all'" },
+    { name = "synapse-graph-rag", extras = ["faiss", "graph", "llm", "mcp"], marker = "extra == 'all'" },
     { name = "tenacity", specifier = ">=8.2" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=4.0" },
     { name = "typer", specifier = ">=0.9" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.23" },
 ]
-provides-extras = ["faiss", "llm", "mcp", "all", "dev", "docs"]
+provides-extras = ["faiss", "graph", "llm", "mcp", "all", "dev", "docs"]
 
 [[package]]
 name = "tenacity"

@@ -5,7 +5,7 @@ Implements RFC 7807 Problem Details for HTTP APIs for consistent error responses
 
 import logging
 import traceback
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
@@ -227,7 +227,7 @@ def raise_internal_error(message: str = "An internal server error occurred", err
 # Extended error classes for specific Graph-RAG scenarios
 class MemgraphConnectionError(ServiceUnavailableError):
     """Memgraph database connection errors."""
-    
+
     def __init__(self, reason: str | None = None, **kwargs):
         recovery_suggestions = [
             "Check if Memgraph is running: 'docker ps' or 'make run-memgraph'",
@@ -236,7 +236,7 @@ class MemgraphConnectionError(ServiceUnavailableError):
             "Check system health: 'synapse admin health'"
         ]
         super().__init__(
-            "Knowledge graph database", 
+            "Knowledge graph database",
             reason=reason or "Connection failed",
             recovery_suggestions=recovery_suggestions,
             error_code="MEMGRAPH_CONNECTION_FAILED",
@@ -246,7 +246,7 @@ class MemgraphConnectionError(ServiceUnavailableError):
 
 class VectorStoreError(ServiceUnavailableError):
     """Vector store operation errors."""
-    
+
     def __init__(self, operation: str, reason: str | None = None, **kwargs):
         recovery_suggestions = [
             "Try rebuilding vector index: 'synapse admin rebuild-vectors'",
@@ -265,7 +265,7 @@ class VectorStoreError(ServiceUnavailableError):
 
 class EmbeddingServiceError(ServiceUnavailableError):
     """Embedding generation service errors."""
-    
+
     def __init__(self, reason: str | None = None, **kwargs):
         recovery_suggestions = [
             "Retry with mock embeddings: add '--no-embeddings' flag",
@@ -284,8 +284,8 @@ class EmbeddingServiceError(ServiceUnavailableError):
 
 class IngestionError(GraphRAGError):
     """Document ingestion pipeline errors."""
-    
-    def __init__(self, document_id: str | None = None, stage: str | None = None, 
+
+    def __init__(self, document_id: str | None = None, stage: str | None = None,
                  reason: str | None = None, recoverable: bool = True, **kwargs):
         message = "Document ingestion failed"
         if document_id:
@@ -294,7 +294,7 @@ class IngestionError(GraphRAGError):
             message += f" at stage '{stage}'"
         if reason:
             message += f": {reason}"
-            
+
         recovery_suggestions = []
         if recoverable:
             recovery_suggestions.extend([
@@ -309,7 +309,7 @@ class IngestionError(GraphRAGError):
                 "Verify file permissions and accessibility",
                 "Try a different document format if possible"
             ])
-            
+
         super().__init__(message, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, **kwargs)
         self.details.update({
             "document_id": document_id,
@@ -321,22 +321,22 @@ class IngestionError(GraphRAGError):
 
 class SearchError(GraphRAGError):
     """Search operation errors with fallback suggestions."""
-    
-    def __init__(self, query: str | None = None, search_type: str | None = None, 
+
+    def __init__(self, query: str | None = None, search_type: str | None = None,
                  reason: str | None = None, **kwargs):
         message = "Search operation failed"
         if query:
             message += f" for query '{query[:50]}...' " if len(query) > 50 else f" for query '{query}'"
         if reason:
             message += f": {reason}"
-            
+
         recovery_suggestions = [
             "Try simplified search: 'synapse search <simple keywords>'",
             "Use different search modes: '--vector-only' or '--graph-only'",
             "Check if documents are ingested: 'synapse admin stats'",
             "Verify system health: 'synapse admin health'"
         ]
-        
+
         super().__init__(message, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, **kwargs)
         self.details.update({
             "query": query,
@@ -347,21 +347,21 @@ class SearchError(GraphRAGError):
 
 class ConfigurationError(ValidationError):
     """Configuration and setup errors."""
-    
+
     def __init__(self, config_key: str | None = None, reason: str | None = None, **kwargs):
         message = "Configuration error"
         if config_key:
             message += f" for '{config_key}'"
         if reason:
             message += f": {reason}"
-            
+
         recovery_suggestions = [
             "Check configuration: 'synapse config show'",
             "Set required environment variables (SYNAPSE_*)",
             "Initialize configuration: 'synapse init'",
             "View configuration help: 'synapse config --help'"
         ]
-        
+
         super().__init__(message, **kwargs)
         self.details.update({
             "config_key": config_key,
@@ -372,33 +372,33 @@ class ConfigurationError(ValidationError):
 # Error detection and classification utilities
 class ErrorClassifier:
     """Classify and transform common errors into user-friendly GraphRAG errors."""
-    
+
     @staticmethod
-    def classify_error(error: Exception, context: Dict[str, Any] | None = None) -> GraphRAGError:
+    def classify_error(error: Exception, context: dict[str, Any] | None = None) -> GraphRAGError:
         """Transform common exceptions into appropriate GraphRAG errors with user guidance."""
         context = context or {}
         error_msg = str(error).lower()
-        
+
         # Memgraph/Database connection errors
         if any(keyword in error_msg for keyword in [
             "connection refused", "connection failed", "connection timed out",
             "host unreachable", "mgclient", "memgraph", "cypher"
         ]):
             return MemgraphConnectionError(reason=str(error))
-            
+
         # Vector store errors
         if any(keyword in error_msg for keyword in [
             "faiss", "vector", "embedding dimension", "index error", "dimension mismatch"
         ]):
             operation = context.get("operation", "unknown operation")
             return VectorStoreError(operation=operation, reason=str(error))
-            
+
         # Embedding service errors
         if any(keyword in error_msg for keyword in [
             "sentence-transformers", "embedding model", "tokenizer", "transformers", "torch"
         ]):
             return EmbeddingServiceError(reason=str(error))
-            
+
         # File and permission errors
         if any(keyword in error_msg for keyword in [
             "permission denied", "file not found", "no such file", "access denied"
@@ -407,7 +407,7 @@ class ErrorClassifier:
                 f"File access error: {error}",
                 error_code="FILE_ACCESS_ERROR"
             )
-            
+
         # Network and timeout errors
         if any(keyword in error_msg for keyword in [
             "timeout", "network", "dns", "resolve", "unreachable"
@@ -422,7 +422,7 @@ class ErrorClassifier:
                     "Check firewall and proxy settings"
                 ]
             )
-            
+
         # Out of memory errors
         if any(keyword in error_msg for keyword in [
             "out of memory", "memory error", "allocation failed"
@@ -437,7 +437,7 @@ class ErrorClassifier:
                     "Increase system memory if possible"
                 ]
             )
-            
+
         # Generic fallback
         return InternalServerError(
             f"Unexpected error: {error}",
@@ -446,16 +446,16 @@ class ErrorClassifier:
 
 
 # Enhanced convenience functions with automatic error classification
-def handle_service_error(error: Exception, service_name: str, context: Dict[str, Any] | None = None) -> None:
+def handle_service_error(error: Exception, service_name: str, context: dict[str, Any] | None = None) -> None:
     """Handle service errors with automatic classification and user guidance."""
     context = context or {}
     context["service_name"] = service_name
-    
+
     classified_error = ErrorClassifier.classify_error(error, context)
     raise classified_error
 
 
-def handle_ingestion_error(error: Exception, document_id: str | None = None, 
+def handle_ingestion_error(error: Exception, document_id: str | None = None,
                           stage: str | None = None) -> None:
     """Handle ingestion errors with specific context."""
     # Check if this is a recoverable error
@@ -463,7 +463,7 @@ def handle_ingestion_error(error: Exception, document_id: str | None = None,
     recoverable = not any(keyword in error_msg for keyword in [
         "corrupted", "encrypted", "invalid format", "unsupported"
     ])
-    
+
     raise IngestionError(
         document_id=document_id,
         stage=stage,
@@ -472,7 +472,7 @@ def handle_ingestion_error(error: Exception, document_id: str | None = None,
     )
 
 
-def handle_search_error(error: Exception, query: str | None = None, 
+def handle_search_error(error: Exception, query: str | None = None,
                        search_type: str | None = None) -> None:
     """Handle search errors with query context."""
     raise SearchError(

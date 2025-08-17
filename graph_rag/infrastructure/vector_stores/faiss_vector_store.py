@@ -232,18 +232,18 @@ class FaissVectorStore(VectorStore):
         if search_type.lower() != "vector":
             logger.warning(f"FaissVectorStore only supports vector search, got: {search_type}")
             return []
-            
+
         if not self.embedding_service:
             logger.error("No embedding service available for text-to-vector conversion")
             return []
-            
+
         try:
             # Generate embedding for the query text
             query_embedding = await self.embedding_service.generate_embedding(query_text)
             if not query_embedding:
                 logger.error(f"Failed to generate embedding for query: '{query_text}'")
                 return []
-                
+
             # Use the protocol method to perform the search
             return await self.search_similar_chunks(
                 query_vector=query_embedding,

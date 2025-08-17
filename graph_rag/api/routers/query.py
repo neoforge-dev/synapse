@@ -114,7 +114,7 @@ def create_query_router() -> APIRouter:
                 f"Error processing query '{query_request.query_text}': {e}",
                 exc_info=True,
             )
-            
+
             # Provide specific error guidance based on error type
             error_guidance = _get_error_guidance(e)
             error_detail = {
@@ -123,7 +123,7 @@ def create_query_router() -> APIRouter:
                 "guidance": error_guidance,
                 "suggestions": _get_recovery_suggestions(e)
             }
-            
+
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=error_detail,
@@ -200,7 +200,7 @@ def create_query_router() -> APIRouter:
             logger.error(
                 f"Error processing ask '{ask_request.text}': {e}", exc_info=True
             )
-            
+
             # Provide specific error guidance based on error type
             error_guidance = _get_error_guidance(e)
             error_detail = {
@@ -209,7 +209,7 @@ def create_query_router() -> APIRouter:
                 "guidance": error_guidance,
                 "suggestions": _get_recovery_suggestions(e)
             }
-            
+
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=error_detail,
@@ -326,7 +326,7 @@ def create_query_router() -> APIRouter:
             logger.error(
                 f"Error processing enhanced ask '{ask_request.text}': {e}", exc_info=True
             )
-            
+
             # Provide specific error guidance based on error type
             error_guidance = _get_error_guidance(e)
             error_detail = {
@@ -335,7 +335,7 @@ def create_query_router() -> APIRouter:
                 "guidance": error_guidance,
                 "suggestions": _get_recovery_suggestions(e)
             }
-            
+
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=error_detail,
@@ -488,7 +488,7 @@ def _to_api_chunks(query_result: DomainQueryResult) -> list[QueryResultChunk]:
         # Handle both chunk model types: domain.models.Chunk (has properties) and models.Chunk (has metadata)
         chunk_metadata = {}
         chunk_score = None
-        
+
         # Try to get metadata/properties from chunk
         if hasattr(chunk, 'properties') and chunk.properties:
             chunk_metadata = chunk.properties
@@ -496,10 +496,10 @@ def _to_api_chunks(query_result: DomainQueryResult) -> list[QueryResultChunk]:
         elif hasattr(chunk, 'metadata') and chunk.metadata:
             chunk_metadata = chunk.metadata
             chunk_score = chunk.metadata.get("score")
-        
+
         # Get text content - handle both 'text' and 'content' attributes
         chunk_text = getattr(chunk, 'text', None) or getattr(chunk, 'content', '')
-        
+
         api_chunks.append(
             QueryResultChunk(
                 id=chunk.id,
@@ -541,47 +541,47 @@ def _get_error_guidance(error: Exception) -> str:
     """Provide user-friendly error guidance based on exception type."""
     error_str = str(error).lower()
     error_type = type(error).__name__
-    
+
     # Check for common error patterns
     if "chunk" in error_str and ("properties" in error_str or "metadata" in error_str):
         return "There's a data model mismatch. The system is trying to access chunk properties that don't exist."
-    
+
     elif "connection" in error_str or "timeout" in error_str:
         return "There's a connectivity issue with the underlying services (database or LLM)."
-    
+
     elif "memory" in error_str or "out of memory" in error_str:
         return "The system is running out of memory. Try reducing query complexity or chunk size."
-    
+
     elif "rate limit" in error_str or "429" in error_str:
         return "Rate limits have been exceeded. Please wait before making additional requests."
-    
+
     elif "api key" in error_str or "unauthorized" in error_str or "401" in error_str:
         return "Authentication failed. Check your API keys and permissions."
-    
+
     elif "not found" in error_str or "404" in error_str:
         return "Requested resource not found. Verify that the required data has been ingested."
-    
+
     elif "vector store" in error_str or "embedding" in error_str:
         return "There's an issue with the vector search system. Check vector store configuration."
-    
+
     elif "graph" in error_str or "memgraph" in error_str:
         return "There's an issue with the graph database. Ensure Memgraph is running and accessible."
-    
+
     elif "llm" in error_str or "language model" in error_str:
         return "There's an issue with the language model service. Check LLM configuration and connectivity."
-    
+
     elif error_type == "AttributeError":
         return "A required attribute or method is missing. This may indicate a configuration or version mismatch."
-    
+
     elif error_type == "ValueError":
         return "Invalid input value provided. Check the request parameters and data format."
-    
+
     elif error_type == "TypeError":
         return "Data type mismatch detected. This may indicate an internal data processing issue."
-    
+
     elif error_type == "ImportError" or error_type == "ModuleNotFoundError":
         return "A required module or dependency is missing or not properly installed."
-    
+
     else:
         return "An unexpected error occurred. Check the system logs for more details."
 
@@ -591,7 +591,7 @@ def _get_recovery_suggestions(error: Exception) -> list[str]:
     error_str = str(error).lower()
     error_type = type(error).__name__
     suggestions = []
-    
+
     # Check for common error patterns and provide suggestions
     if "chunk" in error_str and ("properties" in error_str or "metadata" in error_str):
         suggestions.extend([
@@ -599,7 +599,7 @@ def _get_recovery_suggestions(error: Exception) -> list[str]:
             "Check if recent data was ingested with incompatible chunk formats",
             "Clear the vector store and re-ingest documents if the issue persists"
         ])
-    
+
     elif "connection" in error_str or "timeout" in error_str:
         suggestions.extend([
             "Check if Memgraph is running: 'docker ps' or 'synapse up'",
@@ -607,56 +607,56 @@ def _get_recovery_suggestions(error: Exception) -> list[str]:
             "Check service logs for more detailed error information",
             "Try again in a few moments as this may be a temporary issue"
         ])
-    
+
     elif "rate limit" in error_str:
         suggestions.extend([
             "Wait a few minutes before making additional requests",
             "Reduce the frequency of your requests",
             "Contact support if you need higher rate limits"
         ])
-    
+
     elif "api key" in error_str or "unauthorized" in error_str:
         suggestions.extend([
             "Check environment variables for API keys (OPENAI_API_KEY, ANTHROPIC_API_KEY)",
             "Verify API key permissions and quotas",
             "Ensure you're using the correct API endpoint"
         ])
-    
+
     elif "not found" in error_str:
         suggestions.extend([
             "Ingest some documents first using the /api/v1/ingestion/documents endpoint",
             "Check if the requested resource ID is correct",
             "Verify that the data was successfully stored"
         ])
-    
+
     elif "vector store" in error_str or "embedding" in error_str:
         suggestions.extend([
             "Check if the embedding service is properly configured",
             "Verify that the vector store path is accessible and writable",
             "Try switching to a different vector store type (simple/faiss)"
         ])
-    
+
     elif "graph" in error_str or "memgraph" in error_str:
         suggestions.extend([
             "Start Memgraph: 'make up' or 'docker run -p 7687:7687 memgraph/memgraph'",
             "Check Memgraph connection settings in environment variables",
             "Switch to vector-only mode if graph features aren't required"
         ])
-    
+
     elif "llm" in error_str:
         suggestions.extend([
             "Check LLM service configuration and API keys",
             "Try switching to mock LLM service for testing",
             "Verify internet connectivity for external LLM services"
         ])
-    
+
     elif error_type == "ImportError" or error_type == "ModuleNotFoundError":
         suggestions.extend([
             "Install missing dependencies: 'pip install -e .'",
             "Check if optional dependencies are needed for your configuration",
             "Verify Python environment and virtual environment setup"
         ])
-    
+
     else:
         suggestions.extend([
             "Check system logs for more detailed error information",
@@ -664,5 +664,5 @@ def _get_recovery_suggestions(error: Exception) -> list[str]:
             "Restart the API server if the problem persists",
             "Contact support with the error details if issues continue"
         ])
-    
+
     return suggestions

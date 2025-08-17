@@ -30,11 +30,11 @@ from graph_rag.api.middleware import (
 from graph_rag.api.routers import documents, ingestion, query, search
 from graph_rag.api.routers.admin import create_admin_router
 from graph_rag.api.routers.auth import create_auth_router
+from graph_rag.api.routers.brand_safety import router as brand_safety_router
 from graph_rag.api.routers.concepts import router as concepts_router
 from graph_rag.api.routers.dashboard import create_dashboard_router
 from graph_rag.api.routers.graph import create_graph_router
 from graph_rag.api.routers.reasoning import create_reasoning_router
-from graph_rag.api.routers.brand_safety import router as brand_safety_router
 
 # Local application imports
 from graph_rag.config import get_settings
@@ -592,23 +592,23 @@ def get_search_service(request: Request):
     # Check if we have a search service in state
     if hasattr(request.app.state, "search_service") and request.app.state.search_service:
         return request.app.state.search_service
-    
+
     # Create on-demand from available dependencies
     try:
         from graph_rag.services.search import SearchService
-        
+
         graph_repo = get_graph_repository(request)
         vector_store = get_vector_store(request)
-        
+
         search_service = SearchService(
             graph_repository=graph_repo,
             vector_store=vector_store
         )
-        
+
         # Cache it for future use
         request.app.state.search_service = search_service
         return search_service
-        
+
     except Exception as e:
         logger.error(f"Failed to create SearchService: {e}", exc_info=True)
         raise HTTPException(status_code=503, detail="Search service not available")
@@ -689,7 +689,7 @@ def create_app() -> FastAPI:
 
     # Authentication router (no auth required for auth endpoints)
     api_router.include_router(auth_router)
-    
+
     # Routers - Prefixes are defined within the factory's router
     api_router.include_router(documents_router, prefix="/documents", tags=["Documents"])
     api_router.include_router(ingestion_router, prefix="/ingestion", tags=["Ingestion"])
@@ -854,7 +854,7 @@ def create_app() -> FastAPI:
     app.add_exception_handler(GraphRAGError, graph_rag_exception_handler)
     app.add_exception_handler(HTTPException, http_exception_handler)
     app.add_exception_handler(Exception, general_exception_handler)
-    
+
     # Add catch-all route for undefined API endpoints to ensure RFC 7807 compliance
     @app.api_route("/api/v1/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
     async def catch_undefined_api_routes(path: str):

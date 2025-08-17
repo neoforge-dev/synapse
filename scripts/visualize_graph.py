@@ -7,41 +7,41 @@ Generates interactive network visualizations of the knowledge graph.
 import asyncio
 import json
 import sys
-from pathlib import Path
-from typing import Dict, List, Any, Set, Tuple
 from datetime import datetime
+from pathlib import Path
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 from graph_rag.config import get_settings
+from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+
 
 async def main():
     """Main visualization function"""
     print("🎨 Starting Knowledge Graph Visualization...")
     print(f"📅 Started at: {datetime.now()}")
-    
+
     # Initialize settings and connections
     settings = get_settings()
     settings.memgraph_port = 7687  # Use default port
-    
+
     try:
         # Initialize graph repository
         graph_repo = MemgraphGraphRepository(settings_obj=settings)
-        
+
         print("\n🔍 Extracting graph data...")
-        
+
         # Extract graph structure
         nodes, edges = await extract_graph_structure(graph_repo)
-        
+
         print(f"📊 Extracted {len(nodes)} nodes and {len(edges)} edges")
-        
+
         # Generate visualizations
         await generate_network_visualizations(nodes, edges)
-        
+
         print(f"\n✅ Visualization completed at: {datetime.now()}")
-        
+
     except Exception as e:
         print(f"❌ Error during visualization: {e}")
         import traceback
@@ -51,9 +51,9 @@ async def main():
         if 'graph_repo' in locals():
             await graph_repo.close()
 
-async def extract_graph_structure(graph_repo: MemgraphGraphRepository) -> Tuple[List[Dict], List[Dict]]:
+async def extract_graph_structure(graph_repo: MemgraphGraphRepository) -> tuple[list[dict], list[dict]]:
     """Extract nodes and edges for visualization"""
-    
+
     # Get sample of most connected entities and documents
     nodes_query = """
     MATCH (n)
@@ -74,24 +74,24 @@ async def extract_graph_structure(graph_repo: MemgraphGraphRepository) -> Tuple[
         n.category as category,
         connections
     """
-    
+
     nodes_result = await graph_repo.execute_query(nodes_query)
-    
+
     nodes = []
     node_ids = set()
-    
+
     for row in nodes_result:
         node_id = row['node_id']
         node_ids.add(node_id)
-        
+
         label = row['labels'][0] if row['labels'] else 'Unknown'
         name = row.get('name') or row.get('title') or f"{label}_{node_id}"
-        
+
         # Ensure name is a string and truncate long names
         name = str(name) if name is not None else f"{label}_{node_id}"
         if len(name) > 50:
             name = name[:47] + "..."
-        
+
         node = {
             'id': str(node_id),
             'label': name,
@@ -101,7 +101,7 @@ async def extract_graph_structure(graph_repo: MemgraphGraphRepository) -> Tuple[
             'connections': row['connections'],
             'size': min(max(row['connections'] * 2, 10), 50)  # Size based on connections
         }
-        
+
         # Color coding
         if label == 'Entity':
             entity_type = row.get('entity_type', 'UNKNOWN')
@@ -114,9 +114,9 @@ async def extract_graph_structure(graph_repo: MemgraphGraphRepository) -> Tuple[
         else:
             node['color'] = '#999999'
             node['group'] = label
-        
+
         nodes.append(node)
-    
+
     # Get edges between the selected nodes
     edges_query = f"""
     MATCH (a)-[r]->(b)
@@ -127,9 +127,9 @@ async def extract_graph_structure(graph_repo: MemgraphGraphRepository) -> Tuple[
         type(r) as relationship_type
     LIMIT 2000
     """
-    
+
     edges_result = await graph_repo.execute_query(edges_query)
-    
+
     edges = []
     for row in edges_result:
         edge = {
@@ -139,7 +139,7 @@ async def extract_graph_structure(graph_repo: MemgraphGraphRepository) -> Tuple[
             'color': get_edge_color(row['relationship_type'])
         }
         edges.append(edge)
-    
+
     return nodes, edges
 
 def get_entity_color(entity_type: str) -> str:
@@ -183,13 +183,13 @@ def get_edge_color(relationship_type: str) -> str:
     }
     return colors.get(relationship_type, '#BDBDBD')
 
-async def generate_network_visualizations(nodes: List[Dict], edges: List[Dict]):
+async def generate_network_visualizations(nodes: list[dict], edges: list[dict]):
     """Generate network visualization files"""
-    
+
     # Create visualizations directory
     viz_dir = Path("visualizations")
     viz_dir.mkdir(exist_ok=True)
-    
+
     # Generate network data
     network_data = {
         'nodes': nodes,
@@ -202,30 +202,30 @@ async def generate_network_visualizations(nodes: List[Dict], edges: List[Dict]):
             'edge_types': list(set(edge['type'] for edge in edges))
         }
     }
-    
+
     # Save network data as JSON
     with open(viz_dir / "network_data.json", "w") as f:
         json.dump(network_data, f, indent=2, default=str)
-    
+
     print(f"📊 Generated network data: {viz_dir}/network_data.json")
-    
+
     # Generate interactive network visualization
     html_content = generate_network_html(network_data)
     with open(viz_dir / "network_visualization.html", "w") as f:
         f.write(html_content)
-    
+
     print(f"🌐 Generated network visualization: {viz_dir}/network_visualization.html")
-    
+
     # Generate Cytoscape.js visualization
     cytoscape_html = generate_cytoscape_html(network_data)
     with open(viz_dir / "cytoscape_network.html", "w") as f:
         f.write(cytoscape_html)
-    
+
     print(f"🎯 Generated Cytoscape network: {viz_dir}/cytoscape_network.html")
 
-def generate_network_html(data: Dict) -> str:
+def generate_network_html(data: dict) -> str:
     """Generate HTML with vis.js network visualization"""
-    
+
     # Convert data for vis.js format
     vis_nodes = []
     for node in data['nodes']:
@@ -241,7 +241,7 @@ def generate_network_html(data: Dict) -> str:
         if node.get('category'):
             vis_node['title'] += f"<br/>Category: {node['category']}"
         vis_nodes.append(vis_node)
-    
+
     vis_edges = []
     for edge in data['edges']:
         vis_edges.append({
@@ -250,7 +250,7 @@ def generate_network_html(data: Dict) -> str:
             'color': edge['color'],
             'title': f"Relationship: {edge['type']}"
         })
-    
+
     return f"""
 <!DOCTYPE html>
 <html>
@@ -385,12 +385,12 @@ def generate_network_html(data: Dict) -> str:
 </html>
 """
 
-def generate_cytoscape_html(data: Dict) -> str:
+def generate_cytoscape_html(data: dict) -> str:
     """Generate HTML with Cytoscape.js visualization"""
-    
+
     # Convert data for Cytoscape format
     cy_elements = []
-    
+
     # Add nodes
     for node in data['nodes']:
         cy_elements.append({
@@ -408,7 +408,7 @@ def generate_cytoscape_html(data: Dict) -> str:
                 'height': node['size']
             }
         })
-    
+
     # Add edges
     for edge in data['edges']:
         cy_elements.append({
@@ -422,7 +422,7 @@ def generate_cytoscape_html(data: Dict) -> str:
                 'line-color': edge['color']
             }
         })
-    
+
     return f"""
 <!DOCTYPE html>
 <html>

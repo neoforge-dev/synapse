@@ -304,7 +304,7 @@ def create_vector_store(settings: Settings) -> VectorStore:
         )
 
         return FaissVectorStore(
-            path=settings.vector_store_path, 
+            path=settings.vector_store_path,
             embedding_dimension=dim,
             embedding_service=embedding_service
         )
@@ -657,11 +657,11 @@ async def get_search_service(
 async def get_concept_extractor() -> Any:
     """Dependency getter for ConceptExtractor."""
     from graph_rag.core.concept_extractor import EnhancedConceptExtractor
-    
+
     if "concept_extractor" not in _singletons:
         _singletons["concept_extractor"] = EnhancedConceptExtractor(use_advanced_nlp=True)
         logger.debug("Created ConceptExtractor instance")
-    
+
     return _singletons["concept_extractor"]
 
 
@@ -670,7 +670,7 @@ async def get_concept_entity_extractor(
 ) -> Any:
     """Dependency getter for ConceptEntityExtractor that combines traditional NER with concept extraction."""
     from graph_rag.core.concept_entity_extractor import ConceptEntityExtractor
-    
+
     cache_key = f"concept_entity_extractor_{id(traditional_extractor)}"
     if cache_key not in _singletons:
         _singletons[cache_key] = ConceptEntityExtractor(
@@ -678,7 +678,7 @@ async def get_concept_entity_extractor(
             use_advanced_concepts=True
         )
         logger.debug("Created ConceptEntityExtractor instance")
-    
+
     return _singletons[cache_key]
 
 
@@ -687,25 +687,25 @@ async def get_belief_preference_extractor(
 ) -> Any:
     """Dependency getter for BeliefPreferenceExtractor specialized for Epic 6."""
     from graph_rag.core.concept_entity_extractor import BeliefPreferenceExtractor
-    
+
     cache_key = f"belief_preference_extractor_{id(traditional_extractor)}"
     if cache_key not in _singletons:
         _singletons[cache_key] = BeliefPreferenceExtractor(
             traditional_extractor=traditional_extractor
         )
         logger.debug("Created BeliefPreferenceExtractor instance for Epic 6")
-    
+
     return _singletons[cache_key]
 
 
 async def get_temporal_tracker() -> Any:
     """Dependency getter for TemporalTracker."""
     from graph_rag.core.temporal_tracker import TemporalTracker
-    
+
     if "temporal_tracker" not in _singletons:
         _singletons["temporal_tracker"] = TemporalTracker()
         logger.debug("Created TemporalTracker instance")
-    
+
     return _singletons["temporal_tracker"]
 
 
@@ -714,11 +714,11 @@ async def get_cross_platform_correlator(
 ) -> Any:
     """Dependency getter for CrossPlatformCorrelator."""
     from graph_rag.services.cross_platform_correlator import CrossPlatformCorrelator
-    
+
     # Create per request since it maintains state
     correlator = CrossPlatformCorrelator(graph_repo)
     logger.debug("Created CrossPlatformCorrelator instance")
-    
+
     return correlator
 
 
@@ -726,29 +726,29 @@ async def get_brand_safety_analyzer(
     brand_profile: str = "moderate"
 ) -> Any:
     """Dependency getter for BrandSafetyAnalyzer."""
-    from graph_rag.core.brand_safety_analyzer import BrandSafetyAnalyzer, BrandProfile
-    
+    from graph_rag.core.brand_safety_analyzer import BrandProfile, BrandSafetyAnalyzer
+
     # Parse brand profile
     try:
         profile = BrandProfile(brand_profile.lower())
     except ValueError:
         profile = BrandProfile.MODERATE
-    
+
     # Create analyzer with specified profile
     analyzer = BrandSafetyAnalyzer(profile)
     logger.debug(f"Created BrandSafetyAnalyzer instance with {profile.value} profile")
-    
+
     return analyzer
 
 
 async def get_viral_prediction_engine() -> Any:
     """Dependency getter for ViralPredictionEngine."""
     from graph_rag.core.viral_prediction_engine import ViralPredictionEngine
-    
+
     if "viral_prediction_engine" not in _singletons:
         _singletons["viral_prediction_engine"] = ViralPredictionEngine()
         logger.debug("Created ViralPredictionEngine instance")
-    
+
     return _singletons["viral_prediction_engine"]
 
 
@@ -756,74 +756,74 @@ async def get_content_strategy_optimizer(
     brand_profile: str = "moderate"
 ) -> Any:
     """Dependency getter for ContentStrategyOptimizer."""
-    from graph_rag.core.content_strategy_optimizer import ContentStrategyOptimizer, BrandProfile
     from graph_rag.core.brand_safety_analyzer import BrandProfile as BSBrandProfile
-    
+    from graph_rag.core.content_strategy_optimizer import ContentStrategyOptimizer
+
     # Parse brand profile
     try:
         profile = BSBrandProfile(brand_profile.lower())
     except ValueError:
         profile = BSBrandProfile.MODERATE
-    
+
     # Create optimizer with specified profile
     optimizer = ContentStrategyOptimizer(profile)
     logger.debug(f"Created ContentStrategyOptimizer instance with {profile.value} profile")
-    
+
     return optimizer
 
 
 async def get_content_optimization_engine() -> Any:
     """Dependency getter for ContentOptimizationEngine."""
     from graph_rag.core.content_optimization_engine import ContentOptimizationEngine
-    
+
     if "content_optimization_engine" not in _singletons:
         _singletons["content_optimization_engine"] = ContentOptimizationEngine()
         logger.debug("Created ContentOptimizationEngine instance")
-    
+
     return _singletons["content_optimization_engine"]
 
 
 async def get_audience_segmentation_engine() -> Any:
     """Dependency getter for AudienceSegmentationEngine."""
     from graph_rag.core.audience_intelligence import AudienceSegmentationEngine
-    
+
     if "audience_segmentation_engine" not in _singletons:
         _singletons["audience_segmentation_engine"] = AudienceSegmentationEngine()
         logger.debug("Created AudienceSegmentationEngine instance")
-    
+
     return _singletons["audience_segmentation_engine"]
 
 
 async def get_competitive_analyzer() -> Any:
     """Dependency getter for CompetitiveAnalyzer."""
     from graph_rag.core.competitive_analysis import CompetitiveAnalyzer
-    
+
     if "competitive_analyzer" not in _singletons:
         _singletons["competitive_analyzer"] = CompetitiveAnalyzer()
         logger.debug("Created CompetitiveAnalyzer instance")
-    
+
     return _singletons["competitive_analyzer"]
 
 
 async def get_analytics_risk_engine() -> Any:
     """Dependency getter for AnalyticsRiskEngine."""
     from graph_rag.core.analytics_risk_engine import AnalyticsRiskEngine
-    
+
     if "analytics_risk_engine" not in _singletons:
         _singletons["analytics_risk_engine"] = AnalyticsRiskEngine()
         logger.debug("Created AnalyticsRiskEngine instance")
-    
+
     return _singletons["analytics_risk_engine"]
 
 
 async def get_reasoning_engine() -> Any:
     """Dependency getter for ReasoningEngine."""
     from graph_rag.core.reasoning_engine import ReasoningEngine
-    
+
     if "reasoning_engine" not in _singletons:
         _singletons["reasoning_engine"] = ReasoningEngine()
         logger.debug("Created ReasoningEngine instance")
-    
+
     return _singletons["reasoning_engine"]
 
 

@@ -1,13 +1,13 @@
 """Authentication and authorization module for Graph-RAG API."""
 
+from .dependencies import get_admin_user, get_current_user, require_auth
 from .jwt_handler import JWTHandler, JWTSettings
-from .models import User, UserRole, TokenData, UserCreate, UserLogin
-from .dependencies import get_current_user, get_admin_user, require_auth
+from .models import TokenData, User, UserCreate, UserLogin, UserRole
 from .providers import AuthProvider, InMemoryAuthProvider
 
 __all__ = [
     "JWTHandler",
-    "JWTSettings", 
+    "JWTSettings",
     "User",
     "UserRole",
     "TokenData",

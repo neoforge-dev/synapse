@@ -8,14 +8,11 @@ from typing import Any
 from pydantic import BaseModel
 
 from graph_rag.api.errors import (
-    ErrorClassifier,
-    IngestionError,
+    EmbeddingServiceError,
     MemgraphConnectionError,
     VectorStoreError,
-    EmbeddingServiceError,
     handle_ingestion_error,
 )
-
 from graph_rag.api.metrics import (
     inc_ingested_chunks,
     inc_ingested_vectors,
@@ -759,7 +756,7 @@ class IngestionService:
                     entity_id = extracted_entity.id
                     if entity_id not in all_entities:
                         all_entities[entity_id] = extracted_entity
-                    
+
                     # Track that this chunk mentions this entity
                     entity_chunk_mentions.append((entity_id, chunk.id))
 

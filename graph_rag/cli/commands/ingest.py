@@ -14,13 +14,12 @@ import yaml
 
 from graph_rag.api.dependencies import (
     MockEmbeddingService,  # Using Mock by default for CLI
+    create_embedding_service,  # Add embedding service factory
     create_graph_repository,  # Add graceful fallback support
     create_vector_store,  # Add vector store factory
-    create_embedding_service,  # Add embedding service factory
 )
 from graph_rag.cli.error_handler import (
     CLIErrorHandler,
-    handle_cli_error,
     handle_connection_error,
     handle_file_error,
     handle_ingestion_error,
@@ -107,7 +106,7 @@ async def process_and_store_document(
             content = file_path.read_text()
         except Exception as e:
             handle_file_error(str(file_path), e)
-            
+
         try:
             derived_id, id_source, _ = derive_document_id(
                 file_path, content, metadata or {}

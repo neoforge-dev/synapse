@@ -8,7 +8,10 @@ from typing import Any
 
 # Import specific exceptions if needed, or catch the base mgclient.Error
 # from mgclient import OperationalError, DatabaseError # Example
-import mgclient
+try:
+    import mgclient
+except ImportError:
+    mgclient = None
 import neo4j.time  # Import neo4j.time for type checking
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -113,6 +116,10 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
 
     def __init__(self, settings_obj: Settings | None = None):
         """Initializes the repository, establishing connection parameters."""
+        if mgclient is None:
+            raise ImportError(
+                "mgclient is not available. Install pymgclient or use SYNAPSE_DISABLE_GRAPH=true for vector-only mode."
+            )
         if settings_obj is None:
             # Ensure we get a Settings instance if None is passed
             settings_obj = get_settings()

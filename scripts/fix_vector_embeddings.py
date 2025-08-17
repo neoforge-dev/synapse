@@ -9,9 +9,9 @@ import asyncio
 import logging
 
 from graph_rag.api.dependencies import (
-    create_embedding_service, 
-    create_graph_repository, 
-    create_vector_store
+    create_embedding_service,
+    create_graph_repository,
+    create_vector_store,
 )
 from graph_rag.config import get_settings
 from graph_rag.core.interfaces import ChunkData
@@ -24,22 +24,22 @@ logger = logging.getLogger(__name__)
 async def fix_embeddings():
     """Fix embedding consistency between graph store and vector store."""
     settings = get_settings()
-    
+
     # Create services
     logger.info("Initializing services...")
     graph_repo = create_graph_repository(settings)
     vector_store = create_vector_store(settings)
     embedding_service = create_embedding_service(settings)
-    
+
     # Get all chunks from graph store
     logger.info("Fetching all chunks from graph store...")
     try:
         # Query all chunks
         query = "MATCH (c:Chunk) RETURN c.id as id, c.text as text, c.document_id as document_id, c.metadata as metadata"
         rows = await graph_repo.execute_query(query)
-        
+
         logger.info(f"Found {len(rows)} chunks in graph store")
-        
+
         # Convert to ChunkData objects
         chunks_to_embed = []
         for row in rows:
@@ -55,7 +55,7 @@ async def fix_embeddings():
                 text = str(values[1]) if len(values) > 1 else ""
                 document_id = str(values[2]) if len(values) > 2 else ""
                 metadata = values[3] if len(values) > 3 and isinstance(values[3], dict) else {}
-            
+
             if chunk_id and text:
                 chunks_to_embed.append(ChunkData(
                     id=chunk_id,
@@ -64,17 +64,17 @@ async def fix_embeddings():
                     metadata=metadata or {},
                     embedding=None
                 ))
-        
+
         logger.info(f"Prepared {len(chunks_to_embed)} chunks for embedding generation")
-        
+
         # Generate embeddings in batches
         batch_size = 50
         total_processed = 0
-        
+
         for i in range(0, len(chunks_to_embed), batch_size):
             batch = chunks_to_embed[i:i + batch_size]
             logger.info(f"Processing batch {i//batch_size + 1}: {len(batch)} chunks")
-            
+
             # Generate embeddings for this batch
             for chunk in batch:
                 if chunk.text.strip():  # Only embed non-empty text
@@ -84,7 +84,7 @@ async def fix_embeddings():
                         total_processed += 1
                     except Exception as e:
                         logger.error(f"Failed to generate embedding for chunk {chunk.id}: {e}")
-            
+
             # Add batch to vector store
             chunks_with_embeddings = [c for c in batch if c.embedding is not None]
             if chunks_with_embeddings:
@@ -93,14 +93,14 @@ async def fix_embeddings():
                     logger.info(f"Added {len(chunks_with_embeddings)} chunks to vector store")
                 except Exception as e:
                     logger.error(f"Failed to add batch to vector store: {e}")
-        
+
         logger.info(f"✅ Successfully processed {total_processed} chunks")
-        
+
         # Verify the fix
         if hasattr(vector_store, "stats"):
             stats = await vector_store.stats()
             logger.info(f"Vector store now contains: {stats.get('vectors', 0)} vectors")
-        
+
     except Exception as e:
         logger.error(f"Error during embedding fix: {e}", exc_info=True)
         raise

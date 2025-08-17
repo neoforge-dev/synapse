@@ -2,14 +2,14 @@
 
 import json
 import logging
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Tuple
-from dataclasses import dataclass, asdict
 from pathlib import Path
+from typing import Any
 
 from graph_rag.core.concept_extractor import ConceptualEntity, IdeaRelationship
-from graph_rag.core.temporal_tracker import IdeaEvolution, TemporalConcept
-from graph_rag.services.cross_platform_correlator import ContentCorrelation, CrossPlatformCorrelator
+from graph_rag.core.temporal_tracker import IdeaEvolution
+from graph_rag.services.cross_platform_correlator import CrossPlatformCorrelator
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +23,8 @@ class ConceptNode:
     platform: str
     size: float  # Based on importance/frequency
     color: str
-    metadata: Dict[str, Any]
-    position: Optional[Dict[str, float]] = None  # x, y coordinates
+    metadata: dict[str, Any]
+    position: dict[str, float] | None = None  # x, y coordinates
 
 
 @dataclass
@@ -35,26 +35,26 @@ class ConceptEdge:
     relationship_type: str
     weight: float
     color: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 @dataclass
 class ConceptMap:
     """Complete concept map structure."""
-    nodes: List[ConceptNode]
-    edges: List[ConceptEdge]
-    metadata: Dict[str, Any]
+    nodes: list[ConceptNode]
+    edges: list[ConceptEdge]
+    metadata: dict[str, Any]
     layout: str = "force-directed"
 
 
 class ConceptMapper:
     """Service for creating interactive concept maps."""
-    
+
     def __init__(self, correlator: CrossPlatformCorrelator):
         self.correlator = correlator
         self.color_schemes = {
             "STRATEGY": "#FF6B6B",
-            "INNOVATION": "#4ECDC4", 
+            "INNOVATION": "#4ECDC4",
             "PROCESS": "#45B7D1",
             "INSIGHT": "#96CEB4",
             "ENGAGEMENT": "#FFEAA7",
@@ -65,15 +65,15 @@ class ConceptMapper:
             "blog": "#FF5722",
             "default": "#95A5A6"
         }
-        
-    async def create_concept_map(self, evolution_ids: List[str] = None, 
-                               time_range: Tuple[datetime, datetime] = None) -> ConceptMap:
+
+    async def create_concept_map(self, evolution_ids: list[str] = None,
+                               time_range: tuple[datetime, datetime] = None) -> ConceptMap:
         """Create a comprehensive concept map."""
-        
+
         # Gather all concepts and relationships
         concepts = []
         relationships = []
-        
+
         if evolution_ids:
             # Map specific evolutions
             for evo_id in evolution_ids:
@@ -88,22 +88,22 @@ class ConceptMapper:
                 evo_concepts, evo_relationships = await self._extract_evolution_data(evolution)
                 concepts.extend(evo_concepts)
                 relationships.extend(evo_relationships)
-                
+
         # Add cross-platform correlations
         correlation_relationships = await self._extract_correlation_relationships()
         relationships.extend(correlation_relationships)
-        
+
         # Filter by time range if specified
         if time_range:
             concepts = [c for c in concepts if time_range[0] <= c.metadata.get("timestamp", datetime.min) <= time_range[1]]
-            
+
         # Create nodes and edges
         nodes = await self._create_concept_nodes(concepts)
         edges = await self._create_concept_edges(relationships, [n.id for n in nodes])
-        
+
         # Calculate layout positions
         nodes_with_positions = await self._calculate_layout(nodes, edges)
-        
+
         metadata = {
             "created_at": datetime.now().isoformat(),
             "node_count": len(nodes_with_positions),
@@ -111,21 +111,21 @@ class ConceptMapper:
             "time_range": [t.isoformat() for t in time_range] if time_range else None,
             "evolution_count": len(evolution_ids) if evolution_ids else len(self.correlator.temporal_tracker.idea_evolutions)
         }
-        
+
         return ConceptMap(
             nodes=nodes_with_positions,
             edges=edges,
             metadata=metadata
         )
-    
-    async def _extract_evolution_data(self, evolution: IdeaEvolution) -> Tuple[List[ConceptualEntity], List[IdeaRelationship]]:
+
+    async def _extract_evolution_data(self, evolution: IdeaEvolution) -> tuple[list[ConceptualEntity], list[IdeaRelationship]]:
         """Extract concepts and relationships from an evolution."""
         concepts = []
         relationships = []
-        
+
         for version in evolution.concept_versions:
             concepts.append(version.concept)
-            
+
             # Create temporal relationships between versions
             if version.predecessor_id:
                 relationship = IdeaRelationship(
@@ -136,13 +136,13 @@ class ConceptMapper:
                     evidence_text="Temporal evolution"
                 )
                 relationships.append(relationship)
-                
+
         return concepts, relationships
-    
-    async def _extract_correlation_relationships(self) -> List[IdeaRelationship]:
+
+    async def _extract_correlation_relationships(self) -> list[IdeaRelationship]:
         """Extract relationships from cross-platform correlations."""
         relationships = []
-        
+
         for correlation in self.correlator.correlations:
             # Create relationship based on correlation
             relationship = IdeaRelationship(
@@ -153,27 +153,27 @@ class ConceptMapper:
                 evidence_text=f"Cross-platform correlation: {correlation.evidence}"
             )
             relationships.append(relationship)
-            
+
         return relationships
-    
-    async def _create_concept_nodes(self, concepts: List[ConceptualEntity]) -> List[ConceptNode]:
+
+    async def _create_concept_nodes(self, concepts: list[ConceptualEntity]) -> list[ConceptNode]:
         """Create visualization nodes from concepts."""
         nodes = []
         concept_frequency = {}
-        
+
         # Count concept frequency for sizing
         for concept in concepts:
             concept_frequency[concept.id] = concept_frequency.get(concept.id, 0) + 1
-            
+
         for concept in concepts:
             frequency = concept_frequency[concept.id]
             size = min(max(frequency * 10, 20), 100)  # Size between 20-100
-            
+
             platform = concept.metadata.get("platform", "unknown")
-            color = self.color_schemes.get(concept.concept_type, 
-                   self.color_schemes.get(platform, 
+            color = self.color_schemes.get(concept.concept_type,
+                   self.color_schemes.get(platform,
                    self.color_schemes["default"]))
-            
+
             node = ConceptNode(
                 id=concept.id,
                 label=concept.name,
@@ -189,22 +189,22 @@ class ConceptMapper:
                 }
             )
             nodes.append(node)
-            
+
         return nodes
-    
-    async def _create_concept_edges(self, relationships: List[IdeaRelationship], 
-                                  valid_node_ids: List[str]) -> List[ConceptEdge]:
+
+    async def _create_concept_edges(self, relationships: list[IdeaRelationship],
+                                  valid_node_ids: list[str]) -> list[ConceptEdge]:
         """Create visualization edges from relationships."""
         edges = []
-        
+
         for relationship in relationships:
             # Only include edges where both nodes exist
-            if (relationship.source_concept in valid_node_ids and 
+            if (relationship.source_concept in valid_node_ids and
                 relationship.target_concept in valid_node_ids):
-                
+
                 weight = relationship.confidence * 5  # Scale for visualization
                 color = self._get_relationship_color(relationship.relationship_type)
-                
+
                 edge = ConceptEdge(
                     source=relationship.source_concept,
                     target=relationship.target_concept,
@@ -217,14 +217,14 @@ class ConceptMapper:
                     }
                 )
                 edges.append(edge)
-                
+
         return edges
-    
+
     def _get_relationship_color(self, relationship_type: str) -> str:
         """Get color for relationship type."""
         color_map = {
             "EVOLVES_TO": "#3498db",
-            "BUILDS_UPON": "#2ecc71", 
+            "BUILDS_UPON": "#2ecc71",
             "CONTRADICTS": "#e74c3c",
             "INFLUENCES": "#f39c12",
             "ENABLES": "#9b59b6",
@@ -233,33 +233,33 @@ class ConceptMapper:
             "RELATED_TO": "#95a5a6"
         }
         return color_map.get(relationship_type, "#bdc3c7")
-    
-    async def _calculate_layout(self, nodes: List[ConceptNode], edges: List[ConceptEdge]) -> List[ConceptNode]:
+
+    async def _calculate_layout(self, nodes: list[ConceptNode], edges: list[ConceptEdge]) -> list[ConceptNode]:
         """Calculate layout positions for nodes."""
         # Simple circular layout for now - can be enhanced with force-directed algorithms
         import math
-        
+
         node_count = len(nodes)
         center_x, center_y = 400, 300  # Canvas center
         radius = 200
-        
+
         for i, node in enumerate(nodes):
             angle = 2 * math.pi * i / node_count
             x = center_x + radius * math.cos(angle)
             y = center_y + radius * math.sin(angle)
-            
+
             node.position = {"x": x, "y": y}
-            
+
         return nodes
-    
-    async def create_temporal_flow_map(self, evolution_id: str) -> Dict[str, Any]:
+
+    async def create_temporal_flow_map(self, evolution_id: str) -> dict[str, Any]:
         """Create a temporal flow visualization for idea evolution."""
         evolution = self.correlator.temporal_tracker.idea_evolutions.get(evolution_id)
         if not evolution:
             return {}
-            
+
         chronological_versions = evolution.get_chronological_versions()
-        
+
         # Create timeline visualization data
         timeline_data = {
             "evolution_id": evolution_id,
@@ -268,7 +268,7 @@ class ConceptMapper:
             "platforms": [],
             "stages": []
         }
-        
+
         for i, version in enumerate(chronological_versions):
             timeline_data["timeline"].append({
                 "index": i,
@@ -280,26 +280,26 @@ class ConceptMapper:
                 "content_snippet": version.content_snippet[:200] if version.content_snippet else "",
                 "engagement_metrics": version.engagement_metrics
             })
-            
+
         # Extract unique platforms and stages
         timeline_data["platforms"] = list(set(v.platform.value for v in chronological_versions))
         timeline_data["stages"] = list(set(v.stage.value for v in chronological_versions))
-        
+
         return timeline_data
-    
-    async def create_cross_platform_flow(self) -> Dict[str, Any]:
+
+    async def create_cross_platform_flow(self) -> dict[str, Any]:
         """Create visualization of content flow between platforms."""
         transitions = await self.correlator.temporal_tracker.get_platform_transition_patterns()
-        
+
         # Create Sankey diagram data
         platforms = set()
         for source, targets in transitions.items():
             platforms.add(source)
             platforms.update(targets.keys())
-            
+
         platform_list = list(platforms)
         platform_indices = {platform: i for i, platform in enumerate(platform_list)}
-        
+
         links = []
         for source, targets in transitions.items():
             source_idx = platform_indices[source]
@@ -312,17 +312,17 @@ class ConceptMapper:
                     "source_name": source,
                     "target_name": target
                 })
-        
+
         return {
             "nodes": [{"name": platform} for platform in platform_list],
             "links": links,
             "platform_indices": platform_indices
         }
-    
-    async def export_concept_map_html(self, concept_map: ConceptMap, 
+
+    async def export_concept_map_html(self, concept_map: ConceptMap,
                                     output_path: str = "concept_map.html") -> str:
         """Export concept map as interactive HTML."""
-        
+
         html_template = """
 <!DOCTYPE html>
 <html>
@@ -516,30 +516,30 @@ class ConceptMapper:
 </body>
 </html>
         """
-        
+
         # Convert concept map to JSON
         data_json = json.dumps({
             "nodes": [asdict(node) for node in concept_map.nodes],
             "edges": [asdict(edge) for edge in concept_map.edges],
             "metadata": concept_map.metadata
         }, default=str)
-        
+
         # Fill template
         html_content = html_template.format(data_json=data_json)
-        
+
         # Write to file
         output_file = Path(output_path)
         output_file.write_text(html_content)
-        
+
         logger.info(f"Concept map exported to {output_file.absolute()}")
         return str(output_file.absolute())
-    
-    async def export_temporal_flow_html(self, evolution_id: str, 
+
+    async def export_temporal_flow_html(self, evolution_id: str,
                                       output_path: str = "temporal_flow.html") -> str:
         """Export temporal flow as interactive HTML timeline."""
-        
+
         timeline_data = await self.create_temporal_flow_map(evolution_id)
-        
+
         html_template = """
 <!DOCTYPE html>
 <html>
@@ -604,15 +604,15 @@ class ConceptMapper:
 </body>
 </html>
         """
-        
+
         timeline_json = json.dumps(timeline_data, default=str)
         html_content = html_template.format(
             evolution_id=evolution_id,
             timeline_json=timeline_json
         )
-        
+
         output_file = Path(output_path)
         output_file.write_text(html_content)
-        
+
         logger.info(f"Temporal flow exported to {output_file.absolute()}")
         return str(output_file.absolute())

@@ -1,0 +1,88 @@
+name: Update Homebrew Formula
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to update to (e.g., v1.0.0)'
+        required: true
+        default: 'v0.1.0'
+
+jobs:
+  update-formula:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tap repository
+        uses: actions/checkout@v4
+        with:
+          path: homebrew-tap
+
+      - name: Get version from release
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get SHA256 hash
+        id: get_sha256
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          TARBALL_URL="https://github.com/neoforge-dev/synapse/archive/refs/tags/${VERSION}.tar.gz"
+          SHA256=$(curl -sL "$TARBALL_URL" | shasum -a 256 | cut -d' ' -f1)
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+          echo "tarball_url=$TARBALL_URL" >> $GITHUB_OUTPUT
+
+      - name: Update formula
+        run: |
+          cd homebrew-tap
+          VERSION="${{ steps.get_version.outputs.version }}"
+          SHA256="${{ steps.get_sha256.outputs.sha256 }}"
+          TARBALL_URL="${{ steps.get_sha256.outputs.tarball_url }}"
+          
+          # Update the formula file
+          sed -i "s|url \".*\"|url \"$TARBALL_URL\"|" Formula/synapse.rb
+          sed -i "s|sha256 \".*\"|sha256 \"$SHA256\"|" Formula/synapse.rb
+          sed -i "s|version \".*\"|version \"$VERSION\"|" Formula/synapse.rb
+          
+          # Show the changes
+          echo "Updated formula:"
+          echo "Version: $VERSION"
+          echo "SHA256: $SHA256"
+          echo "URL: $TARBALL_URL"
+
+      - name: Test formula
+        run: |
+          cd homebrew-tap
+          brew audit --strict Formula/synapse.rb
+          brew style Formula/synapse.rb
+
+      - name: Commit and push changes
+        run: |
+          cd homebrew-tap
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add Formula/synapse.rb
+          git commit -m "Update Synapse to ${{ steps.get_version.outputs.version }}"
+          git push
+
+      - name: Create PR if needed
+        uses: peter-evans/create-pull-request@v5
+        with:
+          path: homebrew-tap
+          title: "Update Synapse to ${{ steps.get_version.outputs.version }}"
+          body: |
+            This PR updates the Synapse formula to version ${{ steps.get_version.outputs.version }}.
+            
+            Changes:
+            - Updated version number
+            - Updated SHA256 hash
+            - Updated tarball URL
+            
+            The formula has been tested and passes all Homebrew checks.
+          branch: update-synapse-${{ steps.get_version.outputs.version }}
+          delete-branch: true

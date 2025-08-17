@@ -2,16 +2,15 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class UserRole(str, Enum):
     """User roles with hierarchical permissions."""
     ADMIN = "admin"      # Full system access
-    USER = "user"        # Normal API access  
+    USER = "user"        # Normal API access
     READONLY = "readonly"  # Read-only access
 
 
@@ -23,8 +22,8 @@ class User(BaseModel):
     role: UserRole = Field(default=UserRole.USER)
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    last_login: Optional[datetime] = None
-    
+    last_login: datetime | None = None
+
     class Config:
         json_encoders = {
             datetime: lambda v: v.isoformat(),
@@ -52,7 +51,7 @@ class TokenData(BaseModel):
     username: str
     role: UserRole
     exp: datetime
-    
+
     class Config:
         json_encoders = {
             datetime: lambda v: int(v.timestamp()),
@@ -71,22 +70,22 @@ class TokenResponse(BaseModel):
 class APIKeyCreate(BaseModel):
     """Schema for creating API keys."""
     name: str = Field(..., min_length=1, max_length=100)
-    description: Optional[str] = Field(None, max_length=500)
-    expires_days: Optional[int] = Field(None, ge=1, le=365)
+    description: str | None = Field(None, max_length=500)
+    expires_days: int | None = Field(None, ge=1, le=365)
 
 
 class APIKey(BaseModel):
     """API Key model."""
     id: UUID = Field(default_factory=uuid4)
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     key_hash: str  # Hashed version for storage
     user_id: UUID
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    expires_at: Optional[datetime] = None
-    last_used: Optional[datetime] = None
+    expires_at: datetime | None = None
+    last_used: datetime | None = None
     is_active: bool = Field(default=True)
-    
+
     class Config:
         json_encoders = {
             datetime: lambda v: v.isoformat(),
@@ -98,10 +97,10 @@ class APIKeyResponse(BaseModel):
     """Response when creating API key (shows actual key only once)."""
     id: UUID
     name: str
-    description: Optional[str]
+    description: str | None
     api_key: str  # Actual key - shown only on creation
-    expires_at: Optional[datetime]
-    
+    expires_at: datetime | None
+
     class Config:
         json_encoders = {
             datetime: lambda v: v.isoformat(),

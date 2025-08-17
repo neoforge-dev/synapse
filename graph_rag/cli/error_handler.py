@@ -1,8 +1,7 @@
 """CLI-specific error handling and user guidance utilities."""
 
 import logging
-import sys
-from typing import Any, Dict, Optional
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -27,9 +26,9 @@ console = Console()
 
 class CLIErrorHandler:
     """Enhanced error handler for CLI commands with user-friendly guidance."""
-    
+
     @staticmethod
-    def handle_cli_error(error: Exception, command_context: Dict[str, Any] | None = None) -> None:
+    def handle_cli_error(error: Exception, command_context: dict[str, Any] | None = None) -> None:
         """
         Handle CLI errors with appropriate user guidance and exit codes.
         
@@ -39,32 +38,32 @@ class CLIErrorHandler:
         """
         command_context = command_context or {}
         command_name = command_context.get("command", "unknown")
-        
+
         # Classify the error if it's not already a GraphRAGError
         if isinstance(error, GraphRAGError):
             graph_error = error
         else:
             graph_error = ErrorClassifier.classify_error(error, command_context)
-        
+
         # Display user-friendly error message
         CLIErrorHandler._display_error_message(graph_error, command_name)
-        
+
         # Determine appropriate exit code
         exit_code = CLIErrorHandler._get_exit_code(graph_error)
-        
+
         # Log technical details for debugging
         logger.error(
             f"CLI error in {command_name}: {error}",
             exc_info=True,
             extra={"command_context": command_context}
         )
-        
+
         raise typer.Exit(exit_code)
-    
+
     @staticmethod
     def _display_error_message(error: GraphRAGError, command_name: str) -> None:
         """Display a user-friendly error message with recovery suggestions."""
-        
+
         # Error title with emoji for visual appeal
         if isinstance(error, MemgraphConnectionError):
             title = "🔌 Knowledge Graph Unavailable"
@@ -80,29 +79,29 @@ class CLIErrorHandler:
             title = "⚙️ Configuration Issue"
         else:
             title = "❌ Operation Failed"
-        
+
         # Create error panel
         error_text = Text()
         error_text.append(f"{error.message}\n\n", style="bold red")
-        
+
         # Add recovery suggestions if available
         recovery_suggestions = getattr(error, 'details', {}).get('recovery_suggestions', [])
         if recovery_suggestions:
             error_text.append("💡 Try these solutions:\n", style="bold yellow")
             for i, suggestion in enumerate(recovery_suggestions, 1):
                 error_text.append(f"  {i}. {suggestion}\n", style="cyan")
-        
+
         # Add context-specific suggestions
         context_suggestions = CLIErrorHandler._get_context_suggestions(error, command_name)
         if context_suggestions:
             error_text.append("\n🛠️ Command-specific help:\n", style="bold blue")
             for suggestion in context_suggestions:
                 error_text.append(f"  • {suggestion}\n", style="blue")
-        
+
         # Add general help
         error_text.append(f"\n📚 Get help: synapse {command_name} --help", style="dim")
-        error_text.append(f"\n🩺 System status: synapse admin health", style="dim")
-        
+        error_text.append("\n🩺 System status: synapse admin health", style="dim")
+
         # Display the panel
         console.print(Panel(
             error_text,
@@ -110,12 +109,12 @@ class CLIErrorHandler:
             border_style="red",
             width=80
         ))
-    
+
     @staticmethod
     def _get_context_suggestions(error: GraphRAGError, command_name: str) -> list[str]:
         """Get command-specific recovery suggestions."""
         suggestions = []
-        
+
         if command_name == "ingest":
             if isinstance(error, MemgraphConnectionError):
                 suggestions.extend([
@@ -134,7 +133,7 @@ class CLIErrorHandler:
                     "Check file format: synapse parse <path>",
                     "Ingest smaller batches: synapse ingest --batch-size 10 <path>"
                 ])
-        
+
         elif command_name == "search":
             if isinstance(error, MemgraphConnectionError):
                 suggestions.extend([
@@ -151,23 +150,23 @@ class CLIErrorHandler:
                     "Simplify your query: use fewer and simpler terms",
                     "Check available documents: synapse admin stats"
                 ])
-        
+
         elif command_name == "query":
             if isinstance(error, (MemgraphConnectionError, VectorStoreError)):
                 suggestions.extend([
                     "Use simplified search: synapse search '<simplified query>'",
                     "Check if documents are ingested: synapse admin list-documents"
                 ])
-        
+
         elif command_name == "store":
             if isinstance(error, MemgraphConnectionError):
                 suggestions.extend([
                     "Start Memgraph first: make run-memgraph",
                     "Store in vector-only mode: synapse store --vector-only <parsed-file>"
                 ])
-        
+
         return suggestions
-    
+
     @staticmethod
     def _get_exit_code(error: GraphRAGError) -> int:
         """Determine appropriate exit code based on error type."""
@@ -203,7 +202,7 @@ def handle_cli_error(command_name: str):
 def safe_async_run(coro, command_name: str):
     """Safely run an async coroutine with error handling."""
     import asyncio
-    
+
     try:
         return asyncio.run(coro)
     except Exception as e:
@@ -230,7 +229,7 @@ def handle_connection_error(service_name: str, error: Exception, command_name: s
 def handle_file_error(file_path: str, error: Exception) -> None:
     """Handle file-related errors with specific guidance."""
     error_msg = str(error).lower()
-    
+
     if "permission denied" in error_msg:
         raise ConfigurationError(
             config_key="file_permissions",
@@ -253,21 +252,21 @@ def handle_file_error(file_path: str, error: Exception) -> None:
 def suggest_alternative_workflow(primary_error: GraphRAGError, command_name: str) -> None:
     """Suggest alternative workflows when primary approach fails."""
     alternatives = []
-    
+
     if isinstance(primary_error, MemgraphConnectionError):
         if command_name == "ingest":
             alternatives.append("synapse ingest --vector-only <path>  # Store in vector search only")
         elif command_name == "search":
             alternatives.append("synapse search --vector-only '<query>'  # Vector search only")
-    
+
     elif isinstance(primary_error, VectorStoreError):
         if command_name == "search":
             alternatives.append("synapse search --graph-only '<query>'  # Graph search only")
-    
+
     elif isinstance(primary_error, EmbeddingServiceError):
         if command_name == "ingest":
             alternatives.append("synapse ingest --no-embeddings <path>  # Skip embeddings")
-    
+
     if alternatives:
         console.print("\n🔄 Alternative approaches:", style="bold green")
         for alt in alternatives:
@@ -277,7 +276,7 @@ def suggest_alternative_workflow(primary_error: GraphRAGError, command_name: str
 def handle_ingestion_error(document_id: str, error: Exception) -> None:
     """Handle ingestion-specific errors with appropriate guidance."""
     error_msg = str(error).lower()
-    
+
     if "embedding" in error_msg:
         raise EmbeddingServiceError(
             reason=str(error),

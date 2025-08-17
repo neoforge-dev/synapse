@@ -7,35 +7,35 @@ Creates comprehensive business intelligence report from Graph-RAG knowledge base
 import asyncio
 import json
 import sys
-from pathlib import Path
-from typing import Dict, List, Any, Set, Tuple
 from datetime import datetime
+from pathlib import Path
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 from graph_rag.config import get_settings
+from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+
 
 async def main():
     """Main business intelligence generation function"""
     print("🔍 Starting Business Intelligence Analysis...")
     print(f"📅 Started at: {datetime.now()}")
-    
+
     # Initialize settings and connections
     settings = get_settings()
-    
+
     try:
         # Initialize graph repository
         graph_repo = MemgraphGraphRepository(settings_obj=settings)
-        
+
         print("\n📊 Extracting business intelligence data...")
-        
+
         # Generate comprehensive business intelligence
         await generate_business_intelligence(graph_repo)
-        
+
         print(f"\n✅ Analysis completed at: {datetime.now()}")
-        
+
     except Exception as e:
         print(f"❌ Error during analysis: {e}")
         import traceback
@@ -47,26 +47,26 @@ async def main():
 
 async def generate_business_intelligence(graph_repo: MemgraphGraphRepository):
     """Generate comprehensive business intelligence report"""
-    
+
     # Create visualizations directory
     viz_dir = Path("visualizations")
     viz_dir.mkdir(exist_ok=True)
-    
+
     print("🔍 Analyzing entity distribution...")
     entities_data = await analyze_entities(graph_repo)
-    
+
     print("🔗 Analyzing relationships...")
     relationships_data = await analyze_relationships(graph_repo)
-    
+
     print("📚 Analyzing documents...")
     documents_data = await analyze_documents(graph_repo)
-    
+
     print("💼 Analyzing business insights...")
     business_insights = await analyze_business_insights(graph_repo)
-    
+
     print("🌐 Creating enhanced network visualization...")
     network_data = await create_enhanced_network(graph_repo)
-    
+
     # Compile comprehensive report
     report_data = {
         'generated_at': datetime.now().isoformat(),
@@ -76,26 +76,26 @@ async def generate_business_intelligence(graph_repo: MemgraphGraphRepository):
         'business_insights': business_insights,
         'network': network_data
     }
-    
+
     # Save comprehensive data
     with open(viz_dir / "comprehensive_intelligence.json", "w") as f:
         json.dump(report_data, f, indent=2, default=str)
-    
+
     print(f"📊 Generated comprehensive intelligence: {viz_dir}/comprehensive_intelligence.json")
-    
+
     # Generate enhanced HTML dashboard
     enhanced_dashboard = generate_enhanced_dashboard(report_data)
     with open(viz_dir / "enhanced_dashboard.html", "w") as f:
         f.write(enhanced_dashboard)
-    
+
     print(f"🌐 Generated enhanced dashboard: {viz_dir}/enhanced_dashboard.html")
-    
+
     # Update knowledge base data with business insights
     await update_knowledge_base_data(report_data, viz_dir)
 
-async def analyze_entities(graph_repo: MemgraphGraphRepository) -> Dict:
+async def analyze_entities(graph_repo: MemgraphGraphRepository) -> dict:
     """Analyze entity distribution and patterns"""
-    
+
     # Get entity statistics
     entity_stats_query = """
     MATCH (e:Entity)
@@ -105,9 +105,9 @@ async def analyze_entities(graph_repo: MemgraphGraphRepository) -> Dict:
         count(*) as frequency
     ORDER BY frequency DESC
     """
-    
+
     entities_result = await graph_repo.execute_query(entity_stats_query)
-    
+
     # Get top entities by type
     top_entities_query = """
     MATCH (e:Entity)
@@ -115,9 +115,9 @@ async def analyze_entities(graph_repo: MemgraphGraphRepository) -> Dict:
     RETURN type, collect({name: name, mentions: mentions})[0..10] as top_entities
     ORDER BY type
     """
-    
+
     top_entities_result = await graph_repo.execute_query(top_entities_query)
-    
+
     # Business-relevant entities
     business_entities_query = """
     MATCH (e:Entity)
@@ -131,9 +131,9 @@ async def analyze_entities(graph_repo: MemgraphGraphRepository) -> Dict:
     ORDER BY document_connections DESC
     LIMIT 50
     """
-    
+
     business_entities_result = await graph_repo.execute_query(business_entities_query)
-    
+
     return {
         'total_entities': len(entities_result),
         'entity_distribution': entities_result,
@@ -141,18 +141,18 @@ async def analyze_entities(graph_repo: MemgraphGraphRepository) -> Dict:
         'business_entities': business_entities_result
     }
 
-async def analyze_relationships(graph_repo: MemgraphGraphRepository) -> Dict:
+async def analyze_relationships(graph_repo: MemgraphGraphRepository) -> dict:
     """Analyze relationship patterns"""
-    
+
     # Relationship type distribution
     rel_types_query = """
     MATCH ()-[r]->()
     RETURN type(r) as relationship_type, count(r) as frequency
     ORDER BY frequency DESC
     """
-    
+
     rel_types_result = await graph_repo.execute_query(rel_types_query)
-    
+
     # Entity-to-entity relationships
     entity_relationships_query = """
     MATCH (e1:Entity)-[r]-(e2:Entity)
@@ -164,18 +164,18 @@ async def analyze_relationships(graph_repo: MemgraphGraphRepository) -> Dict:
         e2.entity_type as type2
     LIMIT 100
     """
-    
+
     entity_rel_result = await graph_repo.execute_query(entity_relationships_query)
-    
+
     return {
         'relationship_types': rel_types_result,
         'entity_relationships': entity_rel_result,
         'total_relationships': sum(row['frequency'] for row in rel_types_result)
     }
 
-async def analyze_documents(graph_repo: MemgraphGraphRepository) -> Dict:
+async def analyze_documents(graph_repo: MemgraphGraphRepository) -> dict:
     """Analyze document patterns and metadata"""
-    
+
     # Document metadata analysis
     doc_analysis_query = """
     MATCH (d:Document)
@@ -188,27 +188,27 @@ async def analyze_documents(graph_repo: MemgraphGraphRepository) -> Dict:
         entity_count
     ORDER BY entity_count DESC
     """
-    
+
     doc_result = await graph_repo.execute_query(doc_analysis_query)
-    
+
     # Document sources
     source_analysis_query = """
     MATCH (d:Document)
     RETURN d.source as source, count(d) as document_count
     ORDER BY document_count DESC
     """
-    
+
     source_result = await graph_repo.execute_query(source_analysis_query)
-    
+
     return {
         'documents': doc_result,
         'sources': source_result,
         'total_documents': len(doc_result)
     }
 
-async def analyze_business_insights(graph_repo: MemgraphGraphRepository) -> Dict:
+async def analyze_business_insights(graph_repo: MemgraphGraphRepository) -> dict:
     """Extract specific business insights from the knowledge graph"""
-    
+
     # CodeSwiftr related entities
     codeswiftr_query = """
     MATCH (e:Entity)
@@ -216,9 +216,9 @@ async def analyze_business_insights(graph_repo: MemgraphGraphRepository) -> Dict
     OPTIONAL MATCH (e)-[r]-(related)
     RETURN e.name as entity, collect(DISTINCT related.name) as related_entities
     """
-    
+
     codeswiftr_result = await graph_repo.execute_query(codeswiftr_query)
-    
+
     # Technology entities
     tech_query = """
     MATCH (e:Entity)
@@ -232,9 +232,9 @@ async def analyze_business_insights(graph_repo: MemgraphGraphRepository) -> Dict
     RETURN e.name as technology, document_mentions
     ORDER BY document_mentions DESC
     """
-    
+
     tech_result = await graph_repo.execute_query(tech_query)
-    
+
     # Person entities
     people_query = """
     MATCH (e:Entity)
@@ -245,9 +245,9 @@ async def analyze_business_insights(graph_repo: MemgraphGraphRepository) -> Dict
     ORDER BY document_mentions DESC
     LIMIT 20
     """
-    
+
     people_result = await graph_repo.execute_query(people_query)
-    
+
     # Client/Company entities
     companies_query = """
     MATCH (e:Entity)
@@ -258,9 +258,9 @@ async def analyze_business_insights(graph_repo: MemgraphGraphRepository) -> Dict
     ORDER BY document_mentions DESC
     LIMIT 20
     """
-    
+
     companies_result = await graph_repo.execute_query(companies_query)
-    
+
     return {
         'codeswiftr_ecosystem': codeswiftr_result,
         'technology_stack': tech_result,
@@ -268,9 +268,9 @@ async def analyze_business_insights(graph_repo: MemgraphGraphRepository) -> Dict
         'client_companies': companies_result
     }
 
-async def create_enhanced_network(graph_repo: MemgraphGraphRepository) -> Dict:
+async def create_enhanced_network(graph_repo: MemgraphGraphRepository) -> dict:
     """Create enhanced network data with entities and relationships"""
-    
+
     # Get top entities
     entities_query = """
     MATCH (e:Entity)
@@ -285,9 +285,9 @@ async def create_enhanced_network(graph_repo: MemgraphGraphRepository) -> Dict:
     ORDER BY connections DESC
     LIMIT 100
     """
-    
+
     entities_result = await graph_repo.execute_query(entities_query)
-    
+
     # Get documents with high entity connections
     docs_query = """
     MATCH (d:Document)
@@ -302,12 +302,12 @@ async def create_enhanced_network(graph_repo: MemgraphGraphRepository) -> Dict:
     ORDER BY entity_connections DESC
     LIMIT 20
     """
-    
+
     docs_result = await graph_repo.execute_query(docs_query)
-    
+
     # Get relationships between selected nodes
     all_node_ids = [str(row['node_id']) for row in entities_result + docs_result]
-    
+
     if all_node_ids:
         relationships_query = f"""
         MATCH (a)-[r]->(b)
@@ -318,14 +318,14 @@ async def create_enhanced_network(graph_repo: MemgraphGraphRepository) -> Dict:
             type(r) as relationship_type
         LIMIT 200
         """
-        
+
         relationships_result = await graph_repo.execute_query(relationships_query)
     else:
         relationships_result = []
-    
+
     # Format nodes
     nodes = []
-    
+
     # Add entity nodes
     for row in entities_result:
         nodes.append({
@@ -338,13 +338,13 @@ async def create_enhanced_network(graph_repo: MemgraphGraphRepository) -> Dict:
             'color': get_entity_color(row['entity_type']),
             'group': f"Entity_{row['entity_type']}"
         })
-    
+
     # Add document nodes
     for row in docs_result:
         title = row['title'] or f"Document_{row['node_id']}"
         if len(title) > 30:
             title = title[:27] + "..."
-        
+
         nodes.append({
             'id': str(row['node_id']),
             'label': title,
@@ -355,7 +355,7 @@ async def create_enhanced_network(graph_repo: MemgraphGraphRepository) -> Dict:
             'color': '#2196F3',
             'group': f"Document_{row['source'] or 'Unknown'}"
         })
-    
+
     # Format edges
     edges = []
     for row in relationships_result:
@@ -365,7 +365,7 @@ async def create_enhanced_network(graph_repo: MemgraphGraphRepository) -> Dict:
             'type': row['relationship_type'],
             'color': get_edge_color(row['relationship_type'])
         })
-    
+
     return {
         'nodes': nodes,
         'edges': edges,
@@ -404,13 +404,13 @@ def get_edge_color(relationship_type: str) -> str:
     }
     return colors.get(relationship_type, '#BDBDBD')
 
-def generate_enhanced_dashboard(data: Dict) -> str:
+def generate_enhanced_dashboard(data: dict) -> str:
     """Generate enhanced HTML dashboard with business intelligence"""
-    
+
     network_data = data['network']
     entities_data = data['entities']
     business_insights = data['business_insights']
-    
+
     return f"""
 <!DOCTYPE html>
 <html>
@@ -833,45 +833,45 @@ def generate_enhanced_dashboard(data: Dict) -> str:
 </html>
 """
 
-def generate_tech_tags(tech_stack: List[Dict]) -> str:
+def generate_tech_tags(tech_stack: list[dict]) -> str:
     """Generate HTML for technology tags"""
     tags = []
     for tech in tech_stack[:20]:  # Top 20 technologies
         tags.append(f'<span class="tech-tag">{tech["technology"]}</span>')
     return ''.join(tags)
 
-def generate_tech_list(tech_stack: List[Dict]) -> str:
+def generate_tech_list(tech_stack: list[dict]) -> str:
     """Generate HTML list for technologies"""
     items = []
     for tech in tech_stack:
         items.append(f'<div class="metric"><span>{tech["technology"]}</span><span class="metric-value">{tech["document_mentions"]}</span></div>')
     return ''.join(items)
 
-def generate_people_list(people: List[Dict]) -> str:
+def generate_people_list(people: list[dict]) -> str:
     """Generate HTML list for people"""
     items = []
     for person in people:
         items.append(f'<div class="person-item"><strong>{person["person"]}</strong><br><small>{person["document_mentions"]} document mentions</small></div>')
     return ''.join(items)
 
-def generate_companies_list(companies: List[Dict]) -> str:
+def generate_companies_list(companies: list[dict]) -> str:
     """Generate HTML list for companies"""
     items = []
     for company in companies:
         items.append(f'<div class="company-item"><strong>{company["company"]}</strong><br><small>{company["document_mentions"]} document mentions</small></div>')
     return ''.join(items)
 
-async def update_knowledge_base_data(report_data: Dict, viz_dir: Path):
+async def update_knowledge_base_data(report_data: dict, viz_dir: Path):
     """Update the knowledge base data JSON with enhanced business intelligence"""
-    
+
     # Read existing knowledge base data
     kb_data_file = viz_dir / "knowledge_base_data.json"
     if kb_data_file.exists():
-        with open(kb_data_file, 'r') as f:
+        with open(kb_data_file) as f:
             kb_data = json.load(f)
     else:
         kb_data = {}
-    
+
     # Enhance with business intelligence
     kb_data['business_intelligence'] = {
         'generated_at': report_data['generated_at'],
@@ -879,11 +879,11 @@ async def update_knowledge_base_data(report_data: Dict, viz_dir: Path):
         'business_insights': report_data['business_insights'],
         'network_stats': report_data['network']['stats']
     }
-    
+
     # Save enhanced data
     with open(kb_data_file, 'w') as f:
         json.dump(kb_data, f, indent=2, default=str)
-    
+
     print(f"📊 Updated knowledge base data: {kb_data_file}")
 
 if __name__ == "__main__":

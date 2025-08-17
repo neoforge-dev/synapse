@@ -6,15 +6,16 @@ from graph_rag import __version__  # Assume version is defined in __init__.py
 from graph_rag.cli.commands.admin import app as admin_app
 from graph_rag.cli.commands.analytics import app as analytics_app
 from graph_rag.cli.commands.compose import app as compose_app
+from graph_rag.cli.commands.concept_map import app as concept_map_app
 from graph_rag.cli.commands.config import app as config_app
 from graph_rag.cli.commands.discover import discover_command
 from graph_rag.cli.commands.enhanced_search import app as enhanced_search_app
 from graph_rag.cli.commands.graph import app as graph_app
-from graph_rag.cli.commands.insights import app as insights_app
 
 # Import command functions directly
 from graph_rag.cli.commands.ingest import ingest_command
 from graph_rag.cli.commands.init import app as init_app
+from graph_rag.cli.commands.insights import app as insights_app
 from graph_rag.cli.commands.mcp import app as mcp_app
 from graph_rag.cli.commands.notion import app as notion_app
 from graph_rag.cli.commands.parse import parse_command
@@ -22,7 +23,6 @@ from graph_rag.cli.commands.query import app as query_app
 from graph_rag.cli.commands.search import search_query
 from graph_rag.cli.commands.store import store_command
 from graph_rag.cli.commands.suggest import run_suggest as suggest_command
-from graph_rag.cli.commands.concept_map import app as concept_map_app
 from graph_rag.config import get_settings  # Import factory
 
 settings = get_settings()  # Get settings instance

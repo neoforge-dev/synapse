@@ -53,6 +53,9 @@ keywords = ["rag", "graph", "memgraph", "faiss", "notion", "mcp", "retrieval", "
 # Vector search backends
 faiss = ["faiss-cpu>=1.7"]
 
+# Graph backends  
+graph = []
+
 # Language model integrations
 llm = ["sentence-transformers>=2.2"]
 
@@ -61,7 +64,7 @@ mcp = ["mcp>=0.0.8"]
 
 # Full production deployment
 all = [
-    "synapse-graph-rag[faiss,llm,mcp]"
+    "synapse-graph-rag[faiss,graph,llm,mcp]"
 ]
 
 # Development and testing
@@ -112,6 +115,8 @@ exclude = ["tests*", "docs*", "examples*"]  # Exclude test and doc directories
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings
@@ -127,7 +132,7 @@ ignore = [
     "C901",  # too complex
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 
 [tool.mypy]
@@ -153,6 +158,8 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
+    "graph: marks tests as graph-related operations",
+    "temporal: marks tests as date/time operations",
 ]
 
 [tool.coverage.run]

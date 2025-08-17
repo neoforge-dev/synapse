@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     api_log_json: bool = Field(
         False, description="Emit structured JSON logs when true."
     )
-    
+
     # --- Security & Authentication ---
     jwt_secret_key: SecretStr | None = Field(
         None, description="JWT secret key for token signing. Should be at least 32 characters."

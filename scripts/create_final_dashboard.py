@@ -5,41 +5,41 @@ Creates a comprehensive business intelligence dashboard using all available data
 """
 
 import json
-import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 
 def main():
     """Create the final comprehensive dashboard"""
     print("🎨 Creating Final Business Intelligence Dashboard...")
     print(f"📅 Started at: {datetime.now()}")
-    
+
     viz_dir = Path("visualizations")
-    
+
     # Read all available data
     kb_data = read_json_file(viz_dir / "knowledge_base_data.json")
     network_data = read_json_file(viz_dir / "network_data.json")
     comprehensive_data = read_json_file(viz_dir / "comprehensive_intelligence.json")
-    
+
     # Create the final dashboard
     dashboard_html = create_comprehensive_dashboard(kb_data, network_data, comprehensive_data)
-    
+
     # Save the final dashboard
     final_dashboard_path = viz_dir / "final_business_dashboard.html"
     with open(final_dashboard_path, "w") as f:
         f.write(dashboard_html)
-    
+
     print(f"🌐 Created final dashboard: {final_dashboard_path}")
-    
+
     # Create a summary report
     create_summary_report(kb_data, viz_dir)
-    
+
     print(f"✅ Dashboard creation completed at: {datetime.now()}")
 
 def read_json_file(file_path):
     """Read JSON file with error handling"""
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path) as f:
             return json.load(f)
     except FileNotFoundError:
         print(f"Warning: {file_path} not found")
@@ -50,19 +50,19 @@ def read_json_file(file_path):
 
 def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
     """Create the final comprehensive dashboard HTML"""
-    
+
     # Extract key metrics
     total_entities = kb_data.get('entity_stats', {}).get('total_entities', 0)
     total_documents = kb_data.get('document_stats', {}).get('total_documents', 0)
     total_chunks = kb_data.get('document_stats', {}).get('chunk_stats', {}).get('total_chunks', 0)
-    
+
     # Entity type distribution
     entity_types = kb_data.get('entity_stats', {}).get('entity_types', {})
     popular_entities = kb_data.get('entity_stats', {}).get('popular_entities', [])
-    
+
     # Business insights from the original report
     business_insights = extract_business_insights(popular_entities)
-    
+
     return f"""
 <!DOCTYPE html>
 <html>
@@ -506,7 +506,7 @@ def generate_key_insights(business_insights):
         "Comprehensive business documentation spanning multiple technology domains",
         "Professional network analysis reveals expertise in scaling and development"
     ])
-    
+
     html = '<div class="business-insight"><h4>🔍 Key Insights Discovered</h4><ul>'
     for insight in insights:
         html += f'<li>{insight}</li>'
@@ -517,7 +517,7 @@ def generate_entity_breakdown(entity_types):
     """Generate entity type breakdown HTML"""
     if not entity_types:
         return '<p>No entity type data available</p>'
-    
+
     html = ''
     for entity_type, count in entity_types.items():
         html += f'''
@@ -532,17 +532,17 @@ def generate_popular_entities_html(popular_entities):
     """Generate popular entities HTML"""
     if not popular_entities:
         return '<p>No popular entities data available</p>'
-    
+
     html = ''
     for entity in popular_entities:
         name = entity.get('name', 'Unknown')
         entity_type = entity.get('type', 'Unknown')
         mentions = entity.get('mentions', 0)
-        
+
         # Skip markdown artifacts
         if name in ['###', '#', '1', '2', '3', '4', '5', '6']:
             continue
-            
+
         html += f'''
         <div class="popular-entity">
             <div class="entity-name">{name}</div>
@@ -555,17 +555,17 @@ def generate_tech_stack_html(technologies):
     """Generate technology stack HTML"""
     # Default tech stack based on business insights
     default_tech = [
-        'Python', 'React', 'Django', 'Kubernetes', 'Terraform', 
+        'Python', 'React', 'Django', 'Kubernetes', 'Terraform',
         'Docker', 'AWS', 'FastAPI', 'CI/CD', 'Cloud Computing'
     ]
-    
+
     tech_list = technologies if technologies else default_tech
-    
+
     html = '<div>'
     for tech in tech_list:
         html += f'<span class="tech-tag">{tech}</span>'
     html += '</div>'
-    
+
     return html
 
 def extract_business_insights(popular_entities):
@@ -573,25 +573,25 @@ def extract_business_insights(popular_entities):
     insights = {
         'key_insights': [
             "CodeSwiftr identified as primary business entity with technology consulting focus",
-            "Strong emphasis on modern development frameworks and cloud technologies", 
+            "Strong emphasis on modern development frameworks and cloud technologies",
             "Professional network analysis reveals expertise in scaling and development",
             "Comprehensive business documentation spanning multiple technology domains"
         ],
         'technologies': []
     }
-    
+
     # Extract technology entities
     tech_keywords = ['python', 'react', 'django', 'kubernetes', 'terraform', 'docker', 'aws', 'ci']
-    
+
     for entity in popular_entities:
         name = entity.get('name', '').lower()
         if any(tech in name for tech in tech_keywords):
             insights['technologies'].append(entity.get('name', ''))
-    
+
     # Add default technologies if none found
     if not insights['technologies']:
         insights['technologies'] = ['Python', 'React', 'Django', 'Kubernetes', 'Terraform', 'Docker']
-    
+
     return insights
 
 def create_summary_report(kb_data, viz_dir):
@@ -648,10 +648,10 @@ The system successfully transforms unstructured business documents into actionab
 ---
 *Generated by Synapse Graph-RAG System*
 """
-    
+
     with open(viz_dir / "business_intelligence_summary.md", "w") as f:
         f.write(summary)
-    
+
     print(f"📝 Created summary report: {viz_dir}/business_intelligence_summary.md")
 
 if __name__ == "__main__":

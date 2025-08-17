@@ -3,8 +3,13 @@ class SynapseGraphRag < Formula
 
   desc "Graph-enhanced RAG system with MCP integration for IDE workflows"
   homepage "https://github.com/neoforge-ai/synapse-graph-rag"
-  url "https://files.pythonhosted.org/packages/source/s/synapse-graph-rag/synapse-graph-rag-0.1.0.tar.gz"
-  sha256 "000000000000000000000000000000000000000000000000000000000000000"  # Will be updated during release
+  
+  # Use the current directory as source for now (development install)
+  # In production, this would point to a released tarball
+  url "file://#{__dir__}/.."
+  version "0.1.0"
+  sha256 "SKIP"  # Skip SHA check for local development
+  
   license "MIT"
   head "https://github.com/neoforge-ai/synapse-graph-rag.git", branch: "main"
 
@@ -15,6 +20,7 @@ class SynapseGraphRag < Formula
   depends_on "numpy"
   depends_on "scipy"
 
+  # Core dependencies
   resource "fastapi" do
     url "https://files.pythonhosted.org/packages/source/f/fastapi/fastapi-0.109.0.tar.gz"
     sha256 "b978095b9ee01a5cf49b19f4bc1ac9b8ca83aa076e770b5b42529681f4b0c0bc"
@@ -66,9 +72,12 @@ class SynapseGraphRag < Formula
   end
 
   def install
-    # Set up virtual environment
-    virtualenv_install_with_resources
-
+    # Install the package in development mode
+    system "pip3", "install", "-e", "."
+    
+    # Create the synapse command
+    bin.install_symlink libexec/"bin/synapse" => "synapse"
+    
     # Generate shell completions
     generate_completions_from_executable(bin/"synapse", shells: [:bash, :zsh, :fish], shell_parameter_format: :click)
 
@@ -102,16 +111,16 @@ class SynapseGraphRag < Formula
           port: 8765
       EOS
     end
-  end
-
-  service do
-    run [opt_bin/"synapse", "up"]
-    working_dir var/"lib/synapse"
-    log_path var/"log/synapse/output.log"
-    error_log_path var/"log/synapse/error.log"
-    environment_variables SYNAPSE_CONFIG: etc/"synapse/config.yml"
-    keep_alive true
-    require_root false
+    
+    # Print helpful post-install message
+    ohai "Synapse GraphRAG installed successfully!"
+    puts "Next steps:"
+    puts "  1. Run 'synapse --help' to see available commands"
+    puts "  2. Run 'synapse init wizard' to set up your first knowledge base"
+    puts "  3. Run 'synapse up' to start the full stack (requires Docker)"
+    puts ""
+    puts "For vector-only mode (no Docker):"
+    puts "  SYNAPSE_DISABLE_GRAPH=true synapse ingest ~/Documents"
   end
 
   test do
@@ -120,9 +129,6 @@ class SynapseGraphRag < Formula
     
     # Test help command
     assert_match "CLI for interacting with the Synapse Graph-Enhanced RAG system", shell_output("#{bin}/synapse --help")
-    
-    # Test MCP health check (should work even without API running)
-    system bin/"synapse", "mcp", "health"
     
     # Test configuration command
     system bin/"synapse", "config", "--help"

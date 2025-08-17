@@ -7,8 +7,6 @@ import httpx
 import typer
 from click import echo as click_echo
 
-from graph_rag.cli.error_handler import CLIErrorHandler, handle_cli_error
-
 # Allow overriding API base URL via env var for flexibility
 API_BASE_URL = os.getenv("SYNAPSE_API_BASE_URL", "http://localhost:8000/api/v1")
 SEARCH_URL = f"{API_BASE_URL}/search/query"

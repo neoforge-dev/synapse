@@ -6,68 +6,67 @@ Analyzes the ingested documents and generates insights and visualizations.
 
 import asyncio
 import json
-import os
 import sys
-from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple, Any
+from typing import Any
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
 from graph_rag.config import get_settings
+from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+
 
 async def main():
     """Main analysis function"""
     print("🔍 Starting Knowledge Base Analysis...")
     print(f"📅 Analysis started at: {datetime.now()}")
-    
+
     # Initialize settings and connections
     settings = get_settings()
     settings.memgraph_port = 7687  # Use standard port
-    
+
     try:
         # Initialize graph repository
         graph_repo = MemgraphGraphRepository(settings_obj=settings)
-        
+
         print("\n📊 DOCUMENT STATISTICS")
         print("=" * 50)
-        
+
         # Get document statistics
         doc_stats = await get_document_statistics(graph_repo)
         print_document_stats(doc_stats)
-        
+
         print("\n🏷️  ENTITY ANALYSIS")
         print("=" * 50)
-        
+
         # Get entity statistics
         entity_stats = await get_entity_statistics(graph_repo)
         print_entity_stats(entity_stats)
-        
+
         print("\n🔗 RELATIONSHIP ANALYSIS")
         print("=" * 50)
-        
+
         # Get relationship statistics
         rel_stats = await get_relationship_statistics(graph_repo)
         print_relationship_stats(rel_stats)
-        
+
         print("\n📈 CONTENT INSIGHTS")
         print("=" * 50)
-        
+
         # Get content insights
         content_insights = await get_content_insights(graph_repo)
         print_content_insights(content_insights)
-        
+
         # Generate visualizations
         print("\n🎨 GENERATING VISUALIZATIONS")
         print("=" * 50)
-        
+
         await generate_visualizations(graph_repo, doc_stats, entity_stats, rel_stats)
-        
+
         print(f"\n✅ Analysis completed at: {datetime.now()}")
-        
+
     except Exception as e:
         print(f"❌ Error during analysis: {e}")
         import traceback
@@ -77,14 +76,14 @@ async def main():
         if 'graph_repo' in locals():
             await graph_repo.close()
 
-async def get_document_statistics(graph_repo: MemgraphGraphRepository) -> Dict[str, Any]:
+async def get_document_statistics(graph_repo: MemgraphGraphRepository) -> dict[str, Any]:
     """Get comprehensive document statistics"""
-    
+
     # Get total document count
     total_docs_query = "MATCH (d:Document) RETURN count(d) as total"
     total_docs_result = await graph_repo.execute_query(total_docs_query)
     total_docs = total_docs_result[0]['total'] if total_docs_result else 0
-    
+
     # Get documents by category
     category_query = """
     MATCH (d:Document) 
@@ -94,7 +93,7 @@ async def get_document_statistics(graph_repo: MemgraphGraphRepository) -> Dict[s
     """
     category_result = await graph_repo.execute_query(category_query)
     categories = {row['category']: row['count'] for row in category_result}
-    
+
     # Get documents by data type
     type_query = """
     MATCH (d:Document) 
@@ -103,7 +102,7 @@ async def get_document_statistics(graph_repo: MemgraphGraphRepository) -> Dict[s
     """
     type_result = await graph_repo.execute_query(type_query)
     data_types = {row['data_type']: row['count'] for row in type_result}
-    
+
     # Get chunk statistics
     chunk_query = """
     MATCH (c:Chunk) 
@@ -114,7 +113,7 @@ async def get_document_statistics(graph_repo: MemgraphGraphRepository) -> Dict[s
     """
     chunk_result = await graph_repo.execute_query(chunk_query)
     chunk_stats = chunk_result[0] if chunk_result else {}
-    
+
     return {
         'total_documents': total_docs,
         'categories': categories,
@@ -122,9 +121,9 @@ async def get_document_statistics(graph_repo: MemgraphGraphRepository) -> Dict[s
         'chunk_stats': chunk_stats
     }
 
-async def get_entity_statistics(graph_repo: MemgraphGraphRepository) -> Dict[str, Any]:
+async def get_entity_statistics(graph_repo: MemgraphGraphRepository) -> dict[str, Any]:
     """Get entity extraction statistics"""
-    
+
     # Get all entity type labels (excluding Document, Chunk, Topic)
     entity_labels_query = """
     MATCH (n) 
@@ -136,7 +135,7 @@ async def get_entity_statistics(graph_repo: MemgraphGraphRepository) -> Dict[str
     """
     entity_labels_result = await graph_repo.execute_query(entity_labels_query)
     entity_labels = [row['label'] for row in entity_labels_result]
-    
+
     # Get total entity count by counting all nodes that are not Document, Chunk, or Topic
     total_entities_query = """
     MATCH (e) 
@@ -145,7 +144,7 @@ async def get_entity_statistics(graph_repo: MemgraphGraphRepository) -> Dict[str
     """
     total_entities_result = await graph_repo.execute_query(total_entities_query)
     total_entities = total_entities_result[0]['total'] if total_entities_result else 0
-    
+
     # Get entities by type (count nodes with each entity label)
     entity_types = {}
     for label in entity_labels:
@@ -153,7 +152,7 @@ async def get_entity_statistics(graph_repo: MemgraphGraphRepository) -> Dict[str
         result = await graph_repo.execute_query(query)
         if result and result[0]['count'] > 0:
             entity_types[label] = result[0]['count']
-    
+
     # Get most mentioned entities (from all entity types)
     popular_entities_query = """
     MATCH (e)-[r:MENTIONS]-(c:Chunk)
@@ -166,16 +165,16 @@ async def get_entity_statistics(graph_repo: MemgraphGraphRepository) -> Dict[str
         {'name': row['entity_name'], 'type': row['entity_type'], 'mentions': row['mention_count']}
         for row in popular_entities_result
     ]
-    
+
     return {
         'total_entities': total_entities,
         'entity_types': entity_types,
         'popular_entities': popular_entities
     }
 
-async def get_relationship_statistics(graph_repo: MemgraphGraphRepository) -> Dict[str, Any]:
+async def get_relationship_statistics(graph_repo: MemgraphGraphRepository) -> dict[str, Any]:
     """Get relationship statistics"""
-    
+
     # Get relationship type counts
     rel_type_query = """
     MATCH ()-[r]->() 
@@ -184,7 +183,7 @@ async def get_relationship_statistics(graph_repo: MemgraphGraphRepository) -> Di
     """
     rel_type_result = await graph_repo.execute_query(rel_type_query)
     relationship_types = {row['relationship_type']: row['count'] for row in rel_type_result}
-    
+
     # Get documents with most entities
     doc_entity_query = """
     MATCH (d:Document)-[:CONTAINS]->(c:Chunk)-[:MENTIONS]->(e)
@@ -197,15 +196,15 @@ async def get_relationship_statistics(graph_repo: MemgraphGraphRepository) -> Di
         {'title': row['document_title'], 'entity_count': row['entity_count']}
         for row in doc_entity_result
     ]
-    
+
     return {
         'relationship_types': relationship_types,
         'docs_with_most_entities': docs_with_entities
     }
 
-async def get_content_insights(graph_repo: MemgraphGraphRepository) -> Dict[str, Any]:
+async def get_content_insights(graph_repo: MemgraphGraphRepository) -> dict[str, Any]:
     """Get content-based insights"""
-    
+
     # Get technology mentions
     tech_query = """
     MATCH (e)-[:MENTIONS]-(c:Chunk)
@@ -217,7 +216,7 @@ async def get_content_insights(graph_repo: MemgraphGraphRepository) -> Dict[str,
     """
     tech_result = await graph_repo.execute_query(tech_query)
     technologies = [{'name': row['technology'], 'mentions': row['mentions']} for row in tech_result]
-    
+
     # Get business concepts
     business_query = """
     MATCH (e)-[:MENTIONS]-(c:Chunk)
@@ -228,27 +227,27 @@ async def get_content_insights(graph_repo: MemgraphGraphRepository) -> Dict[str,
     """
     business_result = await graph_repo.execute_query(business_query)
     business_concepts = [{'name': row['concept'], 'mentions': row['mentions']} for row in business_result]
-    
+
     return {
         'technologies': technologies,
         'business_concepts': business_concepts
     }
 
-def print_document_stats(stats: Dict[str, Any]):
+def print_document_stats(stats: dict[str, Any]):
     """Print document statistics"""
     print(f"📚 Total Documents: {stats['total_documents']}")
-    
+
     if stats['categories']:
         print("\n📂 Documents by Category:")
         for category, count in list(stats['categories'].items())[:10]:
             print(f"   {category}: {count}")
-    
+
     if stats['data_types']:
         print(f"\n📄 Data Types: {stats['data_types']}")
-    
+
     if stats['chunk_stats']:
         chunk_stats = stats['chunk_stats']
-        print(f"\n📝 Chunk Statistics:")
+        print("\n📝 Chunk Statistics:")
         print(f"   Total Chunks: {chunk_stats.get('total_chunks', 'N/A')}")
         avg_size = chunk_stats.get('avg_chunk_size')
         min_size = chunk_stats.get('min_chunk_size')
@@ -257,53 +256,53 @@ def print_document_stats(stats: Dict[str, Any]):
         print(f"   Min Chunk Size: {min_size} chars" if min_size else "   Min Chunk Size: N/A")
         print(f"   Max Chunk Size: {max_size} chars" if max_size else "   Max Chunk Size: N/A")
 
-def print_entity_stats(stats: Dict[str, Any]):
+def print_entity_stats(stats: dict[str, Any]):
     """Print entity statistics"""
     print(f"🏷️  Total Entities: {stats['total_entities']}")
-    
+
     if stats['entity_types']:
-        print(f"\n📊 Entity Types:")
+        print("\n📊 Entity Types:")
         for entity_type, count in list(stats['entity_types'].items())[:10]:
             print(f"   {entity_type}: {count}")
-    
+
     if stats['popular_entities']:
-        print(f"\n⭐ Most Mentioned Entities:")
+        print("\n⭐ Most Mentioned Entities:")
         for entity in stats['popular_entities'][:10]:
             print(f"   {entity['name']} ({entity['type']}): {entity['mentions']} mentions")
 
-def print_relationship_stats(stats: Dict[str, Any]):
+def print_relationship_stats(stats: dict[str, Any]):
     """Print relationship statistics"""
     if stats['relationship_types']:
-        print(f"🔗 Relationship Types:")
+        print("🔗 Relationship Types:")
         for rel_type, count in stats['relationship_types'].items():
             print(f"   {rel_type}: {count}")
-    
+
     if stats['docs_with_most_entities']:
-        print(f"\n📈 Documents with Most Entities:")
+        print("\n📈 Documents with Most Entities:")
         for doc in stats['docs_with_most_entities']:
             title = doc['title'] or "Untitled"
             title = title[:60] + "..." if len(title) > 60 else title
             print(f"   {title}: {doc['entity_count']} entities")
 
-def print_content_insights(insights: Dict[str, Any]):
+def print_content_insights(insights: dict[str, Any]):
     """Print content insights"""
     if insights['technologies']:
-        print(f"💻 Technology Mentions:")
+        print("💻 Technology Mentions:")
         for tech in insights['technologies']:
             print(f"   {tech['name']}: {tech['mentions']} mentions")
-    
+
     if insights['business_concepts']:
-        print(f"\n💼 Business Concepts:")
+        print("\n💼 Business Concepts:")
         for concept in insights['business_concepts']:
             print(f"   {concept['name']}: {concept['mentions']} mentions")
 
-async def generate_visualizations(graph_repo: MemgraphGraphRepository, doc_stats: Dict, entity_stats: Dict, rel_stats: Dict):
+async def generate_visualizations(graph_repo: MemgraphGraphRepository, doc_stats: dict, entity_stats: dict, rel_stats: dict):
     """Generate visualization files"""
-    
+
     # Create visualizations directory
     viz_dir = Path("visualizations")
     viz_dir.mkdir(exist_ok=True)
-    
+
     # Generate JSON data for web visualizations
     viz_data = {
         'document_stats': doc_stats,
@@ -311,20 +310,20 @@ async def generate_visualizations(graph_repo: MemgraphGraphRepository, doc_stats
         'relationship_stats': rel_stats,
         'generated_at': datetime.now().isoformat()
     }
-    
+
     with open(viz_dir / "knowledge_base_data.json", "w") as f:
         json.dump(viz_data, f, indent=2, default=str)
-    
+
     print(f"📊 Generated visualization data: {viz_dir}/knowledge_base_data.json")
-    
+
     # Generate simple HTML dashboard
     html_content = generate_html_dashboard(viz_data)
     with open(viz_dir / "dashboard.html", "w") as f:
         f.write(html_content)
-    
+
     print(f"🌐 Generated HTML dashboard: {viz_dir}/dashboard.html")
 
-def generate_html_dashboard(data: Dict) -> str:
+def generate_html_dashboard(data: dict) -> str:
     """Generate a simple HTML dashboard"""
     return f"""
 <!DOCTYPE html>

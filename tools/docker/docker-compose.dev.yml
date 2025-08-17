@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  graph-rag:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
+      - graph-rag-cache:/root/.cache
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - DEBUG=1
+      - MEMGRAPH_HOST=memgraph
+      - MEMGRAPH_PORT=7687
+    ports:
+      - "8000:8000"
+    depends_on:
+      memgraph:
+        condition: service_started
+    command: uvicorn graph_rag.api.main:app --reload --host 0.0.0.0 --port 8000
+
+  memgraph:
+    image: memgraph/memgraph:latest
+    ports:
+      - "7687:7687" # Bolt protocol
+      - "7444:7444" # HTTP API
+    volumes:
+      - memgraph-data:/var/lib/memgraph
+    environment:
+      - MEMGRAPH_BOLT_PORT=7687
+      - MEMGRAPH_HTTP_PORT=7444
+
+volumes:
+  graph-rag-cache:
+  memgraph-data:
