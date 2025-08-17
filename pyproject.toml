@@ -9,13 +9,12 @@ description = "Graph-enhanced RAG system with MCP integration for IDE workflows"
 readme = "README.md"
 authors = [{ name = "Neoforge", email = "opensource@neoforge.dev" }]
 maintainers = [{ name = "Neoforge", email = "opensource@neoforge.dev" }]
-license = { text = "MIT" }
+license = "MIT"
 requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
