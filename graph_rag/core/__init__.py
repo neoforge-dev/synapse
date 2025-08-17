@@ -10,4 +10,6 @@ __all__ = [
     "persistent_kg_builder",
     "viral_prediction_engine",
     "brand_safety_analyzer",
+    "audience_intelligence",
+    "content_audience_resonance",
 ]
