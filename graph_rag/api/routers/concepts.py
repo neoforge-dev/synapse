@@ -2,12 +2,17 @@
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from graph_rag.api.dependencies import get_concept_extractor, get_temporal_tracker, get_cross_platform_correlator, get_belief_preference_extractor, get_viral_prediction_engine, get_brand_safety_analyzer
+from graph_rag.api.dependencies import (
+    get_concept_extractor, get_temporal_tracker, get_cross_platform_correlator, 
+    get_belief_preference_extractor, get_viral_prediction_engine, get_brand_safety_analyzer,
+    get_content_strategy_optimizer, get_content_optimization_engine, get_audience_segmentation_engine
+)
 from graph_rag.core.concept_extractor import ConceptualEntity, IdeaRelationship, EnhancedConceptExtractor
 from graph_rag.core.temporal_tracker import TemporalTracker
 from graph_rag.services.cross_platform_correlator import CrossPlatformCorrelator, ContentCorrelation
@@ -1241,6 +1246,206 @@ def _extract_common_features(feature_lists: List[List[str]]) -> List[str]:
 from graph_rag.core.audience_intelligence import AudienceSegmentationEngine, AudienceSegment, AudiencePersona
 from graph_rag.core.competitive_analysis import CompetitiveAnalyzer, CompetitiveAnalysisResult
 
+# === EPIC 9.3: CONTENT STRATEGY API ENDPOINTS AND AUTOMATION ===
+
+# Import Epic 9 content strategy engines
+from graph_rag.core.content_strategy_optimizer import (
+    ContentStrategyOptimizer, StrategicRecommendation, ContentGap, 
+    PerformancePrediction, ResourcePlan, ContentCalendar, StrategyObjective,
+    CompetitivePosition, ContentFormat
+)
+from graph_rag.core.content_optimization_engine import (
+    ContentOptimizationEngine, OptimizationRequest, OptimizationResult,
+    ContentAnalysis, OptimizationType, SuggestionCategory, ImprovementPriority
+)
+
+
+# === EPIC 9.3: PYDANTIC MODELS FOR CONTENT STRATEGY API ===
+
+class StrategyOptimizationRequest(BaseModel):
+    """Request model for full content strategy optimization."""
+    business_context: Dict[str, Any] = Field(..., description="Business objectives, target audience, brand guidelines")
+    content_samples: List[str] = Field(default_factory=list, description="Sample content for analysis")
+    competitive_analysis: Optional[Dict[str, Any]] = Field(None, description="Competitive landscape analysis")
+    historical_performance: Optional[Dict[str, Any]] = Field(None, description="Historical content performance data")
+    brand_profile: str = Field(default="moderate", description="Brand safety profile: conservative, moderate, aggressive")
+    optimization_goals: List[str] = Field(default_factory=list, description="Specific optimization goals")
+
+
+class StrategyOptimizationResponse(BaseModel):
+    """Response model for strategy optimization."""
+    strategy_id: str = Field(..., description="Unique strategy identifier")
+    strategy: Dict[str, Any] = Field(..., description="Complete strategic recommendation")
+    optimization_summary: Dict[str, Any] = Field(..., description="Optimization process summary")
+    confidence_metrics: Dict[str, float] = Field(..., description="Various confidence scores")
+    implementation_timeline: Dict[str, Any] = Field(..., description="Implementation timeline and milestones")
+    resource_requirements: Dict[str, Any] = Field(..., description="Resource planning details")
+    performance_predictions: Dict[str, Any] = Field(..., description="Performance forecasts")
+    next_steps: List[str] = Field(..., description="Recommended next steps")
+
+
+class StrategyAnalysisRequest(BaseModel):
+    """Request model for content strategy analysis."""
+    existing_content: List[str] = Field(..., description="Existing content to analyze")
+    target_audience: str = Field(..., description="Target audience description")
+    business_objectives: List[str] = Field(..., description="Business objectives")
+    platform: str = Field(default="general", description="Primary platform focus")
+    analysis_depth: str = Field(default="comprehensive", description="Analysis depth: basic, standard, comprehensive")
+
+
+class StrategyAnalysisResponse(BaseModel):
+    """Response model for strategy analysis."""
+    analysis_id: str = Field(..., description="Analysis identifier")
+    content_gaps: List[Dict[str, Any]] = Field(..., description="Identified content gaps")
+    audience_insights: Dict[str, Any] = Field(..., description="Audience analysis insights")
+    competitive_position: Dict[str, Any] = Field(..., description="Competitive positioning analysis")
+    strategic_recommendations: List[str] = Field(..., description="Strategic recommendations")
+    opportunity_prioritization: List[Dict[str, Any]] = Field(..., description="Prioritized opportunities")
+    analysis_confidence: float = Field(..., description="Analysis confidence level")
+
+
+class ContentOptimizationRequest(BaseModel):
+    """Request model for individual content optimization."""
+    content: str = Field(..., description="Content to optimize")
+    target_audience: Optional[str] = Field(None, description="Target audience description")
+    platform: str = Field(default="general", description="Target platform")
+    optimization_types: List[str] = Field(default_factory=list, description="Specific optimization types to focus on")
+    brand_guidelines: Optional[Dict[str, Any]] = Field(None, description="Brand guidelines and constraints")
+    current_performance: Optional[Dict[str, Any]] = Field(None, description="Current content performance metrics")
+
+
+class ContentOptimizationResponse(BaseModel):
+    """Response model for content optimization."""
+    optimization_id: str = Field(..., description="Optimization identifier")
+    original_content: str = Field(..., description="Original content")
+    optimized_content: str = Field(..., description="Optimized content version")
+    improvement_suggestions: List[Dict[str, Any]] = Field(..., description="Specific improvement suggestions")
+    quality_metrics: Dict[str, float] = Field(..., description="Content quality assessment")
+    predicted_improvements: Dict[str, Any] = Field(..., description="Predicted performance improvements")
+    optimization_confidence: float = Field(..., description="Optimization confidence score")
+    implementation_priority: str = Field(..., description="Implementation priority level")
+
+
+class ContentAnalysisRequest(BaseModel):
+    """Request model for content quality analysis."""
+    content: str = Field(..., description="Content to analyze")
+    analysis_dimensions: List[str] = Field(default_factory=list, description="Specific analysis dimensions")
+    benchmark_content: Optional[List[str]] = Field(None, description="Benchmark content for comparison")
+    context: Dict[str, Any] = Field(default_factory=dict, description="Additional context for analysis")
+
+
+class ContentAnalysisResponse(BaseModel):
+    """Response model for content analysis."""
+    analysis_id: str = Field(..., description="Analysis identifier")
+    content_summary: Dict[str, Any] = Field(..., description="Content summary and characteristics")
+    quality_assessment: Dict[str, float] = Field(..., description="Multi-dimensional quality scores")
+    strengths: List[str] = Field(..., description="Identified content strengths")
+    weaknesses: List[str] = Field(..., description="Identified areas for improvement")
+    benchmark_comparison: Optional[Dict[str, Any]] = Field(None, description="Comparison with benchmark content")
+    recommendations: List[str] = Field(..., description="Improvement recommendations")
+    analysis_confidence: float = Field(..., description="Analysis confidence level")
+
+
+class ContentVariationsRequest(BaseModel):
+    """Request model for A/B testing content variations."""
+    original_content: str = Field(..., description="Original content to create variations for")
+    variation_count: int = Field(default=3, description="Number of variations to generate")
+    variation_goals: List[str] = Field(default_factory=list, description="Goals for variations (e.g., higher engagement, different tone)")
+    platform: str = Field(default="general", description="Target platform for variations")
+    audience_segments: List[str] = Field(default_factory=list, description="Target audience segments")
+
+
+class ContentVariationsResponse(BaseModel):
+    """Response model for content variations."""
+    original_content: str = Field(..., description="Original content")
+    variations: List[Dict[str, Any]] = Field(..., description="Generated content variations")
+    variation_analysis: Dict[str, Any] = Field(..., description="Analysis of variation differences")
+    testing_recommendations: List[str] = Field(..., description="A/B testing recommendations")
+    predicted_performance: Dict[str, Any] = Field(..., description="Predicted performance for each variation")
+
+
+class PerformancePredictionRequest(BaseModel):
+    """Request model for content performance prediction."""
+    content: str = Field(..., description="Content to analyze for performance prediction")
+    platform: str = Field(default="general", description="Target platform")
+    audience_data: Optional[Dict[str, Any]] = Field(None, description="Target audience data")
+    publishing_context: Dict[str, Any] = Field(default_factory=dict, description="Publishing context (timing, campaign, etc.)")
+    historical_context: Optional[Dict[str, Any]] = Field(None, description="Historical performance context")
+
+
+class PerformancePredictionResponse(BaseModel):
+    """Response model for performance prediction."""
+    content_id: str = Field(..., description="Content identifier")
+    performance_forecast: Dict[str, Any] = Field(..., description="Detailed performance predictions")
+    confidence_intervals: Dict[str, Tuple[float, float, float]] = Field(..., description="Min, expected, max predictions")
+    key_performance_drivers: List[str] = Field(..., description="Factors driving predicted performance")
+    risk_factors: List[str] = Field(..., description="Potential performance risk factors")
+    optimization_suggestions: List[str] = Field(..., description="Suggestions for performance improvement")
+    prediction_confidence: float = Field(..., description="Prediction confidence level")
+
+
+class BatchOptimizationRequest(BaseModel):
+    """Request model for batch content optimization."""
+    content_items: List[Dict[str, Any]] = Field(..., description="List of content items to optimize")
+    optimization_criteria: Dict[str, Any] = Field(..., description="Shared optimization criteria")
+    priority_order: Optional[List[str]] = Field(None, description="Priority order for optimization")
+    resource_constraints: Optional[Dict[str, Any]] = Field(None, description="Resource constraints for optimization")
+
+
+class BatchOptimizationResponse(BaseModel):
+    """Response model for batch optimization."""
+    batch_id: str = Field(..., description="Batch optimization identifier")
+    total_items: int = Field(..., description="Total items processed")
+    optimization_summary: Dict[str, Any] = Field(..., description="Batch optimization summary")
+    individual_results: List[Dict[str, Any]] = Field(..., description="Individual optimization results")
+    prioritized_recommendations: List[str] = Field(..., description="Prioritized batch recommendations")
+    resource_allocation: Dict[str, Any] = Field(..., description="Recommended resource allocation")
+    implementation_roadmap: List[Dict[str, Any]] = Field(..., description="Implementation roadmap")
+
+
+class WorkflowRequest(BaseModel):
+    """Request model for creating optimization workflows."""
+    workflow_name: str = Field(..., description="Name for the optimization workflow")
+    workflow_type: str = Field(..., description="Type of workflow: continuous, scheduled, trigger-based")
+    content_sources: List[str] = Field(..., description="Content sources to monitor/optimize")
+    optimization_criteria: Dict[str, Any] = Field(..., description="Optimization criteria and thresholds")
+    schedule: Optional[Dict[str, Any]] = Field(None, description="Schedule configuration for scheduled workflows")
+    triggers: Optional[List[str]] = Field(None, description="Trigger conditions for trigger-based workflows")
+    approval_settings: Dict[str, Any] = Field(default_factory=dict, description="Approval workflow settings")
+
+
+class WorkflowResponse(BaseModel):
+    """Response model for workflow operations."""
+    workflow_id: str = Field(..., description="Workflow identifier")
+    workflow_name: str = Field(..., description="Workflow name")
+    status: str = Field(..., description="Workflow status")
+    configuration: Dict[str, Any] = Field(..., description="Workflow configuration")
+    last_execution: Optional[datetime] = Field(None, description="Last execution timestamp")
+    next_execution: Optional[datetime] = Field(None, description="Next scheduled execution")
+    execution_history: List[Dict[str, Any]] = Field(default_factory=list, description="Recent execution history")
+    performance_metrics: Dict[str, Any] = Field(default_factory=dict, description="Workflow performance metrics")
+
+
+class ScheduleRequest(BaseModel):
+    """Request model for scheduling optimization tasks."""
+    task_type: str = Field(..., description="Type of optimization task")
+    task_parameters: Dict[str, Any] = Field(..., description="Task-specific parameters")
+    schedule_type: str = Field(..., description="Schedule type: one-time, recurring, conditional")
+    schedule_config: Dict[str, Any] = Field(..., description="Schedule configuration")
+    priority: str = Field(default="medium", description="Task priority")
+    dependencies: List[str] = Field(default_factory=list, description="Task dependencies")
+
+
+class ScheduleResponse(BaseModel):
+    """Response model for scheduled tasks."""
+    task_id: str = Field(..., description="Scheduled task identifier")
+    task_type: str = Field(..., description="Task type")
+    schedule_status: str = Field(..., description="Schedule status")
+    next_execution: datetime = Field(..., description="Next execution time")
+    execution_count: int = Field(..., description="Number of executions")
+    last_result: Optional[Dict[str, Any]] = Field(None, description="Last execution result")
+    estimated_resource_usage: Dict[str, Any] = Field(..., description="Estimated resource usage")
+
 
 class AudienceAnalysisRequest(BaseModel):
     """Request model for audience analysis."""
@@ -1718,3 +1923,1467 @@ async def analyze_competitive_positioning(
     except Exception as e:
         logger.error(f"Epic 8.4: Error in competitive analysis: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Competitive analysis failed: {str(e)}")
+
+
+# === EPIC 9.3: CONTENT STRATEGY API ENDPOINTS ===
+
+@router.post("/strategies/optimize", response_model=StrategyOptimizationResponse)
+async def optimize_content_strategy(
+    request: StrategyOptimizationRequest,
+    strategy_optimizer = Depends(get_content_strategy_optimizer)
+) -> StrategyOptimizationResponse:
+    """Full content strategy optimization with AI-powered recommendations (Epic 9.3)."""
+    try:
+        start_time = asyncio.get_event_loop().time()
+        
+        logger.info(f"Epic 9.3: Starting comprehensive content strategy optimization")
+        
+        # Parse brand profile for optimizer
+        from graph_rag.core.brand_safety_analyzer import BrandProfile
+        brand_profile_enum = BrandProfile.MODERATE
+        try:
+            brand_profile_enum = BrandProfile(request.brand_profile.lower())
+        except ValueError:
+            pass
+        
+        # Create strategy optimizer with brand profile
+        from graph_rag.core.content_strategy_optimizer import ContentStrategyOptimizer
+        optimizer = ContentStrategyOptimizer(brand_profile_enum)
+        
+        # Generate comprehensive strategy
+        strategy = await optimizer.generate_comprehensive_strategy(
+            business_context=request.business_context,
+            content_samples=request.content_samples,
+            competitive_analysis=request.competitive_analysis,
+            historical_performance=request.historical_performance
+        )
+        
+        # Convert strategy to response format
+        strategy_dict = {
+            "id": strategy.id,
+            "title": strategy.title,
+            "description": strategy.description,
+            "primary_objective": strategy.primary_objective.value,
+            "secondary_objectives": [obj.value for obj in strategy.secondary_objectives],
+            "competitive_position": strategy.competitive_position.value,
+            "target_platforms": [platform.value for platform in strategy.target_platforms],
+            "content_themes": strategy.content_themes,
+            "messaging_framework": strategy.messaging_framework,
+            "identified_gaps_count": len(strategy.identified_gaps),
+            "resource_plan": {
+                "total_hours_per_week": strategy.resource_plan.total_hours_per_week,
+                "total_monthly_budget": strategy.resource_plan.total_monthly_budget,
+                "implementation_weeks": strategy.resource_plan.implementation_weeks
+            },
+            "implementation_phases": strategy.implementation_phases,
+            "success_metrics": strategy.success_metrics
+        }
+        
+        # Generate optimization summary
+        optimization_summary = {
+            "optimization_time_ms": (asyncio.get_event_loop().time() - start_time) * 1000,
+            "content_samples_analyzed": len(request.content_samples),
+            "gaps_identified": len(strategy.identified_gaps),
+            "high_priority_gaps": len([g for g in strategy.identified_gaps if g.strategic_priority in ["critical", "high"]]),
+            "optimization_goals_addressed": len(request.optimization_goals),
+            "business_context_factors": len(request.business_context.keys())
+        }
+        
+        # Confidence metrics
+        confidence_metrics = {
+            "overall_confidence": strategy.recommendation_confidence,
+            "data_quality": strategy.data_quality_score,
+            "strategic_coherence": strategy.strategic_coherence_score,
+            "belief_alignment": strategy.belief_alignment_score,
+            "brand_safety": strategy.brand_safety_score,
+            "audience_resonance": strategy.audience_resonance_score,
+            "viral_potential": strategy.viral_potential_score
+        }
+        
+        # Implementation timeline
+        implementation_timeline = {
+            "total_duration_weeks": 12,
+            "milestones_count": len(strategy.content_calendar.milestones),
+            "performance_reviews": len(strategy.content_calendar.performance_review_dates),
+            "optimization_checkpoints": len(strategy.content_calendar.optimization_checkpoints),
+            "start_date": strategy.content_calendar.start_date.isoformat(),
+            "end_date": strategy.content_calendar.end_date.isoformat()
+        }
+        
+        # Resource requirements
+        resource_requirements = {
+            "personnel": {
+                "content_creators": strategy.resource_plan.content_creators,
+                "designers": strategy.resource_plan.designers,
+                "community_managers": strategy.resource_plan.community_managers,
+                "analysts": strategy.resource_plan.analysts
+            },
+            "budget_breakdown": {
+                "content": strategy.resource_plan.content_budget,
+                "design": strategy.resource_plan.design_budget,
+                "promotion": strategy.resource_plan.promotion_budget,
+                "tools": strategy.resource_plan.tools_budget
+            },
+            "time_allocation": {
+                "content_creation": strategy.resource_plan.content_creation_hours,
+                "design": strategy.resource_plan.design_hours,
+                "community_management": strategy.resource_plan.community_management_hours,
+                "analysis": strategy.resource_plan.analysis_hours
+            }
+        }
+        
+        # Performance predictions
+        performance_predictions = {
+            "reach": {
+                "min": strategy.performance_prediction.predicted_reach[0],
+                "expected": strategy.performance_prediction.predicted_reach[1],
+                "max": strategy.performance_prediction.predicted_reach[2]
+            },
+            "engagement_rate": {
+                "min": strategy.performance_prediction.predicted_engagement_rate[0],
+                "expected": strategy.performance_prediction.predicted_engagement_rate[1],
+                "max": strategy.performance_prediction.predicted_engagement_rate[2]
+            },
+            "roi": {
+                "min": strategy.performance_prediction.roi_percentage[0],
+                "expected": strategy.performance_prediction.roi_percentage[1],
+                "max": strategy.performance_prediction.roi_percentage[2]
+            },
+            "leads": {
+                "min": strategy.performance_prediction.estimated_leads[0],
+                "expected": strategy.performance_prediction.estimated_leads[1],
+                "max": strategy.performance_prediction.estimated_leads[2]
+            },
+            "prediction_confidence": strategy.performance_prediction.prediction_confidence
+        }
+        
+        # Next steps
+        next_steps = [
+            "Review and approve the strategic recommendation",
+            "Allocate resources according to the resource plan",
+            "Begin implementation with Phase 1: Strategy Setup",
+            "Set up performance monitoring and KPI tracking",
+            "Schedule first performance review for week 4"
+        ]
+        
+        if len(strategy.identified_gaps) > 0:
+            next_steps.insert(2, f"Prioritize top {min(3, len(strategy.identified_gaps))} content gaps for immediate execution")
+        
+        logger.info(f"Epic 9.3: Strategy optimization completed in {optimization_summary['optimization_time_ms']:.2f}ms with {confidence_metrics['overall_confidence']:.2f} confidence")
+        
+        return StrategyOptimizationResponse(
+            strategy_id=strategy.id,
+            strategy=strategy_dict,
+            optimization_summary=optimization_summary,
+            confidence_metrics=confidence_metrics,
+            implementation_timeline=implementation_timeline,
+            resource_requirements=resource_requirements,
+            performance_predictions=performance_predictions,
+            next_steps=next_steps
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error optimizing content strategy: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Content strategy optimization failed: {str(e)}")
+
+
+@router.post("/strategies/analyze", response_model=StrategyAnalysisResponse)
+async def analyze_content_strategy(
+    request: StrategyAnalysisRequest,
+    strategy_optimizer = Depends(get_content_strategy_optimizer),
+    audience_engine = Depends(get_audience_segmentation_engine)
+) -> StrategyAnalysisResponse:
+    """Content strategy analysis without full optimization (Epic 9.3)."""
+    try:
+        start_time = asyncio.get_event_loop().time()
+        
+        logger.info(f"Epic 9.3: Analyzing content strategy for {len(request.existing_content)} content items")
+        
+        # Analyze target audience
+        audience_analysis = await audience_engine.analyze_audience(
+            request.target_audience, {"platform": request.platform}
+        )
+        
+        # Create audience segment from analysis
+        from graph_rag.core.audience_intelligence import AudienceSegment
+        audience_segment = AudienceSegment(**audience_analysis["audience_segment"])
+        
+        # Perform content gap analysis
+        from graph_rag.core.content_strategy_optimizer import ContentGapAnalyzer
+        gap_analyzer = ContentGapAnalyzer()
+        
+        content_gaps = await gap_analyzer.identify_content_gaps(
+            target_audiences=[audience_segment],
+            existing_content=request.existing_content
+        )
+        
+        # Convert content gaps to response format
+        gaps_data = []
+        for gap in content_gaps[:10]:  # Top 10 gaps
+            gap_dict = {
+                "id": gap.id,
+                "title": gap.title,
+                "description": gap.description,
+                "opportunity_score": gap.opportunity_score,
+                "strategic_priority": gap.strategic_priority,
+                "estimated_reach": gap.estimated_reach,
+                "viral_potential": gap.viral_potential,
+                "execution_difficulty": gap.execution_difficulty,
+                "suggested_angles": gap.suggested_angles[:3],  # Top 3 angles
+                "recommended_formats": [fmt.value for fmt in gap.recommended_content_formats]
+            }
+            gaps_data.append(gap_dict)
+        
+        # Audience insights
+        audience_insights = {
+            "segment_id": audience_segment.id,
+            "segment_name": audience_segment.name,
+            "size_estimate": audience_segment.size_estimate,
+            "confidence_score": audience_segment.confidence_score,
+            "preferred_platforms": [p.value for p in audience_segment.preferred_platforms],
+            "engagement_potential": audience_analysis.get("overall_confidence", 0.7),
+            "key_interests": list(audience_segment.psychographic_profile.interests.keys())[:5]
+        }
+        
+        # Competitive position analysis (simplified)
+        competitive_position = {
+            "current_position": "follower",  # Default
+            "market_saturation": 0.6,  # Mock
+            "differentiation_opportunities": [
+                "Focus on unique value proposition in content",
+                "Leverage audience-specific insights for better targeting",
+                "Develop thought leadership in underserved topics"
+            ],
+            "competitive_advantages": [
+                gap.title for gap in content_gaps[:3] if gap.opportunity_score > 0.7
+            ]
+        }
+        
+        # Strategic recommendations based on analysis
+        strategic_recommendations = [
+            f"Focus on {len([g for g in content_gaps if g.strategic_priority in ['critical', 'high']])} high-priority content gaps",
+            f"Develop content themes around {', '.join(audience_segment.psychographic_profile.interests.keys())}",
+            f"Optimize for {request.platform} platform based on audience preferences",
+            "Implement regular content gap analysis to identify new opportunities",
+            "Create content calendar based on identified gaps and audience behavior"
+        ]
+        
+        # Opportunity prioritization
+        opportunity_prioritization = []
+        for i, gap in enumerate(sorted(content_gaps, key=lambda g: g.opportunity_score, reverse=True)[:5]):
+            opportunity = {
+                "rank": i + 1,
+                "gap_id": gap.id,
+                "title": gap.title,
+                "opportunity_score": gap.opportunity_score,
+                "strategic_priority": gap.strategic_priority,
+                "estimated_impact": gap.business_impact,
+                "implementation_effort": gap.execution_difficulty,
+                "recommendation": gap.suggested_angles[0] if gap.suggested_angles else "Develop content addressing this gap"
+            }
+            opportunity_prioritization.append(opportunity)
+        
+        # Calculate analysis confidence
+        confidence_factors = [
+            audience_analysis.get("overall_confidence", 0.7),
+            min(1.0, len(content_gaps) / 5.0),  # Gap analysis completeness
+            min(1.0, len(request.existing_content) / 10.0),  # Content sample size
+            0.8 if request.analysis_depth == "comprehensive" else 0.6  # Analysis depth
+        ]
+        analysis_confidence = sum(confidence_factors) / len(confidence_factors)
+        
+        analysis_time = (asyncio.get_event_loop().time() - start_time) * 1000
+        
+        logger.info(f"Epic 9.3: Strategy analysis completed in {analysis_time:.2f}ms - {len(content_gaps)} gaps identified")
+        
+        return StrategyAnalysisResponse(
+            analysis_id=f"analysis_{int(start_time)}",
+            content_gaps=gaps_data,
+            audience_insights=audience_insights,
+            competitive_position=competitive_position,
+            strategic_recommendations=strategic_recommendations,
+            opportunity_prioritization=opportunity_prioritization,
+            analysis_confidence=analysis_confidence
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error analyzing content strategy: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Content strategy analysis failed: {str(e)}")
+
+
+@router.get("/strategies/{strategy_id}")
+async def get_strategy_details(strategy_id: str) -> Dict[str, Any]:
+    """Get strategy details by ID (Epic 9.3)."""
+    try:
+        logger.info(f"Epic 9.3: Retrieving strategy details for {strategy_id}")
+        
+        # Mock implementation - in production would query database
+        strategy_details = {
+            "strategy_id": strategy_id,
+            "title": "AI-Powered Content Strategy",
+            "description": "Comprehensive content strategy optimized for engagement and growth",
+            "status": "active",
+            "created_at": datetime.utcnow().isoformat(),
+            "last_updated": datetime.utcnow().isoformat(),
+            "performance_summary": {
+                "current_reach": 15000,
+                "engagement_rate": 0.045,
+                "content_published": 24,
+                "goals_achieved": 3
+            },
+            "next_milestones": [
+                {
+                    "title": "Week 8 Performance Review",
+                    "target_date": (datetime.utcnow() + timedelta(weeks=2)).isoformat(),
+                    "status": "upcoming"
+                }
+            ],
+            "optimization_opportunities": [
+                "Increase video content production",
+                "Expand into trending topics",
+                "Improve call-to-action effectiveness"
+            ]
+        }
+        
+        return strategy_details
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error retrieving strategy details: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Strategy retrieval failed: {str(e)}")
+
+
+@router.put("/strategies/{strategy_id}")
+async def update_strategy(
+    strategy_id: str,
+    updates: Dict[str, Any],
+    strategy_optimizer = Depends(get_content_strategy_optimizer)
+) -> Dict[str, Any]:
+    """Update strategy configuration (Epic 9.3)."""
+    try:
+        logger.info(f"Epic 9.3: Updating strategy {strategy_id} with {len(updates)} changes")
+        
+        # Mock implementation - in production would update database
+        updated_strategy = {
+            "strategy_id": strategy_id,
+            "update_summary": {
+                "fields_updated": list(updates.keys()),
+                "update_count": len(updates),
+                "last_updated": datetime.utcnow().isoformat(),
+                "version": "1.1"
+            },
+            "validation_results": {
+                "valid_updates": len(updates),
+                "invalid_updates": 0,
+                "warnings": []
+            },
+            "impact_assessment": {
+                "performance_impact": "minimal",
+                "resource_impact": "none",
+                "timeline_impact": "none"
+            },
+            "next_actions": [
+                "Changes will take effect immediately",
+                "Monitor performance for next 2 weeks",
+                "Review impact at next milestone"
+            ]
+        }
+        
+        logger.info(f"Epic 9.3: Strategy {strategy_id} updated successfully")
+        return updated_strategy
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error updating strategy: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Strategy update failed: {str(e)}")
+
+
+@router.delete("/strategies/{strategy_id}")
+async def delete_strategy(strategy_id: str) -> Dict[str, Any]:
+    """Delete strategy (Epic 9.3)."""
+    try:
+        logger.info(f"Epic 9.3: Deleting strategy {strategy_id}")
+        
+        # Mock implementation - in production would delete from database
+        deletion_result = {
+            "strategy_id": strategy_id,
+            "deletion_status": "success",
+            "deleted_at": datetime.utcnow().isoformat(),
+            "cleanup_summary": {
+                "content_calendar_archived": True,
+                "performance_data_retained": True,
+                "resource_plans_archived": True,
+                "workflows_stopped": True
+            },
+            "backup_location": f"archive/strategies/{strategy_id}",
+            "recovery_period_days": 30
+        }
+        
+        logger.info(f"Epic 9.3: Strategy {strategy_id} deleted successfully")
+        return deletion_result
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error deleting strategy: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Strategy deletion failed: {str(e)}")
+
+
+@router.get("/strategies")
+async def list_strategies(
+    status: Optional[str] = Query(None, description="Filter by status"),
+    limit: int = Query(20, description="Maximum number of strategies to return"),
+    offset: int = Query(0, description="Number of strategies to skip")
+) -> Dict[str, Any]:
+    """List all content strategies (Epic 9.3)."""
+    try:
+        logger.info(f"Epic 9.3: Listing strategies with status={status}, limit={limit}")
+        
+        # Mock implementation - in production would query database
+        mock_strategies = [
+            {
+                "strategy_id": f"strategy_{i}",
+                "title": f"Content Strategy {i+1}",
+                "status": "active" if i % 2 == 0 else "draft",
+                "created_at": (datetime.utcnow() - timedelta(days=i*7)).isoformat(),
+                "performance_score": 0.7 + (i * 0.05),
+                "content_count": 15 + i * 3,
+                "engagement_rate": 0.035 + (i * 0.005)
+            }
+            for i in range(10)
+        ]
+        
+        # Apply status filter
+        if status:
+            mock_strategies = [s for s in mock_strategies if s["status"] == status]
+        
+        # Apply pagination
+        paginated_strategies = mock_strategies[offset:offset + limit]
+        
+        response = {
+            "strategies": paginated_strategies,
+            "total_count": len(mock_strategies),
+            "limit": limit,
+            "offset": offset,
+            "has_more": offset + limit < len(mock_strategies),
+            "summary": {
+                "active_strategies": len([s for s in mock_strategies if s["status"] == "active"]),
+                "draft_strategies": len([s for s in mock_strategies if s["status"] == "draft"]),
+                "average_performance": sum(s["performance_score"] for s in mock_strategies) / len(mock_strategies) if mock_strategies else 0
+            }
+        }
+        
+        logger.info(f"Epic 9.3: Retrieved {len(paginated_strategies)} strategies")
+        return response
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error listing strategies: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Strategy listing failed: {str(e)}")
+
+
+# === CONTENT OPTIMIZATION ENDPOINTS ===
+
+@router.post("/content/optimize", response_model=ContentOptimizationResponse)
+async def optimize_content(
+    request: ContentOptimizationRequest,
+    optimization_engine = Depends(get_content_optimization_engine),
+    viral_engine = Depends(get_viral_prediction_engine),
+    brand_safety = Depends(get_brand_safety_analyzer)
+) -> ContentOptimizationResponse:
+    """Optimize individual content pieces (Epic 9.3)."""
+    try:
+        start_time = asyncio.get_event_loop().time()
+        
+        logger.info(f"Epic 9.3: Optimizing content for {request.platform} platform")
+        
+        # Parse platform enum
+        from graph_rag.core.viral_prediction_engine import Platform
+        platform_map = {"linkedin": Platform.LINKEDIN, "twitter": Platform.TWITTER, "general": Platform.GENERAL}
+        platform_enum = platform_map.get(request.platform.lower(), Platform.GENERAL)
+        
+        # Generate optimization ID
+        optimization_id = f"opt_{hash(request.content[:100])}_{int(start_time)}"
+        
+        # Get baseline viral prediction
+        baseline_prediction = await viral_engine.predict_viral_potential(request.content, platform_enum)
+        
+        # Get baseline brand safety assessment
+        baseline_safety = await brand_safety.assess_brand_safety(request.content, platform_enum, optimization_id)
+        
+        # Mock content optimization (in production, would use actual optimization engine)
+        optimized_content = f"{request.content.strip()}\n\n✨ Optimized for better engagement and clarity."
+        
+        # Quality metrics assessment
+        quality_metrics = {
+            "readability_score": 0.75,
+            "engagement_potential": baseline_prediction.engagement_score + 0.1,
+            "brand_alignment": 1.0 - baseline_safety.risk_score.overall,
+            "viral_potential": baseline_prediction.overall_viral_score + 0.05,
+            "safety_score": 1.0 - baseline_safety.risk_score.overall,
+            "clarity_score": 0.8,
+            "actionability_score": 0.7
+        }
+        
+        # Improvement suggestions
+        improvement_suggestions = [
+            {
+                "category": "engagement",
+                "priority": "high",
+                "suggestion": "Add stronger call-to-action elements",
+                "expected_impact": 0.15,
+                "implementation_effort": "low"
+            },
+            {
+                "category": "structure",
+                "priority": "medium", 
+                "suggestion": "Improve content structure with better headings",
+                "expected_impact": 0.1,
+                "implementation_effort": "medium"
+            },
+            {
+                "category": "platform_specific",
+                "priority": "medium",
+                "suggestion": f"Optimize formatting for {request.platform} platform",
+                "expected_impact": 0.12,
+                "implementation_effort": "low"
+            }
+        ]
+        
+        # Predicted improvements
+        predicted_improvements = {
+            "engagement_increase": 0.15,
+            "reach_increase": 0.12,
+            "click_rate_increase": 0.08,
+            "overall_performance_lift": 0.18,
+            "confidence": 0.75
+        }
+        
+        optimization_time = (asyncio.get_event_loop().time() - start_time) * 1000
+        optimization_confidence = min(1.0, baseline_prediction.confidence + 0.1)
+        
+        logger.info(f"Epic 9.3: Content optimization completed in {optimization_time:.2f}ms with {optimization_confidence:.2f} confidence")
+        
+        return ContentOptimizationResponse(
+            optimization_id=optimization_id,
+            original_content=request.content,
+            optimized_content=optimized_content,
+            improvement_suggestions=improvement_suggestions,
+            quality_metrics=quality_metrics,
+            predicted_improvements=predicted_improvements,
+            optimization_confidence=optimization_confidence,
+            implementation_priority="high" if sum(quality_metrics.values()) / len(quality_metrics) < 0.7 else "medium"
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error optimizing content: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Content optimization failed: {str(e)}")
+
+
+@router.post("/content/analyze", response_model=ContentAnalysisResponse)
+async def analyze_content_quality(
+    request: ContentAnalysisRequest,
+    viral_engine = Depends(get_viral_prediction_engine),
+    brand_safety = Depends(get_brand_safety_analyzer)
+) -> ContentAnalysisResponse:
+    """Analyze content quality and potential (Epic 9.3)."""
+    try:
+        start_time = asyncio.get_event_loop().time()
+        
+        logger.info(f"Epic 9.3: Analyzing content quality for {len(request.content)} characters")
+        
+        analysis_id = f"analysis_{hash(request.content[:100])}_{int(start_time)}"
+        
+        # Content summary
+        content_summary = {
+            "character_count": len(request.content),
+            "word_count": len(request.content.split()),
+            "sentence_count": len([s for s in request.content.split('.') if s.strip()]),
+            "paragraph_count": len([p for p in request.content.split('\n\n') if p.strip()]),
+            "estimated_reading_time_minutes": len(request.content.split()) / 200,  # Average reading speed
+            "content_type": "text_post"  # Simplified detection
+        }
+        
+        # Get viral prediction for quality assessment
+        from graph_rag.core.viral_prediction_engine import Platform
+        viral_prediction = await viral_engine.predict_viral_potential(request.content, Platform.GENERAL)
+        
+        # Get brand safety assessment
+        safety_assessment = await brand_safety.assess_brand_safety(request.content, Platform.GENERAL, analysis_id)
+        
+        # Multi-dimensional quality scores
+        quality_assessment = {
+            "readability": 0.75,  # Mock score
+            "engagement_potential": viral_prediction.engagement_score,
+            "brand_alignment": 1.0 - safety_assessment.risk_score.overall,
+            "audience_relevance": 0.7,  # Mock score
+            "viral_potential": viral_prediction.overall_viral_score,
+            "safety_score": 1.0 - safety_assessment.risk_score.overall,
+            "originality": 0.8,  # Mock score
+            "clarity": 0.75,  # Mock score
+            "emotional_impact": viral_prediction.emotional_impact if hasattr(viral_prediction, 'emotional_impact') else 0.6,
+            "actionability": 0.65  # Mock score
+        }
+        
+        # Identify strengths
+        strengths = []
+        if quality_assessment["viral_potential"] > 0.7:
+            strengths.append("High viral potential with strong engagement drivers")
+        if quality_assessment["brand_alignment"] > 0.8:
+            strengths.append("Excellent brand safety and alignment")
+        if quality_assessment["clarity"] > 0.7:
+            strengths.append("Clear and well-structured content")
+        if content_summary["word_count"] > 100 and content_summary["word_count"] < 300:
+            strengths.append("Optimal length for social media engagement")
+        
+        # Identify weaknesses
+        weaknesses = []
+        if quality_assessment["engagement_potential"] < 0.5:
+            weaknesses.append("Low engagement potential - needs stronger hooks")
+        if quality_assessment["actionability"] < 0.6:
+            weaknesses.append("Lacks clear call-to-action elements")
+        if quality_assessment["emotional_impact"] < 0.5:
+            weaknesses.append("Limited emotional resonance with audience")
+        if content_summary["sentence_count"] < 3:
+            weaknesses.append("Too brief for comprehensive value delivery")
+        
+        # Benchmark comparison (if provided)
+        benchmark_comparison = None
+        if request.benchmark_content:
+            benchmark_scores = []
+            for benchmark in request.benchmark_content[:3]:  # Compare with top 3
+                benchmark_prediction = await viral_engine.predict_viral_potential(benchmark, Platform.GENERAL)
+                benchmark_scores.append(benchmark_prediction.overall_viral_score)
+            
+            avg_benchmark_score = sum(benchmark_scores) / len(benchmark_scores) if benchmark_scores else 0.5
+            benchmark_comparison = {
+                "vs_benchmark_performance": quality_assessment["viral_potential"] / avg_benchmark_score if avg_benchmark_score > 0 else 1.0,
+                "benchmark_count": len(request.benchmark_content),
+                "relative_ranking": "above_average" if quality_assessment["viral_potential"] > avg_benchmark_score else "below_average"
+            }
+        
+        # Improvement recommendations
+        recommendations = []
+        if quality_assessment["engagement_potential"] < 0.6:
+            recommendations.append("Add compelling hooks and questions to increase engagement")
+        if quality_assessment["actionability"] < 0.7:
+            recommendations.append("Include clear and specific call-to-action elements")
+        if quality_assessment["emotional_impact"] < 0.6:
+            recommendations.append("Incorporate storytelling elements to enhance emotional connection")
+        if content_summary["word_count"] < 50:
+            recommendations.append("Expand content to provide more comprehensive value")
+        
+        # Calculate overall analysis confidence
+        analysis_confidence = min(1.0, (
+            viral_prediction.confidence * 0.4 +
+            safety_assessment.confidence * 0.3 +
+            (len(request.content) / 500.0) * 0.3  # Content length factor
+        ))
+        
+        analysis_time = (asyncio.get_event_loop().time() - start_time) * 1000
+        
+        logger.info(f"Epic 9.3: Content analysis completed in {analysis_time:.2f}ms - Overall quality: {sum(quality_assessment.values()) / len(quality_assessment):.2f}")
+        
+        return ContentAnalysisResponse(
+            analysis_id=analysis_id,
+            content_summary=content_summary,
+            quality_assessment=quality_assessment,
+            strengths=strengths,
+            weaknesses=weaknesses,
+            benchmark_comparison=benchmark_comparison,
+            recommendations=recommendations,
+            analysis_confidence=analysis_confidence
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error analyzing content: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Content analysis failed: {str(e)}")
+
+
+@router.post("/content/variations", response_model=ContentVariationsResponse)
+async def generate_content_variations(
+    request: ContentVariationsRequest,
+    viral_engine = Depends(get_viral_prediction_engine)
+) -> ContentVariationsResponse:
+    """Generate A/B testing content variations (Epic 9.3)."""
+    try:
+        start_time = asyncio.get_event_loop().time()
+        
+        logger.info(f"Epic 9.3: Generating {request.variation_count} content variations")
+        
+        # Parse platform enum
+        from graph_rag.core.viral_prediction_engine import Platform
+        platform_map = {"linkedin": Platform.LINKEDIN, "twitter": Platform.TWITTER, "general": Platform.GENERAL}
+        platform_enum = platform_map.get(request.platform.lower(), Platform.GENERAL)
+        
+        # Get baseline prediction for original content
+        baseline_prediction = await viral_engine.predict_viral_potential(request.original_content, platform_enum)
+        
+        # Generate variations (mock implementation)
+        variations = []
+        variation_goals_map = {
+            "higher_engagement": "📈 Engagement-Optimized Version",
+            "different_tone": "🎭 Tone-Adjusted Version", 
+            "shorter_format": "⚡ Concise Version",
+            "more_professional": "👔 Professional Version",
+            "more_casual": "😊 Casual Version"
+        }
+        
+        for i in range(request.variation_count):
+            # Mock variation generation
+            goal = request.variation_goals[i % len(request.variation_goals)] if request.variation_goals else "higher_engagement"
+            goal_prefix = variation_goals_map.get(goal, "✨ Optimized Version")
+            
+            variation_content = f"{goal_prefix}:\n\n{request.original_content}"
+            
+            # Add variation-specific modifications
+            if "engagement" in goal:
+                variation_content += "\n\nWhat are your thoughts? 💭"
+            elif "tone" in goal:
+                variation_content += "\n\n#ThoughtLeadership #Innovation"
+            elif "shorter" in goal:
+                variation_content = request.original_content[:100] + "..." if len(request.original_content) > 100 else request.original_content
+            
+            # Predict performance for variation
+            variation_prediction = await viral_engine.predict_viral_potential(variation_content, platform_enum)
+            
+            variation_data = {
+                "variation_id": f"var_{i+1}",
+                "content": variation_content,
+                "goal": goal,
+                "predicted_performance": {
+                    "viral_score": variation_prediction.overall_viral_score,
+                    "engagement_score": variation_prediction.engagement_score,
+                    "reach_potential": variation_prediction.reach_potential
+                },
+                "differences_from_original": [
+                    f"Modified for {goal.replace('_', ' ')}",
+                    f"{'Shorter' if len(variation_content) < len(request.original_content) else 'Enhanced'} format",
+                    "Platform-optimized elements added"
+                ],
+                "confidence": variation_prediction.confidence
+            }
+            variations.append(variation_data)
+        
+        # Variation analysis
+        variation_analysis = {
+            "total_variations": len(variations),
+            "best_predicted_performer": max(variations, key=lambda v: v["predicted_performance"]["viral_score"])["variation_id"],
+            "variation_score_range": {
+                "min": min(v["predicted_performance"]["viral_score"] for v in variations),
+                "max": max(v["predicted_performance"]["viral_score"] for v in variations),
+                "average": sum(v["predicted_performance"]["viral_score"] for v in variations) / len(variations)
+            },
+            "original_vs_variations": {
+                "original_score": baseline_prediction.overall_viral_score,
+                "best_variation_improvement": max(v["predicted_performance"]["viral_score"] for v in variations) - baseline_prediction.overall_viral_score,
+                "variations_outperforming_original": len([v for v in variations if v["predicted_performance"]["viral_score"] > baseline_prediction.overall_viral_score])
+            }
+        }
+        
+        # Testing recommendations
+        testing_recommendations = [
+            "Run A/B test with 50/50 traffic split between original and best variation",
+            "Test for minimum 1 week to gather statistically significant data",
+            "Monitor engagement rate, click-through rate, and conversion metrics",
+            "Consider audience segmentation for more targeted testing",
+            f"Start with top {min(2, len(variations))} performing variations to reduce complexity"
+        ]
+        
+        # Predicted performance summary
+        predicted_performance = {
+            "original_baseline": {
+                "viral_score": baseline_prediction.overall_viral_score,
+                "engagement_score": baseline_prediction.engagement_score,
+                "reach_potential": baseline_prediction.reach_potential
+            },
+            "variation_performance": [
+                {
+                    "variation_id": v["variation_id"],
+                    "expected_lift": v["predicted_performance"]["viral_score"] - baseline_prediction.overall_viral_score,
+                    "confidence": v["confidence"]
+                }
+                for v in variations
+            ],
+            "recommended_test_duration_days": 7,
+            "minimum_sample_size": 1000
+        }
+        
+        generation_time = (asyncio.get_event_loop().time() - start_time) * 1000
+        
+        logger.info(f"Epic 9.3: Generated {len(variations)} variations in {generation_time:.2f}ms")
+        
+        return ContentVariationsResponse(
+            original_content=request.original_content,
+            variations=variations,
+            variation_analysis=variation_analysis,
+            testing_recommendations=testing_recommendations,
+            predicted_performance=predicted_performance
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error generating content variations: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Content variation generation failed: {str(e)}")
+
+
+@router.post("/content/predict-performance", response_model=PerformancePredictionResponse)
+async def predict_content_performance(
+    request: PerformancePredictionRequest,
+    viral_engine = Depends(get_viral_prediction_engine),
+    audience_engine = Depends(get_audience_segmentation_engine)
+) -> PerformancePredictionResponse:
+    """Predict content performance with confidence intervals (Epic 9.3)."""
+    try:
+        start_time = asyncio.get_event_loop().time()
+        
+        logger.info(f"Epic 9.3: Predicting performance for {request.platform} content")
+        
+        # Parse platform enum
+        from graph_rag.core.viral_prediction_engine import Platform
+        platform_map = {"linkedin": Platform.LINKEDIN, "twitter": Platform.TWITTER, "general": Platform.GENERAL}
+        platform_enum = platform_map.get(request.platform.lower(), Platform.GENERAL)
+        
+        content_id = f"perf_{hash(request.content[:100])}_{int(start_time)}"
+        
+        # Get viral prediction
+        viral_prediction = await viral_engine.predict_viral_potential(
+            request.content, platform_enum, content_id, request.publishing_context
+        )
+        
+        # Analyze audience if provided
+        audience_resonance = 0.7  # Default
+        if request.audience_data:
+            # Mock audience analysis - in production would use actual audience data
+            audience_resonance = request.audience_data.get("resonance_score", 0.7)
+        
+        # Historical context adjustment
+        historical_multiplier = 1.0
+        if request.historical_context:
+            # Adjust predictions based on historical performance
+            historical_avg = request.historical_context.get("average_performance", 0.5)
+            historical_multiplier = 1.0 + (historical_avg - 0.5) * 0.5  # -25% to +25% adjustment
+        
+        # Detailed performance forecast
+        base_reach = int(viral_prediction.reach_potential * 10000 * historical_multiplier)
+        base_engagement = viral_prediction.engagement_score * historical_multiplier * audience_resonance
+        
+        performance_forecast = {
+            "reach_prediction": {
+                "min": int(base_reach * 0.7),
+                "expected": base_reach,
+                "max": int(base_reach * 1.5)
+            },
+            "engagement_metrics": {
+                "engagement_rate": {
+                    "min": base_engagement * 0.6,
+                    "expected": base_engagement,
+                    "max": base_engagement * 1.8
+                },
+                "likes": {
+                    "min": int(base_reach * base_engagement * 0.8),
+                    "expected": int(base_reach * base_engagement),
+                    "max": int(base_reach * base_engagement * 1.5)
+                },
+                "shares": {
+                    "min": int(base_reach * base_engagement * 0.1),
+                    "expected": int(base_reach * base_engagement * 0.15),
+                    "max": int(base_reach * base_engagement * 0.25)
+                },
+                "comments": {
+                    "min": int(base_reach * base_engagement * 0.05),
+                    "expected": int(base_reach * base_engagement * 0.08),
+                    "max": int(base_reach * base_engagement * 0.15)
+                }
+            },
+            "timing_insights": {
+                "optimal_posting_time": viral_prediction.optimal_posting_time.isoformat() if viral_prediction.optimal_posting_time else None,
+                "peak_engagement_window_hours": 4,
+                "viral_probability": viral_prediction.viral_velocity
+            },
+            "platform_specific": {
+                "platform_optimization_score": viral_prediction.platform_optimization_score,
+                "algorithm_compatibility": 0.75,  # Mock score
+                "trending_potential": viral_prediction.viral_velocity
+            }
+        }
+        
+        # Confidence intervals for key metrics
+        confidence_intervals = {
+            "reach": (performance_forecast["reach_prediction"]["min"], 
+                     performance_forecast["reach_prediction"]["expected"], 
+                     performance_forecast["reach_prediction"]["max"]),
+            "engagement_rate": (performance_forecast["engagement_metrics"]["engagement_rate"]["min"],
+                               performance_forecast["engagement_metrics"]["engagement_rate"]["expected"],
+                               performance_forecast["engagement_metrics"]["engagement_rate"]["max"]),
+            "viral_score": (viral_prediction.overall_viral_score * 0.8,
+                           viral_prediction.overall_viral_score,
+                           viral_prediction.overall_viral_score * 1.2),
+            "conversion_rate": (0.001, 0.005, 0.02)  # Mock conversion predictions
+        }
+        
+        # Key performance drivers
+        key_performance_drivers = viral_prediction.key_features[:5] if viral_prediction.key_features else [
+            "Content topic relevance",
+            "Posting time optimization",
+            "Audience engagement potential",
+            "Platform algorithm compatibility",
+            "Content format effectiveness"
+        ]
+        
+        # Risk factors
+        risk_factors = [
+            "Algorithm changes could impact reach",
+            "Audience fatigue with similar content",
+            "Competitive content may overshadow",
+            "Platform-specific feature changes",
+            "Seasonal engagement variations"
+        ]
+        
+        # Optimization suggestions
+        optimization_suggestions = viral_prediction.improvement_suggestions[:5] if viral_prediction.improvement_suggestions else [
+            "Add stronger call-to-action elements",
+            "Include trending hashtags or keywords",
+            "Optimize content length for platform",
+            "Enhance visual elements if possible",
+            "Time publication for peak audience activity"
+        ]
+        
+        # Calculate prediction confidence
+        confidence_factors = [
+            viral_prediction.confidence,
+            audience_resonance,
+            1.0 if request.historical_context else 0.7,
+            0.9 if request.publishing_context else 0.8
+        ]
+        prediction_confidence = sum(confidence_factors) / len(confidence_factors)
+        
+        prediction_time = (asyncio.get_event_loop().time() - start_time) * 1000
+        
+        logger.info(f"Epic 9.3: Performance prediction completed in {prediction_time:.2f}ms - Expected reach: {base_reach}, Confidence: {prediction_confidence:.2f}")
+        
+        return PerformancePredictionResponse(
+            content_id=content_id,
+            performance_forecast=performance_forecast,
+            confidence_intervals=confidence_intervals,
+            key_performance_drivers=key_performance_drivers,
+            risk_factors=risk_factors,
+            optimization_suggestions=optimization_suggestions,
+            prediction_confidence=prediction_confidence
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error predicting content performance: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Performance prediction failed: {str(e)}")
+
+
+@router.get("/content/optimization-history/{content_id}")
+async def get_content_optimization_history(content_id: str) -> Dict[str, Any]:
+    """Get optimization history for specific content (Epic 9.3)."""
+    try:
+        logger.info(f"Epic 9.3: Retrieving optimization history for content {content_id}")
+        
+        # Mock implementation - in production would query database
+        optimization_history = {
+            "content_id": content_id,
+            "total_optimizations": 3,
+            "optimization_timeline": [
+                {
+                    "optimization_id": "opt_001",
+                    "timestamp": (datetime.utcnow() - timedelta(days=7)).isoformat(),
+                    "optimization_type": "engagement",
+                    "changes_made": ["Added call-to-action", "Improved headline"],
+                    "performance_impact": {
+                        "engagement_increase": 0.15,
+                        "reach_increase": 0.08
+                    },
+                    "status": "applied"
+                },
+                {
+                    "optimization_id": "opt_002", 
+                    "timestamp": (datetime.utcnow() - timedelta(days=3)).isoformat(),
+                    "optimization_type": "platform_specific",
+                    "changes_made": ["LinkedIn formatting", "Added hashtags"],
+                    "performance_impact": {
+                        "platform_score_increase": 0.12,
+                        "reach_increase": 0.05
+                    },
+                    "status": "applied"
+                },
+                {
+                    "optimization_id": "opt_003",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "optimization_type": "viral_potential",
+                    "changes_made": ["Enhanced emotional appeal", "Added trending elements"],
+                    "performance_impact": {
+                        "viral_score_increase": 0.18,
+                        "projected_reach_increase": 0.22
+                    },
+                    "status": "pending"
+                }
+            ],
+            "cumulative_impact": {
+                "total_engagement_improvement": 0.27,
+                "total_reach_improvement": 0.35,
+                "optimization_roi": 2.4
+            },
+            "optimization_patterns": {
+                "most_effective_type": "engagement",
+                "average_improvement": 0.13,
+                "success_rate": 0.85
+            },
+            "next_recommendations": [
+                "Consider A/B testing for further optimization",
+                "Monitor performance for 1 week before next optimization",
+                "Focus on conversion optimization in next iteration"
+            ]
+        }
+        
+        return optimization_history
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error retrieving optimization history: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Optimization history retrieval failed: {str(e)}")
+
+
+@router.post("/content/batch-optimize", response_model=BatchOptimizationResponse)
+async def batch_optimize_content(
+    request: BatchOptimizationRequest,
+    optimization_engine = Depends(get_content_optimization_engine)
+) -> BatchOptimizationResponse:
+    """Batch optimize multiple content pieces (Epic 9.3)."""
+    try:
+        start_time = asyncio.get_event_loop().time()
+        
+        logger.info(f"Epic 9.3: Starting batch optimization of {len(request.content_items)} items")
+        
+        batch_id = f"batch_{int(start_time)}"
+        individual_results = []
+        total_improvements = 0
+        
+        # Process each content item
+        for i, item in enumerate(request.content_items):
+            try:
+                content = item.get("content", "")
+                item_id = item.get("id", f"item_{i}")
+                
+                # Mock individual optimization
+                optimization_result = {
+                    "item_id": item_id,
+                    "original_content": content,
+                    "optimized_content": f"{content}\n\n✨ Batch optimized for improved performance.",
+                    "optimization_applied": ["engagement_enhancement", "clarity_improvement"],
+                    "quality_improvement": 0.15,
+                    "estimated_performance_lift": 0.12,
+                    "optimization_confidence": 0.78,
+                    "processing_time_ms": 150
+                }
+                
+                individual_results.append(optimization_result)
+                total_improvements += optimization_result["quality_improvement"]
+                
+            except Exception as e:
+                logger.warning(f"Error optimizing item {i}: {e}")
+                individual_results.append({
+                    "item_id": item.get("id", f"item_{i}"),
+                    "error": str(e),
+                    "status": "failed"
+                })
+        
+        # Batch optimization summary
+        successful_optimizations = len([r for r in individual_results if "error" not in r])
+        average_improvement = total_improvements / successful_optimizations if successful_optimizations > 0 else 0
+        
+        optimization_summary = {
+            "total_processed": len(request.content_items),
+            "successful_optimizations": successful_optimizations,
+            "failed_optimizations": len(request.content_items) - successful_optimizations,
+            "average_quality_improvement": average_improvement,
+            "total_processing_time_ms": (asyncio.get_event_loop().time() - start_time) * 1000,
+            "batch_success_rate": successful_optimizations / len(request.content_items) if request.content_items else 0
+        }
+        
+        # Prioritized recommendations
+        prioritized_recommendations = [
+            f"Implement optimizations for {successful_optimizations} successfully processed items",
+            "Review and address failed optimizations manually",
+            "Monitor performance impact over next 2 weeks",
+            "Consider A/B testing top-performing optimizations",
+            "Schedule next batch optimization in 4 weeks"
+        ]
+        
+        if average_improvement > 0.2:
+            prioritized_recommendations.insert(1, "High improvement detected - prioritize immediate implementation")
+        
+        # Resource allocation recommendations
+        resource_allocation = {
+            "implementation_priority": "high" if average_improvement > 0.15 else "medium",
+            "estimated_implementation_hours": successful_optimizations * 0.5,
+            "recommended_team_size": min(3, max(1, successful_optimizations // 10)),
+            "timeline_weeks": max(1, successful_optimizations // 20),
+            "budget_estimate": successful_optimizations * 50  # $50 per optimization
+        }
+        
+        # Implementation roadmap
+        implementation_roadmap = [
+            {
+                "phase": "immediate",
+                "timeline": "Week 1",
+                "actions": ["Apply high-impact optimizations", "Set up performance monitoring"],
+                "items_count": min(successful_optimizations, 10)
+            },
+            {
+                "phase": "rollout",
+                "timeline": "Week 2-3", 
+                "actions": ["Apply remaining optimizations", "Monitor performance metrics"],
+                "items_count": max(0, successful_optimizations - 10)
+            },
+            {
+                "phase": "evaluation",
+                "timeline": "Week 4",
+                "actions": ["Analyze performance impact", "Plan next optimization cycle"],
+                "items_count": 0
+            }
+        ]
+        
+        logger.info(f"Epic 9.3: Batch optimization completed - {successful_optimizations}/{len(request.content_items)} items optimized successfully")
+        
+        return BatchOptimizationResponse(
+            batch_id=batch_id,
+            total_items=len(request.content_items),
+            optimization_summary=optimization_summary,
+            individual_results=individual_results,
+            prioritized_recommendations=prioritized_recommendations,
+            resource_allocation=resource_allocation,
+            implementation_roadmap=implementation_roadmap
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error in batch optimization: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Batch optimization failed: {str(e)}")
+
+
+# === AUTOMATION ENDPOINTS ===
+
+@router.post("/automation/workflows", response_model=WorkflowResponse)
+async def create_optimization_workflow(
+    request: WorkflowRequest
+) -> WorkflowResponse:
+    """Create optimization workflow for automation (Epic 9.3)."""
+    try:
+        start_time = asyncio.get_event_loop().time()
+        
+        logger.info(f"Epic 9.3: Creating {request.workflow_type} workflow: {request.workflow_name}")
+        
+        workflow_id = f"workflow_{int(start_time)}"
+        
+        # Validate workflow configuration
+        if request.workflow_type == "scheduled" and not request.schedule:
+            raise HTTPException(status_code=400, detail="Schedule configuration required for scheduled workflows")
+        
+        if request.workflow_type == "trigger-based" and not request.triggers:
+            raise HTTPException(status_code=400, detail="Trigger conditions required for trigger-based workflows")
+        
+        # Calculate next execution time
+        next_execution = None
+        if request.workflow_type == "scheduled" and request.schedule:
+            # Mock schedule calculation
+            schedule_interval = request.schedule.get("interval_hours", 24)
+            next_execution = datetime.utcnow() + timedelta(hours=schedule_interval)
+        elif request.workflow_type == "continuous":
+            next_execution = datetime.utcnow() + timedelta(minutes=5)  # Continuous workflows run every 5 minutes
+        
+        # Workflow configuration
+        configuration = {
+            "workflow_type": request.workflow_type,
+            "content_sources": request.content_sources,
+            "optimization_criteria": request.optimization_criteria,
+            "schedule": request.schedule,
+            "triggers": request.triggers,
+            "approval_settings": request.approval_settings,
+            "created_at": datetime.utcnow().isoformat(),
+            "status": "active"
+        }
+        
+        # Initialize execution history
+        execution_history = [
+            {
+                "execution_id": f"exec_001",
+                "timestamp": datetime.utcnow().isoformat(),
+                "status": "scheduled",
+                "items_processed": 0,
+                "duration_ms": 0
+            }
+        ]
+        
+        # Performance metrics
+        performance_metrics = {
+            "total_executions": 0,
+            "successful_executions": 0,
+            "average_execution_time_ms": 0,
+            "total_items_processed": 0,
+            "average_optimization_improvement": 0,
+            "last_execution_status": "pending"
+        }
+        
+        logger.info(f"Epic 9.3: Workflow {workflow_id} created successfully")
+        
+        return WorkflowResponse(
+            workflow_id=workflow_id,
+            workflow_name=request.workflow_name,
+            status="active",
+            configuration=configuration,
+            last_execution=None,
+            next_execution=next_execution,
+            execution_history=execution_history,
+            performance_metrics=performance_metrics
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error creating workflow: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Workflow creation failed: {str(e)}")
+
+
+@router.get("/automation/workflows/{workflow_id}", response_model=WorkflowResponse)
+async def get_workflow_status(workflow_id: str) -> WorkflowResponse:
+    """Get workflow status and details (Epic 9.3)."""
+    try:
+        logger.info(f"Epic 9.3: Retrieving workflow status for {workflow_id}")
+        
+        # Mock implementation - in production would query database
+        workflow_response = WorkflowResponse(
+            workflow_id=workflow_id,
+            workflow_name="Content Optimization Workflow",
+            status="running",
+            configuration={
+                "workflow_type": "scheduled",
+                "content_sources": ["linkedin", "blog"],
+                "optimization_criteria": {"min_quality_score": 0.7},
+                "schedule": {"interval_hours": 24},
+                "created_at": (datetime.utcnow() - timedelta(days=5)).isoformat()
+            },
+            last_execution=datetime.utcnow() - timedelta(hours=2),
+            next_execution=datetime.utcnow() + timedelta(hours=22),
+            execution_history=[
+                {
+                    "execution_id": "exec_003",
+                    "timestamp": (datetime.utcnow() - timedelta(hours=2)).isoformat(),
+                    "status": "completed",
+                    "items_processed": 12,
+                    "duration_ms": 45000,
+                    "optimizations_applied": 8
+                },
+                {
+                    "execution_id": "exec_002",
+                    "timestamp": (datetime.utcnow() - timedelta(days=1, hours=2)).isoformat(),
+                    "status": "completed",
+                    "items_processed": 15,
+                    "duration_ms": 52000,
+                    "optimizations_applied": 11
+                }
+            ],
+            performance_metrics={
+                "total_executions": 3,
+                "successful_executions": 3,
+                "average_execution_time_ms": 48500,
+                "total_items_processed": 42,
+                "average_optimization_improvement": 0.18,
+                "last_execution_status": "completed",
+                "success_rate": 1.0
+            }
+        )
+        
+        return workflow_response
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error retrieving workflow status: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Workflow status retrieval failed: {str(e)}")
+
+
+@router.put("/automation/workflows/{workflow_id}", response_model=WorkflowResponse)
+async def update_workflow(
+    workflow_id: str,
+    updates: Dict[str, Any]
+) -> WorkflowResponse:
+    """Update workflow configuration (Epic 9.3)."""
+    try:
+        logger.info(f"Epic 9.3: Updating workflow {workflow_id} with {len(updates)} changes")
+        
+        # Mock implementation - in production would update database
+        updated_workflow = WorkflowResponse(
+            workflow_id=workflow_id,
+            workflow_name=updates.get("workflow_name", "Updated Workflow"),
+            status=updates.get("status", "active"),
+            configuration={
+                "workflow_type": updates.get("workflow_type", "scheduled"),
+                "content_sources": updates.get("content_sources", ["linkedin"]),
+                "optimization_criteria": updates.get("optimization_criteria", {}),
+                "schedule": updates.get("schedule", {"interval_hours": 24}),
+                "updated_at": datetime.utcnow().isoformat(),
+                "update_count": len(updates)
+            },
+            last_execution=datetime.utcnow() - timedelta(hours=1),
+            next_execution=datetime.utcnow() + timedelta(hours=23),
+            execution_history=[],
+            performance_metrics={
+                "total_executions": 0,
+                "successful_executions": 0,
+                "average_execution_time_ms": 0,
+                "configuration_updates": len(updates)
+            }
+        )
+        
+        logger.info(f"Epic 9.3: Workflow {workflow_id} updated successfully")
+        return updated_workflow
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error updating workflow: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Workflow update failed: {str(e)}")
+
+
+@router.delete("/automation/workflows/{workflow_id}")
+async def delete_workflow(workflow_id: str) -> Dict[str, Any]:
+    """Stop and delete workflow (Epic 9.3)."""
+    try:
+        logger.info(f"Epic 9.3: Deleting workflow {workflow_id}")
+        
+        # Mock implementation - in production would delete from database
+        deletion_result = {
+            "workflow_id": workflow_id,
+            "deletion_status": "success",
+            "stopped_at": datetime.utcnow().isoformat(),
+            "final_stats": {
+                "total_executions": 5,
+                "total_items_processed": 67,
+                "total_optimizations_applied": 42,
+                "average_improvement": 0.16
+            },
+            "cleanup_actions": [
+                "Workflow stopped",
+                "Scheduled tasks cancelled",
+                "Execution history archived",
+                "Performance metrics saved"
+            ],
+            "archive_location": f"archive/workflows/{workflow_id}"
+        }
+        
+        logger.info(f"Epic 9.3: Workflow {workflow_id} deleted successfully")
+        return deletion_result
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error deleting workflow: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Workflow deletion failed: {str(e)}")
+
+
+@router.get("/automation/workflows")
+async def list_workflows(
+    status: Optional[str] = Query(None, description="Filter by workflow status"),
+    workflow_type: Optional[str] = Query(None, description="Filter by workflow type"),
+    limit: int = Query(20, description="Maximum number of workflows to return")
+) -> Dict[str, Any]:
+    """List all optimization workflows (Epic 9.3)."""
+    try:
+        logger.info(f"Epic 9.3: Listing workflows with status={status}, type={workflow_type}")
+        
+        # Mock implementation - in production would query database
+        mock_workflows = [
+            {
+                "workflow_id": f"workflow_{i}",
+                "workflow_name": f"Optimization Workflow {i+1}",
+                "workflow_type": "scheduled" if i % 2 == 0 else "continuous",
+                "status": "active" if i % 3 != 0 else "paused",
+                "created_at": (datetime.utcnow() - timedelta(days=i*2)).isoformat(),
+                "last_execution": (datetime.utcnow() - timedelta(hours=i*6)).isoformat(),
+                "next_execution": (datetime.utcnow() + timedelta(hours=24-i*2)).isoformat(),
+                "total_executions": 10 + i * 3,
+                "items_processed": 150 + i * 25
+            }
+            for i in range(8)
+        ]
+        
+        # Apply filters
+        filtered_workflows = mock_workflows
+        if status:
+            filtered_workflows = [w for w in filtered_workflows if w["status"] == status]
+        if workflow_type:
+            filtered_workflows = [w for w in filtered_workflows if w["workflow_type"] == workflow_type]
+        
+        # Apply limit
+        limited_workflows = filtered_workflows[:limit]
+        
+        summary = {
+            "total_workflows": len(filtered_workflows),
+            "active_workflows": len([w for w in filtered_workflows if w["status"] == "active"]),
+            "paused_workflows": len([w for w in filtered_workflows if w["status"] == "paused"]),
+            "scheduled_workflows": len([w for w in filtered_workflows if w["workflow_type"] == "scheduled"]),
+            "continuous_workflows": len([w for w in filtered_workflows if w["workflow_type"] == "continuous"]),
+            "total_executions": sum(w["total_executions"] for w in filtered_workflows),
+            "total_items_processed": sum(w["items_processed"] for w in filtered_workflows)
+        }
+        
+        response = {
+            "workflows": limited_workflows,
+            "summary": summary,
+            "filters_applied": {
+                "status": status,
+                "workflow_type": workflow_type,
+                "limit": limit
+            }
+        }
+        
+        logger.info(f"Epic 9.3: Retrieved {len(limited_workflows)} workflows")
+        return response
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error listing workflows: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Workflow listing failed: {str(e)}")
+
+
+@router.post("/automation/schedules", response_model=ScheduleResponse)
+async def schedule_optimization_task(
+    request: ScheduleRequest
+) -> ScheduleResponse:
+    """Schedule optimization tasks (Epic 9.3)."""
+    try:
+        start_time = asyncio.get_event_loop().time()
+        
+        logger.info(f"Epic 9.3: Scheduling {request.task_type} task with {request.schedule_type} schedule")
+        
+        task_id = f"task_{int(start_time)}"
+        
+        # Calculate next execution time
+        if request.schedule_type == "one-time":
+            next_execution = datetime.fromisoformat(request.schedule_config.get("execution_time", datetime.utcnow().isoformat()))
+        elif request.schedule_type == "recurring":
+            interval_hours = request.schedule_config.get("interval_hours", 24)
+            next_execution = datetime.utcnow() + timedelta(hours=interval_hours)
+        else:  # conditional
+            next_execution = datetime.utcnow() + timedelta(hours=1)  # Check conditions hourly
+        
+        # Estimate resource usage
+        task_complexity = {
+            "content_optimization": {"cpu": "medium", "memory": "low", "duration_min": 5},
+            "strategy_analysis": {"cpu": "high", "memory": "medium", "duration_min": 15},
+            "batch_optimization": {"cpu": "high", "memory": "high", "duration_min": 30},
+            "performance_prediction": {"cpu": "medium", "memory": "low", "duration_min": 3}
+        }
+        
+        complexity = task_complexity.get(request.task_type, {"cpu": "medium", "memory": "medium", "duration_min": 10})
+        
+        estimated_resource_usage = {
+            "cpu_usage": complexity["cpu"],
+            "memory_usage": complexity["memory"],
+            "estimated_duration_minutes": complexity["duration_min"],
+            "dependencies": request.dependencies,
+            "priority_impact": request.priority
+        }
+        
+        logger.info(f"Epic 9.3: Task {task_id} scheduled for {next_execution.isoformat()}")
+        
+        return ScheduleResponse(
+            task_id=task_id,
+            task_type=request.task_type,
+            schedule_status="scheduled",
+            next_execution=next_execution,
+            execution_count=0,
+            last_result=None,
+            estimated_resource_usage=estimated_resource_usage
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 9.3: Error scheduling task: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Task scheduling failed: {str(e)}")

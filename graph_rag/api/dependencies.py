@@ -752,6 +752,48 @@ async def get_viral_prediction_engine() -> Any:
     return _singletons["viral_prediction_engine"]
 
 
+async def get_content_strategy_optimizer(
+    brand_profile: str = "moderate"
+) -> Any:
+    """Dependency getter for ContentStrategyOptimizer."""
+    from graph_rag.core.content_strategy_optimizer import ContentStrategyOptimizer, BrandProfile
+    from graph_rag.core.brand_safety_analyzer import BrandProfile as BSBrandProfile
+    
+    # Parse brand profile
+    try:
+        profile = BSBrandProfile(brand_profile.lower())
+    except ValueError:
+        profile = BSBrandProfile.MODERATE
+    
+    # Create optimizer with specified profile
+    optimizer = ContentStrategyOptimizer(profile)
+    logger.debug(f"Created ContentStrategyOptimizer instance with {profile.value} profile")
+    
+    return optimizer
+
+
+async def get_content_optimization_engine() -> Any:
+    """Dependency getter for ContentOptimizationEngine."""
+    from graph_rag.core.content_optimization_engine import ContentOptimizationEngine
+    
+    if "content_optimization_engine" not in _singletons:
+        _singletons["content_optimization_engine"] = ContentOptimizationEngine()
+        logger.debug("Created ContentOptimizationEngine instance")
+    
+    return _singletons["content_optimization_engine"]
+
+
+async def get_audience_segmentation_engine() -> Any:
+    """Dependency getter for AudienceSegmentationEngine."""
+    from graph_rag.core.audience_intelligence import AudienceSegmentationEngine
+    
+    if "audience_segmentation_engine" not in _singletons:
+        _singletons["audience_segmentation_engine"] = AudienceSegmentationEngine()
+        logger.debug("Created AudienceSegmentationEngine instance")
+    
+    return _singletons["audience_segmentation_engine"]
+
+
 # --- Authentication Dependencies (Example) ---
 # Example API Key Auth (adjust as needed)
 # api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)
