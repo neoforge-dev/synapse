@@ -22,6 +22,7 @@ from graph_rag.cli.commands.query import app as query_app
 from graph_rag.cli.commands.search import search_query
 from graph_rag.cli.commands.store import store_command
 from graph_rag.cli.commands.suggest import run_suggest as suggest_command
+from graph_rag.cli.commands.concept_map import app as concept_map_app
 from graph_rag.config import get_settings  # Import factory
 
 settings = get_settings()  # Get settings instance
@@ -59,6 +60,7 @@ app.add_typer(admin_app, name="admin")
 app.add_typer(mcp_app, name="mcp")
 app.add_typer(compose_app, name="compose")
 app.add_typer(init_app, name="init")
+app.add_typer(concept_map_app, name="concept")
 
 
 # Top-level convenience: synapse up (delegates to compose up with enhanced features)
