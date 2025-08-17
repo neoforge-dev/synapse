@@ -4,7 +4,7 @@
 
 ```bash
 # Add the tap
-brew tap neoforge-ai/synapse
+brew tap neoforge-dev/synapse
 
 # Install Synapse
 brew install synapse
@@ -37,8 +37,8 @@ synapse up
 
 ## Tap Information
 
-- **Tap Repository**: `neoforge-ai/synapse`
-- **Formula Location**: `/opt/homebrew/Library/Taps/neoforge-ai/homebrew-synapse/Formula/synapse.rb`
+- **Tap Repository**: `neoforge-dev/synapse`
+- **Formula Location**: `/opt/homebrew/Library/Taps/neoforge-dev/homebrew-synapse/Formula/synapse.rb`
 - **Homepage**: https://github.com/neoforge-dev/synapse
 
 ## Manual Installation (if Homebrew fails)
@@ -81,7 +81,7 @@ brew uninstall synapse
 brew install synapse
 
 # Check formula info
-brew info neoforge-ai/synapse/synapse
+brew info neoforge-dev/synapse/synapse
 ```
 
 ### macOS Beta Compatibility

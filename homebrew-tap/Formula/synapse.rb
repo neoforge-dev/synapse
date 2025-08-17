@@ -2,27 +2,26 @@ class Synapse < Formula
   include Language::Python::Virtualenv
 
   desc "Graph-enhanced RAG system with MCP integration for IDE workflows"
-  homepage "https://github.com/neoforge-ai/synapse-graph-rag"
-  url "https://github.com/neoforge-ai/synapse-graph-rag/archive/refs/tags/v0.1.0.tar.gz"
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+  homepage "https://github.com/neoforge-dev/synapse"
+  url "https://github.com/neoforge-dev/synapse/archive/refs/heads/main.tar.gz"
+  version "0.1.0"
+  sha256 "2ff8db52b496220501013fdf11df8be7c2d9176255b22c4f37b6adef4d21dd83"
   license "MIT"
-  head "https://github.com/neoforge-ai/synapse-graph-rag.git", branch: "main"
+  head "https://github.com/neoforge-dev/synapse.git", branch: "main"
 
   depends_on "python@3.12"
   depends_on "cmake" => :build  # For building mgclient
   depends_on "pkg-config" => :build
 
   def install
-    # Build and install pymgclient first
-    cd "pymgclient" do
-      system "python3", "setup.py", "build"
-      system "python3", "setup.py", "install", "--prefix=#{libexec}"
-    end
-
-    # Install main package using virtualenv
     virtualenv_install_with_resources
 
-    # Generate shell completions 
+    # Install pymgclient separately since it's a local dependency
+    cd "pymgclient" do
+      system libexec/"bin/pip", "install", "-e", "."
+    end
+
+    # Generate shell completions
     generate_completions_from_executable(bin/"synapse", "--help", shells: [:bash, :zsh, :fish])
 
     # Create necessary directories

@@ -6,7 +6,7 @@ This is the official Homebrew tap for [Synapse](https://github.com/neoforge-dev/
 
 ```bash
 # Add the tap
-brew tap neoforge-ai/synapse
+brew tap neoforge-dev/synapse
 
 # Install Synapse
 brew install synapse
