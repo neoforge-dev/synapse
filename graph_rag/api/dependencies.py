@@ -652,6 +652,43 @@ async def get_search_service(
     return create_search_service(graph_repo=graph_repo, vector_store=vector_store)
 
 
+# --- Concept Mapping Dependencies ---
+
+async def get_concept_extractor() -> Any:
+    """Dependency getter for ConceptExtractor."""
+    from graph_rag.core.concept_extractor import EnhancedConceptExtractor
+    
+    if "concept_extractor" not in _singletons:
+        _singletons["concept_extractor"] = EnhancedConceptExtractor(use_advanced_nlp=True)
+        logger.debug("Created ConceptExtractor instance")
+    
+    return _singletons["concept_extractor"]
+
+
+async def get_temporal_tracker() -> Any:
+    """Dependency getter for TemporalTracker."""
+    from graph_rag.core.temporal_tracker import TemporalTracker
+    
+    if "temporal_tracker" not in _singletons:
+        _singletons["temporal_tracker"] = TemporalTracker()
+        logger.debug("Created TemporalTracker instance")
+    
+    return _singletons["temporal_tracker"]
+
+
+async def get_cross_platform_correlator(
+    graph_repo: GraphRepository = Depends(get_graph_repository),
+) -> Any:
+    """Dependency getter for CrossPlatformCorrelator."""
+    from graph_rag.services.cross_platform_correlator import CrossPlatformCorrelator
+    
+    # Create per request since it maintains state
+    correlator = CrossPlatformCorrelator(graph_repo)
+    logger.debug("Created CrossPlatformCorrelator instance")
+    
+    return correlator
+
+
 # --- Authentication Dependencies (Example) ---
 # Example API Key Auth (adjust as needed)
 # api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)

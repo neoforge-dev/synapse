@@ -128,10 +128,30 @@ class EnhancedConceptExtractor(ConceptExtractor):
             r'\b(?:process\s+)?optimization\b'
         ]
         
+        # Belief/preference patterns
+        belief_patterns = [
+            r'\bI\s+(?:believe|think|feel|prefer|value)\b',
+            r'\b(?:in\s+my\s+opinion|personally|I\s+am\s+convinced)\b',
+            r'\b(?:we\s+should|it\'s\s+important|what\s+matters)\b',
+            r'\b(?:fundamental|core|essential|critical)\s+(?:principle|value|belief)\b',
+            r'\b(?:strongly\s+believe|deeply\s+value|firm\s+belief)\b'
+        ]
+        
+        # Hot take patterns (controversial/provocative statements)
+        hot_take_patterns = [
+            r'\b(?:unpopular\s+opinion|hot\s+take|controversial)\b',
+            r'\b(?:everyone\s+is\s+wrong|nobody\s+talks\s+about)\b',
+            r'\b(?:the\s+truth\s+is|let\'s\s+be\s+honest|real\s+talk)\b',
+            r'\b(?:most\s+people\s+don\'t|why\s+(?:nobody|everyone))\b',
+            r'\b(?:stop\s+saying|enough\s+with|tired\s+of\s+hearing)\b'
+        ]
+        
         all_patterns = {
             "STRATEGY": strategy_patterns,
             "INNOVATION": innovation_patterns, 
-            "PROCESS": process_patterns
+            "PROCESS": process_patterns,
+            "BELIEF": belief_patterns,
+            "HOT_TAKE": hot_take_patterns
         }
         
         for concept_type, patterns in all_patterns.items():
@@ -145,14 +165,28 @@ class EnhancedConceptExtractor(ConceptExtractor):
                     end = min(len(text), match.end() + 100)
                     context_window = text[start:end]
                     
+                    # Analyze sentiment and engagement potential
+                    sentiment = self._analyze_sentiment(context_window, concept_type)
+                    engagement_potential = self._calculate_engagement_potential(context_window, concept_type)
+                    
+                    # Adjust confidence based on concept type
+                    confidence = 0.7  # Base confidence
+                    if concept_type in ["HOT_TAKE", "BELIEF"]:
+                        confidence = 0.8  # Higher confidence for explicit beliefs/hot takes
+                    
                     concept = ConceptualEntity(
                         id=f"{concept_type}:{concept_text.lower().replace(' ', '_')}",
                         name=concept_text,
                         text=concept_text,
                         concept_type=concept_type,
-                        confidence=0.7,  # Rule-based gets medium confidence
+                        confidence=confidence,
                         context_window=context_window,
-                        properties=context or {}
+                        sentiment=sentiment,
+                        properties={
+                            **(context or {}),
+                            "engagement_potential": engagement_potential,
+                            "extraction_method": "rule_based"
+                        }
                     )
                     concepts.append(concept)
                     
@@ -271,6 +305,16 @@ class EnhancedConceptExtractor(ConceptExtractor):
         """Classify the type of concept based on linguistic patterns."""
         text_lower = text.lower()
         
+        # Belief/preference indicators
+        belief_indicators = ["believe", "think", "feel", "prefer", "value", "opinion", "personally", "important", "matters"]
+        if any(word in text_lower for word in belief_indicators):
+            return "BELIEF"
+            
+        # Hot take indicators
+        hot_take_indicators = ["unpopular", "controversial", "truth is", "real talk", "everyone is wrong", "nobody talks"]
+        if any(phrase in text_lower for phrase in hot_take_indicators):
+            return "HOT_TAKE"
+            
         # Strategy-related concepts
         if any(word in text_lower for word in ["strategy", "approach", "method", "plan"]):
             return "STRATEGY"
@@ -282,6 +326,11 @@ class EnhancedConceptExtractor(ConceptExtractor):
         # Process concepts
         if any(word in text_lower for word in ["process", "workflow", "system", "framework"]):
             return "PROCESS"
+            
+        # Preference indicators
+        preference_indicators = ["prefer", "like", "use", "follow", "method", "approach", "system", "tool"]
+        if any(word in text_lower for word in preference_indicators):
+            return "PREFERENCE"
             
         # Generic concept if it looks conceptual
         if chunk and chunk.root.pos_ in ["NOUN"] and len(text.split()) >= 2:
@@ -384,6 +433,60 @@ class EnhancedConceptExtractor(ConceptExtractor):
         
         return text[start:end].strip()
 
+    def _analyze_sentiment(self, text: str, concept_type: str) -> str:
+        """Analyze sentiment of a concept based on linguistic indicators."""
+        text_lower = text.lower()
+        
+        # Strong positive indicators
+        positive_words = ["amazing", "breakthrough", "incredible", "outstanding", "excellent", "fantastic", "revolutionary"]
+        # Strong negative indicators  
+        negative_words = ["terrible", "awful", "horrible", "worst", "failed", "disaster", "broken"]
+        # Controversial indicators
+        controversial_words = ["controversial", "unpopular", "against", "wrong", "disagree", "challenge"]
+        
+        positive_count = sum(1 for word in positive_words if word in text_lower)
+        negative_count = sum(1 for word in negative_words if word in text_lower)
+        controversial_count = sum(1 for word in controversial_words if word in text_lower)
+        
+        if concept_type == "HOT_TAKE":
+            return "controversial" if controversial_count > 0 else "provocative"
+        elif positive_count > negative_count:
+            return "positive"
+        elif negative_count > positive_count:
+            return "negative"
+        else:
+            return "neutral"
+
+    def _calculate_engagement_potential(self, text: str, concept_type: str) -> float:
+        """Calculate potential engagement score based on content analysis."""
+        text_lower = text.lower()
+        score = 0.5  # Base score
+        
+        # Hot takes and beliefs tend to drive more engagement
+        if concept_type in ["HOT_TAKE", "BELIEF"]:
+            score += 0.3
+            
+        # Question format increases engagement
+        if "?" in text:
+            score += 0.2
+            
+        # Personal pronouns increase engagement
+        personal_pronouns = ["i", "my", "me", "we", "us", "our"]
+        personal_count = sum(1 for pronoun in personal_pronouns if f" {pronoun} " in f" {text_lower} ")
+        score += min(personal_count * 0.1, 0.3)
+        
+        # Call to action increases engagement
+        cta_phrases = ["what do you think", "share your", "tell me", "comment below", "your thoughts", "agree or disagree"]
+        if any(phrase in text_lower for phrase in cta_phrases):
+            score += 0.3
+            
+        # Emotional words increase engagement
+        emotional_words = ["love", "hate", "excited", "frustrated", "amazing", "terrible", "shocked", "surprised"]
+        emotional_count = sum(1 for word in emotional_words if word in text_lower)
+        score += min(emotional_count * 0.1, 0.2)
+        
+        return min(score, 1.0)  # Cap at 1.0
+
 
 class LinkedInConceptExtractor(EnhancedConceptExtractor):
     """Specialized concept extractor for LinkedIn content."""
@@ -399,6 +502,13 @@ class LinkedInConceptExtractor(EnhancedConceptExtractor):
         # Add LinkedIn-specific concept extraction
         linkedin_specific = await self._extract_engagement_concepts(text, context)
         concepts.extend(linkedin_specific)
+        
+        # Extract professional beliefs and hot takes
+        professional_beliefs = await self._extract_professional_beliefs(text, context)
+        concepts.extend(professional_beliefs)
+        
+        linkedin_hot_takes = await self._extract_linkedin_hot_takes(text, context)
+        concepts.extend(linkedin_hot_takes)
         
         return self._deduplicate_concepts(concepts)
 
@@ -429,6 +539,93 @@ class LinkedInConceptExtractor(EnhancedConceptExtractor):
                 
         return concepts
 
+    async def _extract_professional_beliefs(self, text: str, context: Dict[str, Any]) -> List[ConceptualEntity]:
+        """Extract professional beliefs and values from LinkedIn content."""
+        concepts = []
+        
+        # Professional belief patterns specific to LinkedIn
+        professional_belief_patterns = [
+            r'\b(?:leadership|management)\s+(?:is|means|requires)\b',
+            r'\b(?:success|growth|innovation)\s+(?:comes from|depends on|requires)\b',
+            r'\b(?:the\s+key\s+to|what\s+makes|why)\s+(?:great|successful|effective)\b',
+            r'\b(?:always|never)\s+(?:hire|work with|trust|believe in)\b',
+            r'\b(?:culture|values|principles)\s+(?:matter|define|drive)\b'
+        ]
+        
+        for pattern in professional_belief_patterns:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                # Extract the full sentence or extended context
+                start = max(0, match.start() - 50)
+                end = min(len(text), match.end() + 100)
+                full_context = text[start:end]
+                
+                sentiment = self._analyze_sentiment(full_context, "BELIEF")
+                engagement_potential = self._calculate_engagement_potential(full_context, "BELIEF")
+                
+                concept = ConceptualEntity(
+                    id=f"linkedin_BELIEF:{match.group(0).lower().replace(' ', '_')}",
+                    name=match.group(0),
+                    text=match.group(0),
+                    concept_type="BELIEF",
+                    confidence=0.85,  # High confidence for LinkedIn professional beliefs
+                    context_window=full_context,
+                    sentiment=sentiment,
+                    properties={
+                        **context, 
+                        "platform": "linkedin", 
+                        "type": "professional_belief",
+                        "engagement_potential": engagement_potential
+                    }
+                )
+                concepts.append(concept)
+                
+        return concepts
+
+    async def _extract_linkedin_hot_takes(self, text: str, context: Dict[str, Any]) -> List[ConceptualEntity]:
+        """Extract hot takes and controversial opinions from LinkedIn content."""
+        concepts = []
+        
+        # LinkedIn-specific hot take patterns
+        linkedin_hot_take_patterns = [
+            r'\b(?:most\s+(?:companies|leaders|people))\s+(?:don\'t|won\'t|can\'t)\b',
+            r'\b(?:why\s+(?:nobody|everyone))\s+(?:talks about|ignores|misses)\b',
+            r'\b(?:the\s+problem\s+with|what\'s\s+wrong\s+with)\s+(?:corporate|business|leadership)\b',
+            r'\b(?:stop\s+(?:saying|doing|believing)|enough\s+with)\b',
+            r'\b(?:unpopular\s+opinion|controversial\s+take|let\'s\s+be\s+honest)\b'
+        ]
+        
+        for pattern in linkedin_hot_take_patterns:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                # Extract broader context for hot takes
+                start = max(0, match.start() - 30)
+                end = min(len(text), match.end() + 150)
+                full_context = text[start:end]
+                
+                sentiment = self._analyze_sentiment(full_context, "HOT_TAKE")
+                engagement_potential = self._calculate_engagement_potential(full_context, "HOT_TAKE")
+                
+                concept = ConceptualEntity(
+                    id=f"linkedin_HOT_TAKE:{match.group(0).lower().replace(' ', '_')}",
+                    name=match.group(0),
+                    text=match.group(0),
+                    concept_type="HOT_TAKE",
+                    confidence=0.9,  # Very high confidence for explicit hot take markers
+                    context_window=full_context,
+                    sentiment=sentiment,
+                    properties={
+                        **context, 
+                        "platform": "linkedin", 
+                        "type": "professional_hot_take",
+                        "engagement_potential": engagement_potential,
+                        "viral_potential": "high" if engagement_potential > 0.8 else "medium"
+                    }
+                )
+                concepts.append(concept)
+                
+        return concepts
+
 
 class NotionConceptExtractor(EnhancedConceptExtractor):
     """Specialized concept extractor for Notion content."""
@@ -444,6 +641,14 @@ class NotionConceptExtractor(EnhancedConceptExtractor):
         # Add Notion-specific concept extraction
         notion_specific = await self._extract_knowledge_concepts(text, context)
         concepts.extend(notion_specific)
+        
+        # Extract personal beliefs and preferences in knowledge management context
+        personal_beliefs = await self._extract_notion_beliefs(text, context)
+        concepts.extend(personal_beliefs)
+        
+        # Extract knowledge preferences and methodologies
+        knowledge_prefs = await self._extract_knowledge_preferences(text, context)
+        concepts.extend(knowledge_prefs)
         
         return self._deduplicate_concepts(concepts)
 
@@ -469,6 +674,87 @@ class NotionConceptExtractor(EnhancedConceptExtractor):
                     concept_type="KNOWLEDGE",
                     confidence=0.8,
                     properties={**context, "platform": "notion", "type": "knowledge"}
+                )
+                concepts.append(concept)
+                
+        return concepts
+
+    async def _extract_notion_beliefs(self, text: str, context: Dict[str, Any]) -> List[ConceptualEntity]:
+        """Extract personal beliefs and values from Notion content."""
+        concepts = []
+        
+        # Personal belief patterns in knowledge management context
+        notion_belief_patterns = [
+            r'\b(?:I\s+(?:believe|think|feel|prefer))\s+(?:that\s+)?(?:\w+\s+){1,10}(?:is|are|should|will)\b',
+            r'\b(?:my\s+(?:philosophy|approach|method|preference))\s+(?:is|for|on)\b',
+            r'\b(?:what\s+works\s+for\s+me|my\s+experience\s+shows)\b',
+            r'\b(?:I\'ve\s+learned\s+that|it\'s\s+important\s+to)\b',
+            r'\b(?:personally|in\s+my\s+opinion|from\s+my\s+perspective)\b'
+        ]
+        
+        for pattern in notion_belief_patterns:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                # Extract the full sentence containing the belief
+                start = max(0, match.start() - 20)
+                end = min(len(text), match.end() + 80)
+                full_context = text[start:end]
+                
+                sentiment = self._analyze_sentiment(full_context, "BELIEF")
+                
+                concept = ConceptualEntity(
+                    id=f"notion_BELIEF:{match.group(0).lower().replace(' ', '_')[:50]}",
+                    name=match.group(0),
+                    text=match.group(0),
+                    concept_type="BELIEF",
+                    confidence=0.8,  # High confidence for personal beliefs in Notion
+                    context_window=full_context,
+                    sentiment=sentiment,
+                    properties={
+                        **context, 
+                        "platform": "notion", 
+                        "type": "personal_belief",
+                        "knowledge_domain": "personal_methodology"
+                    }
+                )
+                concepts.append(concept)
+                
+        return concepts
+
+    async def _extract_knowledge_preferences(self, text: str, context: Dict[str, Any]) -> List[ConceptualEntity]:
+        """Extract knowledge management preferences and methodologies."""
+        concepts = []
+        
+        # Knowledge preference patterns
+        knowledge_pref_patterns = [
+            r'\b(?:prefer|like|use|follow)\s+(?:to\s+)?(?:\w+\s+){1,5}(?:method|approach|system|tool)\b',
+            r'\b(?:best\s+way\s+to|effective\s+method\s+for|how\s+I\s+organize)\b',
+            r'\b(?:workflow|process|routine)\s+(?:that\s+works|I\s+use|for)\b',
+            r'\b(?:template|framework|structure)\s+(?:I\s+(?:use|prefer|like))\b',
+            r'\b(?:note-taking|research|learning)\s+(?:strategy|method|approach)\b'
+        ]
+        
+        for pattern in knowledge_pref_patterns:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                # Extract context around the preference
+                start = max(0, match.start() - 30)
+                end = min(len(text), match.end() + 70)
+                full_context = text[start:end]
+                
+                concept = ConceptualEntity(
+                    id=f"notion_PREFERENCE:{match.group(0).lower().replace(' ', '_')[:50]}",
+                    name=match.group(0),
+                    text=match.group(0),
+                    concept_type="PREFERENCE",
+                    confidence=0.75,  # Medium-high confidence for preferences
+                    context_window=full_context,
+                    properties={
+                        **context, 
+                        "platform": "notion", 
+                        "type": "knowledge_preference",
+                        "domain": "personal_knowledge_management"
+                    }
                 )
                 concepts.append(concept)
                 
