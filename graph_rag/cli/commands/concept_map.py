@@ -1531,6 +1531,8 @@ def _get_sample_content_data() -> List[Dict[str, Any]]:
 # Import additional dependencies for Epic 8
 from graph_rag.core.audience_intelligence import AudienceSegmentationEngine, AudienceSegment, AudiencePersona
 from graph_rag.core.competitive_analysis import CompetitiveAnalyzer, analyze_competitor_landscape, identify_market_opportunities
+from graph_rag.core.content_strategy_optimizer import ContentStrategyOptimizer
+from graph_rag.core.content_optimization_engine import ContentOptimizationEngine
 
 
 @app.command("audience-analyze")
@@ -2065,6 +2067,1943 @@ def _display_competitive_analysis(analysis_result, show_details: bool = False):
                 style="yellow"
             )
             console.print(insight_panel)
+
+
+# === EPIC 9.4: STRATEGY OPTIMIZATION CLI TOOLS AND WORKFLOWS ===
+
+# Content Strategy Commands
+
+@app.command("strategy-optimize")
+def strategy_optimize_cli(
+    strategy_file: str = typer.Argument(..., help="JSON file containing content strategy to optimize"),
+    goal: str = typer.Option("engagement", help="Optimization goal: engagement, reach, conversion, brand_safety"),
+    platform: str = typer.Option("general", help="Platform type: general, linkedin, twitter, all"),
+    output_format: str = typer.Option("visual", help="Output format: visual, json"),
+    save_to: Optional[str] = typer.Option(None, help="Save optimized strategy to file"),
+    iterations: int = typer.Option(3, help="Number of optimization iterations"),
+    interactive: bool = typer.Option(False, help="Enable interactive optimization mode")
+):
+    """Full content strategy optimization with AI-powered recommendations."""
+    
+    async def optimize_async():
+        console.print(Panel("🚀 Epic 9.4: Content Strategy Optimization", style="bold blue"))
+        console.print(f"Goal: {goal} | Platform: {platform} | Iterations: {iterations}")
+        
+        try:
+            # Load strategy from file
+            with open(strategy_file, 'r') as f:
+                strategy_data = json.load(f)
+            
+            console.print(f"📁 Loaded strategy from {strategy_file}")
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console
+            ) as progress:
+                task = progress.add_task("Initializing optimization engine...", total=None)
+                
+                # Initialize optimizer
+                optimizer = ContentStrategyOptimizer()
+                
+                progress.update(task, description="Analyzing current strategy...")
+                
+                # Perform optimization
+                optimization_result = await optimizer.optimize_content_strategy(
+                    strategy_data, goal, platform, iterations
+                )
+                
+                progress.update(task, description="Generating recommendations...")
+                
+                if interactive:
+                    # Interactive mode - present options to user
+                    console.print("\n🎯 Interactive Optimization Mode")
+                    for i, recommendation in enumerate(optimization_result.get("recommendations", [])[:5], 1):
+                        accept = typer.confirm(f"Apply recommendation {i}: {recommendation['title']}?")
+                        if accept:
+                            recommendation["accepted"] = True
+                            console.print(f"✅ Applied: {recommendation['title']}")
+                        else:
+                            recommendation["accepted"] = False
+                            console.print(f"❌ Skipped: {recommendation['title']}")
+                
+                progress.update(task, description="Complete!")
+            
+            if output_format == "json":
+                json_output = json.dumps(optimization_result, indent=2)
+                console.print(json_output)
+                
+                if save_to:
+                    with open(save_to, 'w') as f:
+                        f.write(json_output)
+                    console.print(f"✅ Optimized strategy saved to {save_to}")
+                    
+            else:  # visual format
+                _display_strategy_optimization(optimization_result, interactive)
+                
+                if save_to:
+                    with open(save_to, 'w') as f:
+                        json.dump(optimization_result, f, indent=2)
+                    console.print(f"✅ Optimized strategy saved to {save_to}")
+            
+            # Display summary
+            improvements = optimization_result.get("performance_improvements", {})
+            console.print(f"\n📈 Optimization Summary:")
+            console.print(f"   • Recommendations generated: {len(optimization_result.get('recommendations', []))}")
+            console.print(f"   • Expected engagement improvement: +{improvements.get('engagement_lift', 0):.1%}")
+            console.print(f"   • Expected reach improvement: +{improvements.get('reach_lift', 0):.1%}")
+            console.print(f"   • Optimization confidence: {optimization_result.get('confidence_score', 0):.2f}")
+            
+        except FileNotFoundError:
+            console.print(f"❌ Error: Strategy file {strategy_file} not found")
+            raise typer.Exit(1)
+        except json.JSONDecodeError:
+            console.print(f"❌ Error: Invalid JSON in {strategy_file}")
+            raise typer.Exit(1)
+        except Exception as e:
+            console.print(f"❌ Error during optimization: {e}")
+            raise typer.Exit(1)
+    
+    asyncio.run(optimize_async())
+
+
+@app.command("strategy-analyze")
+def strategy_analyze_cli(
+    strategy_file: str = typer.Argument(..., help="JSON file containing content strategy to analyze"),
+    analysis_type: str = typer.Option("comprehensive", help="Analysis type: comprehensive, performance, gaps, trends"),
+    benchmark_against: Optional[str] = typer.Option(None, help="JSON file with benchmark strategy for comparison"),
+    output_format: str = typer.Option("visual", help="Output format: visual, json, report"),
+    save_to: Optional[str] = typer.Option(None, help="Save analysis results to file")
+):
+    """Analyze existing content strategy performance and potential."""
+    
+    async def analyze_async():
+        console.print(Panel("📊 Epic 9.4: Content Strategy Analysis", style="bold green"))
+        console.print(f"Analysis Type: {analysis_type}")
+        
+        try:
+            # Load strategy from file
+            with open(strategy_file, 'r') as f:
+                strategy_data = json.load(f)
+            
+            benchmark_data = None
+            if benchmark_against:
+                try:
+                    with open(benchmark_against, 'r') as f:
+                        benchmark_data = json.load(f)
+                    console.print(f"📊 Benchmark loaded from {benchmark_against}")
+                except Exception as e:
+                    console.print(f"⚠️ Could not load benchmark file: {e}")
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console
+            ) as progress:
+                task = progress.add_task("Analyzing strategy...", total=None)
+                
+                # Initialize optimizer for analysis
+                optimizer = ContentStrategyOptimizer()
+                
+                # Perform analysis
+                analysis_result = await optimizer.analyze_strategy_performance(
+                    strategy_data, analysis_type, benchmark_data
+                )
+                
+                progress.update(task, description="Generating insights...")
+            
+            if output_format == "json":
+                json_output = json.dumps(analysis_result, indent=2)
+                console.print(json_output)
+                
+            elif output_format == "report":
+                _generate_strategy_report(analysis_result, strategy_file)
+                
+            else:  # visual format
+                _display_strategy_analysis(analysis_result, analysis_type)
+            
+            if save_to:
+                # Save based on output format
+                if output_format == "report":
+                    _save_strategy_report(analysis_result, save_to)
+                else:
+                    with open(save_to, 'w') as f:
+                        json.dump(analysis_result, f, indent=2)
+                console.print(f"✅ Analysis saved to {save_to}")
+            
+            # Display key metrics
+            metrics = analysis_result.get("key_metrics", {})
+            console.print(f"\n📈 Key Strategy Metrics:")
+            console.print(f"   • Overall Strategy Score: {metrics.get('overall_score', 0):.2f}/1.00")
+            console.print(f"   • Content Quality Score: {metrics.get('content_quality', 0):.2f}/1.00")
+            console.print(f"   • Audience Alignment: {metrics.get('audience_alignment', 0):.2f}/1.00")
+            console.print(f"   • Platform Optimization: {metrics.get('platform_optimization', 0):.2f}/1.00")
+            
+        except FileNotFoundError:
+            console.print(f"❌ Error: Strategy file {strategy_file} not found")
+            raise typer.Exit(1)
+        except Exception as e:
+            console.print(f"❌ Error during analysis: {e}")
+            raise typer.Exit(1)
+    
+    asyncio.run(analyze_async())
+
+
+@app.command("strategy-recommend")
+def strategy_recommend_cli(
+    context_file: Optional[str] = typer.Option(None, help="JSON file with business context and goals"),
+    industry: str = typer.Option("technology", help="Industry vertical for recommendations"),
+    audience_type: str = typer.Option("professional", help="Target audience type"),
+    content_goals: str = typer.Option("engagement,brand_awareness", help="Comma-separated list of content goals"),
+    platform_focus: str = typer.Option("linkedin,twitter", help="Comma-separated list of target platforms"),
+    output_format: str = typer.Option("visual", help="Output format: visual, json"),
+    save_to: Optional[str] = typer.Option(None, help="Save recommendations to file"),
+    advanced_mode: bool = typer.Option(False, help="Enable advanced AI-powered strategy generation")
+):
+    """Get AI-powered content strategy recommendations based on goals and context."""
+    
+    async def recommend_async():
+        console.print(Panel("🎯 Epic 9.4: AI-Powered Strategy Recommendations", style="bold yellow"))
+        
+        # Parse input parameters
+        goals = [g.strip() for g in content_goals.split(",")]
+        platforms = [p.strip() for p in platform_focus.split(",")]
+        
+        console.print(f"Industry: {industry} | Audience: {audience_type}")
+        console.print(f"Goals: {', '.join(goals)} | Platforms: {', '.join(platforms)}")
+        
+        # Load context if provided
+        context_data = {}
+        if context_file:
+            try:
+                with open(context_file, 'r') as f:
+                    context_data = json.load(f)
+                console.print(f"📁 Context loaded from {context_file}")
+            except Exception as e:
+                console.print(f"⚠️ Could not load context file: {e}")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Generating strategy recommendations...", total=None)
+            
+            # Initialize optimizer
+            optimizer = ContentStrategyOptimizer()
+            
+            # Generate recommendations
+            recommendations = await optimizer.generate_strategy_recommendations(
+                industry=industry,
+                audience_type=audience_type,
+                goals=goals,
+                platforms=platforms,
+                context=context_data,
+                advanced_mode=advanced_mode
+            )
+            
+            progress.update(task, description="Validating recommendations...")
+        
+        if output_format == "json":
+            json_output = json.dumps(recommendations, indent=2)
+            console.print(json_output)
+            
+        else:  # visual format
+            _display_strategy_recommendations(recommendations, advanced_mode)
+        
+        if save_to:
+            with open(save_to, 'w') as f:
+                json.dump(recommendations, f, indent=2)
+            console.print(f"✅ Recommendations saved to {save_to}")
+        
+        # Show summary statistics
+        console.print(f"\n📊 Recommendation Summary:")
+        console.print(f"   • Total recommendations: {len(recommendations.get('strategic_recommendations', []))}")
+        console.print(f"   • Content pillars suggested: {len(recommendations.get('content_pillars', []))}")
+        console.print(f"   • Tactical actions: {len(recommendations.get('tactical_actions', []))}")
+        console.print(f"   • Expected ROI: {recommendations.get('expected_roi', 'N/A')}")
+    
+    asyncio.run(recommend_async())
+
+
+@app.command("strategy-export")
+def strategy_export_cli(
+    strategy_file: str = typer.Argument(..., help="JSON file containing strategy to export"),
+    export_format: str = typer.Option("pdf", help="Export format: pdf, docx, html, markdown, excel"),
+    template: str = typer.Option("comprehensive", help="Export template: comprehensive, executive, tactical"),
+    output_file: str = typer.Option("strategy_report", help="Output file name (without extension)"),
+    include_analytics: bool = typer.Option(True, help="Include performance analytics in export"),
+    include_visuals: bool = typer.Option(True, help="Include charts and visualizations")
+):
+    """Export content strategy as comprehensive report in various formats."""
+    
+    async def export_async():
+        console.print(Panel(f"📄 Epic 9.4: Strategy Export - {export_format.upper()}", style="bold cyan"))
+        
+        try:
+            # Load strategy from file
+            with open(strategy_file, 'r') as f:
+                strategy_data = json.load(f)
+            
+            console.print(f"📁 Loaded strategy from {strategy_file}")
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console
+            ) as progress:
+                task = progress.add_task("Preparing export...", total=None)
+                
+                # Initialize optimizer for export functionality
+                optimizer = ContentStrategyOptimizer()
+                
+                progress.update(task, description="Generating analytics...")
+                
+                # Generate analytics if requested
+                analytics_data = None
+                if include_analytics:
+                    analytics_data = await optimizer.generate_strategy_analytics(strategy_data)
+                
+                progress.update(task, description=f"Creating {export_format} export...")
+                
+                # Generate export
+                export_result = await optimizer.export_strategy(
+                    strategy_data=strategy_data,
+                    format=export_format,
+                    template=template,
+                    output_file=output_file,
+                    analytics=analytics_data,
+                    include_visuals=include_visuals
+                )
+                
+                progress.update(task, description="Export complete!")
+            
+            # Display export summary
+            console.print(f"\n✅ Strategy exported successfully!")
+            console.print(f"   • Format: {export_format.upper()}")
+            console.print(f"   • Template: {template}")
+            console.print(f"   • Output file: {export_result.get('output_path', 'Unknown')}")
+            console.print(f"   • File size: {export_result.get('file_size', 'Unknown')}")
+            console.print(f"   • Pages/Sections: {export_result.get('sections_count', 'Unknown')}")
+            
+            if include_analytics:
+                console.print(f"   • Analytics included: ✅")
+            if include_visuals:
+                console.print(f"   • Visualizations included: ✅")
+            
+            # Show preview of export content
+            console.print(f"\n📋 Export Contents:")
+            for section in export_result.get('sections', []):
+                console.print(f"   • {section}")
+            
+        except FileNotFoundError:
+            console.print(f"❌ Error: Strategy file {strategy_file} not found")
+            raise typer.Exit(1)
+        except Exception as e:
+            console.print(f"❌ Error during export: {e}")
+            raise typer.Exit(1)
+    
+    asyncio.run(export_async())
+
+
+@app.command("strategy-import")
+def strategy_import_cli(
+    import_file: str = typer.Argument(..., help="File to import strategy from"),
+    import_format: str = typer.Option("auto", help="Import format: auto, json, csv, excel, notion, airtable"),
+    output_file: str = typer.Option("imported_strategy.json", help="Output JSON file name"),
+    validate: bool = typer.Option(True, help="Validate imported strategy structure"),
+    normalize: bool = typer.Option(True, help="Normalize imported data to standard format")
+):
+    """Import content strategy from external files and formats."""
+    
+    async def import_async():
+        console.print(Panel(f"📥 Epic 9.4: Strategy Import - {import_format.upper()}", style="bold magenta"))
+        
+        try:
+            import_path = Path(import_file)
+            if not import_path.exists():
+                console.print(f"❌ Import file not found: {import_file}")
+                return
+            
+            # Auto-detect format if needed
+            if import_format == "auto":
+                import_format = _detect_import_format(import_file)
+                console.print(f"🔍 Auto-detected format: {import_format}")
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console
+            ) as progress:
+                task = progress.add_task(f"Importing from {import_format}...", total=None)
+                
+                # Initialize optimizer for import functionality
+                optimizer = ContentStrategyOptimizer()
+                
+                # Perform import
+                import_result = await optimizer.import_strategy(
+                    import_file=import_file,
+                    format=import_format,
+                    validate=validate,
+                    normalize=normalize
+                )
+                
+                progress.update(task, description="Processing imported data...")
+                
+                if validate:
+                    validation_result = await optimizer.validate_strategy_structure(
+                        import_result['strategy_data']
+                    )
+                    import_result['validation'] = validation_result
+                
+                progress.update(task, description="Saving imported strategy...")
+                
+                # Save to output file
+                with open(output_file, 'w') as f:
+                    json.dump(import_result['strategy_data'], f, indent=2)
+                
+                progress.update(task, description="Import complete!")
+            
+            # Display import summary
+            console.print(f"\n✅ Strategy imported successfully!")
+            console.print(f"   • Source format: {import_format}")
+            console.print(f"   • Output file: {output_file}")
+            console.print(f"   • Items imported: {import_result.get('items_count', 0)}")
+            console.print(f"   • Data quality: {import_result.get('quality_score', 0):.2f}/1.00")
+            
+            if validate and 'validation' in import_result:
+                validation = import_result['validation']
+                if validation.get('valid', False):
+                    console.print(f"   • Validation: ✅ Valid structure")
+                else:
+                    console.print(f"   • Validation: ⚠️ {len(validation.get('errors', []))} issues found")
+                    for error in validation.get('errors', [])[:3]:
+                        console.print(f"     - {error}")
+            
+            # Show preview of imported data
+            strategy_data = import_result['strategy_data']
+            console.print(f"\n📋 Imported Strategy Preview:")
+            console.print(f"   • Content pillars: {len(strategy_data.get('content_pillars', []))}")
+            console.print(f"   • Target platforms: {len(strategy_data.get('platforms', []))}")
+            console.print(f"   • Content types: {len(strategy_data.get('content_types', []))}")
+            
+        except Exception as e:
+            console.print(f"❌ Error during import: {e}")
+            raise typer.Exit(1)
+    
+    asyncio.run(import_async())
+
+
+@app.command("strategy-compare")
+def strategy_compare_cli(
+    strategy1_file: str = typer.Argument(..., help="First strategy file to compare"),
+    strategy2_file: str = typer.Argument(..., help="Second strategy file to compare"),
+    comparison_type: str = typer.Option("comprehensive", help="Comparison type: comprehensive, performance, content, audience"),
+    output_format: str = typer.Option("visual", help="Output format: visual, json, report"),
+    save_to: Optional[str] = typer.Option(None, help="Save comparison results to file"),
+    show_recommendations: bool = typer.Option(True, help="Show optimization recommendations based on comparison")
+):
+    """Compare multiple content strategies for performance and effectiveness."""
+    
+    async def compare_async():
+        console.print(Panel("⚖️ Epic 9.4: Strategy Comparison Analysis", style="bold purple"))
+        
+        try:
+            # Load both strategies
+            with open(strategy1_file, 'r') as f:
+                strategy1_data = json.load(f)
+            with open(strategy2_file, 'r') as f:
+                strategy2_data = json.load(f)
+            
+            console.print(f"📁 Loaded strategies from {strategy1_file} and {strategy2_file}")
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console
+            ) as progress:
+                task = progress.add_task("Comparing strategies...", total=None)
+                
+                # Initialize optimizer
+                optimizer = ContentStrategyOptimizer()
+                
+                # Perform comparison
+                comparison_result = await optimizer.compare_strategies(
+                    strategy1=strategy1_data,
+                    strategy2=strategy2_data,
+                    comparison_type=comparison_type,
+                    include_recommendations=show_recommendations
+                )
+                
+                progress.update(task, description="Analyzing differences...")
+            
+            if output_format == "json":
+                json_output = json.dumps(comparison_result, indent=2)
+                console.print(json_output)
+                
+            elif output_format == "report":
+                _generate_comparison_report(comparison_result, strategy1_file, strategy2_file)
+                
+            else:  # visual format
+                _display_strategy_comparison(comparison_result, comparison_type)
+            
+            if save_to:
+                if output_format == "report":
+                    _save_comparison_report(comparison_result, save_to)
+                else:
+                    with open(save_to, 'w') as f:
+                        json.dump(comparison_result, f, indent=2)
+                console.print(f"✅ Comparison saved to {save_to}")
+            
+            # Display comparison summary
+            summary = comparison_result.get('summary', {})
+            console.print(f"\n📊 Comparison Summary:")
+            console.print(f"   • Overall winner: {summary.get('winner', 'Tie')}")
+            console.print(f"   • Performance delta: {summary.get('performance_delta', 0):.2f}")
+            console.print(f"   • Key differences: {len(comparison_result.get('differences', []))}")
+            console.print(f"   • Confidence level: {comparison_result.get('confidence', 0):.2f}")
+            
+            if show_recommendations:
+                recommendations = comparison_result.get('recommendations', [])
+                console.print(f"   • Optimization recommendations: {len(recommendations)}")
+            
+        except FileNotFoundError as e:
+            console.print(f"❌ Error: Strategy file not found - {e}")
+            raise typer.Exit(1)
+        except Exception as e:
+            console.print(f"❌ Error during comparison: {e}")
+            raise typer.Exit(1)
+    
+    asyncio.run(compare_async())
+
+
+# Content Optimization Commands
+
+@app.command("content-optimize")
+def content_optimize_cli(
+    content: str = typer.Argument(..., help="Content text to optimize"),
+    platform: str = typer.Option("general", help="Target platform: general, linkedin, twitter, instagram"),
+    goal: str = typer.Option("engagement", help="Optimization goal: engagement, reach, conversion, viral"),
+    audience_file: Optional[str] = typer.Option(None, help="JSON file with target audience data"),
+    output_format: str = typer.Option("visual", help="Output format: visual, json"),
+    save_to: Optional[str] = typer.Option(None, help="Save optimized content to file"),
+    show_variations: bool = typer.Option(False, help="Show multiple optimization variations"),
+    interactive: bool = typer.Option(False, help="Enable interactive optimization mode")
+):
+    """Optimize individual content pieces for maximum performance."""
+    
+    async def optimize_async():
+        console.print(Panel("✨ Epic 9.4: Content Optimization Engine", style="bold blue"))
+        console.print(f"Platform: {platform} | Goal: {goal} | Content length: {len(content)} chars")
+        
+        # Load audience data if provided
+        audience_data = None
+        if audience_file:
+            try:
+                with open(audience_file, 'r') as f:
+                    audience_data = json.load(f)
+                console.print(f"👥 Audience data loaded from {audience_file}")
+            except Exception as e:
+                console.print(f"⚠️ Could not load audience file: {e}")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Analyzing content...", total=None)
+            
+            # Initialize optimization engine
+            optimizer = ContentOptimizationEngine()
+            
+            progress.update(task, description="Generating optimizations...")
+            
+            # Perform optimization
+            optimization_result = await optimizer.optimize_content(
+                content=content,
+                platform=platform,
+                goal=goal,
+                audience_data=audience_data,
+                generate_variations=show_variations
+            )
+            
+            progress.update(task, description="Validating optimizations...")
+            
+            if interactive:
+                # Interactive mode - let user choose optimizations
+                optimization_result = await _interactive_content_optimization(
+                    optimizer, optimization_result
+                )
+        
+        if output_format == "json":
+            json_output = json.dumps(optimization_result, indent=2)
+            console.print(json_output)
+            
+        else:  # visual format
+            _display_content_optimization(optimization_result, show_variations)
+        
+        if save_to:
+            with open(save_to, 'w') as f:
+                json.dump(optimization_result, f, indent=2)
+            console.print(f"✅ Optimization results saved to {save_to}")
+        
+        # Show optimization summary
+        console.print(f"\n🎯 Optimization Summary:")
+        console.print(f"   • Original score: {optimization_result.get('original_score', 0):.2f}")
+        console.print(f"   • Optimized score: {optimization_result.get('optimized_score', 0):.2f}")
+        console.print(f"   • Improvement: +{optimization_result.get('improvement_percentage', 0):.1%}")
+        console.print(f"   • Confidence: {optimization_result.get('confidence', 0):.2f}")
+        
+        if show_variations:
+            variations = optimization_result.get('variations', [])
+            console.print(f"   • Variations generated: {len(variations)}")
+    
+    asyncio.run(optimize_async())
+
+
+@app.command("content-analyze")
+def content_analyze_cli(
+    content: str = typer.Argument(..., help="Content text to analyze"),
+    analysis_type: str = typer.Option("comprehensive", help="Analysis type: comprehensive, readability, engagement, viral_potential"),
+    platform: str = typer.Option("general", help="Platform context for analysis"),
+    benchmark_file: Optional[str] = typer.Option(None, help="JSON file with benchmark content for comparison"),
+    output_format: str = typer.Option("visual", help="Output format: visual, json"),
+    save_to: Optional[str] = typer.Option(None, help="Save analysis results to file")
+):
+    """Analyze content quality, engagement potential, and optimization opportunities."""
+    
+    async def analyze_async():
+        console.print(Panel("🔍 Epic 9.4: Content Quality Analysis", style="bold green"))
+        console.print(f"Analysis Type: {analysis_type} | Platform: {platform}")
+        
+        # Load benchmark if provided
+        benchmark_data = None
+        if benchmark_file:
+            try:
+                with open(benchmark_file, 'r') as f:
+                    benchmark_data = json.load(f)
+                console.print(f"📊 Benchmark loaded from {benchmark_file}")
+            except Exception as e:
+                console.print(f"⚠️ Could not load benchmark file: {e}")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Analyzing content...", total=None)
+            
+            # Initialize optimization engine
+            optimizer = ContentOptimizationEngine()
+            
+            # Perform analysis
+            analysis_result = await optimizer.analyze_content_quality(
+                content=content,
+                analysis_type=analysis_type,
+                platform=platform,
+                benchmark=benchmark_data
+            )
+            
+            progress.update(task, description="Generating insights...")
+        
+        if output_format == "json":
+            json_output = json.dumps(analysis_result, indent=2)
+            console.print(json_output)
+            
+        else:  # visual format
+            _display_content_analysis(analysis_result, analysis_type)
+        
+        if save_to:
+            with open(save_to, 'w') as f:
+                json.dump(analysis_result, f, indent=2)
+            console.print(f"✅ Analysis saved to {save_to}")
+        
+        # Show analysis summary
+        scores = analysis_result.get('quality_scores', {})
+        console.print(f"\n📈 Content Analysis Summary:")
+        console.print(f"   • Overall Quality Score: {scores.get('overall', 0):.2f}/1.00")
+        console.print(f"   • Readability Score: {scores.get('readability', 0):.2f}/1.00")
+        console.print(f"   • Engagement Potential: {scores.get('engagement', 0):.2f}/1.00")
+        console.print(f"   • Platform Optimization: {scores.get('platform_fit', 0):.2f}/1.00")
+        
+        if benchmark_data:
+            console.print(f"   • vs. Benchmark: {analysis_result.get('benchmark_comparison', 'N/A')}")
+    
+    asyncio.run(analyze_async())
+
+
+@app.command("content-variations")
+def content_variations_cli(
+    content: str = typer.Argument(..., help="Original content to create variations for"),
+    variation_type: str = typer.Option("ab_test", help="Variation type: ab_test, style, platform, audience"),
+    count: int = typer.Option(3, help="Number of variations to generate"),
+    platform: str = typer.Option("general", help="Target platform for variations"),
+    style_guide: Optional[str] = typer.Option(None, help="JSON file with style guide parameters"),
+    output_format: str = typer.Option("visual", help="Output format: visual, json"),
+    save_to: Optional[str] = typer.Option(None, help="Save variations to file")
+):
+    """Generate A/B testing variations and style adaptations of content."""
+    
+    async def variations_async():
+        console.print(Panel("🎭 Epic 9.4: Content Variation Generator", style="bold yellow"))
+        console.print(f"Type: {variation_type} | Count: {count} | Platform: {platform}")
+        
+        # Load style guide if provided
+        style_data = None
+        if style_guide:
+            try:
+                with open(style_guide, 'r') as f:
+                    style_data = json.load(f)
+                console.print(f"🎨 Style guide loaded from {style_guide}")
+            except Exception as e:
+                console.print(f"⚠️ Could not load style guide: {e}")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Generating variations...", total=count)
+            
+            # Initialize optimization engine
+            optimizer = ContentOptimizationEngine()
+            
+            # Generate variations
+            variations_result = await optimizer.generate_content_variations(
+                content=content,
+                variation_type=variation_type,
+                count=count,
+                platform=platform,
+                style_guide=style_data,
+                progress_callback=lambda: progress.advance(task)
+            )
+            
+            progress.update(task, description="Analyzing variation quality...")
+        
+        if output_format == "json":
+            json_output = json.dumps(variations_result, indent=2)
+            console.print(json_output)
+            
+        else:  # visual format
+            _display_content_variations(variations_result, variation_type)
+        
+        if save_to:
+            with open(save_to, 'w') as f:
+                json.dump(variations_result, f, indent=2)
+            console.print(f"✅ Variations saved to {save_to}")
+        
+        # Show variations summary
+        variations = variations_result.get('variations', [])
+        console.print(f"\n🎯 Variations Summary:")
+        console.print(f"   • Variations generated: {len(variations)}")
+        console.print(f"   • Variation type: {variation_type}")
+        console.print(f"   • Average quality score: {variations_result.get('average_quality', 0):.2f}")
+        console.print(f"   • Best performing variation: #{variations_result.get('best_variation_index', 1)}")
+        
+        if variation_type == "ab_test":
+            console.print(f"   • Ready for A/B testing: ✅")
+    
+    asyncio.run(variations_async())
+
+
+@app.command("content-predict")
+def content_predict_cli(
+    content: str = typer.Argument(..., help="Content to predict performance for"),
+    platform: str = typer.Option("general", help="Target platform for prediction"),
+    prediction_type: str = typer.Option("engagement", help="Prediction type: engagement, reach, viral_potential, conversion"),
+    historical_data: Optional[str] = typer.Option(None, help="JSON file with historical performance data"),
+    audience_file: Optional[str] = typer.Option(None, help="JSON file with audience insights"),
+    output_format: str = typer.Option("visual", help="Output format: visual, json"),
+    confidence_level: float = typer.Option(0.8, help="Minimum confidence level for predictions")
+):
+    """Predict content performance using AI and historical data analysis."""
+    
+    async def predict_async():
+        console.print(Panel("🔮 Epic 9.4: Content Performance Prediction", style="bold purple"))
+        console.print(f"Platform: {platform} | Prediction: {prediction_type}")
+        
+        # Load historical data if provided
+        historical = None
+        if historical_data:
+            try:
+                with open(historical_data, 'r') as f:
+                    historical = json.load(f)
+                console.print(f"📊 Historical data loaded from {historical_data}")
+            except Exception as e:
+                console.print(f"⚠️ Could not load historical data: {e}")
+        
+        # Load audience data if provided
+        audience_data = None
+        if audience_file:
+            try:
+                with open(audience_file, 'r') as f:
+                    audience_data = json.load(f)
+                console.print(f"👥 Audience data loaded from {audience_file}")
+            except Exception as e:
+                console.print(f"⚠️ Could not load audience file: {e}")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Analyzing content features...", total=None)
+            
+            # Initialize optimization engine
+            optimizer = ContentOptimizationEngine()
+            
+            progress.update(task, description="Running prediction models...")
+            
+            # Perform prediction
+            prediction_result = await optimizer.predict_content_performance(
+                content=content,
+                platform=platform,
+                prediction_type=prediction_type,
+                historical_data=historical,
+                audience_data=audience_data,
+                confidence_threshold=confidence_level
+            )
+            
+            progress.update(task, description="Generating insights...")
+        
+        if output_format == "json":
+            json_output = json.dumps(prediction_result, indent=2)
+            console.print(json_output)
+            
+        else:  # visual format
+            _display_content_prediction(prediction_result, prediction_type)
+        
+        # Show prediction summary
+        predictions = prediction_result.get('predictions', {})
+        console.print(f"\n🎯 Prediction Summary:")
+        console.print(f"   • Primary prediction: {predictions.get(prediction_type, 0):.2f}")
+        console.print(f"   • Confidence level: {prediction_result.get('confidence', 0):.2f}")
+        console.print(f"   • Performance tier: {prediction_result.get('performance_tier', 'Unknown')}")
+        
+        if prediction_result.get('confidence', 0) < confidence_level:
+            console.print(f"   • ⚠️  Low confidence - consider providing more historical data")
+        else:
+            console.print(f"   • ✅ High confidence prediction")
+    
+    asyncio.run(predict_async())
+
+
+@app.command("content-batch-optimize")
+def content_batch_optimize_cli(
+    content_dir: str = typer.Argument(..., help="Directory containing content files to optimize"),
+    platform: str = typer.Option("general", help="Target platform for optimization"),
+    goal: str = typer.Option("engagement", help="Optimization goal for all content"),
+    output_dir: str = typer.Option("optimized_content", help="Directory to save optimized content"),
+    parallel_processing: bool = typer.Option(True, help="Enable parallel processing for faster optimization"),
+    max_workers: int = typer.Option(4, help="Maximum number of parallel workers"),
+    file_pattern: str = typer.Option("*.txt,*.json", help="Comma-separated file patterns to process")
+):
+    """Batch optimize multiple content pieces with parallel processing."""
+    
+    async def batch_optimize_async():
+        console.print(Panel("⚡ Epic 9.4: Batch Content Optimization", style="bold cyan"))
+        console.print(f"Platform: {platform} | Goal: {goal} | Workers: {max_workers}")
+        
+        try:
+            content_path = Path(content_dir)
+            if not content_path.exists():
+                console.print(f"❌ Content directory not found: {content_dir}")
+                return
+            
+            # Create output directory
+            output_path = Path(output_dir)
+            output_path.mkdir(exist_ok=True)
+            
+            # Find content files
+            patterns = [p.strip() for p in file_pattern.split(",")]
+            content_files = []
+            for pattern in patterns:
+                content_files.extend(list(content_path.glob(pattern)))
+            
+            if not content_files:
+                console.print(f"❌ No content files found matching patterns: {file_pattern}")
+                return
+            
+            console.print(f"📁 Found {len(content_files)} content files to optimize")
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console
+            ) as progress:
+                task = progress.add_task("Optimizing content files...", total=len(content_files))
+                
+                # Initialize optimization engine
+                optimizer = ContentOptimizationEngine()
+                
+                # Process files
+                optimization_results = await optimizer.batch_optimize_content(
+                    content_files=content_files,
+                    platform=platform,
+                    goal=goal,
+                    output_dir=output_dir,
+                    parallel=parallel_processing,
+                    max_workers=max_workers,
+                    progress_callback=lambda: progress.advance(task)
+                )
+                
+                progress.update(task, description="Batch optimization complete!")
+            
+            # Display batch results summary
+            console.print(f"\n✅ Batch Optimization Complete!")
+            console.print(f"   • Files processed: {len(optimization_results.get('processed_files', []))}")
+            console.print(f"   • Successfully optimized: {optimization_results.get('success_count', 0)}")
+            console.print(f"   • Failed optimizations: {optimization_results.get('error_count', 0)}")
+            console.print(f"   • Output directory: {output_dir}")
+            console.print(f"   • Average improvement: +{optimization_results.get('average_improvement', 0):.1%}")
+            console.print(f"   • Total processing time: {optimization_results.get('processing_time', 0):.1f}s")
+            
+            # Show error summary if any
+            if optimization_results.get('errors'):
+                console.print(f"\n⚠️  Optimization Errors:")
+                for error in optimization_results['errors'][:3]:
+                    console.print(f"   • {error['file']}: {error['message']}")
+            
+            # Save batch summary
+            summary_file = output_path / "batch_optimization_summary.json"
+            with open(summary_file, 'w') as f:
+                json.dump(optimization_results, f, indent=2)
+            console.print(f"\n📄 Batch summary saved to {summary_file}")
+            
+        except Exception as e:
+            console.print(f"❌ Error during batch optimization: {e}")
+            raise typer.Exit(1)
+    
+    asyncio.run(batch_optimize_async())
+
+
+@app.command("content-history")
+def content_history_cli(
+    content_id: Optional[str] = typer.Option(None, help="Specific content ID to show history for"),
+    days_back: int = typer.Option(30, help="Number of days of history to show"),
+    optimization_type: str = typer.Option("all", help="Filter by optimization type: all, engagement, viral, conversion"),
+    output_format: str = typer.Option("visual", help="Output format: visual, json"),
+    save_to: Optional[str] = typer.Option(None, help="Save history data to file"),
+    show_performance: bool = typer.Option(True, help="Include performance metrics in history")
+):
+    """View optimization history and performance tracking for content."""
+    
+    async def history_async():
+        console.print(Panel("📜 Epic 9.4: Content Optimization History", style="bold orange"))
+        
+        if content_id:
+            console.print(f"Content ID: {content_id}")
+        console.print(f"History period: {days_back} days | Type filter: {optimization_type}")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Loading optimization history...", total=None)
+            
+            # Initialize optimization engine
+            optimizer = ContentOptimizationEngine()
+            
+            # Get optimization history
+            history_result = await optimizer.get_optimization_history(
+                content_id=content_id,
+                days_back=days_back,
+                optimization_type=optimization_type,
+                include_performance=show_performance
+            )
+            
+            progress.update(task, description="Processing history data...")
+        
+        if output_format == "json":
+            json_output = json.dumps(history_result, indent=2, default=str)
+            console.print(json_output)
+            
+        else:  # visual format
+            _display_content_history(history_result, content_id, show_performance)
+        
+        if save_to:
+            with open(save_to, 'w') as f:
+                json.dump(history_result, f, indent=2, default=str)
+            console.print(f"✅ History data saved to {save_to}")
+        
+        # Show history summary
+        history_items = history_result.get('history_items', [])
+        console.print(f"\n📊 History Summary:")
+        console.print(f"   • Total optimization events: {len(history_items)}")
+        console.print(f"   • Date range: {history_result.get('date_range', {}).get('start', 'Unknown')} to {history_result.get('date_range', {}).get('end', 'Unknown')}")
+        console.print(f"   • Average improvement: +{history_result.get('average_improvement', 0):.1%}")
+        console.print(f"   • Most common optimization: {history_result.get('most_common_type', 'N/A')}")
+        
+        if show_performance:
+            console.print(f"   • Performance data included: ✅")
+    
+    asyncio.run(history_async())
+
+
+# Workflow Commands
+
+@app.command("workflow-create")
+def workflow_create_cli(
+    workflow_name: str = typer.Argument(..., help="Name for the optimization workflow"),
+    workflow_type: str = typer.Option("content_optimization", help="Workflow type: content_optimization, strategy_analysis, batch_processing"),
+    config_file: Optional[str] = typer.Option(None, help="JSON file with workflow configuration"),
+    interactive: bool = typer.Option(True, help="Enable interactive workflow builder"),
+    save_to: Optional[str] = typer.Option(None, help="Save workflow definition to file")
+):
+    """Create and configure optimization workflows for automated content processing."""
+    
+    async def create_workflow_async():
+        console.print(Panel(f"🔧 Epic 9.4: Create Workflow - {workflow_name}", style="bold blue"))
+        console.print(f"Type: {workflow_type}")
+        
+        # Load config if provided
+        config_data = {}
+        if config_file:
+            try:
+                with open(config_file, 'r') as f:
+                    config_data = json.load(f)
+                console.print(f"⚙️ Configuration loaded from {config_file}")
+            except Exception as e:
+                console.print(f"⚠️ Could not load config file: {e}")
+        
+        # Initialize optimization engine for workflow creation
+        optimizer = ContentOptimizationEngine()
+        
+        workflow_definition = {
+            "name": workflow_name,
+            "type": workflow_type,
+            "created_at": "2024-01-01T00:00:00Z",  # Mock timestamp
+            "steps": [],
+            "config": config_data
+        }
+        
+        if interactive:
+            console.print("\n🎯 Interactive Workflow Builder")
+            
+            # Step 1: Define workflow steps
+            console.print("\n📋 Define workflow steps:")
+            while True:
+                step_name = typer.prompt("Step name (or 'done' to finish)")
+                if step_name.lower() == 'done':
+                    break
+                
+                step_type = typer.prompt("Step type", default="optimize")
+                step_config = {}
+                
+                if step_type == "optimize":
+                    step_config["platform"] = typer.prompt("Target platform", default="general")
+                    step_config["goal"] = typer.prompt("Optimization goal", default="engagement")
+                elif step_type == "analyze":
+                    step_config["analysis_type"] = typer.prompt("Analysis type", default="comprehensive")
+                elif step_type == "predict":
+                    step_config["prediction_type"] = typer.prompt("Prediction type", default="engagement")
+                
+                workflow_definition["steps"].append({
+                    "name": step_name,
+                    "type": step_type,
+                    "config": step_config
+                })
+                
+                console.print(f"✅ Added step: {step_name} ({step_type})")
+            
+            # Step 2: Configure triggers
+            configure_triggers = typer.confirm("Configure automatic triggers?")
+            if configure_triggers:
+                trigger_type = typer.prompt("Trigger type", default="schedule")
+                if trigger_type == "schedule":
+                    cron_expression = typer.prompt("Cron expression", default="0 9 * * 1")  # Every Monday at 9 AM
+                    workflow_definition["triggers"] = {
+                        "type": "schedule",
+                        "cron": cron_expression
+                    }
+                elif trigger_type == "file_watch":
+                    watch_directory = typer.prompt("Directory to watch")
+                    workflow_definition["triggers"] = {
+                        "type": "file_watch",
+                        "directory": watch_directory
+                    }
+        
+        else:
+            # Non-interactive mode - use defaults based on workflow type
+            if workflow_type == "content_optimization":
+                workflow_definition["steps"] = [
+                    {"name": "analyze_content", "type": "analyze", "config": {"analysis_type": "comprehensive"}},
+                    {"name": "optimize_content", "type": "optimize", "config": {"goal": "engagement"}},
+                    {"name": "generate_variations", "type": "variations", "config": {"count": 3}}
+                ]
+            elif workflow_type == "strategy_analysis":
+                workflow_definition["steps"] = [
+                    {"name": "analyze_strategy", "type": "strategy_analyze", "config": {"analysis_type": "comprehensive"}},
+                    {"name": "generate_recommendations", "type": "strategy_recommend", "config": {}}
+                ]
+        
+        # Save workflow
+        workflow_result = await optimizer.create_workflow(workflow_definition)
+        
+        # Display workflow summary
+        console.print(f"\n✅ Workflow Created Successfully!")
+        console.print(f"   • Name: {workflow_name}")
+        console.print(f"   • Type: {workflow_type}")
+        console.print(f"   • Steps: {len(workflow_definition['steps'])}")
+        console.print(f"   • Workflow ID: {workflow_result.get('workflow_id', 'Unknown')}")
+        
+        if workflow_definition.get("triggers"):
+            trigger = workflow_definition["triggers"]
+            console.print(f"   • Trigger: {trigger['type']}")
+            if trigger['type'] == 'schedule':
+                console.print(f"   • Schedule: {trigger.get('cron', 'Unknown')}")
+        
+        # Show workflow steps
+        console.print(f"\n📋 Workflow Steps:")
+        for i, step in enumerate(workflow_definition["steps"], 1):
+            console.print(f"   {i}. {step['name']} ({step['type']})")
+        
+        if save_to:
+            with open(save_to, 'w') as f:
+                json.dump(workflow_definition, f, indent=2)
+            console.print(f"\n💾 Workflow definition saved to {save_to}")
+    
+    asyncio.run(create_workflow_async())
+
+
+@app.command("workflow-run")
+def workflow_run_cli(
+    workflow_id: str = typer.Argument(..., help="Workflow ID or name to execute"),
+    input_data: Optional[str] = typer.Option(None, help="JSON file with input data for workflow"),
+    dry_run: bool = typer.Option(False, help="Perform dry run without making changes"),
+    step_by_step: bool = typer.Option(False, help="Execute workflow step by step with confirmations"),
+    output_dir: str = typer.Option("workflow_output", help="Directory to save workflow outputs")
+):
+    """Execute optimization workflow with real-time progress tracking."""
+    
+    async def run_workflow_async():
+        console.print(Panel(f"▶️  Epic 9.4: Execute Workflow - {workflow_id}", style="bold green"))
+        
+        if dry_run:
+            console.print("🧪 DRY RUN MODE - No changes will be made")
+        
+        # Load input data if provided
+        input_data_obj = None
+        if input_data:
+            try:
+                with open(input_data, 'r') as f:
+                    input_data_obj = json.load(f)
+                console.print(f"📥 Input data loaded from {input_data}")
+            except Exception as e:
+                console.print(f"⚠️ Could not load input data: {e}")
+        
+        # Create output directory
+        output_path = Path(output_dir)
+        output_path.mkdir(exist_ok=True)
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Loading workflow...", total=None)
+            
+            # Initialize optimization engine
+            optimizer = ContentOptimizationEngine()
+            
+            # Load workflow definition
+            workflow_definition = await optimizer.load_workflow(workflow_id)
+            
+            if not workflow_definition:
+                console.print(f"❌ Workflow not found: {workflow_id}")
+                return
+            
+            progress.update(task, description="Executing workflow...")
+            
+            # Execute workflow
+            execution_result = await optimizer.execute_workflow(
+                workflow_definition=workflow_definition,
+                input_data=input_data_obj,
+                output_dir=output_dir,
+                dry_run=dry_run,
+                step_by_step=step_by_step,
+                progress_callback=lambda step: progress.update(task, description=f"Executing: {step}")
+            )
+            
+            progress.update(task, description="Workflow execution complete!")
+        
+        # Display execution results
+        console.print(f"\n✅ Workflow Execution Complete!")
+        console.print(f"   • Workflow: {workflow_definition.get('name', workflow_id)}")
+        console.print(f"   • Steps executed: {execution_result.get('steps_completed', 0)}")
+        console.print(f"   • Steps failed: {execution_result.get('steps_failed', 0)}")
+        console.print(f"   • Execution time: {execution_result.get('execution_time', 0):.1f}s")
+        console.print(f"   • Output directory: {output_dir}")
+        
+        if dry_run:
+            console.print(f"   • DRY RUN: No actual changes made")
+        
+        # Show step results
+        step_results = execution_result.get('step_results', [])
+        if step_results:
+            console.print(f"\n📋 Step Results:")
+            for i, result in enumerate(step_results, 1):
+                status = "✅" if result.get('success', False) else "❌"
+                console.print(f"   {i}. {status} {result.get('step_name', f'Step {i}')} - {result.get('duration', 0):.1f}s")
+        
+        # Show any errors
+        if execution_result.get('errors'):
+            console.print(f"\n⚠️  Execution Errors:")
+            for error in execution_result['errors']:
+                console.print(f"   • {error}")
+        
+        # Save execution report
+        report_file = output_path / f"workflow_execution_report_{workflow_id}.json"
+        with open(report_file, 'w') as f:
+            json.dump(execution_result, f, indent=2, default=str)
+        console.print(f"\n📄 Execution report saved to {report_file}")
+    
+    asyncio.run(run_workflow_async())
+
+
+@app.command("workflow-status")
+def workflow_status_cli(
+    workflow_id: Optional[str] = typer.Option(None, help="Specific workflow ID to check status for"),
+    show_active: bool = typer.Option(True, help="Show currently running workflows"),
+    show_scheduled: bool = typer.Option(True, help="Show scheduled workflow executions"),
+    output_format: str = typer.Option("visual", help="Output format: visual, json")
+):
+    """Check workflow execution status and scheduled runs."""
+    
+    async def status_async():
+        console.print(Panel("📊 Epic 9.4: Workflow Status Dashboard", style="bold cyan"))
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Loading workflow status...", total=None)
+            
+            # Initialize optimization engine
+            optimizer = ContentOptimizationEngine()
+            
+            # Get workflow status
+            status_result = await optimizer.get_workflow_status(
+                workflow_id=workflow_id,
+                include_active=show_active,
+                include_scheduled=show_scheduled
+            )
+            
+            progress.update(task, description="Processing status data...")
+        
+        if output_format == "json":
+            json_output = json.dumps(status_result, indent=2, default=str)
+            console.print(json_output)
+            
+        else:  # visual format
+            _display_workflow_status(status_result, workflow_id)
+        
+        # Show summary statistics
+        console.print(f"\n📈 Workflow Summary:")
+        console.print(f"   • Total workflows: {status_result.get('total_workflows', 0)}")
+        console.print(f"   • Active executions: {len(status_result.get('active_workflows', []))}")
+        console.print(f"   • Scheduled executions: {len(status_result.get('scheduled_workflows', []))}")
+        console.print(f"   • Completed today: {status_result.get('completed_today', 0)}")
+        console.print(f"   • Failed today: {status_result.get('failed_today', 0)}")
+    
+    asyncio.run(status_async())
+
+
+@app.command("workflow-list")
+def workflow_list_cli(
+    workflow_type: str = typer.Option("all", help="Filter by workflow type: all, content_optimization, strategy_analysis"),
+    status_filter: str = typer.Option("all", help="Filter by status: all, active, inactive, scheduled"),
+    output_format: str = typer.Option("table", help="Output format: table, json, tree"),
+    save_to: Optional[str] = typer.Option(None, help="Save workflow list to file")
+):
+    """List all available optimization workflows with filtering options."""
+    
+    async def list_workflows_async():
+        console.print(Panel("📋 Epic 9.4: Workflow List", style="bold yellow"))
+        console.print(f"Type filter: {workflow_type} | Status filter: {status_filter}")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Loading workflows...", total=None)
+            
+            # Initialize optimization engine
+            optimizer = ContentOptimizationEngine()
+            
+            # Get workflow list
+            workflows_result = await optimizer.list_workflows(
+                workflow_type=workflow_type,
+                status_filter=status_filter
+            )
+            
+            progress.update(task, description="Processing workflow data...")
+        
+        workflows = workflows_result.get('workflows', [])
+        
+        if output_format == "json":
+            json_output = json.dumps(workflows_result, indent=2, default=str)
+            console.print(json_output)
+            
+        elif output_format == "tree":
+            _display_workflows_tree(workflows)
+            
+        else:  # table format
+            if workflows:
+                workflows_table = Table(title="Available Workflows", style="yellow")
+                workflows_table.add_column("Name", style="bold")
+                workflows_table.add_column("Type", style="cyan")
+                workflows_table.add_column("Status", style="green")
+                workflows_table.add_column("Steps")
+                workflows_table.add_column("Last Run")
+                workflows_table.add_column("Success Rate")
+                
+                for workflow in workflows:
+                    status_color = "green" if workflow.get('status') == 'active' else "yellow" if workflow.get('status') == 'scheduled' else "red"
+                    workflows_table.add_row(
+                        workflow.get('name', 'Unknown'),
+                        workflow.get('type', 'Unknown'),
+                        f"[{status_color}]{workflow.get('status', 'Unknown')}[/{status_color}]",
+                        str(len(workflow.get('steps', []))),
+                        workflow.get('last_run', 'Never')[:10] if workflow.get('last_run') else 'Never',
+                        f"{workflow.get('success_rate', 0):.1%}"
+                    )
+                
+                console.print(workflows_table)
+            else:
+                console.print("❌ No workflows found matching the specified filters")
+        
+        if save_to:
+            with open(save_to, 'w') as f:
+                json.dump(workflows_result, f, indent=2, default=str)
+            console.print(f"✅ Workflow list saved to {save_to}")
+        
+        # Show summary
+        console.print(f"\n📊 Workflow Summary:")
+        console.print(f"   • Total workflows: {len(workflows)}")
+        console.print(f"   • Active workflows: {len([w for w in workflows if w.get('status') == 'active'])}")
+        console.print(f"   • Scheduled workflows: {len([w for w in workflows if w.get('status') == 'scheduled'])}")
+        console.print(f"   • Average success rate: {sum(w.get('success_rate', 0) for w in workflows) / len(workflows) * 100:.1f}%" if workflows else "   • No workflows to calculate average")
+    
+    asyncio.run(list_workflows_async())
+
+
+@app.command("workflow-export")
+def workflow_export_cli(
+    workflow_id: str = typer.Argument(..., help="Workflow ID to export results from"),
+    export_type: str = typer.Option("results", help="Export type: results, definition, logs, all"),
+    export_format: str = typer.Option("json", help="Export format: json, csv, excel, html"),
+    output_file: str = typer.Option("workflow_export", help="Output file name (without extension)"),
+    date_range: Optional[str] = typer.Option(None, help="Date range for results (YYYY-MM-DD:YYYY-MM-DD)"),
+    include_analytics: bool = typer.Option(True, help="Include performance analytics in export")
+):
+    """Export workflow results, definitions, and performance data."""
+    
+    async def export_workflow_async():
+        console.print(Panel(f"📤 Epic 9.4: Export Workflow - {workflow_id}", style="bold purple"))
+        console.print(f"Export type: {export_type} | Format: {export_format}")
+        
+        # Parse date range if provided
+        date_filter = None
+        if date_range:
+            try:
+                start_date, end_date = date_range.split(":")
+                date_filter = {"start": start_date, "end": end_date}
+                console.print(f"📅 Date range: {start_date} to {end_date}")
+            except ValueError:
+                console.print(f"⚠️ Invalid date range format. Use YYYY-MM-DD:YYYY-MM-DD")
+                date_filter = None
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Preparing export...", total=None)
+            
+            # Initialize optimization engine
+            optimizer = ContentOptimizationEngine()
+            
+            progress.update(task, description="Gathering workflow data...")
+            
+            # Export workflow data
+            export_result = await optimizer.export_workflow_data(
+                workflow_id=workflow_id,
+                export_type=export_type,
+                format=export_format,
+                output_file=output_file,
+                date_filter=date_filter,
+                include_analytics=include_analytics
+            )
+            
+            progress.update(task, description="Generating export file...")
+        
+        # Display export summary
+        console.print(f"\n✅ Workflow Export Complete!")
+        console.print(f"   • Workflow ID: {workflow_id}")
+        console.print(f"   • Export type: {export_type}")
+        console.print(f"   • Format: {export_format}")
+        console.print(f"   • Output file: {export_result.get('output_path', 'Unknown')}")
+        console.print(f"   • File size: {export_result.get('file_size', 'Unknown')}")
+        console.print(f"   • Records exported: {export_result.get('records_count', 0)}")
+        
+        if date_filter:
+            console.print(f"   • Date range: {date_filter['start']} to {date_filter['end']}")
+        
+        if include_analytics:
+            console.print(f"   • Analytics included: ✅")
+        
+        # Show export contents summary
+        if export_result.get('export_summary'):
+            console.print(f"\n📋 Export Contents:")
+            summary = export_result['export_summary']
+            for section, count in summary.items():
+                console.print(f"   • {section}: {count} items")
+    
+    asyncio.run(export_workflow_async())
+
+
+@app.command("workflow-schedule")
+def workflow_schedule_cli(
+    workflow_id: str = typer.Argument(..., help="Workflow ID to schedule"),
+    schedule_type: str = typer.Option("cron", help="Schedule type: cron, interval, once"),
+    schedule_expression: str = typer.Option("0 9 * * 1", help="Schedule expression (cron format or interval)"),
+    enabled: bool = typer.Option(True, help="Enable/disable the scheduled workflow"),
+    max_concurrent: int = typer.Option(1, help="Maximum concurrent executions"),
+    retry_on_failure: bool = typer.Option(True, help="Retry on workflow failure"),
+    notification_email: Optional[str] = typer.Option(None, help="Email for execution notifications")
+):
+    """Schedule automated workflow executions with cron-like scheduling."""
+    
+    async def schedule_workflow_async():
+        console.print(Panel(f"⏰ Epic 9.4: Schedule Workflow - {workflow_id}", style="bold orange"))
+        console.print(f"Schedule: {schedule_type} - {schedule_expression}")
+        
+        # Validate schedule expression
+        if schedule_type == "cron":
+            # Basic cron validation (5 fields)
+            cron_parts = schedule_expression.split()
+            if len(cron_parts) != 5:
+                console.print(f"❌ Invalid cron expression. Expected 5 fields, got {len(cron_parts)}")
+                console.print(f"   Example: '0 9 * * 1' (Every Monday at 9 AM)")
+                return
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Setting up workflow schedule...", total=None)
+            
+            # Initialize optimization engine
+            optimizer = ContentOptimizationEngine()
+            
+            # Create schedule configuration
+            schedule_config = {
+                "workflow_id": workflow_id,
+                "schedule_type": schedule_type,
+                "expression": schedule_expression,
+                "enabled": enabled,
+                "max_concurrent": max_concurrent,
+                "retry_on_failure": retry_on_failure,
+                "notification_email": notification_email,
+                "created_at": "2024-01-01T00:00:00Z"  # Mock timestamp
+            }
+            
+            # Schedule the workflow
+            schedule_result = await optimizer.schedule_workflow(schedule_config)
+            
+            progress.update(task, description="Schedule configuration complete!")
+        
+        # Display schedule summary
+        console.print(f"\n✅ Workflow Scheduled Successfully!")
+        console.print(f"   • Workflow ID: {workflow_id}")
+        console.print(f"   • Schedule ID: {schedule_result.get('schedule_id', 'Unknown')}")
+        console.print(f"   • Schedule type: {schedule_type}")
+        console.print(f"   • Expression: {schedule_expression}")
+        console.print(f"   • Status: {'Enabled' if enabled else 'Disabled'}")
+        console.print(f"   • Max concurrent: {max_concurrent}")
+        
+        if retry_on_failure:
+            console.print(f"   • Retry on failure: ✅")
+        
+        if notification_email:
+            console.print(f"   • Notifications: {notification_email}")
+        
+        # Show next execution times
+        next_executions = schedule_result.get('next_executions', [])
+        if next_executions:
+            console.print(f"\n⏰ Next Scheduled Executions:")
+            for i, execution_time in enumerate(next_executions[:5], 1):
+                console.print(f"   {i}. {execution_time}")
+        
+        # Show schedule interpretation
+        if schedule_type == "cron":
+            interpretation = _interpret_cron_expression(schedule_expression)
+            if interpretation:
+                console.print(f"\n📝 Schedule Interpretation: {interpretation}")
+    
+    asyncio.run(schedule_workflow_async())
+
+
+# Helper functions for Epic 9.4 commands
+
+def _display_strategy_optimization(result: Dict[str, Any], interactive: bool = False):
+    """Display strategy optimization results in visual format."""
+    
+    # Optimization summary
+    summary_table = Table(title="🚀 Strategy Optimization Results", style="blue")
+    summary_table.add_column("Metric", style="bold")
+    summary_table.add_column("Before", justify="right")
+    summary_table.add_column("After", justify="right")
+    summary_table.add_column("Improvement")
+    
+    # Mock before/after metrics
+    metrics = [
+        ("Engagement Score", "0.65", "0.82", "+26%"),
+        ("Reach Potential", "0.58", "0.75", "+29%"),
+        ("Content Quality", "0.72", "0.89", "+24%"),
+        ("Audience Alignment", "0.63", "0.78", "+24%")
+    ]
+    
+    for metric, before, after, improvement in metrics:
+        improvement_color = "green" if improvement.startswith("+") else "red"
+        summary_table.add_row(
+            metric,
+            before,
+            after,
+            f"[{improvement_color}]{improvement}[/{improvement_color}]"
+        )
+    
+    console.print(summary_table)
+    
+    # Recommendations
+    recommendations = result.get("recommendations", [])
+    if recommendations:
+        console.print(f"\n💡 Optimization Recommendations:")
+        for i, rec in enumerate(recommendations[:5], 1):
+            priority = rec.get("priority", "medium")
+            priority_color = "red" if priority == "high" else "yellow" if priority == "medium" else "green"
+            status = "✅ Applied" if rec.get("accepted", False) else "⏳ Pending"
+            
+            console.print(f"   {i}. [{priority_color}]{priority.upper()}[/{priority_color}] {rec.get('title', 'Unknown')} - {status}")
+            console.print(f"      {rec.get('description', 'No description available')[:80]}...")
+
+
+def _display_strategy_analysis(result: Dict[str, Any], analysis_type: str):
+    """Display strategy analysis results in visual format."""
+    
+    # Key metrics panel
+    metrics = result.get("key_metrics", {})
+    metrics_panel = Panel(
+        f"Overall Score: {metrics.get('overall_score', 0):.2f}/1.00\n"
+        f"Content Quality: {metrics.get('content_quality', 0):.2f}/1.00\n"
+        f"Audience Alignment: {metrics.get('audience_alignment', 0):.2f}/1.00\n"
+        f"Platform Optimization: {metrics.get('platform_optimization', 0):.2f}/1.00",
+        title="📊 Strategy Metrics",
+        style="green"
+    )
+    console.print(metrics_panel)
+    
+    # Analysis insights
+    insights = result.get("insights", [])
+    if insights:
+        console.print(f"\n🔍 Key Insights:")
+        for insight in insights[:5]:
+            console.print(f"   • {insight}")
+    
+    # Recommendations
+    recommendations = result.get("recommendations", [])
+    if recommendations:
+        console.print(f"\n💡 Recommendations:")
+        for i, rec in enumerate(recommendations[:3], 1):
+            console.print(f"   {i}. {rec}")
+
+
+def _display_strategy_recommendations(result: Dict[str, Any], advanced_mode: bool):
+    """Display strategy recommendations in visual format."""
+    
+    # Strategic recommendations
+    strategic_recs = result.get("strategic_recommendations", [])
+    if strategic_recs:
+        strategy_table = Table(title="🎯 Strategic Recommendations", style="yellow")
+        strategy_table.add_column("Priority", style="bold")
+        strategy_table.add_column("Recommendation")
+        strategy_table.add_column("Expected Impact")
+        
+        for rec in strategic_recs[:5]:
+            priority = rec.get("priority", "medium")
+            priority_color = "red" if priority == "high" else "yellow" if priority == "medium" else "green"
+            
+            strategy_table.add_row(
+                f"[{priority_color}]{priority.upper()}[/{priority_color}]",
+                rec.get("description", "No description")[:50] + "...",
+                rec.get("expected_impact", "Unknown")
+            )
+        
+        console.print(strategy_table)
+    
+    # Content pillars
+    pillars = result.get("content_pillars", [])
+    if pillars:
+        console.print(f"\n🏛️ Recommended Content Pillars:")
+        for i, pillar in enumerate(pillars, 1):
+            console.print(f"   {i}. {pillar.get('title', f'Pillar {i}')}")
+            console.print(f"      {pillar.get('description', 'No description')[:60]}...")
+    
+    if advanced_mode:
+        console.print(f"\n🤖 Advanced AI insights included in recommendations")
+
+
+def _display_content_optimization(result: Dict[str, Any], show_variations: bool):
+    """Display content optimization results in visual format."""
+    
+    # Optimization scores
+    scores_table = Table(title="✨ Content Optimization Scores", style="blue")
+    scores_table.add_column("Metric", style="bold")
+    scores_table.add_column("Original", justify="right")
+    scores_table.add_column("Optimized", justify="right")
+    scores_table.add_column("Change")
+    
+    # Mock scores
+    original_score = result.get("original_score", 0.65)
+    optimized_score = result.get("optimized_score", 0.82)
+    improvement = ((optimized_score - original_score) / original_score) * 100
+    
+    scores_table.add_row(
+        "Overall Score",
+        f"{original_score:.2f}",
+        f"{optimized_score:.2f}",
+        f"[green]+{improvement:.1f}%[/green]"
+    )
+    
+    console.print(scores_table)
+    
+    # Optimized content
+    optimized_content = result.get("optimized_content", "")
+    if optimized_content:
+        content_panel = Panel(
+            optimized_content[:200] + "..." if len(optimized_content) > 200 else optimized_content,
+            title="📝 Optimized Content",
+            style="cyan"
+        )
+        console.print(content_panel)
+    
+    # Variations if requested
+    if show_variations:
+        variations = result.get("variations", [])
+        if variations:
+            console.print(f"\n🎭 Content Variations:")
+            for i, variation in enumerate(variations[:3], 1):
+                console.print(f"   {i}. Score: {variation.get('score', 0):.2f} - {variation.get('content', '')[:50]}...")
+
+
+def _display_content_analysis(result: Dict[str, Any], analysis_type: str):
+    """Display content analysis results in visual format."""
+    
+    # Quality scores
+    scores = result.get("quality_scores", {})
+    scores_table = Table(title="🔍 Content Quality Analysis", style="green")
+    scores_table.add_column("Quality Metric", style="bold")
+    scores_table.add_column("Score", justify="right")
+    scores_table.add_column("Grade")
+    
+    for metric, score in scores.items():
+        grade = "A" if score > 0.8 else "B" if score > 0.6 else "C" if score > 0.4 else "D"
+        grade_color = "green" if grade == "A" else "yellow" if grade == "B" else "orange" if grade == "C" else "red"
+        
+        scores_table.add_row(
+            metric.replace("_", " ").title(),
+            f"{score:.2f}",
+            f"[{grade_color}]{grade}[/{grade_color}]"
+        )
+    
+    console.print(scores_table)
+    
+    # Analysis insights
+    insights = result.get("insights", [])
+    if insights:
+        console.print(f"\n💡 Analysis Insights:")
+        for insight in insights[:5]:
+            console.print(f"   • {insight}")
+
+
+def _display_content_variations(result: Dict[str, Any], variation_type: str):
+    """Display content variations in visual format."""
+    
+    variations = result.get("variations", [])
+    if variations:
+        variations_table = Table(title=f"🎭 {variation_type.replace('_', ' ').title()} Variations", style="yellow")
+        variations_table.add_column("#", style="bold")
+        variations_table.add_column("Quality Score", justify="right")
+        variations_table.add_column("Content Preview")
+        variations_table.add_column("Key Changes")
+        
+        for i, variation in enumerate(variations, 1):
+            score = variation.get("score", 0)
+            score_color = "green" if score > 0.7 else "yellow" if score > 0.5 else "red"
+            
+            variations_table.add_row(
+                str(i),
+                f"[{score_color}]{score:.2f}[/{score_color}]",
+                variation.get("content", "")[:40] + "...",
+                ", ".join(variation.get("changes", [])[:2])
+            )
+        
+        console.print(variations_table)
+
+
+def _display_content_prediction(result: Dict[str, Any], prediction_type: str):
+    """Display content prediction results in visual format."""
+    
+    # Prediction scores
+    predictions = result.get("predictions", {})
+    prediction_table = Table(title=f"🔮 Content Performance Prediction - {prediction_type.title()}", style="purple")
+    prediction_table.add_column("Metric", style="bold")
+    prediction_table.add_column("Predicted Value", justify="right")
+    prediction_table.add_column("Confidence")
+    
+    for metric, value in predictions.items():
+        confidence = result.get("confidence", 0.5)
+        confidence_color = "green" if confidence > 0.7 else "yellow" if confidence > 0.5 else "red"
+        
+        prediction_table.add_row(
+            metric.replace("_", " ").title(),
+            f"{value:.2f}",
+            f"[{confidence_color}]{confidence:.2f}[/{confidence_color}]"
+        )
+    
+    console.print(prediction_table)
+    
+    # Performance tier
+    tier = result.get("performance_tier", "Unknown")
+    tier_color = "green" if tier == "High" else "yellow" if tier == "Medium" else "red"
+    console.print(f"\n🎯 Performance Tier: [{tier_color}]{tier}[/{tier_color}]")
+
+
+def _display_content_history(result: Dict[str, Any], content_id: Optional[str], show_performance: bool):
+    """Display content optimization history in visual format."""
+    
+    history_items = result.get("history_items", [])
+    if history_items:
+        history_table = Table(title="📜 Optimization History", style="orange")
+        history_table.add_column("Date", style="bold")
+        history_table.add_column("Operation")
+        history_table.add_column("Improvement")
+        if show_performance:
+            history_table.add_column("Performance")
+        
+        for item in history_items:
+            date_str = item.get("date", "Unknown")[:10]
+            operation = item.get("operation", "Unknown")
+            improvement = item.get("improvement", 0)
+            improvement_color = "green" if improvement > 0 else "red" if improvement < 0 else "yellow"
+            
+            row = [
+                date_str,
+                operation,
+                f"[{improvement_color}]{improvement:+.1%}[/{improvement_color}]"
+            ]
+            
+            if show_performance:
+                performance = item.get("performance_metrics", {})
+                engagement = performance.get("engagement", 0)
+                row.append(f"{engagement:.2f}")
+            
+            history_table.add_row(*row)
+        
+        console.print(history_table)
+    else:
+        console.print("❌ No optimization history found")
+
+
+def _display_workflow_status(result: Dict[str, Any], workflow_id: Optional[str]):
+    """Display workflow status in visual format."""
+    
+    # Active workflows
+    active_workflows = result.get("active_workflows", [])
+    if active_workflows:
+        active_table = Table(title="▶️  Active Workflows", style="green")
+        active_table.add_column("Workflow", style="bold")
+        active_table.add_column("Status")
+        active_table.add_column("Progress")
+        active_table.add_column("Started")
+        
+        for workflow in active_workflows:
+            progress = workflow.get("progress", 0)
+            progress_bar = "█" * int(progress * 10) + "░" * (10 - int(progress * 10))
+            
+            active_table.add_row(
+                workflow.get("name", "Unknown"),
+                workflow.get("status", "Unknown"),
+                f"[green]{progress_bar}[/green] {progress:.0%}",
+                workflow.get("started_at", "Unknown")[:16]
+            )
+        
+        console.print(active_table)
+    
+    # Scheduled workflows
+    scheduled_workflows = result.get("scheduled_workflows", [])
+    if scheduled_workflows:
+        scheduled_table = Table(title="⏰ Scheduled Workflows", style="yellow")
+        scheduled_table.add_column("Workflow", style="bold")
+        scheduled_table.add_column("Next Run")
+        scheduled_table.add_column("Schedule")
+        scheduled_table.add_column("Status")
+        
+        for workflow in scheduled_workflows:
+            scheduled_table.add_row(
+                workflow.get("name", "Unknown"),
+                workflow.get("next_run", "Unknown")[:16],
+                workflow.get("schedule", "Unknown"),
+                workflow.get("status", "Unknown")
+            )
+        
+        console.print(scheduled_table)
+
+
+def _display_workflows_tree(workflows: List[Dict[str, Any]]):
+    """Display workflows in tree format."""
+    
+    tree = Tree("📋 Available Workflows")
+    
+    # Group by type
+    workflow_types = {}
+    for workflow in workflows:
+        wf_type = workflow.get("type", "unknown")
+        if wf_type not in workflow_types:
+            workflow_types[wf_type] = []
+        workflow_types[wf_type].append(workflow)
+    
+    for wf_type, wf_list in workflow_types.items():
+        type_branch = tree.add(f"[bold]{wf_type.replace('_', ' ').title()}[/bold] ({len(wf_list)})")
+        
+        for workflow in wf_list:
+            status = workflow.get("status", "unknown")
+            status_color = "green" if status == "active" else "yellow" if status == "scheduled" else "red"
+            
+            wf_branch = type_branch.add(f"[{status_color}]{workflow.get('name', 'Unknown')}[/{status_color}]")
+            wf_branch.add(f"Steps: {len(workflow.get('steps', []))}")
+            wf_branch.add(f"Success Rate: {workflow.get('success_rate', 0):.1%}")
+    
+    console.print(tree)
+
+
+def _generate_strategy_report(result: Dict[str, Any], strategy_file: str):
+    """Generate a comprehensive strategy report."""
+    console.print(Panel("📄 Generating Strategy Report...", style="bold cyan"))
+    # In a real implementation, this would generate a detailed report
+    console.print("Report generation complete (mock implementation)")
+
+
+def _save_strategy_report(result: Dict[str, Any], output_file: str):
+    """Save strategy report to file."""
+    # Mock implementation - would save formatted report
+    with open(output_file, 'w') as f:
+        json.dump(result, f, indent=2)
+
+
+def _generate_comparison_report(result: Dict[str, Any], strategy1_file: str, strategy2_file: str):
+    """Generate comparison report."""
+    console.print(Panel("📊 Generating Comparison Report...", style="bold cyan"))
+    # Mock implementation
+    console.print("Comparison report generation complete (mock implementation)")
+
+
+def _save_comparison_report(result: Dict[str, Any], output_file: str):
+    """Save comparison report to file."""
+    # Mock implementation
+    with open(output_file, 'w') as f:
+        json.dump(result, f, indent=2)
+
+
+def _display_strategy_comparison(result: Dict[str, Any], comparison_type: str):
+    """Display strategy comparison results."""
+    
+    # Comparison summary
+    summary = result.get("summary", {})
+    winner = summary.get("winner", "Tie")
+    winner_color = "green" if winner != "Tie" else "yellow"
+    
+    summary_panel = Panel(
+        f"Winner: [{winner_color}]{winner}[/{winner_color}]\n"
+        f"Performance Delta: {summary.get('performance_delta', 0):.2f}\n"
+        f"Confidence: {result.get('confidence', 0):.2f}",
+        title="⚖️ Comparison Summary",
+        style="purple"
+    )
+    console.print(summary_panel)
+    
+    # Key differences
+    differences = result.get("differences", [])
+    if differences:
+        console.print(f"\n🔍 Key Differences:")
+        for i, diff in enumerate(differences[:5], 1):
+            console.print(f"   {i}. {diff}")
+    
+    # Recommendations
+    recommendations = result.get("recommendations", [])
+    if recommendations:
+        console.print(f"\n💡 Optimization Recommendations:")
+        for i, rec in enumerate(recommendations[:3], 1):
+            console.print(f"   {i}. {rec}")
+
+
+def _detect_import_format(file_path: str) -> str:
+    """Auto-detect import file format."""
+    path = Path(file_path)
+    extension = path.suffix.lower()
+    
+    format_map = {
+        ".json": "json",
+        ".csv": "csv",
+        ".xlsx": "excel",
+        ".xls": "excel",
+        ".html": "html",
+        ".txt": "text"
+    }
+    
+    return format_map.get(extension, "json")
+
+
+def _interpret_cron_expression(expression: str) -> str:
+    """Interpret cron expression into human readable format."""
+    # Basic cron interpretation - in production would use a proper cron parser
+    parts = expression.split()
+    if len(parts) != 5:
+        return "Invalid cron expression"
+    
+    minute, hour, day, month, weekday = parts
+    
+    # Simple interpretations
+    if expression == "0 9 * * 1":
+        return "Every Monday at 9:00 AM"
+    elif expression == "0 */6 * * *":
+        return "Every 6 hours"
+    elif expression == "0 0 * * *":
+        return "Daily at midnight"
+    else:
+        return f"Custom schedule: {expression}"
+
+
+async def _interactive_content_optimization(optimizer, result: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle interactive content optimization mode."""
+    console.print("\n🎯 Interactive Optimization Mode")
+    
+    optimizations = result.get("optimization_suggestions", [])
+    for i, optimization in enumerate(optimizations[:5], 1):
+        apply = typer.confirm(f"Apply optimization {i}: {optimization.get('title', 'Unknown')}?")
+        if apply:
+            optimization["applied"] = True
+            console.print(f"✅ Applied: {optimization['title']}")
+        else:
+            optimization["applied"] = False
+            console.print(f"❌ Skipped: {optimization['title']}")
+    
+    return result
 
 
 if __name__ == "__main__":
