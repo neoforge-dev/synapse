@@ -794,6 +794,39 @@ async def get_audience_segmentation_engine() -> Any:
     return _singletons["audience_segmentation_engine"]
 
 
+async def get_competitive_analyzer() -> Any:
+    """Dependency getter for CompetitiveAnalyzer."""
+    from graph_rag.core.competitive_analysis import CompetitiveAnalyzer
+    
+    if "competitive_analyzer" not in _singletons:
+        _singletons["competitive_analyzer"] = CompetitiveAnalyzer()
+        logger.debug("Created CompetitiveAnalyzer instance")
+    
+    return _singletons["competitive_analyzer"]
+
+
+async def get_analytics_risk_engine() -> Any:
+    """Dependency getter for AnalyticsRiskEngine."""
+    from graph_rag.core.analytics_risk_engine import AnalyticsRiskEngine
+    
+    if "analytics_risk_engine" not in _singletons:
+        _singletons["analytics_risk_engine"] = AnalyticsRiskEngine()
+        logger.debug("Created AnalyticsRiskEngine instance")
+    
+    return _singletons["analytics_risk_engine"]
+
+
+async def get_reasoning_engine() -> Any:
+    """Dependency getter for ReasoningEngine."""
+    from graph_rag.core.reasoning_engine import ReasoningEngine
+    
+    if "reasoning_engine" not in _singletons:
+        _singletons["reasoning_engine"] = ReasoningEngine()
+        logger.debug("Created ReasoningEngine instance")
+    
+    return _singletons["reasoning_engine"]
+
+
 # --- Authentication Dependencies (Example) ---
 # Example API Key Auth (adjust as needed)
 # api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)
