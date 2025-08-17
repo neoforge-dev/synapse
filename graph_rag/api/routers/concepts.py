@@ -1233,3 +1233,488 @@ def _extract_common_features(feature_lists: List[List[str]]) -> List[str]:
     threshold = max(1, len(feature_lists) * 0.25)
     common_features = [feature for feature, count in feature_counts.items() if count >= threshold]
     return sorted(common_features, key=lambda x: feature_counts[x], reverse=True)[:5]
+
+
+# === EPIC 8.3 & 8.4: AUDIENCE INTELLIGENCE & COMPETITIVE ANALYSIS API ENDPOINTS ===
+
+# Import additional dependencies for Epic 8
+from graph_rag.core.audience_intelligence import AudienceSegmentationEngine, AudienceSegment, AudiencePersona
+from graph_rag.core.competitive_analysis import CompetitiveAnalyzer, CompetitiveAnalysisResult
+
+
+class AudienceAnalysisRequest(BaseModel):
+    """Request model for audience analysis."""
+    text: str = Field(..., description="Content text to analyze for audience insights")
+    platform: str = Field(default="general", description="Platform type: general, linkedin, twitter")
+    context: Dict[str, Any] = Field(default_factory=dict, description="Additional context")
+
+
+class AudienceAnalysisResponse(BaseModel):
+    """Response model for audience analysis."""
+    audience_segment: Dict[str, Any] = Field(..., description="Analyzed audience segment")
+    audience_persona: Dict[str, Any] = Field(..., description="Generated audience persona")
+    demographic_analysis: Dict[str, Any] = Field(..., description="Demographic insights")
+    behavior_analysis: Dict[str, Any] = Field(..., description="Behavioral patterns")
+    psychographic_analysis: Dict[str, Any] = Field(..., description="Psychological characteristics")
+    audience_insights: Dict[str, Any] = Field(..., description="Strategic audience insights")
+    content_recommendations: List[str] = Field(..., description="Content strategy recommendations")
+    overall_confidence: float = Field(..., description="Analysis confidence level")
+
+
+class ResonanceAnalysisRequest(BaseModel):
+    """Request model for content-audience resonance analysis."""
+    content: str = Field(..., description="Content to analyze for resonance")
+    audience_segment_data: Dict[str, Any] = Field(..., description="Target audience segment data")
+    platform: str = Field(default="general", description="Platform for analysis")
+
+
+class ResonanceAnalysisResponse(BaseModel):
+    """Response model for resonance analysis."""
+    resonance_score: float = Field(..., description="Content-audience resonance score (0.0-1.0)")
+    demographic_alignment: float = Field(..., description="Demographic alignment score")
+    behavioral_alignment: float = Field(..., description="Behavioral alignment score")
+    psychographic_alignment: float = Field(..., description="Psychographic alignment score")
+    platform_optimization: float = Field(..., description="Platform optimization score")
+    improvement_suggestions: List[str] = Field(..., description="Content improvement recommendations")
+    resonance_factors: List[str] = Field(..., description="Key resonance drivers")
+    confidence: float = Field(..., description="Analysis confidence")
+
+
+class AudienceSegmentsResponse(BaseModel):
+    """Response model for audience segments retrieval."""
+    segments: List[Dict[str, Any]] = Field(..., description="Available audience segments")
+    total_segments: int = Field(..., description="Total number of segments")
+    segment_distribution: Dict[str, int] = Field(..., description="Segment distribution by type")
+    cross_segment_insights: Dict[str, Any] = Field(..., description="Cross-segment analysis")
+
+
+class PersonaGenerationRequest(BaseModel):
+    """Request model for persona generation."""
+    content_samples: List[str] = Field(..., description="Content samples for persona generation")
+    platform: str = Field(default="general", description="Platform context")
+    persona_count: int = Field(default=3, description="Number of personas to generate")
+
+
+class PersonaGenerationResponse(BaseModel):
+    """Response model for persona generation."""
+    personas: List[Dict[str, Any]] = Field(..., description="Generated audience personas")
+    persona_insights: Dict[str, Any] = Field(..., description="Persona analysis insights")
+    content_strategy_recommendations: List[str] = Field(..., description="Strategy recommendations")
+    target_audience_summary: Dict[str, Any] = Field(..., description="Overall audience summary")
+
+
+class CompetitiveAnalysisRequest(BaseModel):
+    """Request model for competitive analysis."""
+    competitor_data: Dict[str, List[Dict[str, Any]]] = Field(..., description="Competitor content data")
+    our_strategy: Optional[Dict[str, Any]] = Field(None, description="Our current content strategy")
+    analysis_scope: Optional[Dict[str, Any]] = Field(None, description="Analysis scope parameters")
+
+
+class CompetitiveAnalysisResponse(BaseModel):
+    """Response model for competitive analysis."""
+    analysis_id: str = Field(..., description="Analysis identifier")
+    market_landscape: Dict[str, Any] = Field(..., description="Market landscape overview")
+    competitor_profiles: List[Dict[str, Any]] = Field(..., description="Competitor analysis profiles")
+    market_gaps: List[Dict[str, Any]] = Field(..., description="Identified market gaps")
+    competitive_insights: List[Dict[str, Any]] = Field(..., description="Strategic insights")
+    strategic_recommendations: List[str] = Field(..., description="Strategic recommendations")
+    differentiation_opportunities: List[str] = Field(..., description="Differentiation opportunities")
+    competitive_benchmarks: Dict[str, float] = Field(..., description="Performance benchmarks")
+    confidence_level: float = Field(..., description="Analysis confidence level")
+
+
+@router.post("/audience/analyze", response_model=AudienceAnalysisResponse)
+async def analyze_audience(
+    request: AudienceAnalysisRequest
+) -> AudienceAnalysisResponse:
+    """Comprehensive audience segmentation analysis (Epic 8.1 & 8.4)."""
+    try:
+        logger.info(f"Epic 8.4: Analyzing audience for {request.platform} content")
+        
+        # Initialize audience segmentation engine
+        audience_engine = AudienceSegmentationEngine()
+        
+        # Perform comprehensive audience analysis
+        analysis_result = await audience_engine.analyze_audience(
+            request.text, 
+            {**request.context, "platform": request.platform}
+        )
+        
+        # Extract key components from analysis
+        audience_segment = analysis_result.get("audience_segment", {})
+        audience_persona = analysis_result.get("audience_persona", {})
+        demographic_analysis = analysis_result.get("demographic_analysis", {})
+        behavior_analysis = analysis_result.get("behavior_analysis", {})
+        psychographic_analysis = analysis_result.get("psychographic_analysis", {})
+        audience_insights = analysis_result.get("audience_insights", {})
+        content_recommendations = analysis_result.get("content_recommendations", [])
+        overall_confidence = analysis_result.get("overall_confidence", 0.0)
+        
+        logger.info(f"Epic 8.4: Audience analysis complete with confidence: {overall_confidence:.2f}")
+        
+        return AudienceAnalysisResponse(
+            audience_segment=audience_segment,
+            audience_persona=audience_persona,
+            demographic_analysis=demographic_analysis,
+            behavior_analysis=behavior_analysis,
+            psychographic_analysis=psychographic_analysis,
+            audience_insights=audience_insights,
+            content_recommendations=content_recommendations,
+            overall_confidence=overall_confidence
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 8.4: Error in audience analysis: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Audience analysis failed: {str(e)}")
+
+
+@router.post("/audience/resonance", response_model=ResonanceAnalysisResponse)
+async def analyze_content_resonance(
+    request: ResonanceAnalysisRequest
+) -> ResonanceAnalysisResponse:
+    """Content-audience resonance analysis (Epic 8.2 & 8.4)."""
+    try:
+        logger.info(f"Epic 8.4: Analyzing content resonance for {request.platform}")
+        
+        # Initialize audience segmentation engine
+        audience_engine = AudienceSegmentationEngine()
+        
+        # Convert audience segment data to AudienceSegment object
+        audience_segment = AudienceSegment(**request.audience_segment_data)
+        
+        # Get viral prediction if available
+        viral_prediction = None
+        try:
+            from graph_rag.core.viral_prediction_engine import ViralPredictionEngine, Platform
+            viral_engine = ViralPredictionEngine()
+            
+            # Map platform string to enum
+            platform_map = {"linkedin": Platform.LINKEDIN, "twitter": Platform.TWITTER, "general": Platform.GENERAL}
+            platform_enum = platform_map.get(request.platform.lower(), Platform.GENERAL)
+            
+            viral_prediction = await viral_engine.predict_viral_potential(
+                request.content, platform_enum
+            )
+        except Exception as e:
+            logger.warning(f"Could not get viral prediction: {e}")
+        
+        # Predict content-audience resonance
+        resonance_score = await audience_engine.predict_audience_content_resonance(
+            audience_segment, request.content, viral_prediction
+        )
+        
+        # Generate detailed alignment scores
+        demographic_alignment = 0.8  # Mock - would be calculated from actual analysis
+        behavioral_alignment = 0.7
+        psychographic_alignment = 0.6
+        platform_optimization = viral_prediction.platform_optimization_score if viral_prediction else 0.7
+        
+        # Generate improvement suggestions
+        improvement_suggestions = [
+            "Adjust content tone to better match audience preferences",
+            "Include more audience-specific examples and use cases",
+            "Optimize content length for target audience attention span",
+            "Add stronger call-to-action elements for engagement"
+        ]
+        
+        # Identify key resonance factors
+        resonance_factors = [
+            "Content topic alignment with audience interests",
+            "Communication style match with audience preferences",
+            "Platform-appropriate formatting and structure",
+            "Timing alignment with audience activity patterns"
+        ]
+        
+        confidence = min(
+            audience_segment.confidence_score,
+            viral_prediction.confidence if viral_prediction else 0.8
+        )
+        
+        logger.info(f"Epic 8.4: Resonance analysis complete - Score: {resonance_score:.2f}, Confidence: {confidence:.2f}")
+        
+        return ResonanceAnalysisResponse(
+            resonance_score=resonance_score,
+            demographic_alignment=demographic_alignment,
+            behavioral_alignment=behavioral_alignment,
+            psychographic_alignment=psychographic_alignment,
+            platform_optimization=platform_optimization,
+            improvement_suggestions=improvement_suggestions,
+            resonance_factors=resonance_factors,
+            confidence=confidence
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 8.4: Error in resonance analysis: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Resonance analysis failed: {str(e)}")
+
+
+@router.get("/audience/segments", response_model=AudienceSegmentsResponse)
+async def get_audience_segments(
+    platform: Optional[str] = Query(None, description="Filter by platform"),
+    min_confidence: float = Query(0.5, description="Minimum confidence threshold"),
+    limit: int = Query(50, description="Maximum number of segments to return")
+) -> AudienceSegmentsResponse:
+    """Retrieve audience segments from analysis history (Epic 8.4)."""
+    try:
+        logger.info(f"Epic 8.4: Retrieving audience segments with filters: platform={platform}, min_confidence={min_confidence}")
+        
+        # Mock implementation - in production, this would query stored segments from database
+        mock_segments = [
+            {
+                "id": "seg_001",
+                "name": "Tech Professional Creators",
+                "description": "Senior technology professionals who create thought leadership content",
+                "confidence_score": 0.85,
+                "platform_focus": ["linkedin"],
+                "audience_size_estimate": 15000,
+                "engagement_potential": 0.82
+            },
+            {
+                "id": "seg_002", 
+                "name": "Marketing Professional Commenters",
+                "description": "Mid-level marketing professionals who actively engage with content",
+                "confidence_score": 0.78,
+                "platform_focus": ["linkedin", "twitter"],
+                "audience_size_estimate": 25000,
+                "engagement_potential": 0.74
+            },
+            {
+                "id": "seg_003",
+                "name": "Business Leader Lurkers",
+                "description": "Executive-level professionals who consume but rarely create content",
+                "confidence_score": 0.72,
+                "platform_focus": ["linkedin"],
+                "audience_size_estimate": 8000,
+                "engagement_potential": 0.45
+            }
+        ]
+        
+        # Apply filters
+        filtered_segments = []
+        for segment in mock_segments:
+            if segment["confidence_score"] >= min_confidence:
+                if not platform or platform in segment["platform_focus"]:
+                    filtered_segments.append(segment)
+        
+        # Limit results
+        filtered_segments = filtered_segments[:limit]
+        
+        # Calculate distribution
+        segment_distribution = {}
+        for segment in filtered_segments:
+            seg_type = segment["name"].split()[-1]  # Last word as type
+            segment_distribution[seg_type] = segment_distribution.get(seg_type, 0) + 1
+        
+        # Generate cross-segment insights
+        cross_segment_insights = {
+            "total_audience_reach": sum(seg["audience_size_estimate"] for seg in filtered_segments),
+            "average_engagement_potential": sum(seg["engagement_potential"] for seg in filtered_segments) / len(filtered_segments) if filtered_segments else 0.0,
+            "platform_coverage": list(set(platform for seg in filtered_segments for platform in seg["platform_focus"])),
+            "confidence_range": {
+                "min": min(seg["confidence_score"] for seg in filtered_segments) if filtered_segments else 0.0,
+                "max": max(seg["confidence_score"] for seg in filtered_segments) if filtered_segments else 0.0
+            }
+        }
+        
+        logger.info(f"Epic 8.4: Retrieved {len(filtered_segments)} audience segments")
+        
+        return AudienceSegmentsResponse(
+            segments=filtered_segments,
+            total_segments=len(filtered_segments),
+            segment_distribution=segment_distribution,
+            cross_segment_insights=cross_segment_insights
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 8.4: Error retrieving audience segments: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Segment retrieval failed: {str(e)}")
+
+
+@router.post("/audience/personas", response_model=PersonaGenerationResponse)
+async def generate_audience_personas(
+    request: PersonaGenerationRequest
+) -> PersonaGenerationResponse:
+    """Generate detailed audience personas from content analysis (Epic 8.1 & 8.4)."""
+    try:
+        logger.info(f"Epic 8.4: Generating {request.persona_count} audience personas from {len(request.content_samples)} content samples")
+        
+        # Initialize audience segmentation engine
+        audience_engine = AudienceSegmentationEngine()
+        
+        # Analyze multiple content samples to generate diverse personas
+        personas = []
+        segment_data = []
+        
+        for i, content in enumerate(request.content_samples[:request.persona_count]):
+            try:
+                # Analyze audience for this content sample
+                analysis_result = await audience_engine.analyze_audience(
+                    content, {"platform": request.platform, "sample_id": i}
+                )
+                
+                # Extract segment and persona data
+                if analysis_result.get("audience_segment") and analysis_result.get("audience_persona"):
+                    personas.append(analysis_result["audience_persona"])
+                    segment_data.append(analysis_result["audience_segment"])
+                
+            except Exception as e:
+                logger.warning(f"Error analyzing content sample {i}: {e}")
+                continue
+        
+        # Generate persona insights
+        persona_insights = {
+            "total_personas_generated": len(personas),
+            "persona_diversity_score": 0.8 if len(personas) > 1 else 0.5,
+            "common_characteristics": [],
+            "unique_differentiators": [],
+            "engagement_patterns": {}
+        }
+        
+        if personas:
+            # Analyze common characteristics across personas
+            common_traits = []
+            for persona in personas:
+                if persona.get("psychographic_profile", {}).get("personality_traits"):
+                    traits = list(persona["psychographic_profile"]["personality_traits"].keys())
+                    common_traits.extend(traits)
+            
+            # Count trait frequency
+            trait_counts = {}
+            for trait in common_traits:
+                trait_counts[trait] = trait_counts.get(trait, 0) + 1
+            
+            # Identify common characteristics (appear in multiple personas)
+            common_characteristics = [trait for trait, count in trait_counts.items() if count > 1]
+            persona_insights["common_characteristics"] = common_characteristics[:5]
+            
+            # Engagement patterns analysis
+            persona_insights["engagement_patterns"] = {
+                "high_engagement_personas": len([p for p in personas if p.get("engagement_potential", 0) > 0.7]),
+                "content_creators": len([p for p in personas if p.get("behavior_profile", {}).get("interaction_style") == "creator"]),
+                "professional_focus": len([p for p in personas if p.get("demographic_profile", {}).get("industry")])
+            }
+        
+        # Generate content strategy recommendations
+        content_strategy_recommendations = [
+            "Create content tailored to each persona's communication style and preferences",
+            "Develop platform-specific strategies based on persona platform usage patterns",
+            "Align content timing with persona activity patterns for maximum engagement",
+            "Use persona insights to inform content tone and messaging approach",
+            "Create persona-specific calls-to-action to improve conversion rates"
+        ]
+        
+        # Target audience summary
+        target_audience_summary = {
+            "primary_demographics": "Professional audience with diverse industry backgrounds",
+            "key_platforms": [request.platform],
+            "content_preferences": ["educational", "professional", "thought_leadership"],
+            "engagement_drivers": ["industry insights", "practical advice", "authentic perspectives"],
+            "optimal_content_mix": {
+                "educational_content": 40,
+                "industry_insights": 30,
+                "personal_experiences": 20,
+                "trending_topics": 10
+            }
+        }
+        
+        logger.info(f"Epic 8.4: Generated {len(personas)} personas with {persona_insights['total_personas_generated']} successful analyses")
+        
+        return PersonaGenerationResponse(
+            personas=personas,
+            persona_insights=persona_insights,
+            content_strategy_recommendations=content_strategy_recommendations,
+            target_audience_summary=target_audience_summary
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 8.4: Error generating personas: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Persona generation failed: {str(e)}")
+
+
+@router.post("/audience/competitive", response_model=CompetitiveAnalysisResponse)
+async def analyze_competitive_positioning(
+    request: CompetitiveAnalysisRequest
+) -> CompetitiveAnalysisResponse:
+    """Comprehensive competitive analysis for market positioning (Epic 8.3 & 8.4)."""
+    try:
+        logger.info(f"Epic 8.4: Starting competitive analysis for {len(request.competitor_data)} competitors")
+        
+        # Initialize competitive analyzer
+        competitive_analyzer = CompetitiveAnalyzer()
+        
+        # Perform comprehensive competitive analysis
+        analysis_result = await competitive_analyzer.analyze_competitive_landscape(
+            request.competitor_data,
+            request.our_strategy,
+            request.analysis_scope
+        )
+        
+        # Convert result to response format
+        # Competitor profiles
+        competitor_profiles = []
+        for profile in analysis_result.competitor_profiles:
+            competitor_profiles.append({
+                "id": profile.id,
+                "name": profile.name,
+                "competitor_type": profile.competitor_type.value if profile.competitor_type else None,
+                "market_position": profile.market_position.value if profile.market_position else None,
+                "content_strategy": profile.content_strategy.value if profile.content_strategy else None,
+                "average_engagement_rate": profile.average_engagement_rate,
+                "average_viral_score": profile.average_viral_score,
+                "audience_overlap_score": profile.audience_overlap_score,
+                "strengths": profile.strengths,
+                "weaknesses": profile.weaknesses,
+                "confidence_score": profile.confidence_score
+            })
+        
+        # Market gaps
+        market_gaps = []
+        for gap in analysis_result.market_gaps:
+            market_gaps.append({
+                "id": gap.id,
+                "gap_type": gap.gap_type,
+                "description": gap.description,
+                "opportunity_size": gap.opportunity_size,
+                "difficulty_score": gap.difficulty_score,
+                "success_probability": gap.success_probability,
+                "target_audience": gap.target_audience,
+                "content_themes": gap.content_themes,
+                "estimated_timeline": gap.estimated_timeline,
+                "resource_requirements": gap.resource_requirements
+            })
+        
+        # Competitive insights
+        competitive_insights = []
+        for insight in analysis_result.competitive_insights:
+            competitive_insights.append({
+                "id": insight.id,
+                "insight_type": insight.insight_type,
+                "title": insight.title,
+                "description": insight.description,
+                "confidence": insight.confidence,
+                "strategic_priority": insight.strategic_priority,
+                "actionable_recommendations": insight.actionable_recommendations,
+                "competitors_involved": insight.competitors_involved,
+                "potential_impact": insight.potential_impact
+            })
+        
+        logger.info(f"Epic 8.4: Competitive analysis complete - "
+                   f"{len(competitor_profiles)} competitors analyzed, "
+                   f"{len(market_gaps)} gaps identified, "
+                   f"confidence: {analysis_result.confidence_level:.2f}")
+        
+        return CompetitiveAnalysisResponse(
+            analysis_id=analysis_result.analysis_id,
+            market_landscape=analysis_result.market_landscape,
+            competitor_profiles=competitor_profiles,
+            market_gaps=market_gaps,
+            competitive_insights=competitive_insights,
+            strategic_recommendations=analysis_result.strategic_recommendations,
+            differentiation_opportunities=analysis_result.differentiation_opportunities,
+            competitive_benchmarks=analysis_result.competitive_benchmarks,
+            confidence_level=analysis_result.confidence_level
+        )
+        
+    except Exception as e:
+        logger.error(f"Epic 8.4: Error in competitive analysis: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Competitive analysis failed: {str(e)}")

@@ -1526,5 +1526,546 @@ def _get_sample_content_data() -> List[Dict[str, Any]]:
     ]
 
 
+# === EPIC 8.3 & 8.4: AUDIENCE INTELLIGENCE & COMPETITIVE ANALYSIS CLI COMMANDS ===
+
+# Import additional dependencies for Epic 8
+from graph_rag.core.audience_intelligence import AudienceSegmentationEngine, AudienceSegment, AudiencePersona
+from graph_rag.core.competitive_analysis import CompetitiveAnalyzer, analyze_competitor_landscape, identify_market_opportunities
+
+
+@app.command("audience-analyze")
+def audience_analyze_cli(
+    text: str = typer.Argument(..., help="Content text to analyze for audience insights"),
+    platform: str = typer.Option("general", help="Platform type: general, linkedin, twitter"),
+    output_format: str = typer.Option("visual", help="Output format: visual, json"),
+    save_to: Optional[str] = typer.Option(None, help="Save results to file"),
+    show_details: bool = typer.Option(False, help="Show detailed analysis breakdown")
+):
+    """Comprehensive audience segmentation analysis (Epic 8.1 & 8.4)."""
+    
+    async def analyze_async():
+        console.print(Panel("🎯 Epic 8.4: Audience Intelligence Analysis", style="bold blue"))
+        console.print(f"Platform: {platform}")
+        console.print(f"Content length: {len(text)} characters")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Analyzing audience segments...", total=None)
+            
+            # Initialize audience segmentation engine
+            audience_engine = AudienceSegmentationEngine()
+            
+            # Perform comprehensive audience analysis
+            analysis_result = await audience_engine.analyze_audience(
+                text, {"platform": platform}
+            )
+            
+            progress.update(task, description="Generating insights...")
+            
+            if output_format == "json":
+                json_output = json.dumps(analysis_result, indent=2, default=str)
+                console.print(json_output)
+                
+                if save_to:
+                    with open(save_to, 'w') as f:
+                        f.write(json_output)
+                    console.print(f"✅ Analysis saved to {save_to}")
+                    
+            else:  # visual format
+                _display_audience_analysis(analysis_result, show_details)
+                
+                if save_to:
+                    # Save as JSON even if displayed visually
+                    with open(save_to, 'w') as f:
+                        json.dump(analysis_result, f, indent=2, default=str)
+                    console.print(f"✅ Analysis saved to {save_to}")
+    
+    asyncio.run(analyze_async())
+
+
+@app.command("resonance-score")
+def resonance_score_cli(
+    content: str = typer.Argument(..., help="Content to analyze for audience resonance"),
+    audience_file: str = typer.Option(..., help="JSON file containing audience segment data"),
+    platform: str = typer.Option("general", help="Platform for analysis"),
+    show_breakdown: bool = typer.Option(False, help="Show detailed resonance breakdown")
+):
+    """Content-audience resonance scoring (Epic 8.2 & 8.4)."""
+    
+    async def score_async():
+        console.print(Panel("📊 Epic 8.4: Content-Audience Resonance Analysis", style="bold green"))
+        
+        try:
+            # Load audience segment data
+            with open(audience_file, 'r') as f:
+                audience_data = json.load(f)
+            
+            console.print(f"📁 Loaded audience data from {audience_file}")
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console
+            ) as progress:
+                task = progress.add_task("Calculating resonance score...", total=None)
+                
+                # Initialize audience segmentation engine
+                audience_engine = AudienceSegmentationEngine()
+                
+                # Convert audience data to AudienceSegment
+                audience_segment = AudienceSegment(**audience_data)
+                
+                # Calculate resonance score
+                resonance_score = await audience_engine.predict_audience_content_resonance(
+                    audience_segment, content
+                )
+                
+                progress.update(task, description="Generating insights...")
+            
+            # Display resonance score
+            score_color = "green" if resonance_score > 0.7 else "yellow" if resonance_score > 0.4 else "red"
+            console.print(f"\n🎯 Resonance Score: [{score_color}]{resonance_score:.2f}[/{score_color}] / 1.00")
+            
+            # Score bar visualization
+            bar_length = 50
+            filled = int(resonance_score * bar_length)
+            bar = "█" * filled + "░" * (bar_length - filled)
+            console.print(f"   [{score_color}]{bar}[/{score_color}]")
+            
+            if show_breakdown:
+                # Detailed breakdown
+                breakdown_table = Table(title="Resonance Score Breakdown", style="cyan")
+                breakdown_table.add_column("Component", style="bold")
+                breakdown_table.add_column("Score", justify="right")
+                breakdown_table.add_column("Impact")
+                
+                # Mock detailed scores - in production would be calculated
+                components = [
+                    ("Demographic Alignment", "0.82", _get_impact_text(0.82)),
+                    ("Behavioral Alignment", "0.75", _get_impact_text(0.75)),
+                    ("Psychographic Alignment", "0.68", _get_impact_text(0.68)),
+                    ("Platform Optimization", "0.79", _get_impact_text(0.79))
+                ]
+                
+                for component, score, impact in components:
+                    breakdown_table.add_row(component, score, impact)
+                
+                console.print(breakdown_table)
+            
+            # Recommendations
+            console.print(f"\n💡 Optimization Recommendations:")
+            recommendations = [
+                "Adjust content tone to better match audience preferences",
+                "Include more audience-specific examples and use cases", 
+                "Optimize content length for target audience attention span",
+                "Add stronger call-to-action elements for engagement"
+            ]
+            
+            for rec in recommendations:
+                console.print(f"   • {rec}")
+                
+        except FileNotFoundError:
+            console.print(f"❌ Error: Audience file {audience_file} not found")
+            raise typer.Exit(1)
+        except json.JSONDecodeError:
+            console.print(f"❌ Error: Invalid JSON in {audience_file}")
+            raise typer.Exit(1)
+    
+    asyncio.run(score_async())
+
+
+@app.command("audience-personas")
+def audience_personas_cli(
+    content_dir: str = typer.Argument(..., help="Directory containing content samples"),
+    platform: str = typer.Option("general", help="Platform context"),
+    persona_count: int = typer.Option(3, help="Number of personas to generate"),
+    output_format: str = typer.Option("visual", help="Output format: visual, json"),
+    save_to: Optional[str] = typer.Option(None, help="Save personas to file")
+):
+    """Generate detailed audience personas from content analysis (Epic 8.1 & 8.4)."""
+    
+    async def personas_async():
+        console.print(Panel(f"👥 Epic 8.4: Audience Persona Generation", style="bold magenta"))
+        
+        try:
+            content_path = Path(content_dir)
+            if not content_path.exists():
+                console.print(f"❌ Directory not found: {content_dir}")
+                return
+            
+            # Load content samples
+            content_samples = []
+            content_files = list(content_path.glob("*.txt")) + list(content_path.glob("*.json"))
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console
+            ) as progress:
+                task = progress.add_task("Loading content samples...", total=len(content_files))
+                
+                for file in content_files[:persona_count * 2]:  # Load more than needed
+                    try:
+                        if file.suffix == ".json":
+                            with open(file, 'r') as f:
+                                data = json.load(f)
+                                if isinstance(data, dict) and "text" in data:
+                                    content_samples.append(data["text"])
+                                elif isinstance(data, str):
+                                    content_samples.append(data)
+                        else:
+                            content_samples.append(file.read_text())
+                        
+                        progress.advance(task)
+                        
+                        if len(content_samples) >= persona_count:
+                            break
+                            
+                    except Exception as e:
+                        console.print(f"⚠️ Error loading {file}: {e}")
+                        progress.advance(task)
+                        continue
+                
+                progress.update(task, description="Generating personas...")
+                
+                # Initialize audience segmentation engine
+                audience_engine = AudienceSegmentationEngine()
+                
+                # Generate personas from content samples
+                personas = []
+                for i, content in enumerate(content_samples[:persona_count]):
+                    try:
+                        analysis_result = await audience_engine.analyze_audience(
+                            content, {"platform": platform, "sample_id": i}
+                        )
+                        
+                        if analysis_result.get("audience_persona"):
+                            personas.append(analysis_result["audience_persona"])
+                            
+                    except Exception as e:
+                        console.print(f"⚠️ Error generating persona {i+1}: {e}")
+                        continue
+                
+                progress.update(task, description="Complete!")
+            
+            if not personas:
+                console.print("❌ No personas could be generated from the content samples")
+                return
+            
+            if output_format == "json":
+                personas_output = {
+                    "personas": personas,
+                    "generation_summary": {
+                        "total_generated": len(personas),
+                        "source_content_samples": len(content_samples),
+                        "platform": platform
+                    }
+                }
+                
+                json_output = json.dumps(personas_output, indent=2, default=str)
+                console.print(json_output)
+                
+                if save_to:
+                    with open(save_to, 'w') as f:
+                        f.write(json_output)
+                    console.print(f"✅ Personas saved to {save_to}")
+                    
+            else:  # visual format
+                _display_audience_personas(personas, platform)
+                
+                if save_to:
+                    personas_output = {
+                        "personas": personas,
+                        "generation_summary": {
+                            "total_generated": len(personas),
+                            "platform": platform
+                        }
+                    }
+                    with open(save_to, 'w') as f:
+                        json.dump(personas_output, f, indent=2, default=str)
+                    console.print(f"✅ Personas saved to {save_to}")
+            
+            console.print(f"\n✨ Generated {len(personas)} audience personas from {len(content_samples)} content samples")
+            
+        except Exception as e:
+            console.print(f"❌ Error generating personas: {e}")
+    
+    asyncio.run(personas_async())
+
+
+@app.command("competitive-analysis")
+def competitive_analysis_cli(
+    competitor_data_dir: str = typer.Argument(..., help="Directory containing competitor content data"),
+    our_strategy_file: Optional[str] = typer.Option(None, help="JSON file with our content strategy"),
+    output_format: str = typer.Option("visual", help="Output format: visual, json"),
+    save_to: Optional[str] = typer.Option(None, help="Save analysis to file"),
+    show_details: bool = typer.Option(False, help="Show detailed competitive insights")
+):
+    """Comprehensive competitive analysis for market positioning (Epic 8.3 & 8.4)."""
+    
+    async def analysis_async():
+        console.print(Panel("🏆 Epic 8.4: Competitive Analysis & Market Positioning", style="bold red"))
+        
+        try:
+            data_path = Path(competitor_data_dir)
+            if not data_path.exists():
+                console.print(f"❌ Directory not found: {competitor_data_dir}")
+                return
+            
+            # Load our strategy if provided
+            our_strategy = None
+            if our_strategy_file:
+                try:
+                    with open(our_strategy_file, 'r') as f:
+                        our_strategy = json.load(f)
+                    console.print(f"📁 Loaded our strategy from {our_strategy_file}")
+                except Exception as e:
+                    console.print(f"⚠️ Could not load strategy file: {e}")
+            
+            # Load competitor data
+            competitor_data = {}
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console
+            ) as progress:
+                
+                # Find competitor data files
+                competitor_files = list(data_path.glob("*competitor*.json")) + list(data_path.glob("*comp_*.json"))
+                if not competitor_files:
+                    # Look for any JSON files
+                    competitor_files = list(data_path.glob("*.json"))
+                
+                task = progress.add_task("Loading competitor data...", total=len(competitor_files))
+                
+                for file in competitor_files:
+                    try:
+                        with open(file, 'r') as f:
+                            data = json.load(f)
+                        
+                        competitor_name = file.stem.replace("competitor_", "").replace("comp_", "")
+                        
+                        if isinstance(data, list):
+                            competitor_data[competitor_name] = data
+                        elif isinstance(data, dict):
+                            # If single item, wrap in list
+                            competitor_data[competitor_name] = [data]
+                        
+                        progress.advance(task)
+                        
+                    except Exception as e:
+                        console.print(f"⚠️ Error loading {file}: {e}")
+                        progress.advance(task)
+                        continue
+                
+                if not competitor_data:
+                    console.print("❌ No competitor data could be loaded")
+                    return
+                
+                progress.update(task, description="Analyzing competitive landscape...")
+                
+                # Perform competitive analysis
+                analysis_result = await analyze_competitor_landscape(
+                    competitor_data, our_strategy
+                )
+                
+                progress.update(task, description="Complete!")
+            
+            if output_format == "json":
+                # Convert to JSON-serializable format
+                json_result = {
+                    "analysis_id": analysis_result.analysis_id,
+                    "market_landscape": analysis_result.market_landscape,
+                    "competitive_intensity": analysis_result.competitive_intensity,
+                    "market_maturity": analysis_result.market_maturity,
+                    "competitor_count": len(analysis_result.competitor_profiles),
+                    "market_gaps_count": len(analysis_result.market_gaps),
+                    "insights_count": len(analysis_result.competitive_insights),
+                    "confidence_level": analysis_result.confidence_level,
+                    "strategic_recommendations": analysis_result.strategic_recommendations,
+                    "differentiation_opportunities": analysis_result.differentiation_opportunities
+                }
+                
+                json_output = json.dumps(json_result, indent=2)
+                console.print(json_output)
+                
+                if save_to:
+                    with open(save_to, 'w') as f:
+                        f.write(json_output)
+                    console.print(f"✅ Analysis saved to {save_to}")
+                    
+            else:  # visual format
+                _display_competitive_analysis(analysis_result, show_details)
+                
+                if save_to:
+                    # Save summary as JSON
+                    json_result = {
+                        "analysis_id": analysis_result.analysis_id,
+                        "competitor_count": len(analysis_result.competitor_profiles),
+                        "market_gaps_count": len(analysis_result.market_gaps),
+                        "confidence_level": analysis_result.confidence_level,
+                        "strategic_recommendations": analysis_result.strategic_recommendations
+                    }
+                    with open(save_to, 'w') as f:
+                        json.dump(json_result, f, indent=2)
+                    console.print(f"✅ Analysis summary saved to {save_to}")
+            
+            console.print(f"\n🎉 Competitive analysis complete!")
+            console.print(f"   • {len(analysis_result.competitor_profiles)} competitors analyzed")
+            console.print(f"   • {len(analysis_result.market_gaps)} market gaps identified")
+            console.print(f"   • {len(analysis_result.competitive_insights)} strategic insights generated")
+            console.print(f"   • Confidence level: {analysis_result.confidence_level:.2f}")
+            
+        except Exception as e:
+            console.print(f"❌ Error in competitive analysis: {e}")
+    
+    asyncio.run(analysis_async())
+
+
+# Helper functions for Epic 8 CLI commands
+
+def _display_audience_analysis(analysis_result: Dict[str, Any], show_details: bool = False):
+    """Display audience analysis results in visual format."""
+    
+    # Main audience segment
+    audience_segment = analysis_result.get("audience_segment", {})
+    if audience_segment:
+        segment_table = Table(title="🎯 Audience Segment Analysis", style="blue")
+        segment_table.add_column("Attribute", style="bold")
+        segment_table.add_column("Value")
+        segment_table.add_column("Confidence")
+        
+        segment_table.add_row("Segment Name", audience_segment.get("name", "Unknown"), f"{audience_segment.get('confidence_score', 0):.2f}")
+        segment_table.add_row("Description", audience_segment.get("description", "N/A")[:50] + "...", "")
+        segment_table.add_row("Size Estimate", str(audience_segment.get("size_estimate", 0)), "")
+        segment_table.add_row("Engagement Potential", f"{audience_segment.get('engagement_potential', 0):.2f}", "")
+        
+        console.print(segment_table)
+    
+    # Demographic analysis
+    demographic_analysis = analysis_result.get("demographic_analysis", {})
+    if demographic_analysis and show_details:
+        demo_table = Table(title="👥 Demographic Analysis", style="cyan")
+        demo_table.add_column("Factor", style="bold")
+        demo_table.add_column("Value")
+        demo_table.add_column("Confidence")
+        
+        profile = demographic_analysis.get("profile", {})
+        demo_table.add_row("Age Group", str(profile.get("age_group", "Unknown")), f"{profile.get('confidence', 0):.2f}")
+        demo_table.add_row("Industry", str(profile.get("industry", "Unknown")), "")
+        demo_table.add_row("Experience Level", str(profile.get("job_level", "Unknown")), "")
+        demo_table.add_row("Location", str(profile.get("location", "Unknown")), "")
+        
+        console.print(demo_table)
+    
+    # Content recommendations
+    recommendations = analysis_result.get("content_recommendations", [])
+    if recommendations:
+        console.print(f"\n💡 Content Strategy Recommendations:")
+        for i, rec in enumerate(recommendations[:5], 1):
+            console.print(f"   {i}. {rec}")
+    
+    # Overall confidence
+    overall_confidence = analysis_result.get("overall_confidence", 0.0)
+    confidence_color = "green" if overall_confidence > 0.7 else "yellow" if overall_confidence > 0.4 else "red"
+    console.print(f"\n📊 Overall Analysis Confidence: [{confidence_color}]{overall_confidence:.2f}[/{confidence_color}]")
+
+
+def _display_audience_personas(personas: List[Dict[str, Any]], platform: str):
+    """Display audience personas in visual format."""
+    
+    for i, persona in enumerate(personas, 1):
+        persona_panel = Panel(
+            f"[bold]{persona.get('name', f'Persona {i}')}[/bold]\n\n"
+            f"[italic]{persona.get('avatar_description', 'No description available')}[/italic]\n\n"
+            f"Background: {persona.get('background_story', 'No background available')[:100]}...\n\n"
+            f"Quote: \"{persona.get('quote', 'No quote available')}\"\n\n"
+            f"Confidence: {persona.get('persona_confidence', 0):.2f}",
+            title=f"Persona {i}",
+            style="magenta"
+        )
+        console.print(persona_panel)
+        
+        # Show key characteristics if available
+        if persona.get("psychographic_profile", {}).get("personality_traits"):
+            traits = list(persona["psychographic_profile"]["personality_traits"].keys())[:3]
+            console.print(f"   Key Traits: {', '.join(traits)}")
+        
+        if persona.get("demographic_profile", {}).get("industry"):
+            console.print(f"   Industry: {persona['demographic_profile']['industry']}")
+        
+        console.print()  # Add spacing
+
+
+def _display_competitive_analysis(analysis_result, show_details: bool = False):
+    """Display competitive analysis results in visual format."""
+    
+    # Market landscape overview
+    market_landscape = analysis_result.market_landscape
+    console.print(Panel(
+        f"Total Competitors: {market_landscape.get('total_competitors', 0)}\n"
+        f"Market Maturity: {analysis_result.market_maturity}\n"
+        f"Competitive Intensity: {analysis_result.competitive_intensity:.2f}\n"
+        f"Analysis Confidence: {analysis_result.confidence_level:.2f}",
+        title="🏪 Market Landscape",
+        style="blue"
+    ))
+    
+    # Top competitors
+    if analysis_result.competitor_profiles:
+        competitor_table = Table(title="🏆 Top Competitors", style="red")
+        competitor_table.add_column("Competitor", style="bold")
+        competitor_table.add_column("Market Position")
+        competitor_table.add_column("Engagement Rate")
+        competitor_table.add_column("Viral Score")
+        competitor_table.add_column("Confidence")
+        
+        for profile in analysis_result.competitor_profiles[:5]:  # Top 5
+            competitor_table.add_row(
+                profile.name,
+                profile.market_position.value if profile.market_position else "Unknown",
+                f"{profile.average_engagement_rate:.3f}",
+                f"{profile.average_viral_score:.2f}",
+                f"{profile.confidence_score:.2f}"
+            )
+        
+        console.print(competitor_table)
+    
+    # Market gaps (opportunities)
+    if analysis_result.market_gaps:
+        console.print(f"\n🎯 Top Market Opportunities:")
+        for i, gap in enumerate(analysis_result.market_gaps[:3], 1):
+            opportunity_score = gap.opportunity_size - gap.difficulty_score
+            score_color = "green" if opportunity_score > 0.5 else "yellow" if opportunity_score > 0.2 else "red"
+            
+            console.print(f"   {i}. [{score_color}]{gap.description}[/{score_color}]")
+            console.print(f"      Opportunity Size: {gap.opportunity_size:.2f} | Difficulty: {gap.difficulty_score:.2f}")
+            console.print(f"      Timeline: {gap.estimated_timeline}")
+    
+    # Strategic recommendations
+    if analysis_result.strategic_recommendations:
+        console.print(f"\n💡 Strategic Recommendations:")
+        for i, rec in enumerate(analysis_result.strategic_recommendations[:5], 1):
+            console.print(f"   {i}. {rec}")
+    
+    # Detailed insights
+    if show_details and analysis_result.competitive_insights:
+        console.print(f"\n🔍 Competitive Insights:")
+        for insight in analysis_result.competitive_insights[:3]:
+            insight_panel = Panel(
+                f"[bold]{insight.title}[/bold]\n\n"
+                f"{insight.description}\n\n"
+                f"Priority: {insight.strategic_priority}\n"
+                f"Confidence: {insight.confidence:.2f}",
+                title=f"{insight.insight_type.title()} Insight",
+                style="yellow"
+            )
+            console.print(insight_panel)
+
+
 if __name__ == "__main__":
     app()
