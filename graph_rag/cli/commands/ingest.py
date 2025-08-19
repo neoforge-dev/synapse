@@ -7,7 +7,7 @@ import logging  # Add logging import
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import typer
 import yaml
@@ -41,6 +41,10 @@ from graph_rag.infrastructure.document_processor.simple_processor import (
 # Vector store now created via factory function instead of direct import
 from graph_rag.models import ProcessedDocument
 from graph_rag.services.ingestion import IngestionService
+from graph_rag.services.batch_ingestion import (
+    BatchConfig,
+    IncrementalIngestion,
+)
 from graph_rag.utils.identity import derive_document_id
 
 logger = logging.getLogger(__name__)  # Initialize logger
@@ -254,6 +258,103 @@ async def process_and_store_document(
         # return ingestion_result
 
 
+async def process_files_with_batch(
+    candidates: list[Path],
+    batch_size: int,
+    enable_embeddings: bool,
+    replace_existing: bool,
+    metadata_parser: Callable[[Path], dict[str, Any]],
+    as_json: bool = False,
+) -> tuple[int, int, list[dict[str, Any]] | None]:
+    """
+    Process multiple files using batch processing for better performance.
+    
+    Returns:
+        Tuple of (successful_count, failed_count, results_payload)
+    """
+    # Initialize components
+    settings = Settings()
+    repo = create_graph_repository(settings)
+    processor = SimpleDocumentProcessor()
+    extractor = SpacyEntityExtractor()
+    
+    # Create embedding service
+    try:
+        if enable_embeddings:
+            embedding_service = create_embedding_service(settings)
+        else:
+            raise RuntimeError("Embeddings disabled")
+    except Exception:
+        embedding_service = MockEmbeddingService(dimension=10)
+    
+    vector_store = create_vector_store(settings)
+    
+    try:
+        await repo.connect()
+        
+        # Create ingestion service
+        ingestion_service = IngestionService(
+            document_processor=processor,
+            entity_extractor=extractor,
+            graph_store=repo,
+            embedding_service=embedding_service,
+            vector_store=vector_store,
+        )
+        
+        # Configure batch processing with progress reporting
+        def progress_callback(processed: int, total: int, successful: int, failed: int) -> None:
+            logger.info(f"Batch progress: {processed}/{total} files processed ({processed/total:.1%})")
+        
+        batch_config = BatchConfig(
+            batch_size=batch_size,
+            progress_callback=progress_callback,
+        )
+        
+        # Create incremental ingestion service
+        incremental_ingestion = IncrementalIngestion(
+            ingestion_service=ingestion_service,
+            config=batch_config,
+        )
+        
+        # Process files in batches
+        result = await incremental_ingestion.process_files(
+            file_paths=candidates,
+            enable_embeddings=enable_embeddings,
+            replace_existing=replace_existing,
+            metadata_parser=metadata_parser,
+        )
+        
+        # Convert to expected format
+        results_payload = None
+        if as_json:
+            results_payload = []
+            for batch_result in result.batch_results:
+                for file_result in batch_result.file_results:
+                    item = {
+                        "path": file_result.file_path,
+                        "status": "ok" if file_result.success else "error",
+                    }
+                    if file_result.success:
+                        item["document_id"] = file_result.document_id
+                        item["num_chunks"] = file_result.chunk_count
+                        item["processing_time"] = file_result.processing_time
+                    else:
+                        item["error"] = file_result.error
+                    results_payload.append(item)
+        
+        logger.info(f"Batch processing complete: {result.successful_files}/{result.total_files} files successful")
+        logger.info(f"Total processing time: {result.total_processing_time:.2f}s")
+        logger.info(f"Overall success rate: {result.overall_success_rate:.1%}")
+        
+        if result.failed_files > 0:
+            logger.warning(f"Failed files can be retried: {result.failed_file_paths}")
+        
+        return result.successful_files, result.failed_files, results_payload
+        
+    finally:
+        await repo.close()
+
+
 async def ingest(
     file_path: Path = typer.Argument(
         ..., help="Path to the file or directory to ingest"
@@ -307,6 +408,16 @@ async def ingest(
         False,
         "--json-summary",
         help="With --json for directories, include a summary with totals",
+    ),
+    batch_size: int = typer.Option(
+        50,
+        "--batch-size",
+        help="Number of files to process in each batch for large collections",
+    ),
+    use_batch_processing: bool = typer.Option(
+        None,
+        "--batch/--no-batch",
+        help="Force batch processing on/off. Auto-enabled for 100+ files if not specified",
     ),
 ) -> None:
     """
@@ -654,45 +765,72 @@ async def ingest(
                 typer.echo(output)
                 return
 
-            results_payload: list[dict[str, Any]] = [] if as_json else None
-            succeeded = 0
-            failed = 0
-            for path in candidates:
-                fm = parse_front_matter(path)
-                merged_meta = _merge_metadata(fm)
-                try:
+            # Determine whether to use batch processing
+            should_use_batch = (
+                use_batch_processing is True or
+                (use_batch_processing is None and len(candidates) >= 100)
+            )
+            
+            if should_use_batch:
+                logger.info(f"Using batch processing for {len(candidates)} files (batch_size={batch_size})")
+                
+                # Define metadata parser function
+                def metadata_parser(path: Path) -> dict[str, Any]:
+                    fm = parse_front_matter(path)
+                    return _merge_metadata(fm)
+                
+                # Use batch processing
+                succeeded, failed, results_payload = await process_files_with_batch(
+                    candidates=candidates,
+                    batch_size=batch_size,
+                    enable_embeddings=embeddings,
+                    replace_existing=replace,
+                    metadata_parser=metadata_parser,
+                    as_json=as_json,
+                )
+                processed_count = succeeded + failed
+            else:
+                # Use original single-file processing
+                logger.info(f"Using single-file processing for {len(candidates)} files")
+                results_payload: list[dict[str, Any]] = [] if as_json else None
+                succeeded = 0
+                failed = 0
+                for path in candidates:
+                    fm = parse_front_matter(path)
+                    merged_meta = _merge_metadata(fm)
                     try:
-                        res = await process_and_store_document(
-                            path,
-                            merged_meta,
-                            enable_embeddings=embeddings,
-                            replace_existing=replace,
-                        )
-                    except TypeError:
-                        res = await process_and_store_document(path, merged_meta)
-                    if as_json:
-                        # Expect dict-like from implementation/tests; fallback minimal
-                        item = res if isinstance(res, dict) else {"path": str(path)}
-                        # Add status for per-file outcome
-                        if isinstance(item, dict) and "status" not in item:
-                            item = {**item, "status": "ok"}
-                        results_payload.append(item)
-                    succeeded += 1
-                except Exception as e:
-                    failed += 1
-                    logger.error(f"Failed to ingest {path}: {e}", exc_info=True)
-                    if as_json:
-                        results_payload.append(
-                            {
-                                "path": str(path),
-                                "error": str(e),
-                                "status": "error",
-                            }
-                        )
-                    # Continue processing other files in directory mode
-                    continue
-                finally:
-                    processed_count += 1
+                        try:
+                            res = await process_and_store_document(
+                                path,
+                                merged_meta,
+                                enable_embeddings=embeddings,
+                                replace_existing=replace,
+                            )
+                        except TypeError:
+                            res = await process_and_store_document(path, merged_meta)
+                        if as_json:
+                            # Expect dict-like from implementation/tests; fallback minimal
+                            item = res if isinstance(res, dict) else {"path": str(path)}
+                            # Add status for per-file outcome
+                            if isinstance(item, dict) and "status" not in item:
+                                item = {**item, "status": "ok"}
+                            results_payload.append(item)
+                        succeeded += 1
+                    except Exception as e:
+                        failed += 1
+                        logger.error(f"Failed to ingest {path}: {e}", exc_info=True)
+                        if as_json:
+                            results_payload.append(
+                                {
+                                    "path": str(path),
+                                    "error": str(e),
+                                    "status": "error",
+                                }
+                            )
+                        # Continue processing other files in directory mode
+                        continue
+                    finally:
+                        processed_count += 1
             if processed_count == 0:
                 typer.echo("No eligible files found to ingest.")
                 raise typer.Exit(1)
@@ -820,6 +958,16 @@ def ingest_command(
         "--json-summary",
         help="With --json for directories, include a summary with totals",
     ),
+    batch_size: int = typer.Option(
+        50,
+        "--batch-size",
+        help="Number of files to process in each batch for large collections",
+    ),
+    use_batch_processing: bool = typer.Option(
+        None,
+        "--batch/--no-batch",
+        help="Force batch processing on/off. Auto-enabled for 100+ files if not specified",
+    ),
 ) -> None:
     """Wrapper function to run the async ingest command with options."""
     safe_async_run(
@@ -836,6 +984,8 @@ def ingest_command(
             as_json=as_json,
             read_stdin=read_stdin,
             json_summary=json_summary,
+            batch_size=batch_size,
+            use_batch_processing=use_batch_processing,
         ),
         "ingest"
     )

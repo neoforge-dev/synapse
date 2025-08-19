@@ -410,6 +410,46 @@ class PDFAnalyzer(Protocol):
         ...
 
 
+# --- Batch Processing Interfaces ---
+
+class BatchProgressReporter(Protocol):
+    """Interface for reporting batch processing progress."""
+    
+    def report_progress(
+        self,
+        processed_files: int,
+        total_files: int,
+        successful_files: int,
+        failed_files: int,
+    ) -> None:
+        """Report current processing progress."""
+        ...
+
+
+class BatchProcessor(Protocol):
+    """Interface for batch processing of document collections."""
+    
+    async def process_files_in_batches(
+        self,
+        file_paths: list[str],
+        batch_size: int = 50,
+        enable_embeddings: bool = False,
+        replace_existing: bool = True,
+    ) -> dict[str, Any]:
+        """Process a list of files in manageable batches."""
+        ...
+    
+    async def resume_failed_files(
+        self,
+        failed_file_paths: list[str],
+        batch_size: int = 50,
+        enable_embeddings: bool = False,
+        replace_existing: bool = True,
+    ) -> dict[str, Any]:
+        """Resume processing of files that failed in previous batch run."""
+        ...
+
+
 # Forward references need types defined or imported if not using strings
 # from graph_rag.models import Document, Chunk, Entity, Relationship
 # This might cause circular imports, using string hints is safer here.
