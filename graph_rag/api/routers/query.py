@@ -28,6 +28,12 @@ from graph_rag.core.graph_rag_engine import (
 from graph_rag.core.graph_rag_engine import (
     QueryResult as DomainQueryResult,
 )
+from graph_rag.core.improved_synapse_engine import ImprovedSynapseEngine
+from graph_rag.models import (
+    ConsolidatedAnswerResponse,
+    ConsolidatedQueryRequest,
+    VectorStoreStatusResponse,
+)
 
 # Import domain models needed for converting results
 
@@ -469,6 +475,151 @@ def create_query_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to delete conversation: {e}",
+            )
+
+    @router.post(
+        "/consolidated",
+        response_model=ConsolidatedAnswerResponse,
+        summary="Query with consolidated dual-purpose response",
+        description="Retrieves context with overlap consolidation and returns both human-readable and machine-readable formats.",
+    )
+    async def query_consolidated(
+        request: ConsolidatedQueryRequest,
+        engine: GraphRAGEngine = Depends(get_graph_rag_engine),
+    ):
+        """Enhanced query endpoint with consolidated responses."""
+        logger.info(f"Received consolidated query: {request.query_text[:100]}...")
+        
+        try:
+            # Check if engine supports consolidated queries
+            if not isinstance(engine, ImprovedSynapseEngine):
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Consolidated queries require ImprovedSynapseEngine. Current engine does not support this feature."
+                )
+            
+            # Prepare config from request
+            config = {
+                "k": request.max_chunks,
+                "search_type": request.search_type,
+                "include_graph": True,
+                "consolidation_threshold": request.consolidation_threshold,
+                "conversation_id": request.conversation_id,
+            }
+            
+            # Get consolidated answer
+            consolidated_answer = await engine.answer_query_consolidated(
+                request.query_text, config=config, conversation_id=request.conversation_id
+            )
+            
+            # Convert to API response format
+            api_response = ConsolidatedAnswerResponse(
+                answer=consolidated_answer.answer,
+                answer_with_citations=consolidated_answer.answer_with_citations,
+                consolidated_chunks=[
+                    {
+                        "id": chunk.id,
+                        "text": chunk.text,
+                        "document_id": chunk.document_id,
+                        "metadata": chunk.metadata or {},
+                        "score": getattr(chunk, 'score', 0.0)
+                    }
+                    for chunk in consolidated_answer.consolidated_chunks
+                ] if request.include_patterns else [],
+                architectural_patterns=[
+                    {
+                        "pattern_name": pattern["pattern_name"],
+                        "description": pattern["description"],
+                        "benefits": pattern["benefits"],
+                        "challenges": pattern["challenges"],
+                        "use_cases": pattern["use_cases"],
+                        "evidence_strength": pattern["evidence_strength"]
+                    }
+                    for pattern in consolidated_answer.architectural_patterns
+                ] if request.include_patterns else [],
+                success_metrics=[
+                    {
+                        "metric_type": metric["metric_type"],
+                        "value": metric["value"],
+                        "unit": metric["unit"],
+                        "context": metric["context"],
+                        "source_location": metric["source_location"],
+                        "confidence_score": metric["confidence_score"]
+                    }
+                    for metric in consolidated_answer.success_metrics
+                ] if request.include_metrics else [],
+                best_practices=consolidated_answer.best_practices if request.include_best_practices else [],
+                confidence_score=consolidated_answer.confidence_score,
+                consolidation_confidence=consolidated_answer.consolidation_confidence,
+                evidence_ranking=consolidated_answer.evidence_ranking,
+                sources=[
+                    {
+                        "id": source["id"],
+                        "document_id": source["document_id"],
+                        "score": source["score"],
+                        "text_preview": source["text_preview"],
+                        "metadata": source.get("metadata"),
+                        "consolidated_from": source.get("consolidated_from")
+                    }
+                    for source in consolidated_answer.sources
+                ],
+                citations=consolidated_answer.citations,
+                bibliography=consolidated_answer.bibliography,
+                machine_readable=consolidated_answer.machine_readable if request.include_machine_readable else {},
+                metadata=consolidated_answer.metadata
+            )
+            
+            logger.info(f"Consolidated query successful. Confidence: {consolidated_answer.confidence_score:.2f}")
+            return api_response
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error processing consolidated query '{request.query_text}': {e}", exc_info=True)
+            
+            error_guidance = _get_error_guidance(e)
+            error_detail = {
+                "error": str(e),
+                "type": type(e).__name__,
+                "guidance": error_guidance,
+                "suggestions": _get_recovery_suggestions(e)
+            }
+            
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_detail,
+            )
+
+    @router.get(
+        "/vector-store/status",
+        response_model=VectorStoreStatusResponse,
+        summary="Get vector store status",
+        description="Returns information about the vector store state and content.",
+    )
+    async def get_vector_store_status(
+        engine: GraphRAGEngine = Depends(get_graph_rag_engine),
+    ):
+        """Get status information about the vector store."""
+        try:
+            if isinstance(engine, ImprovedSynapseEngine):
+                status_info = await engine.get_vector_store_status()
+                return VectorStoreStatusResponse(**status_info)
+            else:
+                # Fallback for standard engines
+                return VectorStoreStatusResponse(
+                    vector_count=0,
+                    store_type=type(engine).__name__,
+                    is_persistent=False,
+                    error="Vector store status not available for this engine type"
+                )
+                
+        except Exception as e:
+            logger.error(f"Error getting vector store status: {e}", exc_info=True)
+            return VectorStoreStatusResponse(
+                vector_count=0,
+                store_type="unknown",
+                is_persistent=False,
+                error=str(e)
             )
 
     return router
