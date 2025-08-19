@@ -18,10 +18,15 @@ make test                          # Run unit tests (excludes integration tests)
 make test-memgraph                 # Run Memgraph integration tests (requires Memgraph running)
 make test-integration              # Run integration tests
 make test-all                      # Run all tests (unit + integration)
+make coverage-hot                  # Enforce >=85% coverage on critical API routers
 
 # Single test examples
 uv run pytest tests/api/test_search.py::test_unified_search_keyword -v
 MEMGRAPH_HOST=localhost uv run pytest tests/infrastructure/graph_stores/test_memgraph_store.py::test_add_get_relationship -v
+
+# Run tests with specific environment variables
+SKIP_SPACY_IMPORT=1 GRAPH_RAG_EMBEDDING_PROVIDER=mock uv run pytest tests/
+RUNNING_INTEGRATION_TESTS=true uv run pytest -m integration
 ```
 
 ### Code Quality
@@ -115,9 +120,14 @@ This is a **Graph-augmented RAG (Retrieval-Augmented Generation)** system called
 
 Environment variables use `SYNAPSE_` prefix:
 - `SYNAPSE_MEMGRAPH_HOST/PORT`: Memgraph connection (default: 127.0.0.1:7687)
-- `SYNAPSE_VECTOR_STORE_TYPE`: `simple` or `faiss` (default: simple)
-- `SYNAPSE_EMBEDDING_PROVIDER`: `sentence-transformers` or `mock` (default: sentence-transformers)
+- `SYNAPSE_VECTOR_STORE_TYPE`: `simple`, `faiss`, or `mock` (default: simple)
+- `SYNAPSE_EMBEDDING_PROVIDER`: `sentence-transformers`, `openai`, `ollama`, or `mock` (default: sentence-transformers)
+- `SYNAPSE_LLM_TYPE`: `mock`, `openai`, `anthropic`, or `ollama` (default: mock)
 - `SYNAPSE_API_HOST/PORT`: API server settings (default: 0.0.0.0:8000)
+- `SYNAPSE_ENABLE_AUTHENTICATION`: Enable/disable auth (default: true)
+- `SYNAPSE_JWT_SECRET_KEY`: JWT secret for authentication
+- `SYNAPSE_VECTOR_ONLY_MODE`: Disable graph features (default: false)
+- `SYNAPSE_AUTO_FALLBACK_VECTOR_MODE`: Auto-fallback when graph unavailable (default: true)
 
 ## Testing Strategy
 
@@ -151,6 +161,9 @@ Environment variables use `SYNAPSE_` prefix:
 - Memgraph client (`mgclient`) is optional - graceful fallbacks for CI
 - SpaCy imports are conditional (`SKIP_SPACY_IMPORT=1` for lightweight runs)
 - Vector store persistence includes raw embeddings for precise deletions
+- Custom `pymgclient` integration is included in the repository
+- Environment variable aliases supported: `GRAPH_DB_URI`, `NEO4J_USERNAME/PASSWORD`
+- Comprehensive dependency injection system in `api/dependencies.py`
 
 ## Business Development System Notes
 
