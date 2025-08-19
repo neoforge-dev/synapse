@@ -81,8 +81,12 @@ class Settings(BaseSettings):
         description="Type of vector store to use ('simple', 'faiss', 'mock'). Default: simple",
     )
     vector_store_path: str = Field(
-        os.path.expanduser("~/.graph_rag/faiss_store"),
-        description="Filesystem path for persistent vector store data (used by 'faiss').",
+        os.path.expanduser("~/.graph_rag/vector_store"),
+        description="Filesystem path for persistent vector store data (used by 'faiss' and 'simple' when persistent).",
+    )
+    simple_vector_store_persistent: bool = Field(
+        True,
+        description="Enable persistence for simple vector store to share data between processes. Default: True",
     )
     vector_store_embedding_model: str = Field(
         "all-MiniLM-L6-v2",

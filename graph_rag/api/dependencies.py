@@ -293,8 +293,21 @@ def create_vector_store(settings: Settings) -> VectorStore:
     embedding_service = create_embedding_service(settings)
 
     if vector_store_type == "simple":
-        # Pass the embedding service instance, not the model name
-        return SimpleVectorStore(embedding_service=embedding_service)
+        # Check if persistence is enabled for simple vector store
+        if getattr(settings, 'simple_vector_store_persistent', True):
+            # Use SharedPersistentVectorStore for cross-process sharing
+            from graph_rag.infrastructure.vector_stores.shared_persistent_vector_store import (
+                SharedPersistentVectorStore,
+            )
+            logger.info(f"Using persistent simple vector store at {settings.vector_store_path}")
+            return SharedPersistentVectorStore(
+                embedding_service=embedding_service,
+                storage_path=settings.vector_store_path
+            )
+        else:
+            # Use in-memory SimpleVectorStore
+            logger.info("Using in-memory simple vector store (no persistence)")
+            return SimpleVectorStore(embedding_service=embedding_service)
     elif vector_store_type == "faiss":
         # Ensure path exists; embedding dimension from service
         dim = embedding_service.get_embedding_dimension()
@@ -316,7 +329,17 @@ def create_vector_store(settings: Settings) -> VectorStore:
             f"Unsupported vector_store_type '{settings.vector_store_type}'. Falling back to SimpleVectorStore."
         )
         # Fallback still needs the embedding service instance
-        return SimpleVectorStore(embedding_service=embedding_service)
+        # Check if persistence should be used for fallback
+        if getattr(settings, 'simple_vector_store_persistent', True):
+            from graph_rag.infrastructure.vector_stores.shared_persistent_vector_store import (
+                SharedPersistentVectorStore,
+            )
+            return SharedPersistentVectorStore(
+                embedding_service=embedding_service,
+                storage_path=settings.vector_store_path
+            )
+        else:
+            return SimpleVectorStore(embedding_service=embedding_service)
 
 
 def create_document_processor() -> DocumentProcessor:
