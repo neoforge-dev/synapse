@@ -36,6 +36,23 @@ make build                         # Build source and wheel distributions
 make install-local                 # Install via pipx from dist/
 ```
 
+### Business Development Automation
+```bash
+# Start automation dashboard and control center
+python business_development/automation_dashboard.py
+
+# Schedule and manage LinkedIn content posting
+python business_development/content_scheduler.py
+
+# Monitor consultation inquiries and business pipeline
+python business_development/consultation_inquiry_detector.py
+
+# Analytics and performance optimization
+python analytics/performance_analyzer.py
+python analytics/ab_testing_framework.py
+python analytics/synapse_content_integration.py
+```
+
 ## Project Architecture
 
 This is a **Graph-augmented RAG (Retrieval-Augmented Generation)** system called "Synapse" that combines:
@@ -44,6 +61,7 @@ This is a **Graph-augmented RAG (Retrieval-Augmented Generation)** system called
 - **CLI Tools**: Composable Unix-style pipeline commands (`discover` → `parse` → `store`)
 - **FastAPI Backend**: REST API with /api/v1 endpoints
 - **MCP Integration**: Model Context Protocol server support
+- **Business Development Automation**: Complete LinkedIn content strategy and consultation generation system
 
 ### Core Components
 
@@ -72,6 +90,18 @@ This is a **Graph-augmented RAG (Retrieval-Augmented Generation)** system called
 - `IngestionService`: Document ingestion pipeline
 - `SearchService`: Vector + graph retrieval
 - `EmbeddingService`: Sentence transformers or mock
+
+**Business Development System** (`business_development/`):
+- `LinkedInBusinessDevelopmentEngine`: Complete Week 3 content with engagement optimization
+- `ConsultationInquiryDetector`: NLP-based consultation inquiry detection and tracking
+- `LinkedInAPIClient`: Production LinkedIn API integration with automated posting
+- `ContentAutomationPipeline`: Automated scheduling at optimal times (6:30 AM Tue/Thu)
+- `AutomationDashboard`: Central monitoring and control system
+
+**Analytics System** (`analytics/`):
+- `ABTestingFramework`: A/B test hooks, CTAs, and timing for optimization
+- `PerformanceAnalyzer`: Pattern recognition for consultation-driving content
+- `SynapseContentIntelligence`: Intelligent content recommendations using RAG
 
 ### Data Flow
 
@@ -121,3 +151,16 @@ Environment variables use `SYNAPSE_` prefix:
 - Memgraph client (`mgclient`) is optional - graceful fallbacks for CI
 - SpaCy imports are conditional (`SKIP_SPACY_IMPORT=1` for lightweight runs)
 - Vector store persistence includes raw embeddings for precise deletions
+
+## Business Development System Notes
+
+- Complete automation system for LinkedIn content strategy and consultation generation
+- SQLite databases for business metrics tracking (`*.db` files)
+- LinkedIn API integration with OAuth authentication and fallback workflows
+- A/B testing framework with statistical significance analysis (95% confidence)
+- Performance analytics with pattern recognition for consultation-driving content
+- Optimal posting times: 6:30 AM Tuesday/Thursday for maximum engagement
+- Synapse RAG integration for intelligent content recommendations
+- Real-time consultation inquiry detection with priority scoring and value estimation
+- Comprehensive automation dashboard for monitoring all business development systems
+- Production-ready for immediate LinkedIn posting and consultation pipeline generation
