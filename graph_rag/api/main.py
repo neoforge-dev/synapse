@@ -202,43 +202,16 @@ async def lifespan(app: FastAPI):
         )
         raise RuntimeError("Failed to initialize embedding service")
 
-    # 3. Initialize VectorStore based on settings
+    # 3. Initialize VectorStore using dependency injection system
     logger.info("LIFESPAN: Initializing Vector Store...")
     if not hasattr(app.state, "vector_store") or app.state.vector_store is None:
         try:
-            vtype = current_settings.vector_store_type.lower()
-            if vtype == "simple":
-                app.state.vector_store = SimpleVectorStore(
-                    embedding_service=embedding_service
-                )
-                logger.info(
-                    "LIFESPAN: Initialized SimpleVectorStore with provided embedding service."
-                )
-            elif vtype == "faiss":
-                # Lazy import to avoid hard dependency during tests without faiss installed
-                from graph_rag.infrastructure.vector_stores.faiss_vector_store import (
-                    FaissVectorStore,
-                )
-
-                app.state.vector_store = FaissVectorStore(
-                    path=current_settings.vector_store_path,
-                    embedding_dimension=getattr(
-                        embedding_service, "get_embedding_dimension", lambda: 768
-                    )(),
-                    embedding_service=embedding_service,
-                )
-                logger.info(
-                    "LIFESPAN: Initialized FaissVectorStore at %s",
-                    current_settings.vector_store_path,
-                )
-            elif vtype == "mock":
-                app.state.vector_store = MockVectorStore()
-                logger.info("LIFESPAN: Initialized MockVectorStore.")
-            else:
-                logger.warning(
-                    f"LIFESPAN: Unsupported vector_store_type '{current_settings.vector_store_type}'. Using MockVectorStore."
-                )
-                app.state.vector_store = MockVectorStore()
+            # Use the same factory function as dependencies to ensure consistency
+            from graph_rag.api.dependencies import create_vector_store
+            app.state.vector_store = create_vector_store(current_settings)
+            logger.info(
+                f"LIFESPAN: Initialized VectorStore using dependency injection (type: {current_settings.vector_store_type})"
+            )
         except Exception as e:
             logger.critical(
                 f"LIFESPAN CRITICAL: Failed to initialize VectorStore: {e}. Using MockVectorStore as fallback.",

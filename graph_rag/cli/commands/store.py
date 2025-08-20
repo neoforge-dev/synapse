@@ -114,8 +114,26 @@ def _get_vector_store(settings: Settings, embedding_service: Any):
             embedding_dimension=getattr(
                 embedding_service, "get_embedding_dimension", lambda: 768
             )(),
+            embedding_service=embedding_service,
         )
-    # default
+    elif vtype == "simple":
+        # Check if persistence is enabled for simple vector store
+        if getattr(settings, 'simple_vector_store_persistent', True):
+            # Use SharedPersistentVectorStore for cross-process sharing
+            from graph_rag.infrastructure.vector_stores.shared_persistent_vector_store import (
+                SharedPersistentVectorStore,
+            )
+            return SharedPersistentVectorStore(
+                embedding_service=embedding_service,
+                storage_path=settings.vector_store_path
+            )
+        else:
+            # Use in-memory SimpleVectorStore
+            from graph_rag.infrastructure.vector_stores.simple_vector_store import (
+                SimpleVectorStore,
+            )
+            return SimpleVectorStore(embedding_service=embedding_service)
+    # default fallback
     from graph_rag.infrastructure.vector_stores.simple_vector_store import (
         SimpleVectorStore,
     )
