@@ -434,6 +434,10 @@ class PromptOptimizer:
 
     def get_style_from_string(self, style_str: str) -> PromptStyle:
         """Convert string to PromptStyle enum."""
+        # Handle None or empty string
+        if not style_str:
+            return PromptStyle.ANALYTICAL
+            
         try:
             return PromptStyle(style_str.lower())
         except ValueError:

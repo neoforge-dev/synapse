@@ -420,7 +420,7 @@ class AnswerValidator:
                 conflicting_chunks.append(chunk.id)
 
         # Check if claim was in the context provided to LLM
-        in_context = any(claim_text.lower() in context.lower() for context in context_texts)
+        in_context = any(claim_text.lower() in context.lower() for context in context_texts if context)
 
         # Determine if claim is supported
         is_supported = len(supporting_chunks) > 0 and (not conflicting_chunks or len(supporting_chunks) > len(conflicting_chunks))
@@ -456,15 +456,20 @@ class AnswerValidator:
 
         # Boost for entity matches
         entity_boost = 0.0
-        claim_entities = self._extract_entities_from_sentence(claim)
-        for entity in claim_entities:
-            if entity.lower() in chunk_text.lower():
-                entity_boost += 0.1
+        if chunk_text:  # Add None check
+            claim_entities = self._extract_entities_from_sentence(claim)
+            for entity in claim_entities:
+                if entity and entity.lower() in chunk_text.lower():
+                    entity_boost += 0.1
 
         return min(1.0, overlap_ratio + entity_boost)
 
     def _check_conflict(self, claim: str, chunk_text: str) -> bool:
         """Check if chunk text conflicts with the claim."""
+        # Handle None values
+        if not claim or not chunk_text:
+            return False
+            
         # Look for explicit contradictions (simplified)
         contradiction_patterns = [
             (r'\bis\s+not\b', r'\bis\b'),
@@ -487,6 +492,10 @@ class AnswerValidator:
 
     def _extract_keywords(self, text: str) -> list[str]:
         """Extract keywords from text (reuse from citation service)."""
+        # Handle None or empty text
+        if not text:
+            return []
+            
         stop_words = {
             "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by",
             "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did",

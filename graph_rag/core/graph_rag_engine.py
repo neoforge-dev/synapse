@@ -347,15 +347,21 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
 
         try:
             # 1. Retrieval: handle search_type parameter for vector, keyword, or hybrid search
-            logger.debug(f"Performing retrieval for: '{query_text}' (k={k})")
+            logger.info(f"SimpleGraphRAGEngine: Performing retrieval for: '{query_text}' (k={k})")
             search_type = config.get("search_type", "vector").lower()
+            logger.info(f"SimpleGraphRAGEngine: Search type: {search_type}")
             blend_keyword_weight = float(config.get("blend_keyword_weight", 0.0))
             no_answer_min_score = float(config.get("no_answer_min_score", 0.0))
 
             if search_type == "vector":
                 # Vector-only search
-                logger.debug("Using vector-only search")
+                logger.info("SimpleGraphRAGEngine: Using vector-only search")
+                logger.info(f"SimpleGraphRAGEngine: Calling vector store search with query: '{query_text}'")
+                logger.info(f"SimpleGraphRAGEngine: Vector store type: {type(self._vector_store).__name__}")
                 retrieved = await self._vector_store.search(query_text, top_k=k, search_type="vector")
+                logger.info(f"SimpleGraphRAGEngine: Vector store search returned {len(retrieved)} results")
+                if retrieved:
+                    logger.info(f"SimpleGraphRAGEngine: First result score: {retrieved[0].score}")
                 retrieved_chunks_full = retrieved
 
             elif search_type == "keyword":
@@ -1218,7 +1224,6 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                             document_id=chunk_data.document_id,
                             metadata=metadata_with_score,
                             embedding=chunk_data.embedding,
-                            score=search_result.score,  # Set score directly on the chunk
                         )
                         final_relevant_chunks.append(chunk_obj)
                     except Exception as mapping_err:
