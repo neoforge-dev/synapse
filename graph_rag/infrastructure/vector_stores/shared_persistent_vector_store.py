@@ -60,17 +60,26 @@ class SharedPersistentVectorStore(VectorStore):
     async def _ensure_loaded(self) -> None:
         """Ensure data is loaded if it exists on disk."""
         logger.info(f"_ensure_loaded called for {self.storage_path}")
+        logger.info(f"Current vector count in memory: {len(self.vectors)}")
+        logger.info(f"Files exist - vectors: {self.vectors_file.exists()}, metadata: {self.metadata_file.exists()}")
+        
         if self._load_attempted:
             logger.info(f"_ensure_loaded: already attempted loading for {self.storage_path}")
+            logger.info(f"Current vector count after previous load attempt: {len(self.vectors)}")
             return
             
         self._load_attempted = True
         if self.vectors_file.exists() and self.metadata_file.exists():
             try:
+                logger.info(f"Attempting to load vector store from {self.storage_path}")
                 await self.load()
-                logger.info(f"Loaded existing vector store from {self.storage_path}")
+                logger.info(f"Successfully loaded vector store from {self.storage_path} - {len(self.vectors)} vectors")
             except Exception as e:
-                logger.warning(f"Failed to load existing vector store: {e}")
+                logger.error(f"Failed to load existing vector store: {e}", exc_info=True)
+        else:
+            logger.warning(f"Vector store files not found at {self.storage_path}")
+            logger.warning(f"Vectors file: {self.vectors_file} (exists: {self.vectors_file.exists()})")
+            logger.warning(f"Metadata file: {self.metadata_file} (exists: {self.metadata_file.exists()})")
 
     def _acquire_file_lock(self, file_handle) -> None:
         """Acquire an exclusive file lock."""

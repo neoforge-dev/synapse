@@ -212,6 +212,15 @@ async def lifespan(app: FastAPI):
             logger.info(
                 f"LIFESPAN: Initialized VectorStore using dependency injection (type: {current_settings.vector_store_type})"
             )
+            
+            # Ensure vector store loads existing data during startup
+            if hasattr(app.state.vector_store, '_ensure_loaded'):
+                try:
+                    await app.state.vector_store._ensure_loaded()
+                    vector_count = len(getattr(app.state.vector_store, 'vectors', []))
+                    logger.info(f"LIFESPAN: Vector store loaded {vector_count} vectors from persistent storage")
+                except Exception as e:
+                    logger.error(f"LIFESPAN: Failed to load vector store data: {e}", exc_info=True)
         except Exception as e:
             logger.critical(
                 f"LIFESPAN CRITICAL: Failed to initialize VectorStore: {e}. Using MockVectorStore as fallback.",
