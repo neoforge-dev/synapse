@@ -180,3 +180,9 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
 ]
+
+[dependency-groups]
+dev = [
+    "nltk>=3.9.1",
+    "pytest-asyncio>=0.26.0",
+]

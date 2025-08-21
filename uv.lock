@@ -3311,6 +3311,12 @@ mcp = [
     { name = "mcp" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "nltk" },
+    { name = "pytest-asyncio" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.12.15" },
@@ -3353,6 +3359,12 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.23" },
 ]
 provides-extras = ["faiss", "graph", "llm", "mcp", "all", "dev", "docs"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "nltk", specifier = ">=3.9.1" },
+    { name = "pytest-asyncio", specifier = ">=0.26.0" },
+]
 
 [[package]]
 name = "tenacity"
