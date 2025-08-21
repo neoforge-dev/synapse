@@ -140,6 +140,19 @@ class LinkedInContentGenerator:
                 hook = f"After years in tech, I believe {belief.lower()}"
             else:
                 hook = hook_pattern.replace('{topic}', topic)
+        
+        # Clean up any remaining placeholders
+        hook = hook.replace('{event}', 'a recent tech conference')
+        hook = hook.replace('{time_period}', 'a few years')
+        hook = hook.replace('{situation}', f'working on {topic}')
+        hook = hook.replace('{activity}', f'{topic} work')
+        hook = hook.replace('{assumption}', f'{topic} was straightforward')
+        hook = hook.replace('{industry_professionals}', 'developers')
+        hook = hook.replace('{years}', 'several')
+        hook = hook.replace('{controversial_opinion}', f'{topic} is overhyped')
+        hook = hook.replace('{statement}', f'{topic}')
+        hook = hook.replace('{counter_argument}', 'more complex than it appears')
+        hook = hook.replace('{controversial_statement}', f'most approaches to {topic} are fundamentally flawed')
                 
         # Ensure hook has proper formatting
         if not hook.endswith(('?', '!', ':')):
@@ -293,7 +306,7 @@ class LinkedInContentGenerator:
             predicted_rate *= 0.8  # Low-quality enrichment reduces engagement
         
         # Adjust based on content length (optimal range: 150-300 words)
-        word_count = len(content_length) / 5  # Rough words estimate
+        word_count = content_length / 5  # Rough words estimate
         if 150 <= word_count <= 300:
             predicted_rate *= 1.1  # Optimal length
         elif word_count > 500:

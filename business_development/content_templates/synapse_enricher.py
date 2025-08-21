@@ -8,7 +8,7 @@ import logging
 import sys
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 # Add project root to path for imports
@@ -16,14 +16,17 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 try:
-    from graph_rag.core.interfaces import SearchResult
-    from graph_rag.services.search_service import SearchService
+    from graph_rag.services.search import SearchResult, SearchService
     from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
-    from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphStore
+    from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
     from graph_rag.services.embedding_service import EmbeddingService
 except ImportError as e:
     logging.warning(f"Could not import Synapse components: {e}")
-    # Fallback to using CLI if direct imports fail
+    SearchResult = None
+    SearchService = None
+    SimpleVectorStore = None
+    MemgraphGraphRepository = None
+    EmbeddingService = None
 
 logger = logging.getLogger(__name__)
 
@@ -48,12 +51,17 @@ class SynapseContentEnricher:
         # Load processed LinkedIn insights
         self.linkedin_insights = self._load_linkedin_insights()
         
-    def _initialize_search_service(self) -> Optional[SearchService]:
+    def _initialize_search_service(self) -> Optional[Any]:
         """Initialize Synapse search service if available"""
         try:
+            # Check if classes are available
+            if not all([SimpleVectorStore, MemgraphGraphRepository, EmbeddingService, SearchService]):
+                logger.warning("Synapse components not available, will use CLI fallback")
+                return None
+                
             # Try to initialize search service components
             vector_store = SimpleVectorStore()
-            graph_store = MemgraphStore()
+            graph_store = MemgraphGraphRepository()
             embedding_service = EmbeddingService()
             
             return SearchService(
