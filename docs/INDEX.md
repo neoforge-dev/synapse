@@ -6,6 +6,7 @@
 ### Core Docs
 - `README.md`: Quickstart, CLI usage, configuration
 - `docs/ARCHITECTURE.md`: System overview and layering
+- `docs/guides/CONTENT_STRATEGY_GUIDE.md`: **Strategic content intelligence and calendar system**
 - `docs/PRD.md`: Product requirements (v0 scope)
 - `docs/PLAN.md`: Execution plan and gaps
 - `docs/MCP.md`: Planned MCP integration
@@ -13,7 +14,7 @@
 - `docs/PROMPT.md`: Continuation prompt for agents
 - `docs/HANDBOOK.md`: Single source-of-truth for architecture, workflows, and ops
 - `CONTRIBUTING.md`: Contributing guide
- - `docs/DELETION_CANDIDATES.md`: Proposed removals and checklist
+- `docs/DELETION_CANDIDATES.md`: Proposed removals and checklist
 
 ### Code (Python package `graph_rag`)
 - `graph_rag/api/`

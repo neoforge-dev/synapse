@@ -17,7 +17,7 @@
   4) Persist `Document`/`Chunk` to graph and create relationships (`CONTAINS`, topics)
   5) Project `Topic` nodes and relationships to `Document` and `Chunk`
 - Search/Ask flow: vector + graph retrieval, topic-aware ranking; `ask` synthesizes an answer via the configured LLM.
-- Content Strategy Flow (Epic 9.3): `/concepts` API endpoints provide comprehensive content strategy automation with viral prediction, brand safety, audience intelligence, and workflow automation.
+- Content Strategy Flow (Epic 9.3): `/concepts` API endpoints provide comprehensive content strategy automation with viral prediction, brand safety, audience intelligence, and workflow automation. Includes **Strategic Content Calendar System** with 3-year content frameworks (144 weeks), ROI tracking, and business development integration.
 
 Notes on identity and idempotence:
 - `document_id` is stable across renames; re-ingestion with `--replace` deletes prior chunks/vectors before adding new ones.
@@ -38,6 +38,16 @@ Vector store persistence (FAISS):
 - **Multi-Platform Support**: LinkedIn, Twitter, Instagram, TikTok, YouTube optimization
 - **Workflow Automation**: Scheduled content optimization with resource management
 - **Performance Prediction**: ML-based engagement forecasting with confidence intervals
+
+### Strategic Content Calendar System Architecture
+- **3-Year Content Framework**: Pre-built content calendars with 144 weeks of strategic tech content
+  - Year 1: Foundation frameworks (agentic coding, XP adaptation, CLI workflows)
+  - Year 2: Experimental validation (SaaS comparisons, strategic interviews)  
+  - Year 3: Ecosystem & leadership (business strategy, team leadership, innovation)
+- **RAG-Powered Content Intelligence**: Knowledge graph extraction → Content opportunities
+- **Business Development Integration**: Content strategy → Lead generation → ROI tracking
+- **Multi-Platform Optimization**: LinkedIn, Twitter, Substack content optimization
+- **Automated Workflows**: Posting schedules, engagement tracking, performance analytics
 
 ### Integration Architecture
 - **Dependency Injection**: Extended DI system in `dependencies.py` for Epic 9.3 services

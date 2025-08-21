@@ -33,10 +33,10 @@ uv pip install -e .[dev]
 ## 📚 Documentation
 
 - **[📖 Installation Guide](docs/guides/installation.md)** - Complete installation instructions
-- **[🚀 Quick Start](docs/guides/quickstart.md)** - Get up and running in minutes
-- **[🍺 Homebrew Setup](docs/guides/homebrew-tap.md)** - Install via Homebrew
-- **[🏗️ Architecture](docs/architecture/overview.md)** - System design and components
-- **[🔧 Development](docs/development/roadmap.md)** - Development setup and contribution guide
+- **[🚀 Quick Start](docs/QUICKSTART.md)** - Get up and running in minutes
+- **[🍺 Homebrew Setup](docs/guides/HOMEBREW_TAP_GUIDE.md)** - Install via Homebrew
+- **[🏗️ Architecture](docs/ARCHITECTURE.md)** - System design and components
+- **[🔧 Development](CONTRIBUTING.md)** - Development setup and contribution guide
 
 ## 🎯 What is Synapse?
 
@@ -45,6 +45,7 @@ Synapse is a powerful RAG (Retrieval-Augmented Generation) system that combines:
 - **Document Processing** - Markdown, Notion, and text file ingestion
 - **Knowledge Graph** - Memgraph-based relationship extraction
 - **Vector Search** - FAISS-powered semantic search
+- **Content Strategy Intelligence** - RAG-powered content calendars and optimization
 - **MCP Integration** - IDE and tool integration via Model Context Protocol
 - **CLI Interface** - Powerful command-line tools for knowledge management
 
@@ -52,9 +53,33 @@ Synapse is a powerful RAG (Retrieval-Augmented Generation) system that combines:
 
 - **🔍 Intelligent Search** - Semantic and keyword-based document retrieval
 - **🧠 Knowledge Graph** - Extract and visualize document relationships
+- **📝 Content Intelligence** - Strategic content calendars powered by knowledge extraction
 - **📱 MCP Integration** - Use Synapse directly in your IDE
 - **🚀 Fast Performance** - Optimized for large document collections
 - **🔧 Easy Setup** - One-command installation and configuration
+
+## 📊 Strategic Content Intelligence
+
+Synapse powers **advanced content strategy workflows** using knowledge graph insights:
+
+- **📅 Content Calendars** - Generate strategic content plans from your knowledge base
+- **🎯 Content Optimization** - ROI-driven content recommendations and A/B testing
+- **📈 Business Intelligence** - Track engagement, conversions, and business development
+- **🚀 Automation Workflows** - LinkedIn posting, analytics tracking, and lead generation
+
+### **Content Strategy Examples**
+```bash
+# Generate content calendar from knowledge extraction
+synapse insights extract --domain "strategic-tech" --format calendar
+
+# Optimize existing content using RAG analysis
+synapse content optimize --source linkedin-posts.csv --strategy viral-potential
+
+# Track business development ROI
+synapse analytics roi --timeframe "Q1-2025" --export dashboard
+```
+
+**Strategic Content Calendar System**: Transform your knowledge base into systematic content strategies with proven frameworks for technical leadership, business development, and thought leadership content.
 
 ## 🛠️ Usage Examples
 
@@ -75,8 +100,11 @@ synapse up
 # Explore the knowledge graph
 synapse graph neighbors "machine learning" --depth 2
 
-# Generate content suggestions
+# Generate strategic content insights
 synapse suggest "AI applications" --style "concise, analytical"
+
+# Extract content opportunities from your knowledge base
+synapse insights analyze --focus "strategic-tech" --output content-calendar
 ```
 
 ## 🏗️ Architecture
