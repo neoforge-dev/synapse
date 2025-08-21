@@ -103,7 +103,7 @@ test-all: test test-memgraph ## Run all tests (unit + integration, requires Memg
 run-api: ## Run the FastAPI development server (uvicorn)
 	@echo "INFO: Running API server on http://$(API_HOST):$(API_PORT)"
 	# Use the create_app factory and pass host/port directly to uvicorn
-	$(UV) run uvicorn $(PACKAGE_NAME).api.main:create_app --factory --host $(API_HOST) --port $(API_PORT) --reload
+	$(UV) run uvicorn graph_rag.api.main:create_app --factory --host $(API_HOST) --port $(API_PORT) --reload
 
 run-memgraph: ## Start Memgraph service using Docker Compose (detached mode)
 	docker-compose up -d memgraph

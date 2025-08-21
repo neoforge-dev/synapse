@@ -59,7 +59,9 @@ class SharedPersistentVectorStore(VectorStore):
 
     async def _ensure_loaded(self) -> None:
         """Ensure data is loaded if it exists on disk."""
+        logger.info(f"_ensure_loaded called for {self.storage_path}")
         if self._load_attempted:
+            logger.info(f"_ensure_loaded: already attempted loading for {self.storage_path}")
             return
             
         self._load_attempted = True
@@ -282,8 +284,13 @@ class SharedPersistentVectorStore(VectorStore):
         """
         # Ensure data is loaded
         await self._ensure_loaded()
-            
-        logger.debug(f"Searching for similar chunks with vector (dim={len(query_vector)})")
+
+        logger.info(f"SharedPersistentVectorStore.search_similar_chunks called with vector (dim={len(query_vector)})")
+        logger.info(f"Vector store has {len(self.vectors)} vectors loaded")
+        logger.info(f"Vector store type: {type(self).__name__}")
+        logger.info(f"Storage path: {self.storage_path}")
+        logger.info(f"Vectors file exists: {self.vectors_file.exists()}")
+        logger.info(f"Metadata file exists: {self.metadata_file.exists()}")
         if not self.vectors:
             logger.warning("Vector store is empty, cannot perform search.")
             return []
@@ -644,3 +651,17 @@ class SharedPersistentVectorStore(VectorStore):
         self._bm25_doc_freq = df
         self._bm25_avgdl = (total_len / max(1, len(self._bm25_docs))) if self._bm25_docs else 0.0
         self._bm25_dirty = False
+
+    async def stats(self) -> dict[str, Any]:
+        """
+        Returns implementation-specific statistics such as vector count.
+        Implementation of the VectorStore protocol method.
+        """
+        return {
+            "vector_count": len(self.vectors),
+            "chunk_count": len(self.chunk_ids),
+            "document_count": len(set(self.documents)),
+            "embedding_dimension": self.dimension,
+            "bm25_index_built": not self._bm25_dirty,
+            "bm25_vocabulary_size": len(self._bm25_doc_freq),
+        }

@@ -16,13 +16,13 @@
 <body>
     <div class="container">
         <h1>📊 Knowledge Base Dashboard</h1>
-        <p>Generated at: 2025-08-17T02:17:41.687780</p>
+        <p>Generated at: 2025-08-20T21:55:08.424029</p>
         
         <div class="stats">
             <h3>📚 Document Overview</h3>
-            <div class="stat-item">Total Documents: <strong>16</strong></div>
-            <div class="stat-item">Total Entities: <strong>483</strong></div>
-            <div class="stat-item">Total Chunks: <strong>761</strong></div>
+            <div class="stat-item">Total Documents: <strong>451</strong></div>
+            <div class="stat-item">Total Entities: <strong>9562</strong></div>
+            <div class="stat-item">Total Chunks: <strong>18078</strong></div>
         </div>
         
         <div class="chart-container">
@@ -54,7 +54,7 @@
             });
             
             // Entity Types Chart
-            const entityTypesData = [["CARDINAL", 67], ["DATE", 33], ["EVENT", 1], ["FAC", 5], ["GPE", 34], ["LAW", 15], ["LOC", 1], ["MONEY", 29]];
+            const entityTypesData = [["CARDINAL", 967], ["DATE", 846], ["EVENT", 35], ["FAC", 29], ["GPE", 205], ["LANGUAGE", 3], ["LAW", 80], ["LOC", 23]];
             const entityTypesChart = new Chart(document.getElementById('entityTypesChart'), {
                 type: 'bar',
                 data: {

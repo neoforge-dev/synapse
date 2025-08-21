@@ -604,7 +604,7 @@ def create_app() -> FastAPI:
 
     # Configure structured logging
     configure_logging(
-        level=getattr(settings, 'log_level', 'INFO'),
+        level=getattr(settings, 'api_log_level', 'INFO'),
         format_type='json',
         enable_correlation=True
     )
@@ -855,3 +855,6 @@ if __name__ == "__main__":
         port=exec_settings.api_port,
         log_level=exec_settings.api_log_level.lower(),
     )
+
+# Export app at module level for uvicorn
+app = create_app()

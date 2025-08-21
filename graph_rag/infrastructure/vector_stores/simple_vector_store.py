@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from typing import Any
 
 import numpy as np
 from starlette.concurrency import run_in_threadpool
@@ -552,3 +553,17 @@ class SimpleVectorStore(VectorStore):
         self._bm25_doc_freq = df
         self._bm25_avgdl = (total_len / max(1, len(self._bm25_docs))) if self._bm25_docs else 0.0
         self._bm25_dirty = False
+
+    async def stats(self) -> dict[str, Any]:
+        """
+        Returns implementation-specific statistics such as vector count.
+        Implementation of the VectorStore protocol method.
+        """
+        return {
+            "vector_count": len(self.vectors),
+            "chunk_count": len(self.chunk_ids),
+            "document_count": len(set(self.documents)),
+            "embedding_dimension": self.dimension,
+            "bm25_index_built": not self._bm25_dirty,
+            "bm25_vocabulary_size": len(self._bm25_doc_freq),
+        }

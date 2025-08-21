@@ -490,7 +490,8 @@ def create_graph_rag_engine(
     from graph_rag.services.citation import CitationStyle
 
     # Parse citation style from settings
-    citation_style_str = getattr(settings, 'citation_style', 'numeric').lower()
+    citation_style_raw = getattr(settings, 'citation_style', 'numeric')
+    citation_style_str = str(citation_style_raw or 'numeric').lower()
     citation_style = CitationStyle.NUMERIC  # Default
 
     try:
