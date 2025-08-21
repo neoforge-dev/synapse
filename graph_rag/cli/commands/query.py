@@ -120,7 +120,7 @@ def ask_query(
     console.print(f"[bold blue]Asking API at {api_url}...[/bold blue]")
 
     # --- Prepare API Payload ---
-    payload: dict[str, Any] = {"text": query_text, "include_graph": show_graph}
+    payload: dict[str, Any] = {"query_text": query_text, "include_graph": show_graph}
     if k is not None:
         payload["k"] = k
 

@@ -99,8 +99,8 @@ def _format_insights(results: list[dict], query: str) -> None:
         text = chunk.get("text", "")[:200] + "..." if len(chunk.get("text", "")) > 200 else chunk.get("text", "")
 
         # Extract metadata
-        topics = doc.get("metadata", {}).get("topics", [])
-        source = doc.get("metadata", {}).get("id_source", "unknown")
+        topics = doc.get("metadata", {}).get("topics", []) if doc else []
+        source = doc.get("metadata", {}).get("id_source", "unknown") if doc else "unknown"
 
         panel_title = f"Insight #{i}"
         if topics:
