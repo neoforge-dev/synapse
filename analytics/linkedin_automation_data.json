@@ -1,0 +1,128 @@
+{
+  "linkedin_insights": {
+    "controversial_boost_factor": 0.6921589820644468,
+    "top_performing_topics": [
+      "architecture",
+      "career_development",
+      "technical_leadership",
+      "general",
+      "python_development",
+      "startup_scaling",
+      "controversial_tech"
+    ],
+    "high_engagement_patterns": [
+      {
+        "pattern": "controversial_technical_opinions",
+        "effectiveness": 0.6921589820644468
+      },
+      {
+        "pattern": "authentic_personal_experience",
+        "effectiveness": 0.03333333333333333
+      }
+    ],
+    "business_hooks": [
+      "startup principles: build-measure-learn. validate your assumptions before you invest significant resources into building a product.",
+      "startupgrowth  #techleadership #softwaredevelopment ",
+      "techleadership",
+      "technical debt",
+      "technical debt",
+      "ctos, and it can impact everything, from development speed to the quality of the product.",
+      "scaling challenge you've faced?",
+      "startup isn't growing as expected?",
+      "technical debt",
+      "startup mindset."
+    ],
+    "consultation_triggers": [
+      {
+        "text_preview": "Are Your Product Management Practices Holding You Back?\n\nHaving navigated the realms of both coding and product management, I wanted to shed some light on a few common pitfalls in product management t...",
+        "elements": [
+          "startup principles: build-measure-learn. validate your assumptions before you invest significant resources into building a product.",
+          "startupgrowth  #techleadership #softwaredevelopment ",
+          "techleadership"
+        ]
+      },
+      {
+        "text_preview": "Technical debt can trap anyone, from coders to CTOs, and it can impact everything, from development speed to the quality of the product.\n\nIn this article, we peel back the layers of technical debt, sh...",
+        "elements": [
+          "technical debt",
+          "technical debt",
+          "ctos, and it can impact everything, from development speed to the quality of the product."
+        ]
+      },
+      {
+        "text_preview": "Wondering why your startup isn't growing as expected?\n\nYou have a team, a product, but growth is missing.\n\nLet's look at some common but often missed challenges:\n\n + Growing Quickly\n ↳ Keep your infor...",
+        "elements": [
+          "scaling challenge you've faced?",
+          "startup isn't growing as expected?",
+          "technical debt"
+        ]
+      },
+      {
+        "text_preview": "In this article, you'll learn:\n\n+ Building a dynamic career with its challenges and changes.\n+ Strategies for combining skills to stand out in the job market.\n+ Using failure as a learning tool.\n+ Dev...",
+        "elements": [
+          "startup mindset."
+        ]
+      }
+    ]
+  },
+  "content_templates": [
+    {
+      "topic_category": "career_development",
+      "controversial_elements": [],
+      "business_hooks": [],
+      "cta_style": "none",
+      "authenticity_score": 0.0,
+      "expected_consultation_potential": 0
+    },
+    {
+      "topic_category": "career_development",
+      "controversial_elements": [],
+      "business_hooks": [
+        "startup principles: build-measure-learn. validate your assumptions before you invest significant resources into building a product.",
+        "startupgrowth  #techleadership #softwaredevelopment ",
+        "techleadership"
+      ],
+      "cta_style": "strong",
+      "authenticity_score": 0.0,
+      "expected_consultation_potential": 5
+    },
+    {
+      "topic_category": "career_development",
+      "controversial_elements": [],
+      "business_hooks": [],
+      "cta_style": "none",
+      "authenticity_score": 0.16666666666666666,
+      "expected_consultation_potential": 0
+    },
+    {
+      "topic_category": "technical_leadership",
+      "controversial_elements": [],
+      "business_hooks": [
+        "technical debt",
+        "technical debt",
+        "ctos, and it can impact everything, from development speed to the quality of the product."
+      ],
+      "cta_style": "medium",
+      "authenticity_score": 0.0,
+      "expected_consultation_potential": 4
+    },
+    {
+      "topic_category": "technical_leadership",
+      "controversial_elements": [],
+      "business_hooks": [
+        "scaling challenge you've faced?",
+        "startup isn't growing as expected?",
+        "technical debt"
+      ],
+      "cta_style": "none",
+      "authenticity_score": 0.16666666666666666,
+      "expected_consultation_potential": 4
+    }
+  ],
+  "automation_parameters": {
+    "optimal_posting_frequency": 3,
+    "controversial_content_ratio": 0.3,
+    "authenticity_threshold": 0.5,
+    "consultation_potential_threshold": 3
+  }
+}
