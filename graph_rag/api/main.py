@@ -30,10 +30,13 @@ from graph_rag.api.middleware import (
 from graph_rag.api.routers import documents, ingestion, query, search
 from graph_rag.api.routers.admin import create_admin_router
 from graph_rag.api.routers.auth import create_auth_router
+from graph_rag.api.routers.audience import router as audience_router
 from graph_rag.api.routers.brand_safety import router as brand_safety_router
 from graph_rag.api.routers.concepts import router as concepts_router
+from graph_rag.api.routers.content_strategy import router as content_strategy_router
 from graph_rag.api.routers.dashboard import create_dashboard_router
 from graph_rag.api.routers.graph import create_graph_router
+from graph_rag.api.routers.hot_takes import router as hot_takes_router
 from graph_rag.api.routers.reasoning import create_reasoning_router
 
 # Local application imports
@@ -684,6 +687,9 @@ def create_app() -> FastAPI:
     api_router.include_router(admin_router, prefix="/admin", tags=["Admin"])
     api_router.include_router(reasoning_router, prefix="/reasoning", tags=["Reasoning"])
     api_router.include_router(concepts_router, tags=["Concepts"])
+    api_router.include_router(hot_takes_router, tags=["Hot Takes"])
+    api_router.include_router(audience_router, tags=["Audience"])
+    api_router.include_router(content_strategy_router, tags=["Content Strategy"])
     api_router.include_router(brand_safety_router, tags=["Brand Safety"])
 
     app.include_router(api_router)  # Remove prefix="/api/v1" here

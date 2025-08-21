@@ -32,7 +32,7 @@ class TestBasicConceptsEndpoints:
 
     def test_hot_takes_analyze_endpoint_exists(self, client):
         """Test that hot takes analysis endpoint exists."""
-        response = client.post("/api/v1/concepts/hot-takes/analyze", json={
+        response = client.post("/api/v1/hot-takes/analyze", json={
             "content": "Test controversial content",
             "platform": "linkedin"
         })
@@ -43,7 +43,7 @@ class TestBasicConceptsEndpoints:
 
     def test_audience_analyze_endpoint_exists(self, client):
         """Test that audience analysis endpoint exists."""
-        response = client.post("/api/v1/concepts/audience/analyze", json={
+        response = client.post("/api/v1/audience/analyze", json={
             "content": "Test content for audience analysis",
             "platform": "linkedin"
         })
@@ -64,7 +64,7 @@ class TestBasicConceptsEndpoints:
 
     def test_trending_analysis_endpoint_exists(self, client):
         """Test that trending analysis endpoint exists."""
-        response = client.get("/api/v1/concepts/hot-takes/trending")
+        response = client.get("/api/v1/hot-takes/trending")
         
         # Should not return 404 (endpoint exists)
         assert response.status_code != 404
@@ -72,7 +72,7 @@ class TestBasicConceptsEndpoints:
 
     def test_batch_analysis_endpoint_exists(self, client):
         """Test that batch analysis endpoint exists."""
-        response = client.post("/api/v1/concepts/hot-takes/batch-analyze", json={
+        response = client.post("/api/v1/hot-takes/batch-analyze", json={
             "content_items": [
                 {"id": "1", "content": "Test content 1", "platform": "linkedin"}
             ]
@@ -84,7 +84,7 @@ class TestBasicConceptsEndpoints:
 
     def test_safety_check_endpoint_exists(self, client):
         """Test that safety check endpoint exists."""
-        response = client.post("/api/v1/concepts/hot-takes/safety-check", json={
+        response = client.post("/api/v1/hot-takes/safety-check", json={
             "content": "Test content for safety check",
             "safety_level": "corporate"
         })
@@ -111,7 +111,7 @@ class TestBasicConceptsEndpoints:
 
     def test_audience_segments_endpoint_exists(self, client):
         """Test that audience segments endpoint exists."""
-        response = client.get("/api/v1/concepts/audience/segments")
+        response = client.get("/api/v1/audience/segments")
         
         # Should not return 404 (endpoint exists)
         assert response.status_code != 404
@@ -143,12 +143,12 @@ class TestConceptsEndpointValidation:
     def test_hot_takes_analyze_validation(self, client):
         """Test validation for hot takes analysis endpoint."""
         # Test missing required fields
-        response = client.post("/api/v1/concepts/hot-takes/analyze", json={})
+        response = client.post("/api/v1/hot-takes/analyze", json={})
         assert response.status_code == 422
         
         # Test with minimal valid data - endpoint may return 422 due to missing dependencies
         # but this confirms the endpoint exists and processes requests
-        response = client.post("/api/v1/concepts/hot-takes/analyze", json={
+        response = client.post("/api/v1/hot-takes/analyze", json={
             "content": "Test content",
             "platform": "linkedin"
         })
@@ -158,7 +158,7 @@ class TestConceptsEndpointValidation:
     def test_batch_analysis_validation(self, client):
         """Test validation for batch analysis endpoint."""
         # Test empty content items - endpoint may process empty arrays gracefully
-        response = client.post("/api/v1/concepts/hot-takes/batch-analyze", json={
+        response = client.post("/api/v1/hot-takes/batch-analyze", json={
             "content_items": []
         })
         # Should not return 404 (endpoint missing) or 500 (server error)  
@@ -193,7 +193,7 @@ class TestConceptsEndpointIntegration:
         assert extract_response.status_code != 404
         
         # Step 2: Analyze audience for the same content
-        audience_response = client.post("/api/v1/concepts/audience/analyze", json={
+        audience_response = client.post("/api/v1/audience/analyze", json={
             "content": "FastAPI is a powerful framework for building APIs",
             "platform": "linkedin"
         })
@@ -206,7 +206,7 @@ class TestConceptsEndpointIntegration:
         test_content = "Here's a controversial take on software development"
         
         # Step 1: Safety check
-        safety_response = client.post("/api/v1/concepts/hot-takes/safety-check", json={
+        safety_response = client.post("/api/v1/hot-takes/safety-check", json={
             "content": test_content,
             "safety_level": "corporate"
         })
@@ -214,7 +214,7 @@ class TestConceptsEndpointIntegration:
         assert safety_response.status_code != 404
         
         # Step 2: Content optimization
-        optimization_response = client.post("/api/v1/concepts/hot-takes/optimize", json={
+        optimization_response = client.post("/api/v1/hot-takes/optimize", json={
             "original_content": test_content,
             "optimization_goals": ["increase_engagement"],
             "platform": "linkedin"
@@ -225,7 +225,7 @@ class TestConceptsEndpointIntegration:
     def test_analysis_to_trending_workflow(self, client):
         """Test workflow from individual analysis to trending analysis."""
         # Step 1: Analyze individual content
-        analysis_response = client.post("/api/v1/concepts/hot-takes/analyze", json={
+        analysis_response = client.post("/api/v1/hot-takes/analyze", json={
             "content": "The future of AI in software development",
             "platform": "linkedin"
         })
@@ -233,7 +233,7 @@ class TestConceptsEndpointIntegration:
         assert analysis_response.status_code != 404
         
         # Step 2: Check trending topics
-        trending_response = client.get("/api/v1/concepts/hot-takes/trending")
+        trending_response = client.get("/api/v1/hot-takes/trending")
         
         assert trending_response.status_code != 404
 
