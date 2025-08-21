@@ -250,7 +250,7 @@ class AutomationDashboard:
         
         for inquiry in pending_inquiries:
             created_at = datetime.fromisoformat(inquiry['created_at'])
-            hours_old = (datetime.now() - created_at).total_hours
+            hours_old = (datetime.now() - created_at).total_seconds() / 3600
             
             if hours_old > 24:
                 alerts.append(f"CRITICAL: High-priority inquiry from {inquiry['contact_name']} pending {hours_old:.1f} hours")
@@ -361,7 +361,14 @@ class AutomationDashboard:
         metrics = status['business_metrics']
         print(f"\n📈 PERFORMANCE:")
         print(f"  • Posts: {metrics['post_performance']['total_posts']}")
-        print(f"  • Avg Engagement: {metrics['post_performance']['avg_engagement_rate']*100:.2f}%")
+        
+        # Handle None values for engagement rate
+        avg_engagement = metrics['post_performance']['avg_engagement_rate']
+        if avg_engagement is not None:
+            print(f"  • Avg Engagement: {avg_engagement*100:.2f}%")
+        else:
+            print(f"  • Avg Engagement: N/A")
+            
         print(f"  • Consultations: {metrics['post_performance']['total_consultation_requests']}")
         print(f"  • Pipeline: ${metrics['business_pipeline']['total_pipeline_value']:,}")
         
