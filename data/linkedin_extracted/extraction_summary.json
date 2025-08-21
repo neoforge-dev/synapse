@@ -1,0 +1,30 @@
+{
+  "extraction_date": "2025-08-21T11:01:49.408165",
+  "total_items_extracted": 615,
+  "breakdown": {
+    "beliefs": 76,
+    "ideas": 495,
+    "personal_stories": 27,
+    "preferences": 15,
+    "controversial_takes": 2
+  },
+  "category_breakdown": {
+    "beliefs": {
+      "career": 10,
+      "personal": 47,
+      "technical": 10,
+      "business": 9
+    },
+    "stories": {
+      "personal": 15,
+      "career": 3,
+      "technical": 8,
+      "business": 1
+    },
+    "controversial_topics": {
+      "general_opinion": 2
+    }
+  },
+  "ready_for_synapse_ingestion": true,
+  "recommended_ingestion_command": "uv run python -m graph_rag.cli.main ingest /Users/bogdan/til/graph-rag-mcp/data/linkedin_extracted/linkedin_comprehensive_dataset.json"
+}

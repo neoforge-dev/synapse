@@ -1,0 +1,990 @@
+[
+  {
+    "id": "belief_0",
+    "content": "**Belief (moderate)**: the book \"Learn Like a Pro\" offers valuable insights into how our brain functions and how we can adopt learning methods that work with our brain’s learning capabilities",
+    "metadata": {
+      "type": "belief",
+      "category": "career",
+      "confidence_level": "moderate",
+      "source_type": "post",
+      "source_id": "urn:li:activity:7067824022373228544",
+      "date": "2023-05-26T14:52:27",
+      "context": "ing plan as needed.\n\nIn addition to this roadmap, I've found that the book \"Learn Like a Pro\" offers valuable insights into how our brain functions and how we can adopt learning methods that work with our brain’s learning capabilities. It emphasizes the importance of active learning,"
+    }
+  },
+  {
+    "id": "belief_1",
+    "content": "**Belief (strong)**: 95% of these",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "post",
+      "source_id": "urn:li:activity:7086617833681354752",
+      "date": "2023-07-17T12:11:20",
+      "context": "alls throughout the day, but, from my experience, I believe that 95% of these \nmeetings are unnecessary.\n\nPersonally, I find val"
+    }
+  },
+  {
+    "id": "belief_2",
+    "content": "**Belief (strong)**: as we continue to understand and develop the right tools, it will become an indispensable part of our DevOps arsenal",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "post",
+      "source_id": "urn:li:activity:7074019658047135745",
+      "date": "2023-06-12T17:22:29",
+      "context": "culture - efficiency, transparency, reliability. I'm convinced that as we continue to understand and develop the right tools, it will become an indispensable part of our DevOps arsenal.\n\nKeen to hear your take on GitOps. Already adopte"
+    }
+  },
+  {
+    "id": "belief_3",
+    "content": "**Belief (strong)**: Terraform provides a more efficient and scalable solution for GitOps, as it allows you to define your entire infrastructure as code and avoid versioning issues",
+    "metadata": {
+      "type": "belief",
+      "category": "technical",
+      "confidence_level": "strong",
+      "source_type": "post",
+      "source_id": "urn:li:activity:7034135068566523904",
+      "date": "2023-02-22T14:21:28",
+      "context": "digging deeper.\n\nAfter exploring both approaches, I believe that Terraform provides a more efficient and scalable solution for GitOps, as it allows you to define your entire infrastructure as code and avoid versioning issues. However, Helm charts still have their place in th"
+    }
+  },
+  {
+    "id": "belief_4",
+    "content": "**Belief (strong)**: as we continue to understand and develop the right tools, it will become an indispensable part of our DevOps arsenal",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "post",
+      "source_id": "urn:li:activity:7074019727915851776",
+      "date": "2023-06-12T17:22:29",
+      "context": "culture - efficiency, transparency, reliability. I'm convinced that as we continue to understand and develop the right tools, it will become an indispensable part of our DevOps arsenal.\n\nKeen to hear your take on GitOps. Already adopte"
+    }
+  },
+  {
+    "id": "belief_5",
+    "content": "**Belief (strong)**: four key elements contribute to success:",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "post",
+      "source_id": "urn:li:activity:7185958190008651778",
+      "date": "2024-04-16T14:44:38",
+      "context": "n and nuance. \n \nBased on my personal experience, I believe that four key elements contribute to success: \n \n1. Mastering Your Market - Ever seen a worthy s"
+    }
+  },
+  {
+    "id": "belief_6",
+    "content": "**Belief (moderate)**: a developer should focus on mastering the problem domain, understand what are the edge cases and write tests for it",
+    "metadata": {
+      "type": "belief",
+      "category": "career",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_19",
+      "date": "2024-08-31T06:41:33",
+      "context": "verflow without bothering to fully understand it. In my opinion a developer should focus on mastering the problem domain, understand what are the edge cases and write tests for it. It doesn’t really matter if they use LLMs to get"
+    }
+  },
+  {
+    "id": "belief_7",
+    "content": "**Belief (strong)**: all businesses should rely more on data, and once you do, you just need to improve your learning speed",
+    "metadata": {
+      "type": "belief",
+      "category": "career",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_80",
+      "date": "2024-04-22T08:59:46",
+      "context": "This is insightful. I believe that all businesses should rely more on data, and once you do, you just need to improve your learning speed."
+    }
+  },
+  {
+    "id": "belief_8",
+    "content": "**Belief (strong)**: context matters quite a lot and any approach has trade offs that need to carefully considered on a regular basis",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_111",
+      "date": "2024-04-05T08:06:47",
+      "context": "Sergio, I found the article insightful. I believe that context matters quite a lot and any approach has trade offs that need to carefully considered on a regular basis."
+    }
+  },
+  {
+    "id": "belief_9",
+    "content": "**Belief (mild)**: that the experience is relevant past the pre-screening phase, and this is not necessarily a bad thing",
+    "metadata": {
+      "type": "belief",
+      "category": "career",
+      "confidence_level": "mild",
+      "source_type": "comment",
+      "source_id": "comment_189",
+      "date": "2024-03-27T20:55:03",
+      "context": "I am a bit skeptical about the list of don'ts. I suspect that the experience is relevant past the pre-screening phase, and this is not necessarily a bad thing."
+    }
+  },
+  {
+    "id": "belief_10",
+    "content": "**Belief (strong)**: a KPI should only be tracked if it is achievable and within your control",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_208",
+      "date": "2024-03-27T12:09:18",
+      "context": "anity metrics and focus too much on lagging KPIs. I believe that a KPI should only be tracked if it is achievable and within your control."
+    }
+  },
+  {
+    "id": "belief_11",
+    "content": "**Belief (moderate)**: mindfulness exercises can make a huge difference in understanding oneself better",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_259",
+      "date": "2024-03-26T10:04:49",
+      "context": "teresting pick, it's definitely an important one. I've found that mindfulness exercises can make a huge difference in understanding oneself better. It also helps to have someone you trust give you"
+    }
+  },
+  {
+    "id": "belief_12",
+    "content": "**Belief (strong)**: this dual strategy is a good a approach if you can afford it",
+    "metadata": {
+      "type": "belief",
+      "category": "business",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_263",
+      "date": "2024-03-25T14:48:11",
+      "context": "I believe that this dual strategy is a good a approach if you can afford it."
+    }
+  },
+  {
+    "id": "belief_13",
+    "content": "**Belief (moderate)**: I need more practice to spot the ideas that are easier to visualize",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_283",
+      "date": "2024-03-24T08:26:56",
+      "context": "Janis, I think that I need more practice to spot the ideas that are easier to visualize. I found that it was somewhat difficult to visuali"
+    }
+  },
+  {
+    "id": "belief_14",
+    "content": "**Belief (strong)**: distributed systems add a lot of complexity",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_334",
+      "date": "2024-03-21T21:47:29",
+      "context": "I believe that distributed systems add a lot of complexity. ideally we want to start simple and only incremen"
+    }
+  },
+  {
+    "id": "belief_15",
+    "content": "**Belief (moderate)**: it is not necessarily needed but it definitely helps to have the CEO create valuable content and build a community around the topics related to the startup mission",
+    "metadata": {
+      "type": "belief",
+      "category": "business",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_390",
+      "date": "2024-03-20T12:04:03",
+      "context": "I think that it is not necessarily needed but it definitely helps to have the CEO create valuable content and build a community around the topics related to the startup mission."
+    }
+  },
+  {
+    "id": "belief_16",
+    "content": "**Belief (strong)**: niche content is not for everyone",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_404",
+      "date": "2024-03-19T13:21:15",
+      "context": "and reading over 10 books on sales and marketing, I believe that niche content is not for everyone.\n\nWhen you are first starting out you are better o"
+    }
+  },
+  {
+    "id": "belief_17",
+    "content": "**Belief (moderate)**: they are the GOAT when it comes to creating SOPs",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_407",
+      "date": "2024-03-19T12:52:54",
+      "context": "how McDonalds would approach that SOP might help in my opinion they are the GOAT when it comes to creating SOPs."
+    }
+  },
+  {
+    "id": "belief_18",
+    "content": "**Belief (strong)**: generalists have an unfair advantage in this context as they are better at adapting to a new context",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_455",
+      "date": "2024-03-15T16:11:24",
+      "context": "That’s why I believe that generalists have an unfair advantage in this context as they are better at adapting to a new context. Skill stacking is more important than ever before"
+    }
+  },
+  {
+    "id": "belief_19",
+    "content": "**Belief (strong)**: agility is your supper power",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_477",
+      "date": "2024-03-14T13:28:32",
+      "context": "Execution is more important that any idea but I believe that agility is your supper power."
+    }
+  },
+  {
+    "id": "belief_20",
+    "content": "**Belief (moderate)**: the generalists will thrive in such an environment",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_510",
+      "date": "2024-03-12T07:18:51",
+      "context": "Great piece! I love the shift of perspective. In my opinion the generalists will thrive in such an environment. If you have a basic understanding from multiple a"
+    }
+  },
+  {
+    "id": "belief_21",
+    "content": "**Belief (strong)**: it's important to have retros to sync the entire team",
+    "metadata": {
+      "type": "belief",
+      "category": "business",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_530",
+      "date": "2024-03-07T11:14:29",
+      "context": "Great read, Nicola! Love the format. I believe that it's important to have retros to sync the entire team. In remote teams, I noticed Mire is really useful,"
+    }
+  },
+  {
+    "id": "belief_22",
+    "content": "**Belief (strong)**: we need to force ourself to write assumption on paper such that we can enter the problem solving mode with the correct context",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_535",
+      "date": "2024-03-07T09:54:04",
+      "context": "Love the visual explanation! I believe that we need to force ourself to write assumption on paper such that we can enter the problem solving mode with the correct context."
+    }
+  },
+  {
+    "id": "belief_23",
+    "content": "**Belief (moderate)**: it's good to challenge your team as long as the environment allows it, if you notice that they get defensive you need to solve that first",
+    "metadata": {
+      "type": "belief",
+      "category": "business",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_545",
+      "date": "2024-03-07T07:26:51",
+      "context": "In my opinion it's good to challenge your team as long as the environment allows it, if you notice that they get defensive you need to solve that first."
+    }
+  },
+  {
+    "id": "belief_24",
+    "content": "**Belief (moderate)**: it is very important to be available and visible",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_594",
+      "date": "2024-02-13T13:04:15",
+      "context": "Helpful strategies, Omar! In my opinion it is very important to be available and visible. I believe it's important to schedule regular 1on1"
+    }
+  },
+  {
+    "id": "belief_25",
+    "content": "**Belief (strong)**: for the most part a design document should be more like a blueprint to encourage creativity and adaptability in the dev team(as long as you have talented developer onboard)",
+    "metadata": {
+      "type": "belief",
+      "category": "career",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_728",
+      "date": "2024-01-09T15:22:59",
+      "context": "at it's harder to keep documentation up to date.\n\nI believe that for the most part a design document should be more like a blueprint to encourage creativity and adaptability in the dev team(as long as you have talented developer onboard)."
+    }
+  },
+  {
+    "id": "belief_26",
+    "content": "**Belief (moderate)**: the developer experience is not that great yet, but hopefully it will catch up soon",
+    "metadata": {
+      "type": "belief",
+      "category": "career",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_909",
+      "date": "2023-11-20T16:30:46",
+      "context": "mponents are now supported on all major browsers. In my opinion the developer experience is not that great yet, but hopefully it will catch up soon."
+    }
+  },
+  {
+    "id": "belief_27",
+    "content": "**Belief (moderate)**: frequent check-ins and feature updates based on actual user feedback go a long way",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_1071",
+      "date": "2023-10-09T11:34:58",
+      "context": "ing experience, but a continuous value delivery.\n\nI've found that frequent check-ins and feature updates based on actual user feedback go a long way. It turns the customer relationship into a dialogu"
+    }
+  },
+  {
+    "id": "belief_28",
+    "content": "**Belief (moderate)**: being a good listener and understanding my own reactions helps me work better with my team",
+    "metadata": {
+      "type": "belief",
+      "category": "business",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_1109",
+      "date": "2023-09-27T09:36:02",
+      "context": "t in your job, but also how you deal with people. I've found that being a good listener and understanding my own reactions helps me work better with my team.\n\nI've seen emotionally smart leaders make a big d"
+    }
+  },
+  {
+    "id": "belief_29",
+    "content": "**Belief (moderate)**: proactively addressing scope, aligning on goals, and initiating regular feedback exchanges foster smoother collaboration",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_1259",
+      "date": "2023-08-31T11:12:42",
+      "context": "y. Scope expansion and delays are common hurdles. I've found that proactively addressing scope, aligning on goals, and initiating regular feedback exchanges foster smoother collaboration."
+    }
+  },
+  {
+    "id": "belief_30",
+    "content": "**Belief (strong)**: focusing on solving the users real problems is the way to go",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_1310",
+      "date": "2023-08-28T11:02:47",
+      "context": "aking about focusing too much on the competition. I believe that focusing on solving the users real problems is the way to go. Also you could try to look for ideas in the probl"
+    }
+  },
+  {
+    "id": "belief_31",
+    "content": "**Belief (moderate)**: it's Important to have periodic reviews to validate the business-tech alignment",
+    "metadata": {
+      "type": "belief",
+      "category": "business",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_1483",
+      "date": "2023-08-09T19:49:38",
+      "context": "ally in when the business needs evolve over time. In my opinion it's Important to have periodic reviews to validate the business-tech alignment."
+    }
+  },
+  {
+    "id": "belief_32",
+    "content": "**Belief (moderate)**: the mindset shift is what matters most, the way it forces you think before you code",
+    "metadata": {
+      "type": "belief",
+      "category": "technical",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_1532",
+      "date": "2023-08-04T14:16:08",
+      "context": "to TDD, you get that by using automated testing. In my opinion the mindset shift is what matters most, the way it forces you think before you code."
+    }
+  },
+  {
+    "id": "belief_33",
+    "content": "**Belief (strong)**: demonstrating flexibility and adapting to the needs of your project is a more effective approach",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_1543",
+      "date": "2023-08-04T07:41:02",
+      "context": "ht also be overrated. TDD is not a silver bullet. I believe that demonstrating flexibility and adapting to the needs of your project is a more effective approach."
+    }
+  },
+  {
+    "id": "belief_34",
+    "content": "**Belief (moderate)**: Test-Driven Development (TDD) is not practiced enough; however, it might also be overrated",
+    "metadata": {
+      "type": "belief",
+      "category": "technical",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_1543",
+      "date": "2023-08-04T07:41:02",
+      "context": "Tiger, in my opinion, Test-Driven Development (TDD) is not practiced enough; however, it might also be overrated. TDD is not a silver bullet. I believe that demons"
+    }
+  },
+  {
+    "id": "belief_35",
+    "content": "**Belief (strong)**: a good manager continuously strives to improve their skills and adapt their management style to suit the needs of their team",
+    "metadata": {
+      "type": "belief",
+      "category": "career",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_1588",
+      "date": "2023-08-02T11:50:48",
+      "context": "Anemari, great post. I believe that a good manager continuously strives to improve their skills and adapt their management style to suit the needs of their team."
+    }
+  },
+  {
+    "id": "belief_36",
+    "content": "**Belief (moderate)**: the deliberate elimination of distractions and the dedicated focus on a singular task have not only increased my productivity but also the quality of my work",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_1614",
+      "date": "2023-07-31T11:31:17",
+      "context": "'t agree more! Deep work truly is a game changer. I've found that the deliberate elimination of distractions and the dedicated focus on a singular task have not only increased my productivity but also the quality of my work.\n\nSynchronizing your deep work sessions with your"
+    }
+  },
+  {
+    "id": "belief_37",
+    "content": "**Belief (moderate)**: fostering simplicity within innovation can be a game-changer",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_1688",
+      "date": "2023-07-25T11:56:31",
+      "context": "ing actual problems, not chasing the latest tech. I've found that fostering simplicity within innovation can be a game-changer. Have you explored balancing innovation with simpl"
+    }
+  },
+  {
+    "id": "belief_38",
+    "content": "**Belief (moderate)**: product team should prioritise creating a feedback loop with the development team",
+    "metadata": {
+      "type": "belief",
+      "category": "technical",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_1774",
+      "date": "2023-07-12T09:54:00",
+      "context": ". To further enhance collaboration with engineers,I think that product team should prioritise creating a feedback loop with the development team. Actively seek input from engineers during the req"
+    }
+  },
+  {
+    "id": "belief_39",
+    "content": "**Belief (strong)**: a good CTO combines technical expertise, strategic thinking, leadership skills, and a commitment to ongoing growth and development",
+    "metadata": {
+      "type": "belief",
+      "category": "technical",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_1809",
+      "date": "2023-07-10T09:29:31",
+      "context": "Great points, Adelina! I believe that a good CTO combines technical expertise, strategic thinking, leadership skills, and a commitment to ongoing growth and development."
+    }
+  },
+  {
+    "id": "belief_40",
+    "content": "**Belief (moderate)**: critical decision-making discussions can be carried out in synchronous settings (like meetings), while the groundwork for those discussions is done asynchronously",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_1952",
+      "date": "2023-06-14T06:26:16",
+      "context": "synchronous methods can strike a healthy balance. I've found that critical decision-making discussions can be carried out in synchronous settings (like meetings), while the groundwork for those discussions is done asynchronously. This way, everyone comes prepared, and meetings b"
+    }
+  },
+  {
+    "id": "belief_41",
+    "content": "**Belief (moderate)**: using a 'digital sunset' routine can complement these steps effectively",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2041",
+      "date": "2023-06-04T13:55:59",
+      "context": "votal role in our overall health and well-being.\n\nI've found that using a 'digital sunset' routine can complement these steps effectively. It involves winding down your digital activities"
+    }
+  },
+  {
+    "id": "belief_42",
+    "content": "**Belief (moderate)**: the issue is that dev agencies have no incentive to make the same decisions as long as they are paid for the time spent",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2059",
+      "date": "2023-05-31T19:58:02",
+      "context": "Oshri, in my opinion, the issue is that dev agencies have no incentive to make the same decisions as long as they are paid for the time spent.\n\nCoule it be the right time to consider value bas"
+    }
+  },
+  {
+    "id": "belief_43",
+    "content": "**Belief (moderate)**: a consistent morning routine can be a game-changer",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2140",
+      "date": "2023-05-25T06:32:53",
+      "context": "Dr. Christian Passlick, I've found that a consistent morning routine can be a game-changer. It's not about waking up at 4 am or doing an inte"
+    }
+  },
+  {
+    "id": "belief_44",
+    "content": "**Belief (moderate)**: a balanced mix of reading, exercising, and meditating helps me maintain a well-rounded well, filled with technical knowledge, empathy, and resilience",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2167",
+      "date": "2023-05-24T04:40:38",
+      "context": "tasks and forget about nurturing our inner well.\n\nI've found that a balanced mix of reading, exercising, and meditating helps me maintain a well-rounded well, filled with technical knowledge, empathy, and resilience. These practices provide me with the necessary per"
+    }
+  },
+  {
+    "id": "belief_45",
+    "content": "**Belief (moderate)**: embracing feedback and revisions is a critical part of this process",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2221",
+      "date": "2023-05-22T11:51:39",
+      "context": "s, and consistency is key.\n\nAdding to your point, I've found that embracing feedback and revisions is a critical part of this process. Each draft, each revision is a learning experienc"
+    }
+  },
+  {
+    "id": "belief_46",
+    "content": "**Belief (strong)**: you should start sharing as soon as you feel comfortable and confident in your idea",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_2234",
+      "date": "2023-05-22T06:36:20",
+      "context": "es that we often find our most valuable lessons.\n\nI believe that you should start sharing as soon as you feel comfortable and confident in your idea. The feedback you can get from sharing early can h"
+    }
+  },
+  {
+    "id": "belief_47",
+    "content": "**Belief (moderate)**: the key is knowing when to lean into each principle",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2281",
+      "date": "2023-05-18T09:09:25",
+      "context": "eful focus and decision-making. In my experience, I've found that the key is knowing when to lean into each principle. Action is essential to avoid stagnation, but acti"
+    }
+  },
+  {
+    "id": "belief_48",
+    "content": "**Belief (moderate)**: adopting a communication style in line with the S",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2284",
+      "date": "2023-05-18T08:59:01",
+      "context": "clarity in our interactions.\n\nOn a similar note, I've found that adopting a communication style in line with the S.M.A.R.T. criteria - Specific, Measurable, Achievab"
+    }
+  },
+  {
+    "id": "belief_49",
+    "content": "**Belief (moderate)**: one of the most effective ways to get management buy-in for refactoring is to tie it directly to business benefits",
+    "metadata": {
+      "type": "belief",
+      "category": "business",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2288",
+      "date": "2023-05-17T19:10:55",
+      "context": "opic of refactoring with management are spot-on.\n\nI've found that one of the most effective ways to get management buy-in for refactoring is to tie it directly to business benefits. We need to translate this into business language"
+    }
+  },
+  {
+    "id": "belief_50",
+    "content": "**Belief (strong)**: while traditional educational institutions provide a good foundation, there's often a gap between the academic curriculum and the real-world demands of the tech industry",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_2338",
+      "date": "2023-05-15T12:45:01",
+      "context": "Your question touches on a very important issue. I believe that while traditional educational institutions provide a good foundation, there's often a gap between the academic curriculum and the real-world demands of the tech industry.\n\nLifelong learning and self-education have never"
+    }
+  },
+  {
+    "id": "belief_51",
+    "content": "**Belief (moderate)**: the profile is only as effective as the effort you put into engaging with your connections and the wider community",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2428",
+      "date": "2023-05-10T11:11:20",
+      "context": "y harnessing the power of your optimized profile. In my opinion the profile is only as effective as the effort you put into engaging with your connections and the wider community."
+    }
+  },
+  {
+    "id": "belief_52",
+    "content": "**Belief (moderate)**: case studies coupled with customer reviews are the best social proof tools",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2432",
+      "date": "2023-05-10T07:35:10",
+      "context": "social proof and its impact on buying decisions! In my opinion case studies coupled with customer reviews are the best social proof tools."
+    }
+  },
+  {
+    "id": "belief_53",
+    "content": "**Belief (strong)**: lifelong learning and networking remain essential aspects of staying ahead in the ever-evolving tech landscape",
+    "metadata": {
+      "type": "belief",
+      "category": "career",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_2440",
+      "date": "2023-05-10T06:34:54",
+      "context": "n two main areas: on 2️⃣ and 6️⃣  from the list.\n\nI believe that lifelong learning and networking remain essential aspects of staying ahead in the ever-evolving tech landscape. These two areas laid a strong foundation for my f"
+    }
+  },
+  {
+    "id": "belief_54",
+    "content": "**Belief (strong)**: Giulio is right about the asymmetrical results",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_2452",
+      "date": "2023-05-08T18:08:43",
+      "context": "I love this exercise. I believe that Giulio is right about the asymmetrical results. Andrea seems to have a low risk tolerance and her"
+    }
+  },
+  {
+    "id": "belief_55",
+    "content": "**Belief (strong)**: the tips and insights you'll provide can be game-changers for those who are committed to implementing them",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_2520",
+      "date": "2023-05-04T05:22:36",
+      "context": "I believe that the tips and insights you'll provide can be game-changers for those who are committed to implementing them. \n\nThank you for offering such a valuable resource"
+    }
+  },
+  {
+    "id": "belief_56",
+    "content": "**Belief (moderate)**: following smaller, niche-focused accounts such as indie developers or open-source contributors provides me with a unique perspective on software development challenges and best practices",
+    "metadata": {
+      "type": "belief",
+      "category": "technical",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2544",
+      "date": "2023-05-03T07:52:38",
+      "context": "Agreed, I've found that following smaller, niche-focused accounts such as indie developers or open-source contributors provides me with a unique perspective on software development challenges and best practices. They often share real-world experiences, solution"
+    }
+  },
+  {
+    "id": "belief_57",
+    "content": "**Belief (moderate)**: engaging with my LinkedIn feed often sparks new ideas and perspectives",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2573",
+      "date": "2023-04-27T14:05:40",
+      "context": "ightful comments.\n\nI'm continuously learning, and I've found that engaging with my LinkedIn feed often sparks new ideas and perspectives. Just take it one step at a time, and you'll see t"
+    }
+  },
+  {
+    "id": "belief_58",
+    "content": "**Belief (moderate)**: utilizing informal \\virtual coffee breaks\\\" or \\\"watercooler chats\\\" can also foster better connections and understanding within remote teams",
+    "metadata": {
+      "type": "belief",
+      "category": "business",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2591",
+      "date": "2023-04-25T09:41:18",
+      "context": "o-face interactions for remote teams. Personally, I've found that utilizing informal \\virtual coffee breaks\\\" or \\\"watercooler chats\\\" can also foster better connections and understanding within remote teams. While it may not have the same impact as in-perso"
+    }
+  },
+  {
+    "id": "belief_59",
+    "content": "**Belief (moderate)**: understanding your client's needs and genuinely listening to them is crucial in building a strong relationship",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2659",
+      "date": "2023-04-19T12:22:29",
+      "context": "Great framework, Norbert! I've found that understanding your client's needs and genuinely listening to them is crucial in building a strong relationship. To add to your points, I'd like to emphasize the"
+    }
+  },
+  {
+    "id": "belief_60",
+    "content": "**Belief (strong)**: these principles also apply to architecture design",
+    "metadata": {
+      "type": "belief",
+      "category": "technical",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_2761",
+      "date": "2023-02-28T10:07:22",
+      "context": "a successful project.\n\nAs an advocate of DevOps, I believe that these principles also apply to architecture design. Using modular designs and avoiding unnecessary co"
+    }
+  },
+  {
+    "id": "belief_61",
+    "content": "**Belief (moderate)**: investing in the first conversation with candidates is crucial",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2779",
+      "date": "2023-02-22T15:45:24",
+      "context": "experience in both small and large organizations, I've found that investing in the first conversation with candidates is crucial. This approach not only streamlines the interview"
+    }
+  },
+  {
+    "id": "belief_62",
+    "content": "**Belief (strong)**: removing unnecessary features or steps from a process can make room for better ones",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_2784",
+      "date": "2023-02-20T14:37:51",
+      "context": "to make space for the new one. \n\nIn the same way, I believe that removing unnecessary features or steps from a process can make room for better ones. It takes courage and strong leadership to make th"
+    }
+  },
+  {
+    "id": "belief_63",
+    "content": "**Belief (moderate)**: building strong relationships can help create value not just for my own business, but for others as well",
+    "metadata": {
+      "type": "belief",
+      "category": "business",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2804",
+      "date": "2023-02-15T11:13:31",
+      "context": "nd the role they play in driving business growth. I've found that building strong relationships can help create value not just for my own business, but for others as well.\n\nHow do you leverage your relationships to create"
+    }
+  },
+  {
+    "id": "belief_64",
+    "content": "**Belief (moderate)**: this should be an ongoing process",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2812",
+      "date": "2023-02-09T08:22:24",
+      "context": "challenge, but it doesn't have to be a struggle. In my opinion, this should be an ongoing process. \n\nTo do this, you should:\n- Analyze the existing"
+    }
+  },
+  {
+    "id": "belief_65",
+    "content": "**Belief (moderate)**: using the Fibonacci sequence can also enhance the accuracy of project estimates",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2832",
+      "date": "2023-02-03T12:15:09",
+      "context": "lp set realistic expectations with stakeholders.\n\nI've found that using the Fibonacci sequence can also enhance the accuracy of project estimates. This helps to naturally account for uncertainty i"
+    }
+  },
+  {
+    "id": "belief_66",
+    "content": "**Belief (moderate)**: Zero to One is a better fit for startups aiming to raise capital while Lean Startup is a better fit for bootstrapping",
+    "metadata": {
+      "type": "belief",
+      "category": "technical",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2857",
+      "date": "2023-01-28T13:25:00",
+      "context": "ascinating, and filled with valuable information. In my opinion Zero to One is a better fit for startups aiming to raise capital while Lean Startup is a better fit for bootstrapping.\n\nHowever the tech startups are operating in a hig"
+    }
+  },
+  {
+    "id": "belief_67",
+    "content": "**Belief (moderate)**: using Clean Architecture principles to create a modular monolith is a better approach",
+    "metadata": {
+      "type": "belief",
+      "category": "technical",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2868",
+      "date": "2023-01-25T12:53:01",
+      "context": "st startups would be better off with a monolith.\n\nIn my opinion using Clean Architecture principles to create a modular monolith is a better approach. If scaling is an important concern I would rather"
+    }
+  },
+  {
+    "id": "belief_68",
+    "content": "**Belief (strong)**: mentoring and providing opportunities for these developers to take on more ownership can lead to a more successful and efficient project",
+    "metadata": {
+      "type": "belief",
+      "category": "career",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_2873",
+      "date": "2023-01-25T11:32:33",
+      "context": "overestimated work and overengineered features.\n\nI believe that mentoring and providing opportunities for these developers to take on more ownership can lead to a more successful and efficient project."
+    }
+  },
+  {
+    "id": "belief_69",
+    "content": "**Belief (moderate)**: a monolith can be easier to set up for an MVP, but as the product evolves over time so does its complexity",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "moderate",
+      "source_type": "comment",
+      "source_id": "comment_2896",
+      "date": "2023-01-18T09:54:10",
+      "context": "In my opinion, a monolith can be easier to set up for an MVP, but as the product evolves over time so does its complexity. Also a monolith can be harder to scale as you don"
+    }
+  },
+  {
+    "id": "belief_70",
+    "content": "**Belief (strong)**: #coffee deserves a special mention",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "comment",
+      "source_id": "comment_2975",
+      "date": "2020-03-20T10:20:50",
+      "context": "I believe that #coffee deserves a special mention. Also if you find it hard to adjust to #remotework"
+    }
+  },
+  {
+    "id": "belief_71",
+    "content": "**Belief (strong)**: four key elements contribute to success: \"",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "share",
+      "source_id": "share_19",
+      "date": "2024-04-16T11:12:21",
+      "context": "d nuance. \"\n\" \"\n\"Based on my personal experience, I believe that four key elements contribute to success: \"\n\" \"\n\"1. Mastering Your Market - Ever seen a worth"
+    }
+  },
+  {
+    "id": "belief_72",
+    "content": "**Belief (strong)**: 95% of these \"",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "share",
+      "source_id": "share_275",
+      "date": "2023-07-17T08:09:14",
+      "context": "alls throughout the day, but, from my experience, I believe that 95% of these \"\n\"meetings are unnecessary.\"\n\"\"\n\"Personally, I fin"
+    }
+  },
+  {
+    "id": "belief_73",
+    "content": "**Belief (strong)**: as we continue to understand and develop the right tools, it will become an indispensable part of our DevOps arsenal",
+    "metadata": {
+      "type": "belief",
+      "category": "personal",
+      "confidence_level": "strong",
+      "source_type": "share",
+      "source_id": "share_306",
+      "date": "2023-06-12T13:48:35",
+      "context": "culture - efficiency, transparency, reliability. I'm convinced that as we continue to understand and develop the right tools, it will become an indispensable part of our DevOps arsenal.\"\n\"\"\n\"Keen to hear your take on GitOps. Already ad"
+    }
+  },
+  {
+    "id": "belief_74",
+    "content": "**Belief (moderate)**: the book \"Learn Like a Pro\" offers valuable insights into how our brain functions and how we can adopt learning methods that work with our brain’s learning capabilities",
+    "metadata": {
+      "type": "belief",
+      "category": "career",
+      "confidence_level": "moderate",
+      "source_type": "share",
+      "source_id": "share_322",
+      "date": "2023-05-26T11:29:20",
+      "context": "plan as needed.\"\n\"\"\n\"In addition to this roadmap, I've found that the book \"Learn Like a Pro\" offers valuable insights into how our brain functions and how we can adopt learning methods that work with our brain’s learning capabilities. It emphasizes the importance of active learning,"
+    }
+  },
+  {
+    "id": "belief_75",
+    "content": "**Belief (strong)**: Terraform provides a more efficient and scalable solution for GitOps, as it allows you to define your entire infrastructure as code and avoid versioning issues",
+    "metadata": {
+      "type": "belief",
+      "category": "technical",
+      "confidence_level": "strong",
+      "source_type": "share",
+      "source_id": "share_373",
+      "date": "2023-02-22T12:21:28",
+      "context": "ing deeper.\"\n\"\"\n\"After exploring both approaches, I believe that Terraform provides a more efficient and scalable solution for GitOps, as it allows you to define your entire infrastructure as code and avoid versioning issues. However, Helm charts still have their place in th"
+    }
+  }
+]

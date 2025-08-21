@@ -1,0 +1,384 @@
+[
+  {
+    "id": "story_0",
+    "content": "**Personal Story - and key takeaways that can truly make a difference...**: and key takeaways that can truly make a difference, especially for ambitious SaaS founders.",
+    "metadata": {
+      "type": "personal_story",
+      "title": "and key takeaways that can truly make a difference...",
+      "category": "personal",
+      "time_period": "unspecified",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7062316650833879040",
+      "date": "2023-05-11T09:45:01"
+    }
+  },
+  {
+    "id": "story_1",
+    "content": "**Personal Story - Used) and LFU (Least Frequently Used) are some commonly used policies**: Used) and LFU (Least Frequently Used) are some commonly used policies.",
+    "metadata": {
+      "type": "personal_story",
+      "title": "Used) and LFU (Least Frequently Used) are some commonly used policies",
+      "category": "personal",
+      "time_period": "Recently",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7116348194858409985",
+      "date": "2023-10-07T12:11:09"
+    }
+  },
+  {
+    "id": "story_2",
+    "content": "**Personal Story - has led me to believe that the architecture of sof...**: has led me to believe that the architecture of software acts as its backbone, governing its evolution and success",
+    "metadata": {
+      "type": "personal_story",
+      "title": "has led me to believe that the architecture of sof...",
+      "category": "personal",
+      "time_period": "unspecified",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7079415618831101952",
+      "date": "2023-06-27T15:06:54"
+    }
+  },
+  {
+    "id": "story_3",
+    "content": "**Personal Story - as a Python backend developer and the books that s...**: as a Python backend developer and the books that shaped my path, I couldn't help but be inspired by the shared insights and personal stories in the comments section.",
+    "metadata": {
+      "type": "personal_story",
+      "title": "as a Python backend developer and the books that s...",
+      "category": "personal",
+      "time_period": "unspecified",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7064617410531573760",
+      "date": "2023-05-17T18:07:24"
+    }
+  },
+  {
+    "id": "story_4",
+    "content": "**Personal Story - left a job at Ubisoft, where I had worked for four...**: left a job at Ubisoft, where I had worked for four years on mobile game development",
+    "metadata": {
+      "type": "personal_story",
+      "title": "left a job at Ubisoft, where I had worked for four...",
+      "category": "career",
+      "time_period": "recently",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7113436160168767488",
+      "date": "2023-09-29T11:29:53"
+    }
+  },
+  {
+    "id": "story_5",
+    "content": "**Personal Story - of over 14 years in the tech industry and through ...**: of over 14 years in the tech industry and through my own venture, CodeSwiftr, I've come to appreciate the unsung hero of software development - the Software Development Life Cycle (SDLC)",
+    "metadata": {
+      "type": "personal_story",
+      "title": "of over 14 years in the tech industry and through ...",
+      "category": "technical",
+      "time_period": "unspecified",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7069284837504745472",
+      "date": "2023-05-30T15:18:03"
+    }
+  },
+  {
+    "id": "story_6",
+    "content": "**Personal Story - as a software developer, and I'm curious to know y...**: as a software developer, and I'm curious to know your thoughts on this: If you could go back in time and start your career as a junior developer all over again, what would you do differently?",
+    "metadata": {
+      "type": "personal_story",
+      "title": "as a software developer, and I'm curious to know y...",
+      "category": "career",
+      "time_period": "unspecified",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7054796696223924224",
+      "date": "2023-04-20T15:43:24"
+    }
+  },
+  {
+    "id": "story_7",
+    "content": "**Personal Story - that taught me an important lesson about not missing out on opportunities**: that taught me an important lesson about not missing out on opportunities.",
+    "metadata": {
+      "type": "personal_story",
+      "title": "that taught me an important lesson about not missing out on opportunities",
+      "category": "personal",
+      "time_period": "unspecified",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7126536680655716352",
+      "date": "2023-11-04T13:55:41"
+    }
+  },
+  {
+    "id": "story_8",
+    "content": "**Personal Story - in the tech space I've seen how crucial these elements are**: in the tech space I've seen how crucial these elements are.",
+    "metadata": {
+      "type": "personal_story",
+      "title": "in the tech space I've seen how crucial these elements are",
+      "category": "personal",
+      "time_period": "unspecified",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7150474582473224192",
+      "date": "2024-01-09T15:16:53"
+    }
+  },
+  {
+    "id": "story_9",
+    "content": "**Personal Story - through software development, I've noticed that ma...**: through software development, I've noticed that mastery of specific skills like Unix-based systems and CLI can significantly elevate one's game.",
+    "metadata": {
+      "type": "personal_story",
+      "title": "through software development, I've noticed that ma...",
+      "category": "technical",
+      "time_period": "unspecified",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7104889491202453505",
+      "date": "2023-09-05T21:50:34"
+    }
+  },
+  {
+    "id": "story_10",
+    "content": "**Personal Story - was all about the code, leaving no room for personal branding**: was all about the code, leaving no room for personal branding",
+    "metadata": {
+      "type": "personal_story",
+      "title": "was all about the code, leaving no room for personal branding",
+      "category": "technical",
+      "time_period": "when I",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7079716804742328321",
+      "date": "2023-06-28T11:14:54"
+    }
+  },
+  {
+    "id": "story_11",
+    "content": "**Personal Story - secured Series A funding and are grappling with these challenges, let's chat**: secured Series A funding and are grappling with these challenges, let's chat",
+    "metadata": {
+      "type": "personal_story",
+      "title": "secured Series A funding and are grappling with these challenges, let's chat",
+      "category": "personal",
+      "time_period": "recently",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7074429696393773056",
+      "date": "2023-06-13T21:11:11"
+    }
+  },
+  {
+    "id": "story_12",
+    "content": "**Personal Story - I've come to appreciate a fresh perspective - view...**: I've come to appreciate a fresh perspective - viewing technical debt as an opportunity to build 'technical wealth'.",
+    "metadata": {
+      "type": "personal_story",
+      "title": "I've come to appreciate a fresh perspective - view...",
+      "category": "personal",
+      "time_period": "recently",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7070000610896470016",
+      "date": "2023-06-01T14:42:09"
+    }
+  },
+  {
+    "id": "story_13",
+    "content": "**Personal Story - should've respectfully declined**: should've respectfully declined.\nNetworking isn't my full-time job, nor is it a constant pursuit.\nI've not always leveraged my network for personal gain.\nWork-life boundaries? I'm still figuring it out.\nSelling doesn't always come naturally to me.\nI've fumbled with criticism.\nMy communication with clients isn't always as frequent as the \"rule book\" dictates.\nI've prioritized product features poorly on occasions.\nAdapting swiftly is a skill I'm still honing.\nKeeping up with every industry trend is not always feasible.\nI don't always implement everything I learn.\nOver-communicating with stakeholders is a work-in-progress.\nFacing challenges with grace? Not always.\nConsistently implementing habits is a struggle.\nStepping out of my comfort zone still brings jitters.\nEngaging in continuous improvement? It's a journey, not a destination.\nAnd yes, I've failed more times than I can remember.",
+    "metadata": {
+      "type": "personal_story",
+      "title": "should've respectfully declined",
+      "category": "career",
+      "time_period": "when I",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7077234202949107713",
+      "date": "2023-06-21T14:02:59"
+    }
+  },
+  {
+    "id": "story_14",
+    "content": "**Personal Story - as an entrepreneur, I've come to realize that it doesn't come with a manual**: as an entrepreneur, I've come to realize that it doesn't come with a manual.",
+    "metadata": {
+      "type": "personal_story",
+      "title": "as an entrepreneur, I've come to realize that it doesn't come with a manual",
+      "category": "personal",
+      "time_period": "unspecified",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7077234202949107713",
+      "date": "2023-06-21T14:02:59"
+    }
+  },
+  {
+    "id": "story_15",
+    "content": "**Personal Story - through the tech world, particularly in game devel...**: through the tech world, particularly in game development, I've always been intrigued by how habits shape user interactions with technology.",
+    "metadata": {
+      "type": "personal_story",
+      "title": "through the tech world, particularly in game devel...",
+      "category": "technical",
+      "time_period": "unspecified",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7134491050525474816",
+      "date": "2023-11-26T12:51:06"
+    }
+  },
+  {
+    "id": "story_16",
+    "content": "**Personal Story - as a founder of CodeSwiftr, it's that learning never stops**: as a founder of CodeSwiftr, it's that learning never stops",
+    "metadata": {
+      "type": "personal_story",
+      "title": "as a founder of CodeSwiftr, it's that learning never stops",
+      "category": "technical",
+      "time_period": "unspecified",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7077973404590481409",
+      "date": "2023-06-23T15:48:14"
+    }
+  },
+  {
+    "id": "story_17",
+    "content": "**Personal Story - put Clean Architecture to the test? Share your success stories!**: put Clean Architecture to the test? Share your success stories!",
+    "metadata": {
+      "type": "personal_story",
+      "title": "put Clean Architecture to the test? Share your success stories!",
+      "category": "personal",
+      "time_period": "Recently",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7100373133324361728",
+      "date": "2023-08-24T10:54:20"
+    }
+  },
+  {
+    "id": "story_18",
+    "content": "**Personal Story - first saw this book on behavioral economics, I did...**: first saw this book on behavioral economics, I didn't think it would be relevant to tech.",
+    "metadata": {
+      "type": "personal_story",
+      "title": "first saw this book on behavioral economics, I did...",
+      "category": "personal",
+      "time_period": "When I",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7122907173575127040",
+      "date": "2023-10-25T14:38:18"
+    }
+  },
+  {
+    "id": "story_19",
+    "content": "**Personal Story - through various tech startups, I've discovered tha...**: through various tech startups, I've discovered that when technology and vision meet, magic happens Lessons: when technology and vision meet, magic happens",
+    "metadata": {
+      "type": "personal_story",
+      "title": "through various tech startups, I've discovered tha...",
+      "category": "business",
+      "time_period": "unspecified",
+      "lessons_learned": [
+        "when technology and vision meet, magic happens"
+      ],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7079121993421197312",
+      "date": "2023-06-26T19:46:02"
+    }
+  },
+  {
+    "id": "story_20",
+    "content": "**Personal Story - as a developer and founder of CodeSwiftr, I've dis...**: as a developer and founder of CodeSwiftr, I've discovered that understanding the principles of product development is like finding a compass in the tech wilderness Lessons: understanding the principles of product development is like finding a compass in the tech wilderness",
+    "metadata": {
+      "type": "personal_story",
+      "title": "as a developer and founder of CodeSwiftr, I've dis...",
+      "category": "technical",
+      "time_period": "unspecified",
+      "lessons_learned": [
+        "understanding the principles of product development is like finding a compass in the tech wilderness"
+      ],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7069665242854678529",
+      "date": "2023-05-31T16:27:59"
+    }
+  },
+  {
+    "id": "story_21",
+    "content": "**Personal Story - into the world of Docker, I want to share with you...**: into the world of Docker, I want to share with you five actionable steps I've distilled from the must-read books I've encountered along the way",
+    "metadata": {
+      "type": "personal_story",
+      "title": "into the world of Docker, I want to share with you...",
+      "category": "personal",
+      "time_period": "unspecified",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7049408883538206720",
+      "date": "2023-04-05T18:54:09"
+    }
+  },
+  {
+    "id": "story_22",
+    "content": "**Personal Story - read \"How to Avoid the Build Trap\" by Melissa Perri**: read \"How to Avoid the Build Trap\" by Melissa Perri",
+    "metadata": {
+      "type": "personal_story",
+      "title": "read \"How to Avoid the Build Trap\" by Melissa Perri",
+      "category": "personal",
+      "time_period": "recently",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7129783492808196096",
+      "date": "2023-11-13T13:45:25"
+    }
+  },
+  {
+    "id": "story_23",
+    "content": "**Personal Story - fall asleep, but I try to get in bed at the same h...**: fall asleep, but I try to get in bed at the same hour, and I am only allowed to sleep or read something on my Kindle.",
+    "metadata": {
+      "type": "personal_story",
+      "title": "fall asleep, but I try to get in bed at the same h...",
+      "category": "personal",
+      "time_period": "when I",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7267838033830240258",
+      "date": "2024-11-28T11:53:37"
+    }
+  },
+  {
+    "id": "story_24",
+    "content": "**Personal Story - watched David Heinemeier Hansson keynote on Rails,...**: watched David Heinemeier Hansson keynote on Rails, and it got me rethinking the complexity in web development",
+    "metadata": {
+      "type": "personal_story",
+      "title": "watched David Heinemeier Hansson keynote on Rails,...",
+      "category": "technical",
+      "time_period": "recently",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7250519666022871040",
+      "date": "2024-10-11T17:56:36"
+    }
+  },
+  {
+    "id": "story_25",
+    "content": "**Personal Story - introduced match-case pattern matching statement f...**: introduced match-case pattern matching statement feature in my current projects from Python 3.10.",
+    "metadata": {
+      "type": "personal_story",
+      "title": "introduced match-case pattern matching statement f...",
+      "category": "technical",
+      "time_period": "recently",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:7023990359500165121",
+      "date": "2023-01-25T14:30:01"
+    }
+  },
+  {
+    "id": "story_26",
+    "content": "**Personal Story - there were plenty of nice surprises for the Apple ecosystem**: there were plenty of nice surprises for the Apple ecosystem",
+    "metadata": {
+      "type": "personal_story",
+      "title": "there were plenty of nice surprises for the Apple ecosystem",
+      "category": "personal",
+      "time_period": "Last year",
+      "lessons_learned": [],
+      "source_type": "post",
+      "source_id": "urn:li:activity:6680746557115011072",
+      "date": "2020-06-22T11:21:41"
+    }
+  }
+]

@@ -1,0 +1,227 @@
+[
+  {
+    "id": "preference_0",
+    "content": "**Preference - general**: Prefers modular monoliths, but at times, it might be better Reasoning: switch to microservices",
+    "metadata": {
+      "type": "preference",
+      "preference_type": "general",
+      "preferred_option": "modular monoliths, but at times, it might be better",
+      "category": "general",
+      "reasoning": "switch to microservices",
+      "source_type": "post",
+      "source_id": "urn:li:activity:7161618473834516481",
+      "date": "2024-02-09T09:15:00",
+      "context": "I prefer modular monoliths, but at times, it might be better to switch to microservices.\n\nMoving to a microservices st"
+    }
+  },
+  {
+    "id": "preference_1",
+    "content": "**Preference - general**: Prefers examples Reasoning: the Pixar story",
+    "metadata": {
+      "type": "preference",
+      "preference_type": "general",
+      "preferred_option": "examples",
+      "category": "general",
+      "reasoning": "the Pixar story",
+      "source_type": "post",
+      "source_id": "urn:li:activity:7085578486509137922",
+      "date": "2023-07-14T14:38:31",
+      "context": "ome from anywhere, and one of my favorite examples is the Pixar story. In Ed Catmull's book, 'Creati"
+    }
+  },
+  {
+    "id": "preference_2",
+    "content": "**Preference - general**: Prefers way to become a better developer Reasoning: to be willing to learn and to take a hands-on approach to development",
+    "metadata": {
+      "type": "preference",
+      "preference_type": "general",
+      "preferred_option": "way to become a better developer",
+      "category": "general",
+      "reasoning": "to be willing to learn and to take a hands-on approach to development",
+      "source_type": "post",
+      "source_id": "urn:li:activity:7041392127586504704",
+      "date": "2023-03-14T14:58:25",
+      "context": "t CodeSwiftr, we believe that the best way to become a better developer is to be willing to learn and to take a hands-on approach to development. So don't be afraid to dig dee"
+    }
+  },
+  {
+    "id": "preference_3",
+    "content": "**Preference - general**: Prefers way to stay ahead of the curve in the ever-evolving world of software development, especially when it comes to microservices architecture. In his book, Bootstrapping Microservices, Ashley Davis explains the importance of upskilling for developers, and why it Reasoning: key to successful microservices projects",
+    "metadata": {
+      "type": "preference",
+      "preference_type": "general",
+      "preferred_option": "way to stay ahead of the curve in the ever-evolving world of software development, especially when it comes to microservices architecture. In his book, Bootstrapping Microservices, Ashley Davis explains the importance of upskilling for developers, and why it",
+      "category": "general",
+      "reasoning": "key to successful microservices projects",
+      "source_type": "post",
+      "source_id": "urn:li:activity:7010885509333848064",
+      "date": "2022-12-20T10:36:01",
+      "context": "s year for me.\n\nUpskilling is the best way to stay ahead of the curve in the ever-evolving world of software development, especially when it comes to microservices architecture. In his book, Bootstrapping Microservices, Ashley Davis explains the importance of upskilling for developers, and why it is key to successful microservices projects.\n\nUpskilling involves taking t"
+    }
+  },
+  {
+    "id": "preference_4",
+    "content": "**Preference - general**: Prefers way to stay organized and make progress Reasoning: to define top priorities for each project",
+    "metadata": {
+      "type": "preference",
+      "preference_type": "general",
+      "preferred_option": "way to stay organized and make progress",
+      "category": "general",
+      "reasoning": "to define top priorities for each project",
+      "source_type": "post",
+      "source_id": "urn:li:activity:7023270849742843905",
+      "date": "2023-01-23T14:50:56",
+      "context": "Over time, I have found that the best way to stay organized and make progress is to define top priorities for each project. Here are 5 actionable items t"
+    }
+  },
+  {
+    "id": "preference_5",
+    "content": "**Preference - general**: Prefers cure Reasoning: to focus on the bigger picture and use journaling coupled with a brag/achievements list with the things that you were able to do in the recently",
+    "metadata": {
+      "type": "preference",
+      "preference_type": "general",
+      "preferred_option": "cure",
+      "category": "general",
+      "reasoning": "to focus on the bigger picture and use journaling coupled with a brag/achievements list with the things that you were able to do in the recently",
+      "source_type": "comment",
+      "source_id": "comment_303",
+      "date": "2024-03-22T12:34:35",
+      "context": "The best cure is to focus on the bigger picture and use journaling coupled with a brag/achievements list with the things that you were able to do in the recently."
+    }
+  },
+  {
+    "id": "preference_6",
+    "content": "**Preference - general**: Prefers thing you can do to prepare Reasoning: to practice more often and prepare a list of behavioural questions and possible approaches to answer",
+    "metadata": {
+      "type": "preference",
+      "preference_type": "general",
+      "preferred_option": "thing you can do to prepare",
+      "category": "general",
+      "reasoning": "to practice more often and prepare a list of behavioural questions and possible approaches to answer",
+      "source_type": "comment",
+      "source_id": "comment_315",
+      "date": "2024-03-22T12:09:24",
+      "context": "I believe the best thing you can do to prepare is to practice more often and prepare a list of behavioural questions and possible approaches to answer.\n\nOther than that it's also im"
+    }
+  },
+  {
+    "id": "preference_7",
+    "content": "**Preference - general**: Prefers time to plant a try was 20 years ago, the second best time Reasoning: now",
+    "metadata": {
+      "type": "preference",
+      "preference_type": "general",
+      "preferred_option": "time to plant a try was 20 years ago, the second best time",
+      "category": "general",
+      "reasoning": "now",
+      "source_type": "comment",
+      "source_id": "comment_391",
+      "date": "2024-03-20T12:02:06",
+      "context": "Like they say: the best time to plant a try was 20 years ago, the second best time is now."
+    }
+  },
+  {
+    "id": "preference_8",
+    "content": "**Preference - general**: Prefers results came from using Eisenhower matrix to prioritise and then using time blocking to plan everything that Reasoning: important and not urgent",
+    "metadata": {
+      "type": "preference",
+      "preference_type": "general",
+      "preferred_option": "results came from using Eisenhower matrix to prioritise and then using time blocking to plan everything that",
+      "category": "general",
+      "reasoning": "important and not urgent",
+      "source_type": "comment",
+      "source_id": "comment_422",
+      "date": "2024-03-18T17:40:10",
+      "context": "For me the best results came from using Eisenhower matrix to prioritise and then using time blocking to plan everything that is important and not urgent. I also use a physical pomodor"
+    }
+  },
+  {
+    "id": "preference_9",
+    "content": "**Preference - general**: Prefers my iPad Pro as a second screen",
+    "metadata": {
+      "type": "preference",
+      "preference_type": "general",
+      "preferred_option": "my iPad Pro as a second screen",
+      "category": "general",
+      "reasoning": "",
+      "source_type": "comment",
+      "source_id": "comment_913",
+      "date": "2023-11-20T16:18:05",
+      "context": "ore efficient.\n\nWhen I travel I always use my iPad Pro as a second screen."
+    }
+  },
+  {
+    "id": "preference_10",
+    "content": "**Preference - general**: Prefers time to plant a tree was 20 years ago.The second best time Reasoning: now",
+    "metadata": {
+      "type": "preference",
+      "preference_type": "general",
+      "preferred_option": "time to plant a tree was 20 years ago.The second best time",
+      "category": "general",
+      "reasoning": "now",
+      "source_type": "comment",
+      "source_id": "comment_1333",
+      "date": "2023-08-25T17:02:52",
+      "context": "\\The best time to plant a tree was 20 years ago.The second best time is now.\\\" - Chinese Proverb\""
+    }
+  },
+  {
+    "id": "preference_11",
+    "content": "**Preference - general**: Prefers code Reasoning: the code that you never wrote",
+    "metadata": {
+      "type": "preference",
+      "preference_type": "general",
+      "preferred_option": "code",
+      "category": "general",
+      "reasoning": "the code that you never wrote",
+      "source_type": "comment",
+      "source_id": "comment_1410",
+      "date": "2023-08-17T11:42:29",
+      "context": "Roman, the best code is the code that you never wrote. The lesser the code the lesse"
+    }
+  },
+  {
+    "id": "preference_12",
+    "content": "**Preference - general**: Prefers choice Reasoning: subjective and depends on the team's familiarity with the language/framework, project requirements, and personal preferences",
+    "metadata": {
+      "type": "preference",
+      "preference_type": "general",
+      "preferred_option": "choice",
+      "category": "general",
+      "reasoning": "subjective and depends on the team's familiarity with the language/framework, project requirements, and personal preferences",
+      "source_type": "comment",
+      "source_id": "comment_1461",
+      "date": "2023-08-11T15:27:07",
+      "context": "It depends.\n\nUltimately, the best choice is subjective and depends on the team's familiarity with the language/framework, project requirements, and personal preferences. It's essential to consider fa"
+    }
+  },
+  {
+    "id": "preference_13",
+    "content": "**Preference - general**: Prefers we can do Reasoning: to step back and allow them to take ownership, make mistakes, and learn",
+    "metadata": {
+      "type": "preference",
+      "preference_type": "general",
+      "preferred_option": "we can do",
+      "category": "general",
+      "reasoning": "to step back and allow them to take ownership, make mistakes, and learn",
+      "source_type": "comment",
+      "source_id": "comment_1875",
+      "date": "2023-06-25T14:26:06",
+      "context": "rust and autonomy? Sometimes, the best we can do is to step back and allow them to take ownership, make mistakes, and learn."
+    }
+  },
+  {
+    "id": "preference_14",
+    "content": "**Preference - general**: Prefers processes are the ones that people enjoy following and that lead to the desired outcome. This Reasoning: why I always try to bring the concept of game design into my work, it allows me to approach the process design from a different angle",
+    "metadata": {
+      "type": "preference",
+      "preference_type": "general",
+      "preferred_option": "processes are the ones that people enjoy following and that lead to the desired outcome. This",
+      "category": "process",
+      "reasoning": "why I always try to bring the concept of game design into my work, it allows me to approach the process design from a different angle",
+      "source_type": "comment",
+      "source_id": "comment_2905",
+      "date": "2023-01-13T15:42:24",
+      "context": "ivity. I've also learned that the best processes are the ones that people enjoy following and that lead to the desired outcome. This is why I always try to bring the concept of game design into my work, it allows me to approach the process design from a different angle. #gamedev"
+    }
+  }
+]

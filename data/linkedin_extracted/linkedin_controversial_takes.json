@@ -1,0 +1,40 @@
+[
+  {
+    "id": "controversial_0",
+    "content": "**Controversial Take (medium)**: this makes us \"overpaid\", but rather reflects the value we bring to the table",
+    "metadata": {
+      "type": "controversial_take",
+      "statement": "this makes us \"overpaid\", but rather reflects the value we bring to the table",
+      "controversy_level": "medium",
+      "topic_area": "general_opinion",
+      "reasoning": "",
+      "engagement_indicators": {
+        "reactions": 54,
+        "comments": 14,
+        "shares": 1
+      },
+      "source_type": "post",
+      "source_id": "urn:li:activity:7024356574630490112",
+      "date": "2023-01-26T14:45:13"
+    }
+  },
+  {
+    "id": "controversial_1",
+    "content": "**Controversial Take (medium)**: that plans will change",
+    "metadata": {
+      "type": "controversial_take",
+      "statement": "that plans will change",
+      "controversy_level": "medium",
+      "topic_area": "general_opinion",
+      "reasoning": "",
+      "engagement_indicators": {
+        "reactions": 15,
+        "comments": 10,
+        "shares": 0
+      },
+      "source_type": "post",
+      "source_id": "urn:li:activity:7129783492808196096",
+      "date": "2023-11-13T13:45:25"
+    }
+  }
+]
