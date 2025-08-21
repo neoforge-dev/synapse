@@ -139,8 +139,9 @@ From our CLI testing, the Synapse system contains:
 
 ---
 
-## 🔧 **CLI Issue Fixed**
+## 🔧 **CLI Issues Fixed**
 
+### 1. **Insights Themes Null Pointer Bug**
 **Problem Found**: `insights themes` command had a null pointer bug
 **Solution Applied**: Added null checks in `/Users/bogdan/til/graph-rag-mcp/graph_rag/cli/commands/insights.py`
 
@@ -148,6 +149,24 @@ From our CLI testing, the Synapse system contains:
 # Fixed lines 102-103:
 topics = doc.get("metadata", {}).get("topics", []) if doc else []
 source = doc.get("metadata", {}).get("id_source", "unknown") if doc else "unknown"
+```
+
+### 2. **Query Ask Parameter Mismatch**  
+**Problem Found**: Query ask command sending "text" instead of "query_text" parameter
+**Solution Applied**: Fixed parameter in `/Users/bogdan/til/graph-rag-mcp/graph_rag/cli/commands/query.py:123`
+
+```python
+# Fixed line 123:
+payload: dict[str, Any] = {"query_text": query_text, "include_graph": show_graph}
+```
+
+### 3. **Graph Neighbors Connection Issue**
+**Problem Found**: Graph commands trying to connect to wrong port (default 7890 vs running 8000)
+**Solution Applied**: Use environment variable to set correct API port
+
+```bash
+# Working command:
+SYNAPSE_API_PORT=8000 uv run synapse graph neighbors --id "FastAPI"
 ```
 
 ---
