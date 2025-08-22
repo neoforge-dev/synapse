@@ -38,6 +38,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 
 import { leadsApi, LeadDetected } from "@/lib/api-client"
+import { LeadScoringVisualization } from "@/components/leads/lead-scoring-visualization"
+import { LeadActivityTimeline } from "@/components/leads/lead-activity-timeline"
+import { LeadNotesCommunication } from "@/components/leads/lead-notes-communication"
 
 const priorityColors = {
   urgent: "bg-red-100 text-red-800 border-red-200",
@@ -312,62 +315,8 @@ export default function LeadDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Lead Scoring */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5" />
-                  Lead Score Analysis
-                </CardTitle>
-                <CardDescription>
-                  AI-powered lead scoring with confidence metrics
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="text-center">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-2 ${getScoreColor(lead.lead_score)}`}>
-                      {lead.lead_score}
-                    </div>
-                    <div className="text-sm font-medium text-gray-700">Lead Score</div>
-                    <div className="text-xs text-gray-500">out of 10</div>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className={`text-2xl font-bold mb-2 ${getConfidenceColor(lead.confidence)}`}>
-                      {Math.round(lead.confidence * 100)}%
-                    </div>
-                    <div className="text-sm font-medium text-gray-700">Confidence</div>
-                    <div className="text-xs text-gray-500">AI accuracy</div>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600 mb-2">
-                      €{lead.estimated_value_euros.toLocaleString()}
-                    </div>
-                    <div className="text-sm font-medium text-gray-700">Est. Value</div>
-                    <div className="text-xs text-gray-500">potential revenue</div>
-                  </div>
-                </div>
-                
-                <Separator className="my-4" />
-                
-                {/* Urgency Indicators */}
-                {lead.urgency_indicators && lead.urgency_indicators.length > 0 && (
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 mb-2">Urgency Indicators</div>
-                    <div className="flex flex-wrap gap-2">
-                      {lead.urgency_indicators.map((indicator, index) => (
-                        <Badge key={index} variant="outline" className="text-orange-600 border-orange-200">
-                          <Zap className="mr-1 h-3 w-3" />
-                          {indicator}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {/* Advanced Lead Scoring */}
+            <LeadScoringVisualization lead={lead} />
 
             {/* Source Content */}
             <Card>
@@ -447,7 +396,7 @@ export default function LeadDetailPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
-                  Timeline
+                  Quick Timeline
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -474,37 +423,16 @@ export default function LeadDetailPage() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Notes */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Edit className="h-5 w-5" />
-                  Notes
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {lead.follow_up_notes ? (
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <div className="text-sm text-gray-700">
-                        {lead.follow_up_notes}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-500 text-center py-4">
-                      No notes yet
-                    </div>
-                  )}
-                  
-                  <Button variant="outline" className="w-full" size="sm">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Note
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           </div>
+        </div>
+
+        {/* Advanced Components */}
+        <div className="space-y-8 mt-8">
+          {/* Activity Timeline */}
+          <LeadActivityTimeline lead={lead} />
+          
+          {/* Notes & Communication */}
+          <LeadNotesCommunication lead={lead} />
         </div>
       </div>
 
