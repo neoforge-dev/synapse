@@ -1,0 +1,366 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  release:
+    types: [published]
+
+env:
+  PYTHON_VERSION: "3.11"
+  UV_VERSION: "0.1.15"
+
+jobs:
+  # Code Quality and Linting
+  lint:
+    name: Lint and Format Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install uv
+      run: pip install uv==${{ env.UV_VERSION }}
+      
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/uv
+        key: uv-${{ runner.os }}-${{ hashFiles('**/pyproject.toml') }}
+        restore-keys: |
+          uv-${{ runner.os }}-
+          
+    - name: Install dependencies
+      run: |
+        uv venv
+        source .venv/bin/activate
+        uv pip install -e ".[dev]"
+        
+    - name: Run ruff linter
+      run: |
+        source .venv/bin/activate
+        ruff check --output-format=github .
+        
+    - name: Run ruff formatter
+      run: |
+        source .venv/bin/activate
+        ruff format --check .
+        
+    - name: Run mypy type checker
+      run: |
+        source .venv/bin/activate
+        mypy src/techlead_autopilot --ignore-missing-imports
+
+  # Security Scanning
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install uv
+      run: pip install uv==${{ env.UV_VERSION }}
+      
+    - name: Install dependencies
+      run: |
+        uv venv
+        source .venv/bin/activate
+        uv pip install -e ".[dev]"
+        uv pip install bandit safety
+        
+    - name: Run bandit security scanner
+      run: |
+        source .venv/bin/activate
+        bandit -r src/techlead_autopilot -f json -o bandit-report.json
+        
+    - name: Run safety vulnerability scanner
+      run: |
+        source .venv/bin/activate
+        safety check --json --output safety-report.json || true
+        
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+
+  # Unit Tests
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+        
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: test_techlead_autopilot
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Install uv
+      run: pip install uv==${{ env.UV_VERSION }}
+      
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/uv
+        key: uv-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+        restore-keys: |
+          uv-${{ matrix.python-version }}-
+          
+    - name: Install dependencies
+      run: |
+        uv venv
+        source .venv/bin/activate
+        uv pip install -e ".[dev]"
+        
+    - name: Set up test environment
+      env:
+        TECHLEAD_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_techlead_autopilot
+        TECHLEAD_REDIS_URL: redis://localhost:6379/0
+        TECHLEAD_ENVIRONMENT: testing
+        TECHLEAD_JWT_SECRET_KEY: test-secret-key
+      run: |
+        source .venv/bin/activate
+        # Run database migrations
+        uv run alembic upgrade head
+        
+    - name: Run tests with coverage
+      env:
+        TECHLEAD_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_techlead_autopilot
+        TECHLEAD_REDIS_URL: redis://localhost:6379/0
+        TECHLEAD_ENVIRONMENT: testing
+        TECHLEAD_JWT_SECRET_KEY: test-secret-key
+      run: |
+        source .venv/bin/activate
+        pytest --cov=techlead_autopilot --cov-report=xml --cov-report=html -v
+        
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-${{ matrix.python-version }}
+
+  # Integration Tests
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Start services with Docker Compose
+      run: |
+        cp .env.example .env || touch .env
+        echo "TECHLEAD_ENVIRONMENT=testing" >> .env
+        docker-compose up -d --wait
+        
+    - name: Wait for services to be ready
+      run: |
+        timeout 60 bash -c 'until curl -f http://localhost:8000/health; do sleep 1; done'
+        
+    - name: Run integration tests
+      run: |
+        docker-compose exec -T api uv run pytest tests/integration/ -v
+        
+    - name: Get service logs
+      if: failure()
+      run: |
+        docker-compose logs
+        
+    - name: Cleanup
+      if: always()
+      run: |
+        docker-compose down -v
+
+  # Build Docker Image
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [lint, security, test]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Login to Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: techleadautopilot/api
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        target: production
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Database Migration Test
+  migration-test:
+    name: Database Migration Test
+    runs-on: ubuntu-latest
+    needs: [test]
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: migration_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install uv
+      run: pip install uv==${{ env.UV_VERSION }}
+      
+    - name: Install dependencies
+      run: |
+        uv venv
+        source .venv/bin/activate
+        uv pip install -e ".[dev]"
+        
+    - name: Test fresh migration
+      env:
+        TECHLEAD_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/migration_test
+      run: |
+        source .venv/bin/activate
+        uv run alembic upgrade head
+        
+    - name: Test migration rollback
+      env:
+        TECHLEAD_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/migration_test
+      run: |
+        source .venv/bin/activate
+        uv run alembic downgrade -1
+        uv run alembic upgrade head
+
+  # Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build, integration-test, migration-test]
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment: staging
+    
+    steps:
+    - name: Deploy to staging
+      run: |
+        echo "Deploying to staging environment"
+        # Add deployment script here (e.g., update staging server)
+
+  # Deploy to Production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, integration-test, migration-test]
+    if: github.event_name == 'release'
+    environment: production
+    
+    steps:
+    - name: Deploy to production
+      run: |
+        echo "Deploying to production environment"
+        # Add production deployment script here
+
+  # Cleanup old artifacts
+  cleanup:
+    name: Cleanup Artifacts
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [lint, security, test, integration-test, build, migration-test]
+    
+    steps:
+    - name: Delete old artifacts
+      uses: geekyeggo/delete-artifact@v2
+      with:
+        name: |
+          security-reports
+        failOnError: false
