@@ -21,7 +21,7 @@ from .middleware import (
     RequestLoggingMiddleware,
     PII_SanitizationMiddleware
 )
-from .routers import auth, content, leads, organizations, health
+from .routers import auth, content, leads, organizations, health, scheduler
 
 
 @asynccontextmanager
@@ -124,6 +124,12 @@ def create_app() -> FastAPI:
         leads.router,
         prefix=f"{settings.api_prefix}/leads",
         tags=["Lead Detection"]
+    )
+    
+    app.include_router(
+        scheduler.router,
+        prefix=f"{settings.api_prefix}/scheduler",
+        tags=["Automated Posting"]
     )
     
     @app.get("/")
