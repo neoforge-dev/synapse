@@ -212,12 +212,17 @@ class InMemoryAuthProvider(AuthProvider):
         # Update last used timestamp
         api_key_model.last_used = datetime.utcnow()
 
-        return self._users.get(api_key_model.user_id)
+        user = self._users.get(api_key_model.user_id)
+        if user and not user.is_active:
+            return None
+        return user
 
     async def revoke_api_key(self, user_id: UUID, key_id: UUID) -> bool:
         """Revoke an API key."""
         api_key = self._api_keys.get(key_id)
         if api_key and api_key.user_id == user_id:
+            if not api_key.is_active:
+                return False  # Already revoked
             api_key.is_active = False
             logger.info(f"Revoked API key {key_id} for user {user_id}")
             return True

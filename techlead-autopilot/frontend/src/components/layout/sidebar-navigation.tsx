@@ -230,6 +230,7 @@ export function SidebarNavigation({
         <div className="p-4 border-b border-gray-200">
           <button
             onClick={() => onOpenSearch?.()}
+            data-tour="search-button"
             className="w-full flex items-center px-3 py-2 text-sm border border-gray-200 rounded-lg hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-left"
           >
             <Search className="w-4 h-4 text-gray-400 mr-3" />

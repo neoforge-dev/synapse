@@ -16,7 +16,7 @@ export default function DashboardPage() {
     >
       <div className="space-y-6">
         {/* Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-component="stats-overview">
           {/* User Info Card */}
           <Card>
             <CardHeader>
@@ -47,7 +47,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* Content Generation Card */}
-          <Card>
+          <Card data-tour="content-card" data-component="content-generation">
             <CardHeader>
               <CardTitle>Content Generation</CardTitle>
             </CardHeader>
@@ -55,8 +55,8 @@ export default function DashboardPage() {
               <p className="text-gray-600 mb-4">
                 Generate high-quality LinkedIn content automatically.
               </p>
-              <div className="space-y-2">
-                <Button className="w-full" asChild>
+              <div className="space-y-2" data-component="quick-actions">
+                <Button className="w-full" asChild data-tour="generate-content">
                   <Link href="/dashboard/content/generate">
                     Generate New Content
                   </Link>
@@ -71,7 +71,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* Leads Card */}
-          <Card>
+          <Card data-tour="leads-card" data-component="lead-detection">
             <CardHeader>
               <CardTitle>Lead Detection</CardTitle>
             </CardHeader>
