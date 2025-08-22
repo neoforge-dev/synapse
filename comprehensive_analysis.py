@@ -6,24 +6,26 @@ This script creates a detailed analysis report of Notion-related content and cro
 correlations based on the documented analysis and the Synapse system's capabilities.
 """
 
-import json
 import asyncio
+import json
 from datetime import datetime, timezone
 from pathlib import Path
-from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+
 from graph_rag.config import Settings
+from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
+
 
 class ComprehensiveAnalysisReport:
     """Generates comprehensive analysis report based on available data."""
-    
+
     def __init__(self):
         self.settings = Settings()
         self.graph_repo = MemgraphGraphRepository(self.settings)
-    
+
     async def analyze_ingested_content(self):
         """Analyze the content that was actually ingested."""
         print("🔍 Analyzing ingested content...")
-        
+
         # Get chunks and their content
         chunks_query = """
         MATCH (d:Document)-[:HAS_CHUNK]->(c:Chunk)
@@ -31,17 +33,17 @@ class ComprehensiveAnalysisReport:
         ORDER BY d.document_id, c.chunk_id
         LIMIT 50
         """
-        
+
         try:
             chunks = await self.graph_repo.execute_query(chunks_query)
             print(f"📝 Found {len(chunks)} chunks to analyze")
-            
+
             # Analyze content for patterns
             notion_patterns = []
             linkedin_patterns = []
             content_strategy_patterns = []
             workflow_patterns = []
-            
+
             for chunk in chunks:
                 text = chunk.get('c.text', '').lower()
                 chunk_data = {
@@ -49,23 +51,23 @@ class ComprehensiveAnalysisReport:
                     'chunk_id': chunk.get('c.chunk_id'),
                     'text': chunk.get('c.text', '')
                 }
-                
+
                 # Look for Notion-related content
                 if any(term in text for term in ['notion', 'knowledge management', 'note taking', 'capture', 'organize']):
                     notion_patterns.append(chunk_data)
-                
+
                 # Look for LinkedIn-related content
                 if any(term in text for term in ['linkedin', 'professional network', 'social media', 'post', 'engagement']):
                     linkedin_patterns.append(chunk_data)
-                
+
                 # Look for content strategy patterns
                 if any(term in text for term in ['content strategy', 'content creation', 'content optimization', 'content performance', 'engagement', 'viral']):
                     content_strategy_patterns.append(chunk_data)
-                
+
                 # Look for workflow patterns
                 if any(term in text for term in ['workflow', 'process', 'pipeline', 'draft', 'publish', 'methodology']):
                     workflow_patterns.append(chunk_data)
-            
+
             return {
                 'total_chunks': len(chunks),
                 'notion_patterns': notion_patterns,
@@ -73,15 +75,15 @@ class ComprehensiveAnalysisReport:
                 'content_strategy_patterns': content_strategy_patterns,
                 'workflow_patterns': workflow_patterns
             }
-            
+
         except Exception as e:
             print(f"Error analyzing content: {e}")
             return {}
-    
+
     def generate_notion_analysis(self, content_analysis):
         """Generate Notion-related analysis based on ingested content."""
         notion_patterns = content_analysis.get('notion_patterns', [])
-        
+
         return {
             'content_found': {
                 'chunks_with_notion_references': len(notion_patterns),
@@ -106,12 +108,12 @@ class ComprehensiveAnalysisReport:
                 'feedback_phase': 'Engagement and insights fed back into Notion knowledge base'
             }
         }
-    
+
     def generate_content_evolution_patterns(self, content_analysis):
         """Analyze content evolution and workflow patterns."""
         workflow_patterns = content_analysis.get('workflow_patterns', [])
         strategy_patterns = content_analysis.get('content_strategy_patterns', [])
-        
+
         return {
             'draft_to_publish_workflows': {
                 'notion_drafting': 'Ideas and drafts created in Notion workspace',
@@ -134,12 +136,12 @@ class ComprehensiveAnalysisReport:
                 'audience_adaptation': 'Content tailored for different audience segments'
             }
         }
-    
+
     def generate_strategic_relationships(self, content_analysis):
         """Extract strategic relationships between platforms and methodologies."""
         linkedin_patterns = content_analysis.get('linkedin_patterns', [])
         strategy_patterns = content_analysis.get('content_strategy_patterns', [])
-        
+
         return {
             'platform_synergies': {
                 'notion_linkedin_pipeline': 'Systematic flow from Notion drafts to LinkedIn posts',
@@ -160,7 +162,7 @@ class ComprehensiveAnalysisReport:
                 'feedback_integration': 'Platform feedback improves content strategy'
             }
         }
-    
+
     def generate_cross_platform_insights(self):
         """Generate insights about cross-platform content patterns."""
         return {
@@ -183,21 +185,21 @@ class ComprehensiveAnalysisReport:
                 'community_building': 'Consistent value creation builds professional network'
             }
         }
-    
+
     async def generate_comprehensive_report(self):
         """Generate the complete comprehensive analysis report."""
         print("📊 Generating Comprehensive Cross-Platform Analysis Report...")
         print("=" * 70)
-        
+
         # Analyze ingested content
         content_analysis = await self.analyze_ingested_content()
-        
+
         # Generate analysis sections
         notion_analysis = self.generate_notion_analysis(content_analysis)
         evolution_patterns = self.generate_content_evolution_patterns(content_analysis)
         strategic_relationships = self.generate_strategic_relationships(content_analysis)
         cross_platform_insights = self.generate_cross_platform_insights()
-        
+
         # Compile comprehensive report
         comprehensive_report = {
             'analysis_metadata': {
@@ -211,7 +213,7 @@ class ComprehensiveAnalysisReport:
                 ],
                 'scope': 'Notion workflows and cross-platform content strategy'
             },
-            
+
             'executive_summary': {
                 'key_findings': [
                     'Evidence of sophisticated content strategy intelligence platform implementation',
@@ -226,12 +228,12 @@ class ComprehensiveAnalysisReport:
                     'business_development': 'Content strategy as business development tool'
                 }
             },
-            
+
             'notion_content_analysis': notion_analysis,
             'content_evolution_patterns': evolution_patterns,
             'strategic_relationships': strategic_relationships,
             'cross_platform_insights': cross_platform_insights,
-            
+
             'correlation_findings': {
                 'draft_to_publish_workflows': {
                     'pattern': 'Notion → LinkedIn content pipeline',
@@ -252,7 +254,7 @@ class ComprehensiveAnalysisReport:
                     'competitive_advantage': 'Systematic approach creates sustainable differentiation'
                 }
             },
-            
+
             'implementation_roadmap': {
                 'phase_1_foundation': {
                     'timeframe': '1-2 weeks',
@@ -282,7 +284,7 @@ class ComprehensiveAnalysisReport:
                     ]
                 }
             },
-            
+
             'business_outcomes': {
                 'content_strategy': {
                     'efficiency_gains': '70% reduction in content planning time',
@@ -303,7 +305,7 @@ class ComprehensiveAnalysisReport:
                     'technical_credibility': 'Deep technical knowledge demonstrated consistently'
                 }
             },
-            
+
             'technical_architecture': {
                 'synapse_platform': {
                     'content_intelligence': 'Advanced analytics and correlation analysis',
@@ -318,7 +320,7 @@ class ComprehensiveAnalysisReport:
                     'predictive_modeling': 'Content performance prediction and optimization'
                 }
             },
-            
+
             'success_metrics': {
                 'content_metrics': {
                     'posting_consistency': 'Target: 2-3 high-quality posts per week',
@@ -334,41 +336,41 @@ class ComprehensiveAnalysisReport:
                 }
             }
         }
-        
+
         return comprehensive_report
-    
+
     async def save_report(self, report):
         """Save the comprehensive report to file."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"comprehensive_cross_platform_analysis_{timestamp}.json"
         filepath = Path(f"/tmp/{filename}")
-        
+
         try:
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(report, f, indent=2, ensure_ascii=False)
-            
+
             print(f"📄 Comprehensive report saved to: {filepath}")
             return filepath
         except Exception as e:
             print(f"❌ Error saving report: {e}")
             return None
-    
+
     def print_executive_summary(self, report):
         """Print executive summary of the analysis."""
         print("\n🎯 EXECUTIVE SUMMARY")
         print("=" * 70)
-        
+
         executive = report.get('executive_summary', {})
-        
+
         print("\n📋 Key Findings:")
         for finding in executive.get('key_findings', []):
             print(f"  • {finding}")
-        
+
         print("\n💼 Business Impact:")
         business_impact = executive.get('business_impact', {})
         for key, value in business_impact.items():
             print(f"  • {key.replace('_', ' ').title()}: {value}")
-        
+
         print("\n🚀 Implementation Phases:")
         roadmap = report.get('implementation_roadmap', {})
         for phase, details in roadmap.items():
@@ -377,12 +379,12 @@ class ComprehensiveAnalysisReport:
             print(f"  • {phase_name} ({timeframe})")
             for action in details.get('actions', [])[:2]:  # Show first 2 actions
                 print(f"    - {action}")
-        
+
         print("\n📊 Expected Outcomes:")
         outcomes = report.get('business_outcomes', {})
         for category, details in outcomes.items():
             if category == 'content_strategy':
-                print(f"  • Content Strategy:")
+                print("  • Content Strategy:")
                 for key, value in details.items():
                     print(f"    - {key.replace('_', ' ').title()}: {value}")
                 break
@@ -392,24 +394,24 @@ async def main():
     print("🔍 Comprehensive Cross-Platform Correlation Analysis")
     print("=" * 70)
     print("Analyzing Notion workflows and cross-platform content strategies...")
-    
+
     try:
         # Initialize analysis engine
         analyzer = ComprehensiveAnalysisReport()
-        
+
         # Generate comprehensive report
         report = await analyzer.generate_comprehensive_report()
-        
+
         # Print executive summary
         analyzer.print_executive_summary(report)
-        
+
         # Save full report
         filepath = await analyzer.save_report(report)
-        
-        print(f"\n✅ Analysis Complete!")
+
+        print("\n✅ Analysis Complete!")
         print(f"📄 Full report available at: {filepath}")
         print("\n🎉 Ready for implementation!")
-        
+
     except Exception as e:
         print(f"❌ Analysis failed: {e}")
 

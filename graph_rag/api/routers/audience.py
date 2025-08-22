@@ -60,7 +60,7 @@ async def analyze_audience(
     """Analyze content for audience targeting and engagement prediction."""
     try:
         logger.info(f"Epic 8.3: Analyzing audience for platform: {request.platform}")
-        
+
         # Mock audience analysis
         mock_response = AudienceAnalysisResponse(
             target_audience={
@@ -80,10 +80,10 @@ async def analyze_audience(
                 "experience_levels": {"senior": 0.5, "mid_level": 0.3, "executive": 0.2}
             }
         )
-        
+
         logger.info("Epic 8.3: Audience analysis completed successfully")
         return mock_response
-        
+
     except Exception as e:
         logger.error(f"Epic 8.3: Error in audience analysis: {e}")
         raise HTTPException(status_code=422, detail=f"Audience analysis failed: {str(e)}")
@@ -97,12 +97,12 @@ async def analyze_resonance(
     """Analyze how content resonates with specific audience segments."""
     try:
         logger.info(f"Epic 8.3: Analyzing resonance for {len(request.target_segments)} segments")
-        
+
         # Mock resonance analysis
         resonance_scores = {}
         for segment in request.target_segments:
             resonance_scores[segment] = 0.7 + (hash(segment) % 30) / 100
-        
+
         mock_response = ResonanceAnalysisResponse(
             resonance_scores=resonance_scores,
             segment_analysis={
@@ -116,9 +116,9 @@ async def analyze_resonance(
                 "Use more accessible language for broader appeal"
             ]
         )
-        
+
         return mock_response
-        
+
     except Exception as e:
         logger.error(f"Epic 8.3: Error in resonance analysis: {e}")
         raise HTTPException(status_code=422, detail=f"Resonance analysis failed: {str(e)}")
@@ -133,7 +133,7 @@ async def get_audience_segments(
     """Get available audience segments and their characteristics."""
     try:
         logger.info(f"Epic 8.3: Getting audience segments for platform: {platform}")
-        
+
         # Mock segments data
         mock_segments = [
             {
@@ -158,7 +158,7 @@ async def get_audience_segments(
                 "engagement_rate": 0.04
             }
         ]
-        
+
         mock_response = AudienceSegmentsResponse(
             segments=mock_segments,
             segment_characteristics={
@@ -179,9 +179,9 @@ async def get_audience_segments(
                 "Use enterprise_executives for strategic content"
             ]
         )
-        
+
         return mock_response
-        
+
     except Exception as e:
         logger.error(f"Epic 8.3: Error getting audience segments: {e}")
         raise HTTPException(status_code=500, detail=f"Segments retrieval failed: {str(e)}")
@@ -196,7 +196,7 @@ async def get_segment_insights(
     """Get detailed insights for a specific audience segment."""
     try:
         logger.info(f"Epic 8.3: Getting insights for segment: {segment_id}")
-        
+
         # Mock segment insights
         mock_insights = {
             "segment_id": segment_id,
@@ -216,9 +216,9 @@ async def get_segment_insights(
                 "Technical debt solutions"
             ]
         }
-        
+
         return mock_insights
-        
+
     except Exception as e:
         logger.error(f"Epic 8.3: Error getting segment insights: {e}")
         raise HTTPException(status_code=500, detail=f"Segment insights failed: {str(e)}")
@@ -233,7 +233,7 @@ async def optimize_targeting(
     """Optimize audience targeting for content."""
     try:
         logger.info(f"Epic 8.3: Optimizing targeting for {len(current_segments)} segments")
-        
+
         # Mock targeting optimization
         mock_optimization = {
             "recommended_segments": ["technical_leaders", "startup_founders"],
@@ -248,9 +248,9 @@ async def optimize_targeting(
                 "relevance_score": 0.89
             }
         }
-        
+
         return mock_optimization
-        
+
     except Exception as e:
         logger.error(f"Epic 8.3: Error optimizing targeting: {e}")
         raise HTTPException(status_code=422, detail=f"Targeting optimization failed: {str(e)}")

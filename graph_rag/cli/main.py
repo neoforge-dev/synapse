@@ -6,6 +6,7 @@ from graph_rag import __version__  # Assume version is defined in __init__.py
 from graph_rag.cli.commands.admin import app as admin_app
 from graph_rag.cli.commands.analytics import app as analytics_app
 from graph_rag.cli.commands.compose import app as compose_app
+
 # from graph_rag.cli.commands.concept_map import app as concept_map_app  # Temporary disabled due to circular imports
 from graph_rag.cli.commands.config import app as config_app
 from graph_rag.cli.commands.consolidate import app as consolidate_app

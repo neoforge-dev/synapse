@@ -6,8 +6,9 @@ import json
 import logging  # Add logging import
 import sys
 from collections import defaultdict
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import typer
 import yaml
@@ -40,11 +41,11 @@ from graph_rag.infrastructure.document_processor.simple_processor import (
 # MemgraphGraphRepository now imported via dependency injection for graceful fallback
 # Vector store now created via factory function instead of direct import
 from graph_rag.models import ProcessedDocument
-from graph_rag.services.ingestion import IngestionService
 from graph_rag.services.batch_ingestion import (
     BatchConfig,
     IncrementalIngestion,
 )
+from graph_rag.services.ingestion import IngestionService
 from graph_rag.utils.identity import derive_document_id
 
 logger = logging.getLogger(__name__)  # Initialize logger
@@ -277,7 +278,7 @@ async def process_files_with_batch(
     repo = create_graph_repository(settings)
     processor = SimpleDocumentProcessor()
     extractor = SpacyEntityExtractor()
-    
+
     # Create embedding service
     try:
         if enable_embeddings:
@@ -286,12 +287,12 @@ async def process_files_with_batch(
             raise RuntimeError("Embeddings disabled")
     except Exception:
         embedding_service = MockEmbeddingService(dimension=10)
-    
+
     vector_store = create_vector_store(settings)
-    
+
     try:
         await repo.connect()
-        
+
         # Create ingestion service
         ingestion_service = IngestionService(
             document_processor=processor,
@@ -300,22 +301,22 @@ async def process_files_with_batch(
             embedding_service=embedding_service,
             vector_store=vector_store,
         )
-        
+
         # Configure batch processing with progress reporting
         def progress_callback(processed: int, total: int, successful: int, failed: int) -> None:
             logger.info(f"Batch progress: {processed}/{total} files processed ({processed/total:.1%})")
-        
+
         batch_config = BatchConfig(
             batch_size=batch_size,
             progress_callback=progress_callback,
         )
-        
+
         # Create incremental ingestion service
         incremental_ingestion = IncrementalIngestion(
             ingestion_service=ingestion_service,
             config=batch_config,
         )
-        
+
         # Process files in batches
         result = await incremental_ingestion.process_files(
             file_paths=candidates,
@@ -323,7 +324,7 @@ async def process_files_with_batch(
             replace_existing=replace_existing,
             metadata_parser=metadata_parser,
         )
-        
+
         # Convert to expected format
         results_payload = None
         if as_json:
@@ -341,16 +342,16 @@ async def process_files_with_batch(
                     else:
                         item["error"] = file_result.error
                     results_payload.append(item)
-        
+
         logger.info(f"Batch processing complete: {result.successful_files}/{result.total_files} files successful")
         logger.info(f"Total processing time: {result.total_processing_time:.2f}s")
         logger.info(f"Overall success rate: {result.overall_success_rate:.1%}")
-        
+
         if result.failed_files > 0:
             logger.warning(f"Failed files can be retried: {result.failed_file_paths}")
-        
+
         return result.successful_files, result.failed_files, results_payload
-        
+
     finally:
         await repo.close()
 
@@ -770,15 +771,15 @@ async def ingest(
                 use_batch_processing is True or
                 (use_batch_processing is None and len(candidates) >= 100)
             )
-            
+
             if should_use_batch:
                 logger.info(f"Using batch processing for {len(candidates)} files (batch_size={batch_size})")
-                
+
                 # Define metadata parser function
                 def metadata_parser(path: Path) -> dict[str, Any]:
                     fm = parse_front_matter(path)
                     return _merge_metadata(fm)
-                
+
                 # Use batch processing
                 succeeded, failed, results_payload = await process_files_with_batch(
                     candidates=candidates,

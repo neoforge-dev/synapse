@@ -92,6 +92,40 @@ class Settings(BaseSettings):
         "all-MiniLM-L6-v2",
         description="Sentence-transformer model for the vector store. Default: all-MiniLM-L6-v2",
     )
+
+    # --- FAISS Optimization Settings ---
+    use_optimized_faiss: bool = Field(
+        True,
+        description="Use optimized FAISS vector store for 10x+ performance improvement. Default: True",
+    )
+    faiss_use_gpu: bool = Field(
+        True,
+        description="Enable GPU acceleration for FAISS when available. Default: True",
+    )
+    faiss_quantize: bool = Field(
+        True,
+        description="Enable quantization for memory efficiency in FAISS. Default: True",
+    )
+    faiss_nlist: int = Field(
+        100,
+        ge=1,
+        description="Number of clusters for FAISS IVF indexing. Default: 100",
+    )
+    faiss_m: int = Field(
+        16,
+        ge=4,
+        description="Number of connections for FAISS HNSW indexing. Default: 16",
+    )
+    faiss_ef_construction: int = Field(
+        200,
+        ge=16,
+        description="HNSW construction quality parameter (higher = better accuracy, slower build). Default: 200",
+    )
+    faiss_ef_search: int = Field(
+        50,
+        ge=1,
+        description="HNSW search quality parameter (higher = better accuracy, slower search). Default: 50",
+    )
     # vector_store_host: Optional[str] = Field(None, description="Hostname for the vector store (if applicable).") # Example for Qdrant
     # vector_store_port: Optional[int] = Field(None, description="Port for the vector store (if applicable).") # Example for Qdrant
     # vector_store_api_key: Optional[SecretStr] = Field(None, ...)

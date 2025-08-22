@@ -5,13 +5,12 @@ Tracks performance metrics for the 52-week content strategy based on Synapse ana
 Monitors engagement, business development, and ROI metrics.
 """
 
+import csv
 import json
 import sqlite3
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
-from typing import Dict, List, Optional
-import csv
-import os
+
 
 @dataclass
 class ContentPost:
@@ -20,11 +19,11 @@ class ContentPost:
     date: str
     day_of_week: str
     content_type: str  # Strategic, Technical, Scaling, etc.
-    signature_series: Optional[str]  # Fractional CTO Insights, #NOBUILD, etc.
+    signature_series: str | None  # Fractional CTO Insights, #NOBUILD, etc.
     headline: str
     platform: str
     posting_time: str
-    
+
     # Engagement metrics
     views: int = 0
     likes: int = 0
@@ -32,13 +31,13 @@ class ContentPost:
     shares: int = 0
     saves: int = 0
     engagement_rate: float = 0.0
-    
+
     # Business development metrics
     profile_views: int = 0
     connection_requests: int = 0
     consultation_inquiries: int = 0
     discovery_calls: int = 0
-    
+
     # Content performance
     click_through_rate: float = 0.0
     comment_quality_score: float = 0.0  # 1-5 scale
@@ -51,36 +50,36 @@ class WeeklyPerformance:
     start_date: str
     quarter: str
     theme: str
-    
+
     # Engagement totals
     total_posts: int
     total_views: int
     total_engagement: int
     avg_engagement_rate: float
-    
+
     # Business development totals
     total_profile_views: int
     total_connections: int
     total_inquiries: int
     total_discovery_calls: int
-    
+
     # Performance analysis
     best_performing_post: str
     best_engagement_rate: float
     optimal_posting_time: str
-    
+
 class ContentAnalytics:
     """Main analytics tracking and dashboard system."""
-    
+
     def __init__(self, db_path: str = "content_analytics.db"):
         self.db_path = db_path
         self.init_database()
-        
+
     def init_database(self):
         """Initialize SQLite database for content tracking."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Create posts table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS posts (
@@ -108,7 +107,7 @@ class ContentAnalytics:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # Create weekly_performance table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS weekly_performance (
@@ -130,7 +129,7 @@ class ContentAnalytics:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # Create business_pipeline table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS business_pipeline (
@@ -147,15 +146,15 @@ class ContentAnalytics:
                 FOREIGN KEY (source_post_id) REFERENCES posts (post_id)
             )
         ''')
-        
+
         conn.commit()
         conn.close()
-    
+
     def add_post(self, post: ContentPost):
         """Add a new content post to tracking."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT OR REPLACE INTO posts 
             (post_id, date, day_of_week, content_type, signature_series, headline, 
@@ -171,66 +170,66 @@ class ContentAnalytics:
             post.consultation_inquiries, post.discovery_calls, post.click_through_rate,
             post.comment_quality_score, post.business_relevance_score
         ))
-        
+
         conn.commit()
         conn.close()
-    
-    def update_post_metrics(self, post_id: str, metrics: Dict):
+
+    def update_post_metrics(self, post_id: str, metrics: dict):
         """Update engagement and business metrics for a post."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Build dynamic update query
         fields = []
         values = []
         for key, value in metrics.items():
             fields.append(f"{key} = ?")
             values.append(value)
-        
+
         values.append(post_id)
-        
+
         query = f"UPDATE posts SET {', '.join(fields)} WHERE post_id = ?"
         cursor.execute(query, values)
-        
+
         conn.commit()
         conn.close()
-    
-    def calculate_weekly_performance(self, week_number: int) -> Optional[WeeklyPerformance]:
+
+    def calculate_weekly_performance(self, week_number: int) -> WeeklyPerformance | None:
         """Calculate and store weekly performance metrics."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Get week date range
         start_date = datetime(2025, 1, 6) + timedelta(weeks=week_number-1)  # Week 1 starts Jan 6, 2025
         end_date = start_date + timedelta(days=6)
-        
+
         # Get posts for the week
         cursor.execute('''
             SELECT * FROM posts 
             WHERE date BETWEEN ? AND ?
         ''', (start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')))
-        
+
         posts = cursor.fetchall()
-        
+
         if not posts:
             return None
-        
+
         # Calculate aggregated metrics
         total_posts = len(posts)
         total_views = sum(post[8] for post in posts)  # views column
         total_engagement = sum(post[9] + post[10] + post[11] + post[12] for post in posts)  # likes + comments + shares + saves
         avg_engagement_rate = sum(post[13] for post in posts) / total_posts if total_posts > 0 else 0
-        
+
         total_profile_views = sum(post[14] for post in posts)
         total_connections = sum(post[15] for post in posts)
         total_inquiries = sum(post[16] for post in posts)
         total_discovery_calls = sum(post[17] for post in posts)
-        
+
         # Find best performing post
         best_post = max(posts, key=lambda x: x[13])  # engagement_rate column
         best_performing_post = best_post[5]  # headline column
         best_engagement_rate = best_post[13]
-        
+
         # Determine optimal posting time (most common time for high engagement)
         high_engagement_posts = [post for post in posts if post[13] > avg_engagement_rate]
         if high_engagement_posts:
@@ -238,17 +237,17 @@ class ContentAnalytics:
             optimal_posting_time = max(set(posting_times), key=posting_times.count)
         else:
             optimal_posting_time = "6:30 AM"  # Default from Synapse analysis
-        
+
         # Determine quarter and theme
         quarter = f"Q{((week_number - 1) // 13) + 1}"
         themes = {
             "Q1": "Foundation & Strategy",
-            "Q2": "Growth & Scaling", 
+            "Q2": "Growth & Scaling",
             "Q3": "Optimization & Efficiency",
             "Q4": "Reflection & Future Planning"
         }
         theme = themes.get(quarter, "Unknown")
-        
+
         performance = WeeklyPerformance(
             week_number=week_number,
             start_date=start_date.strftime('%Y-%m-%d'),
@@ -266,7 +265,7 @@ class ContentAnalytics:
             best_engagement_rate=best_engagement_rate,
             optimal_posting_time=optimal_posting_time
         )
-        
+
         # Store in database
         cursor.execute('''
             INSERT OR REPLACE INTO weekly_performance
@@ -284,16 +283,16 @@ class ContentAnalytics:
             performance.best_performing_post, performance.best_engagement_rate,
             performance.optimal_posting_time
         ))
-        
+
         conn.commit()
         conn.close()
-        
+
         return performance
-    
+
     def generate_dashboard_report(self, output_file: str = "content_dashboard_report.html"):
         """Generate HTML dashboard report with visualizations."""
         conn = sqlite3.connect(self.db_path)
-        
+
         # Get summary statistics
         cursor = conn.cursor()
         cursor.execute('''
@@ -306,9 +305,9 @@ class ContentAnalytics:
                 SUM(discovery_calls) as total_calls
             FROM posts
         ''')
-        
+
         summary = cursor.fetchone()
-        
+
         # Get top performing posts
         cursor.execute('''
             SELECT headline, engagement_rate, content_type, date
@@ -316,18 +315,18 @@ class ContentAnalytics:
             ORDER BY engagement_rate DESC
             LIMIT 10
         ''')
-        
+
         top_posts = cursor.fetchall()
-        
+
         # Get weekly trends
         cursor.execute('''
             SELECT week_number, avg_engagement_rate, total_inquiries, theme
             FROM weekly_performance
             ORDER BY week_number
         ''')
-        
+
         weekly_trends = cursor.fetchall()
-        
+
         # Generate HTML report
         html_content = f'''
         <!DOCTYPE html>
@@ -394,7 +393,7 @@ class ContentAnalytics:
                         <th>Date</th>
                     </tr>
         '''
-        
+
         for post in top_posts:
             html_content += f'''
                     <tr>
@@ -404,7 +403,7 @@ class ContentAnalytics:
                         <td>{post[3]}</td>
                     </tr>
             '''
-        
+
         html_content += '''
                 </table>
                 
@@ -419,12 +418,12 @@ class ContentAnalytics:
                         type: 'line',
                         data: {
         '''
-        
+
         # Add chart data
         week_labels = [f"Week {w[0]}" for w in weekly_trends]
         engagement_data = [w[1] * 100 for w in weekly_trends]
         inquiry_data = [w[2] for w in weekly_trends]
-        
+
         html_content += f'''
                             labels: {json.dumps(week_labels)},
                             datasets: [{{
@@ -475,38 +474,38 @@ class ContentAnalytics:
         </body>
         </html>
         '''
-        
+
         with open(output_file, 'w') as f:
             f.write(html_content)
-        
+
         conn.close()
-        
+
         return output_file
-    
+
     def export_data_csv(self, output_file: str = "content_data_export.csv"):
         """Export all data to CSV for external analysis."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('SELECT * FROM posts ORDER BY date')
         posts = cursor.fetchall()
-        
+
         # Get column names
         cursor.execute('PRAGMA table_info(posts)')
         columns = [column[1] for column in cursor.fetchall()]
-        
+
         with open(output_file, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(columns)
             writer.writerows(posts)
-        
+
         conn.close()
         return output_file
 
 def main():
     """Example usage and testing."""
     analytics = ContentAnalytics()
-    
+
     # Example: Add a sample post
     sample_post = ContentPost(
         post_id="2025-01-06-monday",
@@ -528,18 +527,18 @@ def main():
         consultation_inquiries=1,
         discovery_calls=0
     )
-    
+
     analytics.add_post(sample_post)
-    
+
     # Calculate weekly performance for week 1
     weekly_perf = analytics.calculate_weekly_performance(1)
     if weekly_perf:
         print(f"Week 1 Performance: {weekly_perf.avg_engagement_rate * 100:.1f}% avg engagement")
-    
+
     # Generate dashboard
     dashboard_file = analytics.generate_dashboard_report()
     print(f"Dashboard generated: {dashboard_file}")
-    
+
     # Export data
     csv_file = analytics.export_data_csv()
     print(f"Data exported: {csv_file}")

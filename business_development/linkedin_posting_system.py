@@ -4,14 +4,11 @@ LinkedIn Posting and Business Development System
 Real-time posting, engagement tracking, and consultation inquiry detection
 """
 
-import sqlite3
-import json
-from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
-from typing import Dict, List, Optional, Any
-from pathlib import Path
 import logging
-import time
+import sqlite3
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -29,7 +26,7 @@ class LinkedInPost:
     business_objective: str
     expected_engagement_rate: float
     expected_consultation_inquiries: int
-    
+
     # Real performance metrics
     impressions: int = 0
     views: int = 0
@@ -38,13 +35,13 @@ class LinkedInPost:
     shares: int = 0
     saves: int = 0
     clicks: int = 0
-    
+
     # Business development metrics
     profile_views: int = 0
     connection_requests: int = 0
     dm_inquiries: int = 0
     consultation_requests: int = 0
-    
+
     # Calculated metrics
     actual_engagement_rate: float = 0.0
     business_conversion_rate: float = 0.0
@@ -70,16 +67,16 @@ class ConsultationInquiry:
 
 class LinkedInBusinessDevelopmentEngine:
     """Complete LinkedIn posting and business development system"""
-    
+
     def __init__(self, db_path: str = "linkedin_business_development.db"):
         self.db_path = db_path
         self.init_database()
-        
+
     def init_database(self):
         """Initialize business development tracking database"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # LinkedIn posts table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS linkedin_posts (
@@ -116,7 +113,7 @@ class LinkedInBusinessDevelopmentEngine:
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # Consultation inquiries table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS consultation_inquiries (
@@ -137,7 +134,7 @@ class LinkedInBusinessDevelopmentEngine:
                 FOREIGN KEY (source_post_id) REFERENCES linkedin_posts (post_id)
             )
         ''')
-        
+
         # Business development pipeline table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS business_pipeline (
@@ -156,11 +153,11 @@ class LinkedInBusinessDevelopmentEngine:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         conn.commit()
         conn.close()
         logger.info("Business development database initialized")
-    
+
     def schedule_week3_posts(self):
         """Schedule all Week 3 team building posts for LinkedIn"""
         week3_posts = [
@@ -242,18 +239,18 @@ class LinkedInBusinessDevelopmentEngine:
                 "expected_consultation_inquiries": 1
             }
         ]
-        
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         for post_data in week3_posts:
             # Read content from file
             try:
-                with open(post_data["content_file"], 'r') as f:
+                with open(post_data["content_file"]) as f:
                     content = f.read()
-                
+
                 post_data["content"] = content
-                
+
                 # Insert into database
                 cursor.execute('''
                     INSERT OR REPLACE INTO linkedin_posts 
@@ -266,41 +263,41 @@ class LinkedInBusinessDevelopmentEngine:
                     post_data["business_objective"], post_data["expected_engagement_rate"],
                     post_data["expected_consultation_inquiries"]
                 ))
-                
+
                 logger.info(f"Scheduled {post_data['day']} post: {post_data['post_id']}")
-                
+
             except FileNotFoundError:
                 logger.warning(f"Content file not found: {post_data['content_file']}")
                 continue
-        
+
         conn.commit()
         conn.close()
         logger.info("Week 3 posts scheduled successfully")
-    
-    def update_post_performance(self, post_id: str, metrics: Dict[str, Any]):
+
+    def update_post_performance(self, post_id: str, metrics: dict[str, Any]):
         """Update real performance metrics for a post"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Calculate engagement rate
         if 'impressions' in metrics and metrics['impressions'] > 0:
             total_engagement = (
-                metrics.get('likes', 0) + 
-                metrics.get('comments', 0) + 
-                metrics.get('shares', 0) + 
+                metrics.get('likes', 0) +
+                metrics.get('comments', 0) +
+                metrics.get('shares', 0) +
                 metrics.get('saves', 0)
             )
             metrics['actual_engagement_rate'] = total_engagement / metrics['impressions']
-            
+
         # Calculate business conversion rate
         if 'views' in metrics and metrics['views'] > 0:
             business_actions = (
-                metrics.get('profile_views', 0) + 
-                metrics.get('connection_requests', 0) + 
+                metrics.get('profile_views', 0) +
+                metrics.get('connection_requests', 0) +
                 metrics.get('dm_inquiries', 0)
             )
             metrics['business_conversion_rate'] = business_actions / metrics['views']
-        
+
         # Build UPDATE query dynamically
         set_clauses = []
         values = []
@@ -308,7 +305,7 @@ class LinkedInBusinessDevelopmentEngine:
             if key != 'post_id':
                 set_clauses.append(f"{key} = ?")
                 values.append(value)
-        
+
         if set_clauses:
             set_clauses.append("updated_at = CURRENT_TIMESTAMP")
             query = f"UPDATE linkedin_posts SET {', '.join(set_clauses)} WHERE post_id = ?"
@@ -316,14 +313,14 @@ class LinkedInBusinessDevelopmentEngine:
             cursor.execute(query, values)
             conn.commit()
             logger.info(f"Updated metrics for post {post_id}")
-        
+
         conn.close()
-    
+
     def log_consultation_inquiry(self, inquiry: ConsultationInquiry):
         """Log a new consultation inquiry"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT OR REPLACE INTO consultation_inquiries 
             (inquiry_id, source_post_id, contact_name, company, company_size,
@@ -337,52 +334,52 @@ class LinkedInBusinessDevelopmentEngine:
             inquiry.priority_score, inquiry.status, inquiry.created_at,
             inquiry.last_contact, inquiry.notes
         ))
-        
+
         # Update post consultation count
         cursor.execute('''
             UPDATE linkedin_posts 
             SET consultation_requests = consultation_requests + 1
             WHERE post_id = ?
         ''', (inquiry.source_post_id,))
-        
+
         conn.commit()
         conn.close()
         logger.info(f"Logged consultation inquiry: {inquiry.inquiry_id}")
-    
-    def get_post_for_publishing(self, day: str = None) -> Optional[Dict]:
+
+    def get_post_for_publishing(self, day: str = None) -> dict | None:
         """Get next post ready for publishing"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         query = '''
             SELECT * FROM linkedin_posts 
             WHERE impressions = 0  -- Not yet posted
         '''
         params = []
-        
+
         if day:
             query += ' AND day = ?'
             params.append(day)
-            
+
         query += ' ORDER BY posted_at LIMIT 1'
-        
+
         cursor.execute(query, params)
         result = cursor.fetchone()
-        
+
         if result:
             columns = [description[0] for description in cursor.description]
-            post_dict = dict(zip(columns, result))
+            post_dict = dict(zip(columns, result, strict=False))
             conn.close()
             return post_dict
-        
+
         conn.close()
         return None
-    
-    def generate_business_development_report(self) -> Dict:
+
+    def generate_business_development_report(self) -> dict:
         """Generate comprehensive business development report"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Get post performance summary
         cursor.execute('''
             SELECT 
@@ -397,7 +394,7 @@ class LinkedInBusinessDevelopmentEngine:
             WHERE impressions > 0
         ''')
         post_summary = cursor.fetchone()
-        
+
         # Get consultation inquiries summary
         cursor.execute('''
             SELECT 
@@ -410,7 +407,7 @@ class LinkedInBusinessDevelopmentEngine:
             FROM consultation_inquiries
         ''')
         inquiry_summary = cursor.fetchone()
-        
+
         # Get top performing posts
         cursor.execute('''
             SELECT post_id, day, actual_engagement_rate, consultation_requests
@@ -420,9 +417,9 @@ class LinkedInBusinessDevelopmentEngine:
             LIMIT 5
         ''')
         top_posts = cursor.fetchall()
-        
+
         conn.close()
-        
+
         report = {
             'post_performance': {
                 'total_posts': post_summary[0] if post_summary else 0,
@@ -450,24 +447,24 @@ class LinkedInBusinessDevelopmentEngine:
                 } for post in top_posts
             ]
         }
-        
+
         return report
 
 def main():
     """Initialize and demonstrate the business development system"""
     engine = LinkedInBusinessDevelopmentEngine()
-    
+
     # Schedule Week 3 posts
     print("🚀 Scheduling Week 3 Team Building posts...")
     engine.schedule_week3_posts()
-    
+
     # Get Monday post for immediate publishing
     monday_post = engine.get_post_for_publishing("Monday")
     if monday_post:
         print(f"\n📝 Ready to post: {monday_post['day']} - {monday_post['business_objective']}")
         print(f"Expected engagement: {monday_post['expected_engagement_rate']*100:.1f}%")
         print(f"Expected consultations: {monday_post['expected_consultation_inquiries']}")
-    
+
     # Log a sample consultation inquiry
     sample_inquiry = ConsultationInquiry(
         inquiry_id=f"inquiry-{datetime.now().strftime('%Y%m%d%H%M%S')}",
@@ -483,19 +480,19 @@ def main():
         status="new",
         created_at=datetime.now().isoformat()
     )
-    
+
     engine.log_consultation_inquiry(sample_inquiry)
     print(f"\n💼 Logged sample consultation inquiry: {sample_inquiry.inquiry_id}")
-    
+
     # Generate business development report
     report = engine.generate_business_development_report()
-    print(f"\n📊 Business Development Summary:")
+    print("\n📊 Business Development Summary:")
     print(f"Total consultation inquiries: {report['business_pipeline']['total_inquiries']}")
     print(f"Pipeline value: ${report['business_pipeline']['total_pipeline_value']:,}")
-    
-    print(f"\n✅ LinkedIn Business Development System ready!")
+
+    print("\n✅ LinkedIn Business Development System ready!")
     print(f"Database: {engine.db_path}")
-    print(f"Ready for Week 3 content posting and real-time business development tracking.")
+    print("Ready for Week 3 content posting and real-time business development tracking.")
 
 if __name__ == "__main__":
     main()

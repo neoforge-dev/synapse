@@ -1,15 +1,14 @@
 """API router for content strategy and automation."""
 
 import logging
-from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from graph_rag.api.dependencies import (
-    get_content_strategy_optimizer,
     get_content_optimization_engine,
+    get_content_strategy_optimizer,
 )
 
 logger = logging.getLogger(__name__)
@@ -71,7 +70,7 @@ async def generate_content_strategy(
     """Generate a comprehensive content strategy."""
     try:
         logger.info(f"Epic 9.3: Generating content strategy for {len(request.platforms)} platforms")
-        
+
         # Mock strategy generation
         mock_response = ContentStrategyResponse(
             strategy_framework={
@@ -97,10 +96,10 @@ async def generate_content_strategy(
                 "lead_generation_target": "50_qualified_leads_monthly"
             }
         )
-        
+
         logger.info("Epic 9.3: Content strategy generated successfully")
         return mock_response
-        
+
     except Exception as e:
         logger.error(f"Epic 9.3: Error generating content strategy: {e}")
         raise HTTPException(status_code=422, detail=f"Strategy generation failed: {str(e)}")
@@ -114,7 +113,7 @@ async def optimize_content(
     """Optimize content for specific goals and platforms."""
     try:
         logger.info(f"Epic 9.3: Optimizing content for {request.optimization_type} on {request.platform}")
-        
+
         # Mock content optimization
         mock_response = ContentOptimizationResponse(
             optimized_content=f"[OPTIMIZED FOR {request.optimization_type.upper()}] {request.content}",
@@ -126,9 +125,9 @@ async def optimize_content(
                 "Optimized for platform algorithm"
             ]
         )
-        
+
         return mock_response
-        
+
     except Exception as e:
         logger.error(f"Epic 9.3: Error optimizing content: {e}")
         raise HTTPException(status_code=422, detail=f"Content optimization failed: {str(e)}")
@@ -142,7 +141,7 @@ async def schedule_content(
     """Generate optimal posting schedule for content."""
     try:
         logger.info(f"Epic 9.3: Scheduling {len(request.content_pieces)} content pieces")
-        
+
         # Mock scheduling optimization
         mock_schedule = []
         for i, content in enumerate(request.content_pieces):
@@ -152,7 +151,7 @@ async def schedule_content(
                 "expected_reach": 2500 + i * 200,
                 "confidence": 0.85
             })
-        
+
         mock_response = ContentSchedulingResponse(
             schedule=mock_schedule,
             scheduling_rationale={
@@ -166,9 +165,9 @@ async def schedule_content(
                 "viral_potential_score": 0.42
             }
         )
-        
+
         return mock_response
-        
+
     except Exception as e:
         logger.error(f"Epic 9.3: Error scheduling content: {e}")
         raise HTTPException(status_code=422, detail=f"Content scheduling failed: {str(e)}")
@@ -183,7 +182,7 @@ async def get_content_templates(
     """Get content templates for different types and platforms."""
     try:
         logger.info(f"Epic 9.3: Getting content templates - type: {content_type}, platform: {platform}")
-        
+
         # Mock templates
         mock_templates = [
             {
@@ -208,9 +207,9 @@ async def get_content_templates(
                 "avg_performance": {"likes": 200, "comments": 40, "shares": 20}
             }
         ]
-        
+
         return {"templates": mock_templates, "total_count": len(mock_templates)}
-        
+
     except Exception as e:
         logger.error(f"Epic 9.3: Error getting content templates: {e}")
         raise HTTPException(status_code=500, detail=f"Template retrieval failed: {str(e)}")
@@ -225,7 +224,7 @@ async def analyze_content_performance(
     """Analyze performance of published content."""
     try:
         logger.info(f"Epic 9.3: Analyzing performance for {len(content_ids)} content pieces")
-        
+
         # Mock performance analysis
         performance_data = []
         for content_id in content_ids:
@@ -238,7 +237,7 @@ async def analyze_content_performance(
                 },
                 "ranking": "top_10_percent" if hash(content_id) % 10 < 3 else "average"
             })
-        
+
         analysis_summary = {
             "total_analyzed": len(content_ids),
             "avg_engagement_rate": 0.062,
@@ -249,12 +248,12 @@ async def analyze_content_performance(
                 "Increase use of successful content pillars"
             ]
         }
-        
+
         return {
             "performance_data": performance_data,
             "analysis_summary": analysis_summary
         }
-        
+
     except Exception as e:
         logger.error(f"Epic 9.3: Error analyzing content performance: {e}")
         raise HTTPException(status_code=500, detail=f"Performance analysis failed: {str(e)}")
@@ -269,7 +268,7 @@ async def get_content_recommendations(
     """Get personalized content recommendations."""
     try:
         logger.info(f"Epic 9.3: Getting content recommendations for {audience_segment}")
-        
+
         # Mock recommendations
         mock_recommendations = [
             {
@@ -294,7 +293,7 @@ async def get_content_recommendations(
                 "optimal_timing": "Wednesday 6:30 PM"
             }
         ]
-        
+
         return {
             "recommendations": mock_recommendations,
             "audience_insights": {
@@ -303,7 +302,7 @@ async def get_content_recommendations(
                 "optimal_posting_frequency": "3-4 times per week"
             }
         }
-        
+
     except Exception as e:
         logger.error(f"Epic 9.3: Error getting content recommendations: {e}")
         raise HTTPException(status_code=500, detail=f"Recommendations failed: {str(e)}")

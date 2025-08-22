@@ -2,7 +2,6 @@
 """Simple synapse CLI wrapper that avoids complex imports."""
 
 import sys
-import subprocess
 
 if __name__ == "__main__":
     # Basic commands that don't require complex imports
@@ -10,9 +9,9 @@ if __name__ == "__main__":
         print("Usage: synapse_simple.py <command>")
         print("Available commands: discover, parse, ingest")
         sys.exit(1)
-    
+
     command = sys.argv[1]
-    
+
     if command == "discover":
         from graph_rag.cli.commands.discover import discover_command
         discover_command()

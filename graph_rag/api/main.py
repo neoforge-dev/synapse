@@ -29,14 +29,15 @@ from graph_rag.api.middleware import (
 )
 from graph_rag.api.routers import documents, ingestion, query, search
 from graph_rag.api.routers.admin import create_admin_router
-from graph_rag.api.routers.auth import create_auth_router
 from graph_rag.api.routers.audience import router as audience_router
+from graph_rag.api.routers.auth import create_auth_router
 from graph_rag.api.routers.brand_safety import router as brand_safety_router
 from graph_rag.api.routers.concepts import router as concepts_router
 from graph_rag.api.routers.content_strategy import router as content_strategy_router
 from graph_rag.api.routers.dashboard import create_dashboard_router
 from graph_rag.api.routers.graph import create_graph_router
 from graph_rag.api.routers.hot_takes import router as hot_takes_router
+from graph_rag.api.routers.monitoring import create_monitoring_router
 from graph_rag.api.routers.reasoning import create_reasoning_router
 
 # Local application imports
@@ -70,7 +71,6 @@ try:
 except Exception:  # pragma: no cover - allow CI without mgclient
     class MemgraphGraphRepository:  # type: ignore
         ...
-from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
 from graph_rag.services.embedding import SentenceTransformerEmbeddingService
 from graph_rag.services.ingestion import IngestionService  # Needed for type hint
 
@@ -115,6 +115,33 @@ async def lifespan(app: FastAPI):
         f"LIFESPAN START: Starting API... Config: {current_settings.model_dump(exclude={'memgraph_password'})}"
     )  # Use current_settings
     app.state.settings = current_settings  # Store in state
+
+    # Initialize monitoring system
+    try:
+        from graph_rag.observability.alerts import initialize_alerts, start_alerting
+        from graph_rag.observability.metrics import initialize_metrics, start_monitoring
+
+        # Initialize metrics collector
+        metrics_collector = initialize_metrics(
+            enable_prometheus=getattr(current_settings, 'enable_metrics', True),
+            enable_alerts=True,
+        )
+
+        # Initialize alert manager
+        alert_manager = initialize_alerts(
+            evaluation_interval=30.0,
+            enable_auto_resolve=True,
+        )
+
+        # Start monitoring systems
+        await start_monitoring()
+        await start_alerting()
+
+        logger.info("Monitoring and alerting systems initialized")
+
+    except Exception as e:
+        logger.warning(f"Failed to initialize monitoring systems: {e}")
+        # Continue startup even if monitoring fails
     # Configure structured logging if enabled
     try:
         if current_settings.api_log_json:
@@ -215,7 +242,7 @@ async def lifespan(app: FastAPI):
             logger.info(
                 f"LIFESPAN: Initialized VectorStore using dependency injection (type: {current_settings.vector_store_type})"
             )
-            
+
             # Ensure vector store loads existing data during startup
             if hasattr(app.state.vector_store, '_ensure_loaded'):
                 try:
@@ -430,6 +457,17 @@ async def lifespan(app: FastAPI):
 
     # --- Shutdown ---
     logger.info("LIFESPAN SHUTDOWN: Shutting down API...")
+
+    # Stop monitoring systems
+    try:
+        from graph_rag.observability.alerts import stop_alerting
+        from graph_rag.observability.metrics import stop_monitoring
+
+        await stop_monitoring()
+        await stop_alerting()
+        logger.info("LIFESPAN SHUTDOWN: Monitoring systems stopped.")
+    except Exception as e:
+        logger.error(f"LIFESPAN SHUTDOWN: Error stopping monitoring: {e}", exc_info=True)
 
     # Stop maintenance scheduler
     if hasattr(app.state, "maintenance_scheduler") and app.state.maintenance_scheduler:
@@ -671,6 +709,7 @@ def create_app() -> FastAPI:
     admin_router = create_admin_router()
     auth_router = create_auth_router()
     reasoning_router = create_reasoning_router()
+    monitoring_router = create_monitoring_router()
 
     # Authentication router (no auth required for auth endpoints)
     api_router.include_router(auth_router)
@@ -686,6 +725,7 @@ def create_app() -> FastAPI:
     api_router.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])
     api_router.include_router(admin_router, prefix="/admin", tags=["Admin"])
     api_router.include_router(reasoning_router, prefix="/reasoning", tags=["Reasoning"])
+    api_router.include_router(monitoring_router, prefix="/monitoring", tags=["Monitoring"])
     api_router.include_router(concepts_router, tags=["Concepts"])
     api_router.include_router(hot_takes_router, tags=["Hot Takes"])
     api_router.include_router(audience_router, tags=["Audience"])

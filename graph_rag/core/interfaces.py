@@ -414,7 +414,7 @@ class PDFAnalyzer(Protocol):
 
 class BatchProgressReporter(Protocol):
     """Interface for reporting batch processing progress."""
-    
+
     def report_progress(
         self,
         processed_files: int,
@@ -428,7 +428,7 @@ class BatchProgressReporter(Protocol):
 
 class BatchProcessor(Protocol):
     """Interface for batch processing of document collections."""
-    
+
     async def process_files_in_batches(
         self,
         file_paths: list[str],
@@ -438,7 +438,7 @@ class BatchProcessor(Protocol):
     ) -> dict[str, Any]:
         """Process a list of files in manageable batches."""
         ...
-    
+
     async def resume_failed_files(
         self,
         failed_file_paths: list[str],

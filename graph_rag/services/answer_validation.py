@@ -469,7 +469,7 @@ class AnswerValidator:
         # Handle None values
         if not claim or not chunk_text:
             return False
-            
+
         # Look for explicit contradictions (simplified)
         contradiction_patterns = [
             (r'\bis\s+not\b', r'\bis\b'),
@@ -495,7 +495,7 @@ class AnswerValidator:
         # Handle None or empty text
         if not text:
             return []
-            
+
         stop_words = {
             "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by",
             "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did",

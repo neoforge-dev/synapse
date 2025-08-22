@@ -4,7 +4,7 @@
 import importlib.util
 import os
 
-# Get the path to models.py 
+# Get the path to models.py
 models_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'models.py')
 spec = importlib.util.spec_from_file_location("main_models", models_path)
 main_models = importlib.util.module_from_spec(spec)
@@ -19,25 +19,25 @@ ProcessedDocument = main_models.ProcessedDocument
 
 # Import from consolidated_response module
 from .consolidated_response import (
+    ArchitecturalPatternResponse,
     ConsolidatedAnswerResponse,
     ConsolidatedQueryRequest,
-    VectorStoreStatusResponse,
-    ArchitecturalPatternResponse,
-    SuccessMetricResponse,
     MachineReadableResponse,
     SourceResponse,
+    SuccessMetricResponse,
+    VectorStoreStatusResponse,
 )
 
 __all__ = [
     # Main models
     "Chunk",
-    "Document", 
+    "Document",
     "Entity",
     "Relationship",
     "ProcessedDocument",
     # Consolidated response models
     "ConsolidatedAnswerResponse",
-    "ConsolidatedQueryRequest", 
+    "ConsolidatedQueryRequest",
     "VectorStoreStatusResponse",
     "ArchitecturalPatternResponse",
     "SuccessMetricResponse",

@@ -15,9 +15,9 @@ class TestConceptExtractionEndpoints:
             "platform": "linkedin",
             "context": {"topic": "technical"}
         }
-        
+
         response = await test_client.post("/api/v1/concepts/extract", json=request_data)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "concepts" in data
@@ -33,9 +33,9 @@ class TestConceptExtractionEndpoints:
             "concept_types": ["technology", "framework"],
             "limit": 5
         }
-        
+
         response = await test_client.get("/api/v1/concepts/search", params=params)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "concepts" in data
@@ -52,9 +52,9 @@ class TestConceptExtractionEndpoints:
             ],
             "analysis_type": "semantic"
         }
-        
+
         response = await test_client.post("/api/v1/concepts/correlate", json=request_data)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "correlations" in data
@@ -74,9 +74,9 @@ class TestBeliefAnalysisEndpoints:
                 "include_implicit": True
             }
         }
-        
+
         response = await test_client.post("/api/v1/concepts/beliefs/extract", json=request_data)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "beliefs" in data
@@ -90,9 +90,9 @@ class TestBeliefAnalysisEndpoints:
             "belief_set": "technical_opinions",
             "time_range": "last_6_months"
         }
-        
+
         response = await test_client.get("/api/v1/concepts/beliefs/consistency", params=params)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "consistency_score" in data
@@ -111,9 +111,9 @@ class TestHotTakeAnalysisEndpoints:
             "platform": "linkedin",
             "analysis_depth": "comprehensive"
         }
-        
+
         response = await test_client.post("/api/v1/concepts/hot-takes/analyze", json=request_data)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "controversy_score" in data
@@ -128,9 +128,9 @@ class TestHotTakeAnalysisEndpoints:
             "content": "Microservices are killing startup productivity",
             "platform": "linkedin"
         }
-        
+
         response = await test_client.post("/api/v1/concepts/hot-takes/quick-score", json=request_data)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "engagement_score" in data
@@ -145,9 +145,9 @@ class TestHotTakeAnalysisEndpoints:
             "optimization_goals": ["increase_engagement", "maintain_authenticity"],
             "platform": "linkedin"
         }
-        
+
         response = await test_client.post("/api/v1/concepts/hot-takes/optimize", json=request_data)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "optimized_content" in data
@@ -162,9 +162,9 @@ class TestHotTakeAnalysisEndpoints:
             "platform": "linkedin",
             "category": "technical"
         }
-        
+
         response = await test_client.get("/api/v1/concepts/hot-takes/trending", params=params)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "trending_topics" in data
@@ -185,9 +185,9 @@ class TestHotTakeAnalysisEndpoints:
                 "risk_assessment": True
             }
         }
-        
+
         response = await test_client.post("/api/v1/concepts/hot-takes/batch-analyze", json=request_data)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "results" in data
@@ -202,9 +202,9 @@ class TestHotTakeAnalysisEndpoints:
             "safety_level": "corporate",
             "context": {"industry": "technology", "audience": "professionals"}
         }
-        
+
         response = await test_client.post("/api/v1/concepts/hot-takes/safety-check", json=request_data)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "safety_score" in data
@@ -223,9 +223,9 @@ class TestAudienceIntelligenceEndpoints:
             "platform": "linkedin",
             "analysis_depth": "detailed"
         }
-        
+
         response = await test_client.post("/api/v1/concepts/audience/analyze", json=request_data)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "target_audience" in data
@@ -240,9 +240,9 @@ class TestAudienceIntelligenceEndpoints:
             "target_segments": ["startup_founders", "technical_leaders"],
             "platform": "linkedin"
         }
-        
+
         response = await test_client.post("/api/v1/concepts/audience/resonance", json=request_data)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "resonance_scores" in data
@@ -257,9 +257,9 @@ class TestAudienceIntelligenceEndpoints:
             "content_category": "technical",
             "include_demographics": True
         }
-        
+
         response = await test_client.get("/api/v1/concepts/audience/segments", params=params)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "segments" in data
@@ -278,9 +278,9 @@ class TestAnalyticsEndpoints:
             "time_range": "30d",
             "category": "technical"
         }
-        
+
         response = await test_client.get("/api/v1/concepts/analytics/gaps", params=params)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "content_gaps" in data
@@ -295,9 +295,9 @@ class TestAnalyticsEndpoints:
             "target_platform": "twitter",
             "content_type": "technical"
         }
-        
+
         response = await test_client.get("/api/v1/concepts/analytics/platform-transitions", params=params)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "transition_strategy" in data
@@ -312,9 +312,9 @@ class TestAnalyticsEndpoints:
             "platform": "linkedin",
             "include_trends": True
         }
-        
+
         response = await test_client.get("/api/v1/concepts/hot-takes/analytics", params=params)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "performance_metrics" in data
@@ -334,22 +334,22 @@ class TestWorkflowIntegrationEndpoints:
             "platform": "linkedin",
             "analysis_depth": "comprehensive"
         }
-        
+
         analysis_response = await test_client.post("/api/v1/concepts/hot-takes/analyze", json=analysis_request)
         assert analysis_response.status_code == 200
         analysis_data = analysis_response.json()
-        
+
         # Step 2: Check brand safety
         safety_request = {
             "content": analysis_request["content"],
             "safety_level": "corporate",
             "context": {"industry": "technology"}
         }
-        
+
         safety_response = await test_client.post("/api/v1/concepts/hot-takes/safety-check", json=safety_request)
         assert safety_response.status_code == 200
         safety_data = safety_response.json()
-        
+
         # Step 3: Optimize content if safe
         if safety_data["safety_score"] > 0.7:
             optimization_request = {
@@ -357,11 +357,11 @@ class TestWorkflowIntegrationEndpoints:
                 "optimization_goals": ["increase_engagement", "maintain_safety"],
                 "platform": "linkedin"
             }
-            
+
             optimization_response = await test_client.post("/api/v1/concepts/hot-takes/optimize", json=optimization_request)
             assert optimization_response.status_code == 200
             optimization_data = optimization_response.json()
-            
+
             # Verify optimization improved the content
             assert "optimized_content" in optimization_data
             assert "improvement_score" in optimization_data
@@ -376,18 +376,18 @@ class TestWorkflowIntegrationEndpoints:
         })
         assert segments_response.status_code == 200
         segments_data = segments_response.json()
-        
+
         # Step 2: Analyze content for audience targeting
         content_analysis_request = {
             "content": "Advanced Python async programming patterns for scalable applications",
             "platform": "linkedin",
             "analysis_depth": "detailed"
         }
-        
+
         audience_response = await test_client.post("/api/v1/concepts/audience/analyze", json=content_analysis_request)
         assert audience_response.status_code == 200
         audience_data = audience_response.json()
-        
+
         # Step 3: Test resonance with specific segments
         if segments_data["segments"]:
             resonance_request = {
@@ -395,11 +395,11 @@ class TestWorkflowIntegrationEndpoints:
                 "target_segments": [segments_data["segments"][0]["id"]] if segments_data["segments"] else ["technical_leaders"],
                 "platform": "linkedin"
             }
-            
+
             resonance_response = await test_client.post("/api/v1/concepts/audience/resonance", json=resonance_request)
             assert resonance_response.status_code == 200
             resonance_data = resonance_response.json()
-            
+
             # Verify resonance analysis provides actionable insights
             assert "resonance_scores" in resonance_data
             assert "optimization_suggestions" in resonance_data
@@ -415,9 +415,9 @@ class TestErrorHandlingAndEdgeCases:
             "text": "",  # Empty content
             "platform": "linkedin"
         }
-        
+
         response = await test_client.post("/api/v1/concepts/extract", json=request_data)
-        
+
         # Should handle gracefully, either with 400 or empty results
         assert response.status_code in [200, 400, 422]
 
@@ -430,9 +430,9 @@ class TestErrorHandlingAndEdgeCases:
                 {"content": "Valid content", "platform": "linkedin"}
             ]
         }
-        
+
         response = await test_client.post("/api/v1/concepts/hot-takes/batch-analyze", json=request_data)
-        
+
         # Should return validation error
         assert response.status_code == 422
 
@@ -443,9 +443,9 @@ class TestErrorHandlingAndEdgeCases:
             "content": "Test content",
             "platform": "unsupported_platform"
         }
-        
+
         response = await test_client.post("/api/v1/concepts/hot-takes/analyze", json=request_data)
-        
+
         # Should handle gracefully or return appropriate error
         assert response.status_code in [200, 400, 422]
 
@@ -453,13 +453,13 @@ class TestErrorHandlingAndEdgeCases:
     async def test_large_content_handling(self, test_client: AsyncClient):
         """Test endpoints with very large content inputs."""
         large_content = "Large content " * 1000  # Very large content
-        
+
         request_data = {
             "content": large_content,
             "platform": "linkedin"
         }
-        
+
         response = await test_client.post("/api/v1/concepts/hot-takes/analyze", json=request_data)
-        
+
         # Should handle large content gracefully
         assert response.status_code in [200, 413, 422]

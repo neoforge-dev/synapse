@@ -437,7 +437,7 @@ class PromptOptimizer:
         # Handle None or empty string
         if not style_str:
             return PromptStyle.ANALYTICAL
-            
+
         try:
             return PromptStyle(style_str.lower())
         except ValueError:

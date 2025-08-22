@@ -1,8 +1,6 @@
 """API router for controversial content analysis and optimization."""
 
-import asyncio
 import logging
-from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -111,7 +109,7 @@ async def analyze_hot_take(
     """Analyze content for controversy and engagement potential."""
     try:
         logger.info(f"Epic 7.3: Analyzing hot take - platform: {request.platform}, depth: {request.analysis_depth}")
-        
+
         # Mock analysis for now - replace with actual implementation
         mock_response = HotTakeAnalysisResponse(
             controversy_score=0.75,
@@ -132,10 +130,10 @@ async def analyze_hot_take(
                 "Include counterargument acknowledgment"
             ]
         )
-        
+
         logger.info("Epic 7.3: Hot take analysis completed successfully")
         return mock_response
-        
+
     except Exception as e:
         logger.error(f"Epic 7.3: Error in hot take analysis: {e}")
         raise HTTPException(status_code=422, detail=f"Analysis failed: {str(e)}")
@@ -149,16 +147,16 @@ async def quick_score(
     """Get quick engagement score for content."""
     try:
         logger.info(f"Epic 7.3: Quick scoring content for platform: {request.platform}")
-        
+
         # Mock scoring - replace with actual implementation
         mock_response = QuickScoreResponse(
             engagement_score=0.82,
             controversy_level="moderate",
             recommendation="Good engagement potential - consider posting during peak hours"
         )
-        
+
         return mock_response
-        
+
     except Exception as e:
         logger.error(f"Epic 7.3: Error in quick scoring: {e}")
         raise HTTPException(status_code=422, detail=f"Scoring failed: {str(e)}")
@@ -172,16 +170,16 @@ async def optimize_content(
     """Optimize content for better engagement."""
     try:
         logger.info(f"Epic 7.3: Optimizing content for goals: {request.optimization_goals}")
-        
+
         # Mock optimization - replace with actual implementation
         mock_response = OptimizationResponse(
             optimized_content=f"[OPTIMIZED] {request.original_content}",
             improvement_score=0.35,
             optimization_rationale="Enhanced with data support and emotional appeal"
         )
-        
+
         return mock_response
-        
+
     except Exception as e:
         logger.error(f"Epic 7.3: Error in content optimization: {e}")
         raise HTTPException(status_code=422, detail=f"Optimization failed: {str(e)}")
@@ -196,7 +194,7 @@ async def get_trending(
     """Get trending hot takes and topics."""
     try:
         logger.info(f"Epic 7.3: Getting trending topics - window: {time_window}, platform: {platform}")
-        
+
         # Mock trending data
         mock_response = TrendingResponse(
             trending_topics=[
@@ -215,9 +213,9 @@ async def get_trending(
                 "stable_topics": 25
             }
         )
-        
+
         return mock_response
-        
+
     except Exception as e:
         logger.error(f"Epic 7.3: Error getting trending topics: {e}")
         raise HTTPException(status_code=500, detail=f"Trending analysis failed: {str(e)}")
@@ -231,10 +229,10 @@ async def batch_analyze(
     """Analyze multiple content items in batch."""
     try:
         logger.info(f"Epic 7.3: Starting batch analysis of {len(request.content_items)} items")
-        
+
         results = []
         successful_analyses = 0
-        
+
         for i, item in enumerate(request.content_items):
             try:
                 # Mock analysis for each item
@@ -252,21 +250,21 @@ async def batch_analyze(
                     "status": "error",
                     "error": str(item_error)
                 })
-        
+
         batch_summary = {
             "total_items": len(request.content_items),
             "successful": successful_analyses,
             "failed": len(request.content_items) - successful_analyses,
             "processing_time_ms": 250.0
         }
-        
+
         logger.info(f"Epic 7.3: Batch analysis complete - {successful_analyses}/{len(request.content_items)} processed successfully")
-        
+
         return BatchAnalysisResponse(
             results=results,
             batch_summary=batch_summary
         )
-        
+
     except Exception as e:
         logger.error(f"Epic 7.3: Error in batch analysis: {e}")
         raise HTTPException(status_code=500, detail=f"Batch analysis failed: {str(e)}")
@@ -280,7 +278,7 @@ async def safety_check(
     """Check content for brand safety issues."""
     try:
         logger.info(f"Epic 7.3: Safety check - level: {request.safety_level}")
-        
+
         # Mock safety analysis
         mock_response = SafetyCheckResponse(
             safety_score=0.85,
@@ -291,9 +289,9 @@ async def safety_check(
                 "Consider company policy alignment"
             ]
         )
-        
+
         return mock_response
-        
+
     except Exception as e:
         logger.error(f"Epic 7.3: Error in safety check: {e}")
         raise HTTPException(status_code=422, detail=f"Safety check failed: {str(e)}")
@@ -308,7 +306,7 @@ async def get_analytics(
     """Get hot takes analytics and performance metrics."""
     try:
         logger.info(f"Epic 7.3: Getting analytics - range: {time_range}, platform: {platform}")
-        
+
         # Mock analytics data
         mock_response = AnalyticsResponse(
             performance_metrics={
@@ -328,9 +326,9 @@ async def get_analytics(
                 {"pattern": "industry_prediction", "success_rate": 0.72}
             ]
         )
-        
+
         return mock_response
-        
+
     except Exception as e:
         logger.error(f"Epic 7.3: Error getting analytics: {e}")
         raise HTTPException(status_code=500, detail=f"Analytics failed: {str(e)}")

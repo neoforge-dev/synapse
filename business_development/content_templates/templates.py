@@ -3,14 +3,14 @@ LinkedIn Content Templates
 Based on analysis of 460 posts with proven engagement patterns
 """
 
-from enum import Enum
-from typing import Dict, List, Optional
 from dataclasses import dataclass
+from enum import Enum
+
 
 class ContentType(Enum):
     """Content types based on high-performing patterns"""
     CONTROVERSIAL_TAKE = "controversial_take"
-    PERSONAL_STORY = "personal_story" 
+    PERSONAL_STORY = "personal_story"
     TECHNICAL_INSIGHT = "technical_insight"
     CAREER_ADVICE = "career_advice"
     PRODUCT_MANAGEMENT = "product_management"
@@ -21,16 +21,16 @@ class ContentType(Enum):
 class ContentTemplate:
     """Template structure for content generation"""
     content_type: ContentType
-    hook_patterns: List[str]
-    structure: List[str]
-    cta_patterns: List[str]
-    hashtag_groups: List[str]
-    engagement_drivers: List[str]
-    synapse_query_keywords: List[str]
+    hook_patterns: list[str]
+    structure: list[str]
+    cta_patterns: list[str]
+    hashtag_groups: list[str]
+    engagement_drivers: list[str]
+    synapse_query_keywords: list[str]
 
 class ContentTemplates:
     """Repository of proven content templates"""
-    
+
     def __init__(self):
         self.templates = {
             ContentType.CONTROVERSIAL_TAKE: ContentTemplate(
@@ -58,23 +58,23 @@ class ContentTemplates:
                 ],
                 hashtag_groups=[
                     "#productmanagement #techleadership #softwaredevelopment",
-                    "#startupgrowth #techprofessionals #productdevelopment", 
+                    "#startupgrowth #techprofessionals #productdevelopment",
                     "#programming #backenddevelopment #careerdevelopment"
                 ],
                 engagement_drivers=[
                     "strong_opinion",
-                    "personal_experience", 
+                    "personal_experience",
                     "counter_narrative",
                     "actionable_insights"
                 ],
                 synapse_query_keywords=[
                     "product management pitfalls",
-                    "technical architecture decisions", 
+                    "technical architecture decisions",
                     "startup challenges",
                     "software development practices"
                 ]
             ),
-            
+
             ContentType.PERSONAL_STORY: ContentTemplate(
                 content_type=ContentType.PERSONAL_STORY,
                 hook_patterns=[
@@ -86,7 +86,7 @@ class ContentTemplates:
                 ],
                 structure=[
                     "🎬 Set the scene with specific time/place",
-                    "⚡ The challenge or turning point", 
+                    "⚡ The challenge or turning point",
                     "🔄 What you tried/learned",
                     "💡 Key insights or lessons",
                     "🚀 How it applies to others",
@@ -110,13 +110,13 @@ class ContentTemplates:
                     "universal_lesson"
                 ],
                 synapse_query_keywords=[
-                    "career crossroads", 
+                    "career crossroads",
                     "learning journey",
                     "professional challenges",
                     "startup experiences"
                 ]
             ),
-            
+
             ContentType.TECHNICAL_INSIGHT: ContentTemplate(
                 content_type=ContentType.TECHNICAL_INSIGHT,
                 hook_patterns=[
@@ -135,7 +135,7 @@ class ContentTemplates:
                     "💭 Broader implications for development"
                 ],
                 cta_patterns=[
-                    "What's your experience with {technology}?", 
+                    "What's your experience with {technology}?",
                     "Have you tried this approach?",
                     "What patterns have worked for you?",
                     "Thoughts on {technical_concept}?"
@@ -148,7 +148,7 @@ class ContentTemplates:
                 engagement_drivers=[
                     "actionable_code",
                     "practical_experience",
-                    "specific_examples", 
+                    "specific_examples",
                     "measurable_results"
                 ],
                 synapse_query_keywords=[
@@ -158,7 +158,7 @@ class ContentTemplates:
                     "clean code practices"
                 ]
             ),
-            
+
             ContentType.CAREER_ADVICE: ContentTemplate(
                 content_type=ContentType.CAREER_ADVICE,
                 hook_patterns=[
@@ -195,12 +195,12 @@ class ContentTemplates:
                 ],
                 synapse_query_keywords=[
                     "career growth",
-                    "professional development", 
+                    "professional development",
                     "specialization benefits",
                     "tech career advice"
                 ]
             ),
-            
+
             ContentType.PRODUCT_MANAGEMENT: ContentTemplate(
                 content_type=ContentType.PRODUCT_MANAGEMENT,
                 hook_patterns=[
@@ -242,7 +242,7 @@ class ContentTemplates:
                     "technical leadership"
                 ]
             ),
-            
+
             ContentType.STARTUP_LESSONS: ContentTemplate(
                 content_type=ContentType.STARTUP_LESSONS,
                 hook_patterns=[
@@ -285,26 +285,26 @@ class ContentTemplates:
                 ]
             )
         }
-    
+
     def get_template(self, content_type: ContentType) -> ContentTemplate:
         """Get specific content template"""
         return self.templates.get(content_type)
-    
-    def get_all_templates(self) -> Dict[ContentType, ContentTemplate]:
+
+    def get_all_templates(self) -> dict[ContentType, ContentTemplate]:
         """Get all available templates"""
         return self.templates
-    
-    def get_hook_patterns(self, content_type: ContentType) -> List[str]:
+
+    def get_hook_patterns(self, content_type: ContentType) -> list[str]:
         """Get hook patterns for specific content type"""
         template = self.get_template(content_type)
         return template.hook_patterns if template else []
-    
-    def get_engagement_drivers(self, content_type: ContentType) -> List[str]:
+
+    def get_engagement_drivers(self, content_type: ContentType) -> list[str]:
         """Get engagement drivers for content type"""
         template = self.get_template(content_type)
         return template.engagement_drivers if template else []
-    
-    def get_synapse_keywords(self, content_type: ContentType) -> List[str]:
+
+    def get_synapse_keywords(self, content_type: ContentType) -> list[str]:
         """Get Synapse query keywords for content enrichment"""
         template = self.get_template(content_type)
         return template.synapse_query_keywords if template else []

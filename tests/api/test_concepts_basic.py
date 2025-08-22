@@ -2,6 +2,7 @@
 
 import pytest
 from fastapi.testclient import TestClient
+
 from graph_rag.api.main import create_app
 
 
@@ -23,10 +24,10 @@ class TestBasicConceptsEndpoints:
             "text": "Test content",
             "platform": "general"
         })
-        
+
         # Should not return 404 (endpoint exists)
         assert response.status_code != 404
-        
+
         # Should return either success or validation error (not endpoint missing)
         assert response.status_code in [200, 422, 500]
 
@@ -36,7 +37,7 @@ class TestBasicConceptsEndpoints:
             "content": "Test controversial content",
             "platform": "linkedin"
         })
-        
+
         # Should not return 404 (endpoint exists)
         assert response.status_code != 404
         assert response.status_code in [200, 422, 500]
@@ -47,7 +48,7 @@ class TestBasicConceptsEndpoints:
             "content": "Test content for audience analysis",
             "platform": "linkedin"
         })
-        
+
         # Should not return 404 (endpoint exists)
         assert response.status_code != 404
         assert response.status_code in [200, 422, 500]
@@ -57,7 +58,7 @@ class TestBasicConceptsEndpoints:
         response = client.post("/api/v1/concepts/beliefs/extract", json={
             "content": "I believe this is a test statement"
         })
-        
+
         # Should not return 404 (endpoint exists)
         assert response.status_code != 404
         assert response.status_code in [200, 422, 500]
@@ -65,7 +66,7 @@ class TestBasicConceptsEndpoints:
     def test_trending_analysis_endpoint_exists(self, client):
         """Test that trending analysis endpoint exists."""
         response = client.get("/api/v1/hot-takes/trending")
-        
+
         # Should not return 404 (endpoint exists)
         assert response.status_code != 404
         assert response.status_code in [200, 422, 500]
@@ -77,7 +78,7 @@ class TestBasicConceptsEndpoints:
                 {"id": "1", "content": "Test content 1", "platform": "linkedin"}
             ]
         })
-        
+
         # Should not return 404 (endpoint exists)
         assert response.status_code != 404
         assert response.status_code in [200, 422, 500]
@@ -88,7 +89,7 @@ class TestBasicConceptsEndpoints:
             "content": "Test content for safety check",
             "safety_level": "corporate"
         })
-        
+
         # Should not return 404 (endpoint exists)
         assert response.status_code != 404
         assert response.status_code in [200, 422, 500]
@@ -96,7 +97,7 @@ class TestBasicConceptsEndpoints:
     def test_concept_search_endpoint_exists(self, client):
         """Test that concept search endpoint exists."""
         response = client.get("/api/v1/concepts/search")
-        
+
         # Should not return 404 (endpoint exists)
         assert response.status_code != 404
         assert response.status_code in [200, 422, 500]
@@ -104,7 +105,7 @@ class TestBasicConceptsEndpoints:
     def test_analytics_gaps_endpoint_exists(self, client):
         """Test that analytics gaps endpoint exists."""
         response = client.get("/api/v1/concepts/analytics/gaps")
-        
+
         # Should not return 404 (endpoint exists)
         assert response.status_code != 404
         assert response.status_code in [200, 422, 500]
@@ -112,7 +113,7 @@ class TestBasicConceptsEndpoints:
     def test_audience_segments_endpoint_exists(self, client):
         """Test that audience segments endpoint exists."""
         response = client.get("/api/v1/audience/segments")
-        
+
         # Should not return 404 (endpoint exists)
         assert response.status_code != 404
         assert response.status_code in [200, 422, 500]
@@ -132,7 +133,7 @@ class TestConceptsEndpointValidation:
         # Test missing required fields
         response = client.post("/api/v1/concepts/extract", json={})
         assert response.status_code == 422
-        
+
         # Test invalid data types
         response = client.post("/api/v1/concepts/extract", json={
             "text": 123,  # Should be string
@@ -145,7 +146,7 @@ class TestConceptsEndpointValidation:
         # Test missing required fields
         response = client.post("/api/v1/hot-takes/analyze", json={})
         assert response.status_code == 422
-        
+
         # Test with minimal valid data - endpoint may return 422 due to missing dependencies
         # but this confirms the endpoint exists and processes requests
         response = client.post("/api/v1/hot-takes/analyze", json={
@@ -161,12 +162,12 @@ class TestConceptsEndpointValidation:
         response = client.post("/api/v1/hot-takes/batch-analyze", json={
             "content_items": []
         })
-        # Should not return 404 (endpoint missing) or 500 (server error)  
+        # Should not return 404 (endpoint missing) or 500 (server error)
         assert response.status_code not in [404, 500]
 
     def test_invalid_json_handling(self, client):
         """Test handling of invalid JSON in requests."""
-        response = client.post("/api/v1/concepts/extract", 
+        response = client.post("/api/v1/concepts/extract",
                               data="invalid json",
                               headers={"Content-Type": "application/json"})
         assert response.status_code == 422
@@ -188,38 +189,38 @@ class TestConceptsEndpointIntegration:
             "text": "FastAPI is a powerful framework for building APIs",
             "platform": "linkedin"
         })
-        
+
         # Should not fail with 404 (endpoint exists)
         assert extract_response.status_code != 404
-        
+
         # Step 2: Analyze audience for the same content
         audience_response = client.post("/api/v1/audience/analyze", json={
             "content": "FastAPI is a powerful framework for building APIs",
             "platform": "linkedin"
         })
-        
+
         # Should not fail with 404 (endpoint exists)
         assert audience_response.status_code != 404
 
     def test_safety_to_optimization_workflow(self, client):
         """Test workflow from safety check to content optimization."""
         test_content = "Here's a controversial take on software development"
-        
+
         # Step 1: Safety check
         safety_response = client.post("/api/v1/hot-takes/safety-check", json={
             "content": test_content,
             "safety_level": "corporate"
         })
-        
+
         assert safety_response.status_code != 404
-        
+
         # Step 2: Content optimization
         optimization_response = client.post("/api/v1/hot-takes/optimize", json={
             "original_content": test_content,
             "optimization_goals": ["increase_engagement"],
             "platform": "linkedin"
         })
-        
+
         assert optimization_response.status_code != 404
 
     def test_analysis_to_trending_workflow(self, client):
@@ -229,12 +230,12 @@ class TestConceptsEndpointIntegration:
             "content": "The future of AI in software development",
             "platform": "linkedin"
         })
-        
+
         assert analysis_response.status_code != 404
-        
+
         # Step 2: Check trending topics
         trending_response = client.get("/api/v1/hot-takes/trending")
-        
+
         assert trending_response.status_code != 404
 
 

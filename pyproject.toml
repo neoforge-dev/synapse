@@ -164,6 +164,7 @@ markers = [
     "unit: marks tests as unit tests",
     "graph: marks tests as graph-related operations",
     "temporal: marks tests as date/time operations",
+    "performance: marks tests as performance benchmarks",
 ]
 
 [tool.coverage.run]
@@ -190,4 +191,5 @@ dev = [
     "nltk>=3.9.1",
     "pytest-asyncio>=0.26.0",
     "pytest-mock>=3.14.0",
+    "ruff>=0.11.4",
 ]

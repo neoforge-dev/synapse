@@ -4,28 +4,27 @@ Complete LinkedIn Content Ingestion Script
 Processes ALL LinkedIn data including posts, engagement metrics, and extracts comprehensive content
 """
 
-import pandas as pd
 import json
 import re
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, List, Any
 import sys
-import os
+from pathlib import Path
+from typing import Any
+
+import pandas as pd
 
 # Add the project root to the path
 sys.path.append(str(Path(__file__).parent.parent))
 
-def extract_ideas_and_beliefs(text: str) -> Dict[str, List[str]]:
+def extract_ideas_and_beliefs(text: str) -> dict[str, list[str]]:
     """Enhanced extraction of ideas, beliefs, and preferences from post text"""
     ideas = []
     beliefs = []
     preferences = []
-    
+
     # Enhanced patterns for beliefs/opinions
     belief_patterns = [
         r"I believe that[^.!?]*[.!?]",
-        r"In my opinion[^.!?]*[.!?]", 
+        r"In my opinion[^.!?]*[.!?]",
         r"I think[^.!?]*[.!?]",
         r"My experience shows[^.!?]*[.!?]",
         r"I've learned that[^.!?]*[.!?]",
@@ -36,7 +35,7 @@ def extract_ideas_and_beliefs(text: str) -> Dict[str, List[str]]:
         r"I've come to realize[^.!?]*[.!?]",
         r"I've observed that[^.!?]*[.!?]"
     ]
-    
+
     # Enhanced patterns for preferences
     preference_patterns = [
         r"I prefer[^.!?]*[.!?]",
@@ -49,7 +48,7 @@ def extract_ideas_and_beliefs(text: str) -> Dict[str, List[str]]:
         r"I always[^.!?]*[.!?]",
         r"I tend to[^.!?]*[.!?]"
     ]
-    
+
     # Extract beliefs
     for pattern in belief_patterns:
         matches = re.finditer(pattern, text, re.IGNORECASE | re.DOTALL)
@@ -57,41 +56,41 @@ def extract_ideas_and_beliefs(text: str) -> Dict[str, List[str]]:
             belief = match.group().strip()
             if len(belief) > 20:  # Filter out very short matches
                 beliefs.append(belief)
-    
-    # Extract preferences  
+
+    # Extract preferences
     for pattern in preference_patterns:
         matches = re.finditer(pattern, text, re.IGNORECASE | re.DOTALL)
         for match in matches:
             pref = match.group().strip()
             if len(pref) > 20:  # Filter out very short matches
                 preferences.append(pref)
-    
+
     # Enhanced technical ideas extraction
     tech_terms = [
-        "Python", "FastAPI", "Django", "architecture", "scaling", "microservices", 
+        "Python", "FastAPI", "Django", "architecture", "scaling", "microservices",
         "monolith", "technical debt", "CTO", "leadership", "startup", "scaleup",
         "engineering", "DevOps", "cloud", "performance", "database", "API",
         "React", "JavaScript", "TypeScript", "Docker", "Kubernetes", "AWS",
         "Azure", "GCP", "CI/CD", "testing", "agile", "product management",
         "software development", "code review", "refactoring", "optimization"
     ]
-    
+
     sentences = re.split(r'[.!?]+', text)
     for sentence in sentences:
         sentence = sentence.strip()
         if any(term.lower() in sentence.lower() for term in tech_terms) and len(sentence) > 30:
             ideas.append(sentence)
-    
+
     return {
         "ideas": ideas[:10],  # Limit to avoid duplication
         "beliefs": beliefs[:5],
         "preferences": preferences[:5]
     }
 
-def extract_personal_stories(text: str) -> List[Dict[str, Any]]:
+def extract_personal_stories(text: str) -> list[dict[str, Any]]:
     """Enhanced extraction of personal stories and experiences"""
     stories = []
-    
+
     # Enhanced story patterns
     story_patterns = [
         r"Three years ago[^.!?]*[.!?]",
@@ -110,7 +109,7 @@ def extract_personal_stories(text: str) -> List[Dict[str, Any]]:
         r"I found myself[^.!?]*[.!?]",
         r"There was a time[^.!?]*[.!?]"
     ]
-    
+
     for pattern in story_patterns:
         matches = re.finditer(pattern, text, re.IGNORECASE | re.DOTALL)
         for match in matches:
@@ -121,13 +120,13 @@ def extract_personal_stories(text: str) -> List[Dict[str, Any]]:
                     "story_type": "experience",
                     "pattern_matched": pattern.replace(r"[^.!?]*[.!?]", "")
                 })
-    
+
     return stories[:3]  # Limit to avoid duplication
 
-def extract_technical_insights(text: str) -> List[str]:
+def extract_technical_insights(text: str) -> list[str]:
     """Enhanced extraction of technical insights and patterns"""
     insights = []
-    
+
     # Enhanced technical insight patterns
     insight_patterns = [
         r"The key is[^.!?]*[.!?]",
@@ -142,17 +141,17 @@ def extract_technical_insights(text: str) -> List[str]:
         r"Here's what changed[^.!?]*[.!?]",
         r"This led to[^.!?]*[.!?]"
     ]
-    
+
     for pattern in insight_patterns:
         matches = re.finditer(pattern, text, re.IGNORECASE | re.DOTALL)
         for match in matches:
             insight = match.group().strip()
             if len(insight) > 30:
                 insights.append(insight)
-    
+
     return insights[:5]  # Limit to avoid duplication
 
-def extract_engagement_patterns(row: pd.Series) -> Dict[str, Any]:
+def extract_engagement_patterns(row: pd.Series) -> dict[str, Any]:
     """Extract engagement insights from LinkedIn post metrics"""
     return {
         "impressions": int(row.get('numImpressions', 0)),
@@ -165,32 +164,32 @@ def extract_engagement_patterns(row: pd.Series) -> Dict[str, Any]:
         "urn": row.get('urn', '')
     }
 
-def analyze_high_performing_content(content_list: List[Dict]) -> Dict[str, Any]:
+def analyze_high_performing_content(content_list: list[dict]) -> dict[str, Any]:
     """Analyze patterns in high-performing LinkedIn content"""
-    
+
     # Sort by engagement rate
-    sorted_content = sorted(content_list, 
-                          key=lambda x: x.get('engagement', {}).get('engagement_rate', 0), 
+    sorted_content = sorted(content_list,
+                          key=lambda x: x.get('engagement', {}).get('engagement_rate', 0),
                           reverse=True)
-    
+
     top_performers = sorted_content[:20]  # Top 20 posts
-    
+
     # Extract patterns from top performers
     top_ideas = []
     top_beliefs = []
     top_stories = []
     top_hashtags = []
-    
+
     for post in top_performers:
         extracted = post.get('extracted_content', {})
         top_ideas.extend(extracted.get('ideas', []))
         top_beliefs.extend(extracted.get('beliefs', []))
         top_stories.extend(extracted.get('personal_stories', []))
-        
+
         hashtags = post.get('engagement', {}).get('hashtags', '')
         if hashtags:
             top_hashtags.append(hashtags)
-    
+
     return {
         "high_performing_posts_count": len(top_performers),
         "avg_engagement_rate": sum(p.get('engagement', {}).get('engagement_rate', 0) for p in top_performers) / len(top_performers),
@@ -202,20 +201,20 @@ def analyze_high_performing_content(content_list: List[Dict]) -> Dict[str, Any]:
 
 def process_complete_linkedin_data():
     """Process ALL LinkedIn data from stats file"""
-    
+
     data_dir = Path("./data")
     output_dir = data_dir / "linkedin_processed"
     output_dir.mkdir(exist_ok=True)
-    
+
     # Process the comprehensive LinkedIn stats file
     stats_file = data_dir / "linkedin_posts_stats.csv"
-    
+
     if not stats_file.exists():
         print(f"ERROR: {stats_file} not found!")
         return []
-    
+
     print(f"Processing complete LinkedIn dataset from {stats_file}")
-    
+
     # Read with proper error handling
     try:
         df = pd.read_csv(stats_file)
@@ -223,23 +222,23 @@ def process_complete_linkedin_data():
     except Exception as e:
         print(f"Error reading CSV: {e}")
         return []
-    
+
     all_content = []
     processed_count = 0
-    
+
     for idx, row in df.iterrows():
         # Skip entries without meaningful text content
         if pd.isna(row.get('text')) or len(str(row.get('text', ''))) < 50:
             continue
-            
+
         post_text = str(row['text'])
-        
+
         # Extract all content types
         ideas_beliefs = extract_ideas_and_beliefs(post_text)
         stories = extract_personal_stories(post_text)
         insights = extract_technical_insights(post_text)
         engagement = extract_engagement_patterns(row)
-        
+
         content_item = {
             "source": "linkedin_complete_dataset",
             "post_id": row.get('urn', f'post_{idx}'),
@@ -253,46 +252,46 @@ def process_complete_linkedin_data():
                 "technical_insights": insights
             }
         }
-        
+
         all_content.append(content_item)
         processed_count += 1
-        
+
         if processed_count % 50 == 0:
             print(f"Processed {processed_count} posts...")
-    
+
     print(f"Processed {processed_count} LinkedIn posts with meaningful content")
-    
+
     # Analyze high-performing content patterns
     performance_analysis = analyze_high_performing_content(all_content)
-    
+
     # Save complete processed content
     output_file = output_dir / "linkedin_complete_extracted_content.json"
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(all_content, f, indent=2, ensure_ascii=False)
-    
+
     # Save performance analysis
     analysis_file = output_dir / "linkedin_performance_analysis.json"
     with open(analysis_file, 'w', encoding='utf-8') as f:
         json.dump(performance_analysis, f, indent=2, ensure_ascii=False)
-    
+
     print(f"Complete dataset saved to {output_file}")
     print(f"Performance analysis saved to {analysis_file}")
-    
+
     # Create enhanced Synapse documents
     create_enhanced_synapse_documents(all_content, performance_analysis, output_dir)
-    
+
     return all_content
 
-def create_enhanced_synapse_documents(content: List[Dict], analysis: Dict, output_dir: Path):
+def create_enhanced_synapse_documents(content: list[dict], analysis: dict, output_dir: Path):
     """Create enhanced structured documents for Synapse ingestion"""
-    
+
     # Aggregate all content
     all_ideas = []
     all_beliefs = []
     all_preferences = []
     all_stories = []
     all_insights = []
-    
+
     for item in content:
         extracted = item["extracted_content"]
         all_ideas.extend(extracted["ideas"])
@@ -300,7 +299,7 @@ def create_enhanced_synapse_documents(content: List[Dict], analysis: Dict, outpu
         all_preferences.extend(extracted["preferences"])
         all_stories.extend(extracted["personal_stories"])
         all_insights.extend(extracted["technical_insights"])
-    
+
     # Remove duplicates while preserving order
     def deduplicate_list(lst):
         seen = set()
@@ -314,13 +313,13 @@ def create_enhanced_synapse_documents(content: List[Dict], analysis: Dict, outpu
                 seen.add(item_str)
                 result.append(item)
         return result
-    
+
     all_ideas = deduplicate_list(all_ideas)
     all_beliefs = deduplicate_list(all_beliefs)
     all_preferences = deduplicate_list(all_preferences)
     all_stories = deduplicate_list(all_stories)
     all_insights = deduplicate_list(all_insights)
-    
+
     # Create comprehensive ideas and beliefs document
     ideas_doc = f"""# Bogdan's Complete Professional Ideas and Beliefs
 ## Extracted from Full LinkedIn Dataset ({len(content)} posts)
@@ -348,7 +347,7 @@ def create_enhanced_synapse_documents(content: List[Dict], analysis: Dict, outpu
 
 This document contains authentic professional perspectives extracted from Bogdan's complete LinkedIn dataset for use in content creation and voice consistency.
 """
-    
+
     # Create enhanced personal stories document
     stories_doc = f"""# Bogdan's Complete Professional Stories Collection
 ## Extracted from Full LinkedIn Dataset
@@ -362,7 +361,7 @@ These stories generated the highest engagement:
 
 ### Story Patterns and Contexts
 """
-    
+
     for story in all_stories[:30]:
         stories_doc += f"""
 **Story**: {story['story_snippet']}
@@ -370,15 +369,15 @@ These stories generated the highest engagement:
 **Pattern**: {story['pattern_matched']}
 ---
 """
-    
+
     # Save enhanced documents
     with open(output_dir / "complete_authentic_ideas_beliefs.md", 'w', encoding='utf-8') as f:
         f.write(ideas_doc)
-    
+
     with open(output_dir / "complete_authentic_personal_stories.md", 'w', encoding='utf-8') as f:
         f.write(stories_doc)
-    
-    print(f"Enhanced Synapse documents created:")
+
+    print("Enhanced Synapse documents created:")
     print(f"- Complete ideas and beliefs: {output_dir / 'complete_authentic_ideas_beliefs.md'}")
     print(f"- Complete personal stories: {output_dir / 'complete_authentic_personal_stories.md'}")
     print(f"- Total ideas extracted: {len(all_ideas)}")
@@ -391,10 +390,10 @@ if __name__ == "__main__":
     print("Complete LinkedIn Content Ingestion Starting...")
     content = process_complete_linkedin_data()
     print("Complete LinkedIn Content Ingestion Finished!")
-    
+
     if content:
-        print(f"\nFinal Summary:")
+        print("\nFinal Summary:")
         print(f"- Processed {len(content)} LinkedIn posts")
-        print(f"- Ready for Synapse ingestion")
-        print(f"- Enhanced with performance analysis")
-        print(f"- Contains comprehensive authentic voice data")
+        print("- Ready for Synapse ingestion")
+        print("- Enhanced with performance analysis")
+        print("- Contains comprehensive authentic voice data")

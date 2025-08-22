@@ -374,7 +374,7 @@ class CitationService:
         # Handle None or empty text
         if not text:
             return []
-            
+
         # Remove common stop words and extract meaningful terms
         stop_words = {
             "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by",
@@ -563,7 +563,7 @@ class CitationService:
     def _find_exact_matches(self, answer: str, chunk_text: str, min_length: int = 10) -> list[str]:
         """Find exact phrase matches between answer and chunk."""
         exact_matches = []
-        
+
         # Handle None values
         if not answer or not chunk_text:
             return exact_matches
@@ -594,7 +594,7 @@ class CitationService:
         more sophisticated NLP models for semantic similarity.
         """
         paraphrase_matches = []
-        
+
         # Handle None values
         if not answer or not chunk_text:
             return paraphrase_matches
@@ -716,7 +716,7 @@ class CitationService:
         # Handle None or empty sentence
         if not sentence:
             return False
-            
+
         # Look for patterns that suggest factual statements
         factual_patterns = [
             r'\b(is|are|was|were|has|have|will|did|does)\b',

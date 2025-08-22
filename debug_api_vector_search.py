@@ -2,10 +2,12 @@
 """Debug script to test the API's vector store search directly."""
 
 import asyncio
-import requests
 import logging
-from graph_rag.config import get_settings
+
+import requests
+
 from graph_rag.api.dependencies import create_vector_store
+from graph_rag.config import get_settings
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -16,7 +18,7 @@ async def test_api_vector_store_state():
     print("=" * 50)
     print("DEBUGGING API VECTOR STORE SEARCH")
     print("=" * 50)
-    
+
     # First trigger loading by making an API call
     print("1. Triggering vector store loading via API...")
     try:
@@ -28,7 +30,7 @@ async def test_api_vector_store_state():
         print(f"API trigger response: {response.status_code}")
     except Exception as e:
         print(f"Error triggering API: {e}")
-    
+
     # Check stats
     print("2. Checking vector store stats...")
     try:
@@ -40,23 +42,23 @@ async def test_api_vector_store_state():
             print(f"Stats error: {response.status_code} - {response.text}")
     except Exception as e:
         print(f"Error getting stats: {e}")
-    
+
     # Now create our own vector store with same settings and test it
     print("3. Creating identical vector store...")
     settings = get_settings()
     our_vector_store = create_vector_store(settings)
-    
+
     await our_vector_store._ensure_loaded()
     our_size = await our_vector_store.get_vector_store_size()
     print(f"Our vector store size: {our_size}")
-    
+
     # Test direct search on our vector store
     print("4. Testing direct search on our vector store...")
     our_results = await our_vector_store.search("LinkedIn development practices", top_k=3)
     print(f"Our search returned {len(our_results)} results")
     for i, result in enumerate(our_results[:2]):
         print(f"  Result {i+1}: score={result.score:.4f}, text='{result.chunk.text[:100]}...'")
-    
+
     # Test with different queries
     queries = [
         "linkedin",
@@ -65,7 +67,7 @@ async def test_api_vector_store_state():
         "What are some LinkedIn development practices?",
         "python"
     ]
-    
+
     print("5. Testing various queries...")
     for query in queries:
         try:

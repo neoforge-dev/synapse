@@ -489,7 +489,7 @@ def create_query_router() -> APIRouter:
     ):
         """Enhanced query endpoint with consolidated responses."""
         logger.info(f"Received consolidated query: {request.query_text[:100]}...")
-        
+
         try:
             # Check if engine supports consolidated queries
             if not isinstance(engine, ImprovedSynapseEngine):
@@ -497,7 +497,7 @@ def create_query_router() -> APIRouter:
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                     detail="Consolidated queries require ImprovedSynapseEngine. Current engine does not support this feature."
                 )
-            
+
             # Prepare config from request
             config = {
                 "k": request.max_chunks,
@@ -506,12 +506,12 @@ def create_query_router() -> APIRouter:
                 "consolidation_threshold": request.consolidation_threshold,
                 "conversation_id": request.conversation_id,
             }
-            
+
             # Get consolidated answer
             consolidated_answer = await engine.answer_query_consolidated(
                 request.query_text, config=config, conversation_id=request.conversation_id
             )
-            
+
             # Convert to API response format
             api_response = ConsolidatedAnswerResponse(
                 answer=consolidated_answer.answer,
@@ -568,15 +568,15 @@ def create_query_router() -> APIRouter:
                 machine_readable=consolidated_answer.machine_readable if request.include_machine_readable else {},
                 metadata=consolidated_answer.metadata
             )
-            
+
             logger.info(f"Consolidated query successful. Confidence: {consolidated_answer.confidence_score:.2f}")
             return api_response
-            
+
         except HTTPException:
             raise
         except Exception as e:
             logger.error(f"Error processing consolidated query '{request.query_text}': {e}", exc_info=True)
-            
+
             error_guidance = _get_error_guidance(e)
             error_detail = {
                 "error": str(e),
@@ -584,7 +584,7 @@ def create_query_router() -> APIRouter:
                 "guidance": error_guidance,
                 "suggestions": _get_recovery_suggestions(e)
             }
-            
+
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=error_detail,
@@ -612,7 +612,7 @@ def create_query_router() -> APIRouter:
                     is_persistent=False,
                     error="Vector store status not available for this engine type"
                 )
-                
+
         except Exception as e:
             logger.error(f"Error getting vector store status: {e}", exc_info=True)
             return VectorStoreStatusResponse(

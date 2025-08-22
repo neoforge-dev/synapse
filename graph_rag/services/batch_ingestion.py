@@ -3,19 +3,13 @@
 import asyncio
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from pydantic import BaseModel
 
-from graph_rag.core.interfaces import (
-    DocumentProcessor,
-    EmbeddingService,
-    EntityExtractor,
-    GraphRepository,
-    VectorStore,
-)
 from graph_rag.services.ingestion import IngestionService
 
 logger = logging.getLogger(__name__)
@@ -28,7 +22,7 @@ class BatchConfig:
     max_retries: int = 3
     retry_delay: float = 1.0
     progress_callback: Callable[[int, int, int, int], None] | None = None
-    
+
 
 class BatchProgress(BaseModel):
     """Progress tracking for batch processing."""
@@ -61,7 +55,7 @@ class BatchResult(BaseModel):
     failed_files: int
     file_results: list[FileProcessingResult]
     processing_time: float
-    
+
     @property
     def success_rate(self) -> float:
         """Calculate success rate for this batch."""
@@ -79,7 +73,7 @@ class IncrementalIngestionResult(BaseModel):
     batch_results: list[BatchResult]
     total_processing_time: float
     failed_file_paths: list[str]
-    
+
     @property
     def overall_success_rate(self) -> float:
         """Calculate overall success rate."""
@@ -95,7 +89,7 @@ class IncrementalIngestion:
     Provides progress tracking, error handling, and recovery capabilities
     for sustainable processing of thousands of documents.
     """
-    
+
     def __init__(
         self,
         ingestion_service: IngestionService,
@@ -112,7 +106,7 @@ class IncrementalIngestion:
         self.config = config or BatchConfig()
         self._start_time = 0.0
         self._processed_count = 0
-        
+
     async def process_files(
         self,
         file_paths: list[Path],
@@ -134,28 +128,28 @@ class IncrementalIngestion:
         """
         logger.info(f"Starting incremental ingestion of {len(file_paths)} files")
         logger.info(f"Batch size: {self.config.batch_size}")
-        
+
         self._start_time = time.monotonic()
         self._processed_count = 0
-        
+
         # Split files into batches
         batches = self._create_batches(file_paths)
         total_batches = len(batches)
-        
+
         logger.info(f"Created {total_batches} batches")
-        
+
         # Track results
         batch_results: list[BatchResult] = []
         total_successful = 0
         total_failed = 0
         failed_file_paths: list[str] = []
-        
+
         # Process each batch
         for batch_num, batch_files in enumerate(batches, 1):
             logger.info(f"Processing batch {batch_num}/{total_batches} ({len(batch_files)} files)")
-            
+
             batch_start_time = time.monotonic()
-            
+
             # Process files in the current batch
             batch_result = await self._process_batch(
                 batch_files=batch_files,
@@ -164,23 +158,23 @@ class IncrementalIngestion:
                 replace_existing=replace_existing,
                 metadata_parser=metadata_parser,
             )
-            
+
             batch_processing_time = time.monotonic() - batch_start_time
             batch_result.processing_time = batch_processing_time
-            
+
             # Update totals
             total_successful += batch_result.successful_files
             total_failed += batch_result.failed_files
             self._processed_count += len(batch_files)
-            
+
             # Collect failed file paths
             failed_file_paths.extend([
-                result.file_path for result in batch_result.file_results 
+                result.file_path for result in batch_result.file_results
                 if not result.success
             ])
-            
+
             batch_results.append(batch_result)
-            
+
             # Report progress
             await self._report_progress(
                 batch_num=batch_num,
@@ -190,16 +184,16 @@ class IncrementalIngestion:
                 successful_files=total_successful,
                 failed_files=total_failed,
             )
-            
+
             # Validate batch before continuing
             if not self._validate_batch_result(batch_result):
                 logger.warning(f"Batch {batch_num} validation failed, but continuing")
-            
+
             # Memory cleanup after each batch
             await self._cleanup_batch_memory()
-            
+
         total_processing_time = time.monotonic() - self._start_time
-        
+
         result = IncrementalIngestionResult(
             total_files=len(file_paths),
             total_batches=total_batches,
@@ -209,13 +203,13 @@ class IncrementalIngestion:
             total_processing_time=total_processing_time,
             failed_file_paths=failed_file_paths,
         )
-        
+
         logger.info(f"Incremental ingestion completed in {total_processing_time:.2f}s")
         logger.info(f"Success rate: {result.overall_success_rate:.1%}")
         logger.info(f"Processed {result.successful_files}/{result.total_files} files successfully")
-        
+
         return result
-    
+
     def _create_batches(self, file_paths: list[Path]) -> list[list[Path]]:
         """Split file paths into batches."""
         batches = []
@@ -223,7 +217,7 @@ class IncrementalIngestion:
             batch = file_paths[i:i + self.config.batch_size]
             batches.append(batch)
         return batches
-    
+
     async def _process_batch(
         self,
         batch_files: list[Path],
@@ -236,7 +230,7 @@ class IncrementalIngestion:
         file_results: list[FileProcessingResult] = []
         successful_count = 0
         failed_count = 0
-        
+
         for file_path in batch_files:
             result = await self._process_single_file(
                 file_path=file_path,
@@ -244,16 +238,16 @@ class IncrementalIngestion:
                 replace_existing=replace_existing,
                 metadata_parser=metadata_parser,
             )
-            
+
             file_results.append(result)
-            
+
             if result.success:
                 successful_count += 1
                 logger.debug(f"Successfully processed: {file_path}")
             else:
                 failed_count += 1
                 logger.warning(f"Failed to process: {file_path} - {result.error}")
-        
+
         return BatchResult(
             batch_number=batch_number,
             total_files=len(batch_files),
@@ -262,7 +256,7 @@ class IncrementalIngestion:
             file_results=file_results,
             processing_time=0.0,  # Will be set by caller
         )
-    
+
     async def _process_single_file(
         self,
         file_path: Path,
@@ -272,7 +266,7 @@ class IncrementalIngestion:
     ) -> FileProcessingResult:
         """Process a single file with retry logic."""
         start_time = time.monotonic()
-        
+
         for attempt in range(self.config.max_retries):
             try:
                 # Extract metadata if parser provided
@@ -282,17 +276,17 @@ class IncrementalIngestion:
                         metadata = metadata_parser(file_path)
                     except Exception as e:
                         logger.warning(f"Failed to parse metadata for {file_path}: {e}")
-                
+
                 # Read file content
                 content = file_path.read_text(encoding='utf-8')
-                
+
                 # Derive document ID
                 from graph_rag.utils.identity import derive_document_id
                 document_id, id_source, _ = derive_document_id(file_path, content, metadata)
-                
+
                 # Add id_source to metadata
                 metadata["id_source"] = id_source
-                
+
                 # Ingest document
                 ingestion_result = await self.ingestion_service.ingest_document(
                     document_id=document_id,
@@ -301,9 +295,9 @@ class IncrementalIngestion:
                     generate_embeddings=enable_embeddings,
                     replace_existing=replace_existing,
                 )
-                
+
                 processing_time = time.monotonic() - start_time
-                
+
                 return FileProcessingResult(
                     file_path=str(file_path),
                     success=True,
@@ -311,24 +305,24 @@ class IncrementalIngestion:
                     chunk_count=ingestion_result.num_chunks,
                     processing_time=processing_time,
                 )
-                
+
             except Exception as e:
                 error_msg = str(e)
-                
+
                 if attempt < self.config.max_retries - 1:
                     logger.warning(f"Attempt {attempt + 1} failed for {file_path}: {error_msg}, retrying...")
                     await asyncio.sleep(self.config.retry_delay * (attempt + 1))
                 else:
                     logger.error(f"All {self.config.max_retries} attempts failed for {file_path}: {error_msg}")
                     processing_time = time.monotonic() - start_time
-                    
+
                     return FileProcessingResult(
                         file_path=str(file_path),
                         success=False,
                         error=error_msg,
                         processing_time=processing_time,
                     )
-        
+
         # Should never reach here, but provide fallback
         processing_time = time.monotonic() - start_time
         return FileProcessingResult(
@@ -337,21 +331,21 @@ class IncrementalIngestion:
             error="Unknown error after all retries",
             processing_time=processing_time,
         )
-    
+
     def _validate_batch_result(self, batch_result: BatchResult) -> bool:
         """Validate batch result to ensure processing quality."""
         # Check if batch has reasonable success rate
         if batch_result.success_rate < 0.5:  # Less than 50% success
             logger.warning(f"Batch {batch_result.batch_number} has low success rate: {batch_result.success_rate:.1%}")
             return False
-        
+
         # Check if any files were processed
         if batch_result.total_files == 0:
             logger.warning(f"Batch {batch_result.batch_number} processed no files")
             return False
-        
+
         return True
-    
+
     async def _report_progress(
         self,
         batch_num: int,
@@ -364,10 +358,10 @@ class IncrementalIngestion:
         """Report current progress."""
         elapsed_time = time.monotonic() - self._start_time
         processing_rate = processed_files / elapsed_time if elapsed_time > 0 else 0
-        
+
         remaining_files = total_files - processed_files
         estimated_time_remaining = remaining_files / processing_rate if processing_rate > 0 else 0
-        
+
         logger.info(
             f"Progress: {processed_files}/{total_files} files "
             f"({processed_files/total_files:.1%}) | "
@@ -376,22 +370,22 @@ class IncrementalIngestion:
             f"Rate: {processing_rate:.1f} files/s | "
             f"ETA: {estimated_time_remaining:.0f}s"
         )
-        
+
         # Call progress callback if provided
         if self.config.progress_callback:
             self.config.progress_callback(
                 processed_files, total_files, successful_files, failed_files
             )
-    
+
     async def _cleanup_batch_memory(self) -> None:
         """Clean up memory after processing a batch."""
         # Force garbage collection to manage memory usage
         import gc
         gc.collect()
-        
+
         # Small delay to allow cleanup
         await asyncio.sleep(0.1)
-    
+
     async def resume_from_failed(
         self,
         failed_file_paths: list[str],
@@ -412,12 +406,12 @@ class IncrementalIngestion:
             IncrementalIngestionResult with processing summary
         """
         logger.info(f"Resuming processing of {len(failed_file_paths)} failed files")
-        
+
         failed_paths = [Path(path) for path in failed_file_paths if Path(path).exists()]
-        
+
         if len(failed_paths) != len(failed_file_paths):
             logger.warning(f"Some failed files no longer exist: {len(failed_file_paths) - len(failed_paths)} missing")
-        
+
         return await self.process_files(
             file_paths=failed_paths,
             enable_embeddings=enable_embeddings,

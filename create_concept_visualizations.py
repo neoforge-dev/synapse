@@ -15,7 +15,7 @@ import logging
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -25,11 +25,11 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AnalysisData:
     """Container for analysis data from various sources."""
-    professional_journey: Dict[str, Any]
-    content_strategy: Dict[str, Any]
-    business_intelligence: Dict[str, Any]
-    cross_platform_correlations: Dict[str, Any]
-    knowledge_graph_stats: Dict[str, Any]
+    professional_journey: dict[str, Any]
+    content_strategy: dict[str, Any]
+    business_intelligence: dict[str, Any]
+    cross_platform_correlations: dict[str, Any]
+    knowledge_graph_stats: dict[str, Any]
 
 
 @dataclass
@@ -43,8 +43,8 @@ class ConceptNode:
     color: str
     x: float = 0.0
     y: float = 0.0
-    metadata: Dict[str, Any] = None
-    
+    metadata: dict[str, Any] = None
+
     def __post_init__(self):
         if self.metadata is None:
             self.metadata = {}
@@ -58,8 +58,8 @@ class ConceptEdge:
     relationship_type: str
     weight: float
     color: str
-    metadata: Dict[str, Any] = None
-    
+    metadata: dict[str, Any] = None
+
     def __post_init__(self):
         if self.metadata is None:
             self.metadata = {}
@@ -67,12 +67,12 @@ class ConceptEdge:
 
 class ComprehensiveConceptMapper:
     """Service for creating comprehensive concept maps from analysis data."""
-    
+
     def __init__(self):
         self.color_schemes = {
             # Concept types
             "STRATEGY": "#FF6B6B",
-            "INNOVATION": "#4ECDC4", 
+            "INNOVATION": "#4ECDC4",
             "PROCESS": "#45B7D1",
             "INSIGHT": "#96CEB4",
             "ENGAGEMENT": "#FFEAA7",
@@ -81,37 +81,37 @@ class ComprehensiveConceptMapper:
             "BUSINESS": "#FD79A8",
             "CAREER": "#FDCB6E",
             "NETWORK": "#6C5CE7",
-            
+
             # Platforms
             "linkedin": "#0077B5",
             "notion": "#000000",
             "blog": "#FF5722",
             "synapse": "#74B9FF",
             "github": "#24292e",
-            
+
             # Relationships
             "BUILDS_UPON": "#2ecc71",
             "INFLUENCES": "#f39c12",
             "CORRELATES": "#1abc9c",
             "ENABLES": "#9b59b6",
             "EVOLVES_TO": "#3498db",
-            
+
             "default": "#95A5A6"
         }
-    
+
     async def load_analysis_data(self) -> AnalysisData:
         """Load analysis data from various sources."""
         logger.info("Loading analysis data...")
-        
+
         # Load LinkedIn analysis summary
         linkedin_analysis = await self._load_text_file("docs/analysis/LINKEDIN_ANALYSIS_SUMMARY.md")
-        
+
         # Load content strategy analysis
         content_strategy = await self._load_text_file("docs/analysis/CONTENT_STRATEGY_PLATFORM_COMPLETE.md")
-        
+
         # Load comprehensive intelligence data
         intelligence_data = await self._load_json_file("visualizations/comprehensive_intelligence.json")
-        
+
         # Extract key data points
         professional_journey = {
             "career_stages": [
@@ -123,7 +123,7 @@ class ComprehensiveConceptMapper:
             "technologies": ["Python", "Node.js", "React", "AWS", "Docker", "Kubernetes", "PostgreSQL", "Redis"],
             "industries": ["Gaming (Ubisoft)", "Healthcare (Specta.AI)", "Fintech (BVNK)", "IoT (Arnia Software)"]
         }
-        
+
         content_strategy_data = {
             "content_evolution": [
                 {"phase": "Personal Experience", "content": "Career stories and technical challenges"},
@@ -137,7 +137,7 @@ class ComprehensiveConceptMapper:
                 "best_formats": ["Architecture decisions", "Technical depth with business context"]
             }
         }
-        
+
         cross_platform_data = {
             "platform_relationships": [
                 {"source": "LinkedIn", "target": "Notion", "type": "draft_to_structured"},
@@ -146,7 +146,7 @@ class ComprehensiveConceptMapper:
                 {"source": "Synapse", "target": "Business Intelligence", "type": "data_to_insights"}
             ]
         }
-        
+
         return AnalysisData(
             professional_journey=professional_journey,
             content_strategy=content_strategy_data,
@@ -158,7 +158,7 @@ class ComprehensiveConceptMapper:
                 "relationship_types": ["MENTIONS", "CONTAINS", "MENTIONS_TOPIC", "HAS_TOPIC"]
             }
         )
-    
+
     async def _load_text_file(self, file_path: str) -> str:
         """Load text file content."""
         try:
@@ -169,8 +169,8 @@ class ComprehensiveConceptMapper:
         except Exception as e:
             logger.warning(f"Could not load {file_path}: {e}")
             return ""
-    
-    async def _load_json_file(self, file_path: str) -> Dict[str, Any]:
+
+    async def _load_json_file(self, file_path: str) -> dict[str, Any]:
         """Load JSON file content."""
         try:
             path = Path(file_path)
@@ -180,17 +180,17 @@ class ComprehensiveConceptMapper:
         except Exception as e:
             logger.warning(f"Could not load {file_path}: {e}")
             return {}
-    
-    async def create_main_concept_network(self, data: AnalysisData) -> Dict[str, Any]:
+
+    async def create_main_concept_network(self, data: AnalysisData) -> dict[str, Any]:
         """Create the main concept network visualization."""
         logger.info("Creating main concept network...")
-        
+
         nodes = []
         edges = []
-        
+
         # Create nodes for key concepts
         concept_id = 0
-        
+
         # Professional journey concepts
         for stage in data.professional_journey["career_stages"]:
             concept_id += 1
@@ -207,7 +207,7 @@ class ComprehensiveConceptMapper:
                     "category": "professional_development"
                 }
             ))
-        
+
         # Technology concepts
         for tech in data.professional_journey["technologies"]:
             concept_id += 1
@@ -220,7 +220,7 @@ class ComprehensiveConceptMapper:
                 color=self.color_schemes["TECHNICAL"],
                 metadata={"category": "technology"}
             ))
-        
+
         # Content strategy concepts
         for phase in data.content_strategy["content_evolution"]:
             concept_id += 1
@@ -236,7 +236,7 @@ class ComprehensiveConceptMapper:
                     "category": "content_strategy"
                 }
             ))
-        
+
         # Business intelligence concepts
         business_concepts = [
             {"name": "Market Analysis", "type": "INSIGHT"},
@@ -244,7 +244,7 @@ class ComprehensiveConceptMapper:
             {"name": "Network Growth", "type": "ENGAGEMENT"},
             {"name": "Knowledge Management", "type": "PROCESS"}
         ]
-        
+
         for concept in business_concepts:
             concept_id += 1
             nodes.append(ConceptNode(
@@ -256,10 +256,10 @@ class ComprehensiveConceptMapper:
                 color=self.color_schemes[concept["type"]],
                 metadata={"category": "business_intelligence"}
             ))
-        
+
         # Create relationships between concepts
         edge_id = 0
-        
+
         # Career progression relationships
         career_nodes = [n for n in nodes if n.concept_type == "CAREER"]
         for i in range(len(career_nodes) - 1):
@@ -272,7 +272,7 @@ class ComprehensiveConceptMapper:
                 color=self.color_schemes["EVOLVES_TO"],
                 metadata={"type": "temporal_progression"}
             ))
-        
+
         # Content evolution relationships
         content_nodes = [n for n in nodes if n.concept_type == "STRATEGY"]
         for i in range(len(content_nodes) - 1):
@@ -285,7 +285,7 @@ class ComprehensiveConceptMapper:
                 color=self.color_schemes["BUILDS_UPON"],
                 metadata={"type": "content_evolution"}
             ))
-        
+
         # Cross-category relationships
         if career_nodes and content_nodes:
             edge_id += 1
@@ -297,7 +297,7 @@ class ComprehensiveConceptMapper:
                 color=self.color_schemes["INFLUENCES"],
                 metadata={"type": "experience_to_content"}
             ))
-        
+
         return {
             "nodes": [asdict(node) for node in nodes],
             "edges": [asdict(edge) for edge in edges],
@@ -309,11 +309,11 @@ class ComprehensiveConceptMapper:
                 "created_at": datetime.now().isoformat()
             }
         }
-    
-    async def create_professional_journey_flow(self, data: AnalysisData) -> Dict[str, Any]:
+
+    async def create_professional_journey_flow(self, data: AnalysisData) -> dict[str, Any]:
         """Create professional journey flow visualization."""
         logger.info("Creating professional journey flow...")
-        
+
         timeline_data = {
             "title": "Professional Development Journey",
             "subtitle": "Individual contributor → Technical Leader → Fractional CTO → Platform Creator",
@@ -321,7 +321,7 @@ class ComprehensiveConceptMapper:
             "milestones": [],
             "skills_evolution": []
         }
-        
+
         # Career stages timeline
         for i, stage in enumerate(data.professional_journey["career_stages"]):
             timeline_data["timeline"].append({
@@ -333,7 +333,7 @@ class ComprehensiveConceptMapper:
                 "y": 150,
                 "color": self.color_schemes["CAREER"]
             })
-        
+
         # Key milestones
         milestones = [
             {"year": "2013", "event": "Led first development team", "impact": "Team leadership skills"},
@@ -341,9 +341,9 @@ class ComprehensiveConceptMapper:
             {"year": "2019", "event": "First fractional CTO role", "impact": "Strategic consulting"},
             {"year": "2024", "event": "Launched Synapse platform", "impact": "Product development"}
         ]
-        
+
         timeline_data["milestones"] = milestones
-        
+
         # Skills evolution over time
         skills_by_period = {
             "2009-2013": ["Python", "JavaScript", "SQL", "Web Development"],
@@ -351,17 +351,17 @@ class ComprehensiveConceptMapper:
             "2019-2023": ["Strategic Planning", "Due Diligence", "Scaling", "Product Strategy"],
             "2024+": ["AI/ML", "Knowledge Graphs", "Content Strategy", "Platform Development"]
         }
-        
+
         timeline_data["skills_evolution"] = skills_by_period
-        
+
         return timeline_data
-    
-    async def create_cross_platform_correlations(self, data: AnalysisData) -> Dict[str, Any]:
+
+    async def create_cross_platform_correlations(self, data: AnalysisData) -> dict[str, Any]:
         """Create cross-platform correlation network."""
         logger.info("Creating cross-platform correlations...")
-        
+
         platforms = ["LinkedIn", "Notion", "Blog", "Synapse", "GitHub"]
-        
+
         nodes = []
         for i, platform in enumerate(platforms):
             nodes.append({
@@ -373,7 +373,7 @@ class ComprehensiveConceptMapper:
                 "x": (i % 3) * 200 + 100,
                 "y": (i // 3) * 150 + 100
             })
-        
+
         # Add content type nodes
         content_types = [
             {"name": "Technical Posts", "platform": "linkedin"},
@@ -382,7 +382,7 @@ class ComprehensiveConceptMapper:
             {"name": "Knowledge Base", "platform": "synapse"},
             {"name": "Code Examples", "platform": "github"}
         ]
-        
+
         for content in content_types:
             nodes.append({
                 "id": content["name"].lower().replace(" ", "_"),
@@ -392,11 +392,11 @@ class ComprehensiveConceptMapper:
                 "color": self.color_schemes["KNOWLEDGE"],
                 "platform": content["platform"]
             })
-        
+
         # Create relationships
         edges = []
         correlations = data.cross_platform_correlations["platform_relationships"]
-        
+
         for i, correlation in enumerate(correlations):
             edges.append({
                 "source": correlation["source"].lower(),
@@ -405,7 +405,7 @@ class ComprehensiveConceptMapper:
                 "weight": 2.0,
                 "color": self.color_schemes["CORRELATES"]
             })
-        
+
         return {
             "nodes": nodes,
             "edges": edges,
@@ -416,11 +416,11 @@ class ComprehensiveConceptMapper:
                 "correlation_count": len(correlations)
             }
         }
-    
-    async def create_strategic_insights_network(self, data: AnalysisData) -> Dict[str, Any]:
+
+    async def create_strategic_insights_network(self, data: AnalysisData) -> dict[str, Any]:
         """Create strategic insights relationship map."""
         logger.info("Creating strategic insights network...")
-        
+
         insights = [
             {"name": "Technical Leadership Authenticity", "type": "INSIGHT", "strength": 5},
             {"name": "High-Engagement Content Patterns", "type": "STRATEGY", "strength": 4},
@@ -431,7 +431,7 @@ class ComprehensiveConceptMapper:
             {"name": "Technology Ecosystem Position", "type": "TECHNICAL", "strength": 4},
             {"name": "Fractional CTO Positioning", "type": "BUSINESS", "strength": 5}
         ]
-        
+
         nodes = []
         for i, insight in enumerate(insights):
             nodes.append({
@@ -442,7 +442,7 @@ class ComprehensiveConceptMapper:
                 "color": self.color_schemes[insight["type"]],
                 "strength": insight["strength"]
             })
-        
+
         # Create strategic relationships
         edges = []
         strategic_relationships = [
@@ -455,7 +455,7 @@ class ComprehensiveConceptMapper:
             (6, 0, "INFLUENCES"),   # Ecosystem position influences tech auth
             (7, 5, "ENABLES")       # CTO positioning enables differentiation
         ]
-        
+
         for source_idx, target_idx, relationship_type in strategic_relationships:
             edges.append({
                 "source": f"insight_{source_idx}",
@@ -464,7 +464,7 @@ class ComprehensiveConceptMapper:
                 "weight": 2.0,
                 "color": self.color_schemes[relationship_type]
             })
-        
+
         return {
             "nodes": nodes,
             "edges": edges,
@@ -475,13 +475,13 @@ class ComprehensiveConceptMapper:
                 "relationship_count": len(edges)
             }
         }
-    
-    async def export_html_visualization(self, data: Dict[str, Any], 
-                                      output_path: str, 
+
+    async def export_html_visualization(self, data: dict[str, Any],
+                                      output_path: str,
                                       title: str,
                                       description: str = "") -> str:
         """Export visualization as interactive HTML."""
-        
+
         html_template = """
 <!DOCTYPE html>
 <html>
@@ -953,17 +953,17 @@ class ComprehensiveConceptMapper:
 </body>
 </html>
         """
-        
+
         data_json = json.dumps(data, default=str, indent=2)
         html_content = html_template.format(
             title=title,
             description=description,
             data_json=data_json
         )
-        
+
         output_file = Path(output_path)
         output_file.write_text(html_content)
-        
+
         logger.info(f"Visualization exported to {output_file.absolute()}")
         return str(output_file.absolute())
 
@@ -971,15 +971,15 @@ class ComprehensiveConceptMapper:
 async def main():
     """Main function to create all visualizations."""
     logger.info("Starting comprehensive concept visualization creation...")
-    
+
     # Initialize mapper and load data
     mapper = ComprehensiveConceptMapper()
     data = await mapper.load_analysis_data()
-    
+
     # Create output directory
     output_dir = Path("visualizations")
     output_dir.mkdir(exist_ok=True)
-    
+
     # 1. Main concept network
     logger.info("Creating main concept network...")
     concept_network = await mapper.create_main_concept_network(data)
@@ -989,11 +989,11 @@ async def main():
         "Synapse Concept Network",
         "Interactive visualization of professional concepts and strategic relationships"
     )
-    
+
     # 2. Professional journey flow
     logger.info("Creating professional journey flow...")
     journey_data = await mapper.create_professional_journey_flow(data)
-    
+
     # Convert timeline data to nodes/edges format for visualization
     journey_viz = {
         "nodes": journey_data["timeline"],
@@ -1011,24 +1011,24 @@ async def main():
             "skills_evolution": journey_data["skills_evolution"]
         }
     }
-    
+
     journey_path = await mapper.export_html_visualization(
         journey_viz,
-        "visualizations/professional_journey_flow.html", 
+        "visualizations/professional_journey_flow.html",
         "Professional Development Journey",
         "Career progression from Individual Contributor to Platform Creator"
     )
-    
+
     # 3. Cross-platform correlations
     logger.info("Creating cross-platform correlations...")
     correlation_data = await mapper.create_cross_platform_correlations(data)
     correlation_path = await mapper.export_html_visualization(
         correlation_data,
         "visualizations/cross_platform_correlations.html",
-        "Cross-Platform Content Correlations", 
+        "Cross-Platform Content Correlations",
         "Flow of content and ideas across LinkedIn, Notion, Blog, Synapse, and GitHub"
     )
-    
+
     # 4. Strategic insights network
     logger.info("Creating strategic insights network...")
     insights_data = await mapper.create_strategic_insights_network(data)
@@ -1038,7 +1038,7 @@ async def main():
         "Strategic Insights Network",
         "Relationships between key strategic insights and business opportunities"
     )
-    
+
     # Create summary report
     summary = {
         "created_at": datetime.now().isoformat(),
@@ -1051,7 +1051,7 @@ async def main():
                 "edges": len(concept_network["edges"])
             },
             {
-                "name": "Professional Journey Flow", 
+                "name": "Professional Journey Flow",
                 "file": journey_path,
                 "description": "Career progression timeline with skills evolution",
                 "stages": len(journey_data["timeline"]),
@@ -1059,7 +1059,7 @@ async def main():
             },
             {
                 "name": "Cross-Platform Correlations",
-                "file": correlation_path, 
+                "file": correlation_path,
                 "description": "Content flow between platforms",
                 "platforms": len(correlation_data["nodes"]),
                 "correlations": len(correlation_data["edges"])
@@ -1067,7 +1067,7 @@ async def main():
             {
                 "name": "Strategic Insights Network",
                 "file": insights_path,
-                "description": "Business strategy and opportunity relationships", 
+                "description": "Business strategy and opportunity relationships",
                 "insights": len(insights_data["nodes"]),
                 "relationships": len(insights_data["edges"])
             }
@@ -1075,7 +1075,7 @@ async def main():
         "total_concepts": sum(len(viz["visualizations"][i]["nodes"]) if i < 2 else viz["visualizations"][i].get("stages", 0) + viz["visualizations"][i].get("platforms", 0) for i, viz in enumerate([{"visualizations": [{"nodes": concept_network["nodes"]}, {"nodes": journey_viz["nodes"]}, {"platforms": len(correlation_data["nodes"])}, {"insights": len(insights_data["nodes"])}]}])),
         "features": [
             "Interactive node manipulation and filtering",
-            "Concept type color coding", 
+            "Concept type color coding",
             "Relationship strength visualization",
             "Zoom and pan capabilities",
             "Multiple layout algorithms",
@@ -1083,15 +1083,15 @@ async def main():
             "Responsive design"
         ]
     }
-    
+
     summary_path = output_dir / "visualization_summary.json"
     summary_path.write_text(json.dumps(summary, indent=2))
-    
+
     logger.info("\\n🎉 Comprehensive concept visualizations created successfully!")
     logger.info(f"📊 Generated {len(summary['visualizations'])} interactive HTML visualizations")
     logger.info(f"📁 Output directory: {output_dir.absolute()}")
     logger.info(f"📋 Summary report: {summary_path.absolute()}")
-    
+
     return summary
 
 

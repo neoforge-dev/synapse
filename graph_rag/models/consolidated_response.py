@@ -1,6 +1,7 @@
 """Response models for consolidated answers with dual-purpose format."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -8,9 +9,9 @@ class ArchitecturalPatternResponse(BaseModel):
     """Response model for architectural patterns."""
     pattern_name: str
     description: str
-    benefits: List[str] = Field(default_factory=list)
-    challenges: List[str] = Field(default_factory=list)
-    use_cases: List[str] = Field(default_factory=list)
+    benefits: list[str] = Field(default_factory=list)
+    challenges: list[str] = Field(default_factory=list)
+    use_cases: list[str] = Field(default_factory=list)
     evidence_strength: float = Field(ge=0.0, le=1.0)
 
 
@@ -26,11 +27,11 @@ class SuccessMetricResponse(BaseModel):
 
 class MachineReadableResponse(BaseModel):
     """Machine-readable structured data format."""
-    concepts: List[Dict[str, Any]] = Field(default_factory=list)
-    relationships: List[Dict[str, Any]] = Field(default_factory=list)
-    evidence: List[Dict[str, Any]] = Field(default_factory=list)
-    patterns: List[Dict[str, Any]] = Field(default_factory=list)
-    metrics: List[Dict[str, Any]] = Field(default_factory=list)
+    concepts: list[dict[str, Any]] = Field(default_factory=list)
+    relationships: list[dict[str, Any]] = Field(default_factory=list)
+    evidence: list[dict[str, Any]] = Field(default_factory=list)
+    patterns: list[dict[str, Any]] = Field(default_factory=list)
+    metrics: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class SourceResponse(BaseModel):
@@ -39,38 +40,38 @@ class SourceResponse(BaseModel):
     document_id: str
     score: float
     text_preview: str
-    metadata: Optional[Dict[str, Any]] = None
-    consolidated_from: Optional[int] = None
+    metadata: dict[str, Any] | None = None
+    consolidated_from: int | None = None
 
 
 class ConsolidatedAnswerResponse(BaseModel):
     """Dual-purpose response format for both human and machine consumption."""
-    
+
     # Human-readable content
     answer: str
-    answer_with_citations: Optional[str] = None
-    
+    answer_with_citations: str | None = None
+
     # Consolidated knowledge components
-    consolidated_chunks: List[Dict[str, Any]] = Field(default_factory=list)
-    architectural_patterns: List[ArchitecturalPatternResponse] = Field(default_factory=list)
-    success_metrics: List[SuccessMetricResponse] = Field(default_factory=list)
-    best_practices: List[str] = Field(default_factory=list)
-    
+    consolidated_chunks: list[dict[str, Any]] = Field(default_factory=list)
+    architectural_patterns: list[ArchitecturalPatternResponse] = Field(default_factory=list)
+    success_metrics: list[SuccessMetricResponse] = Field(default_factory=list)
+    best_practices: list[str] = Field(default_factory=list)
+
     # Quality metrics
     confidence_score: float = Field(ge=0.0, le=1.0, default=0.0)
     consolidation_confidence: float = Field(ge=0.0, le=1.0, default=0.0)
     evidence_ranking: float = Field(ge=0.0, le=1.0, default=0.0)
-    
+
     # Source information
-    sources: List[SourceResponse] = Field(default_factory=list)
-    citations: List[Dict[str, Any]] = Field(default_factory=list)
-    bibliography: Dict[str, Any] = Field(default_factory=dict)
-    
+    sources: list[SourceResponse] = Field(default_factory=list)
+    citations: list[dict[str, Any]] = Field(default_factory=list)
+    bibliography: dict[str, Any] = Field(default_factory=dict)
+
     # Machine-readable structured data
     machine_readable: MachineReadableResponse = Field(default_factory=MachineReadableResponse)
-    
+
     # Metadata
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     class Config:
         """Pydantic configuration."""
@@ -170,7 +171,7 @@ class ConsolidatedQueryRequest(BaseModel):
     consolidation_threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Similarity threshold for consolidation")
     max_chunks: int = Field(default=10, ge=1, le=50, description="Maximum number of chunks to retrieve")
     search_type: str = Field(default="hybrid", description="Search type: vector, keyword, or hybrid")
-    conversation_id: Optional[str] = Field(default=None, description="Conversation ID for context")
+    conversation_id: str | None = Field(default=None, description="Conversation ID for context")
 
     class Config:
         json_schema_extra = {
@@ -193,8 +194,8 @@ class VectorStoreStatusResponse(BaseModel):
     vector_count: int
     store_type: str
     is_persistent: bool
-    storage_path: Optional[str] = None
-    error: Optional[str] = None
+    storage_path: str | None = None
+    error: str | None = None
 
     class Config:
         json_schema_extra = {

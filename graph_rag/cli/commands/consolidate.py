@@ -4,13 +4,11 @@ import asyncio
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
 
 import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 
 from graph_rag.core.consolidation import SimilarityThreshold
 from graph_rag.services.experiment_consolidator import SynapseExperimentConsolidator
@@ -28,19 +26,19 @@ def discover_candidates(
     search_path: str = typer.Argument(
         help="Directory path to search for experimental documents"
     ),
-    patterns: Optional[List[str]] = typer.Option(
+    patterns: list[str] | None = typer.Option(
         ["*.md", "*.txt"],
         "--pattern",
-        "-p", 
+        "-p",
         help="File patterns to match (can be specified multiple times)"
     ),
     output_format: str = typer.Option(
-        "table", 
-        "--format", 
+        "table",
+        "--format",
         "-f",
         help="Output format: 'table', 'json', or 'summary'"
     ),
-    output_file: Optional[str] = typer.Option(
+    output_file: str | None = typer.Option(
         None,
         "--output",
         "-o",
@@ -50,23 +48,23 @@ def discover_candidates(
     """Discover experimental documents that are candidates for consolidation."""
     async def _discover():
         consolidator = SynapseExperimentConsolidator()
-        
+
         with console.status(f"[bold green]Discovering candidates in {search_path}..."):
             candidates = await consolidator.discover_candidates(search_path, patterns)
-        
+
         if not candidates:
             console.print(f"[red]No candidates found in {search_path}")
             return
-        
+
         console.print(f"[green]Found {len(candidates)} consolidation candidates")
-        
+
         if output_format == "json":
             _output_candidates_json(candidates, output_file)
         elif output_format == "summary":
             _output_candidates_summary(candidates, output_file)
         else:
             _output_candidates_table(candidates, output_file)
-    
+
     asyncio.run(_discover())
 
 
@@ -81,10 +79,10 @@ def analyze_similarity(
         "-t",
         help="Similarity threshold for matching (0.0-1.0)"
     ),
-    patterns: Optional[List[str]] = typer.Option(
+    patterns: list[str] | None = typer.Option(
         ["*.md", "*.txt"],
         "--pattern",
-        "-p", 
+        "-p",
         help="File patterns to match"
     ),
     show_matches: bool = typer.Option(
@@ -92,7 +90,7 @@ def analyze_similarity(
         "--show-matches/--no-matches",
         help="Show detailed similarity matches"
     ),
-    output_file: Optional[str] = typer.Option(
+    output_file: str | None = typer.Option(
         None,
         "--output",
         "-o",
@@ -102,29 +100,29 @@ def analyze_similarity(
     """Analyze similarity between experimental documents."""
     async def _analyze():
         consolidator = SynapseExperimentConsolidator()
-        
+
         with console.status(f"[bold green]Analyzing similarity in {search_path}..."):
             # Discover candidates
             candidates = await consolidator.discover_candidates(search_path, patterns)
-            
+
             if not candidates:
                 console.print(f"[red]No candidates found in {search_path}")
                 return
-            
+
             # Find similar documents
             similarity_matches = await consolidator.find_similar_documents(
                 candidates, threshold
             )
-        
+
         console.print(f"[green]Analyzed {len(candidates)} candidates")
         console.print(f"[blue]Found {len(similarity_matches)} similarity matches above {threshold:.1%}")
-        
+
         if show_matches and similarity_matches:
             _display_similarity_matches(similarity_matches)
-        
+
         if output_file:
             _save_similarity_analysis(candidates, similarity_matches, output_file)
-    
+
     asyncio.run(_analyze())
 
 
@@ -139,13 +137,13 @@ def consolidate_experiments(
         "-t",
         help="Similarity threshold for consolidation (0.0-1.0)"
     ),
-    patterns: Optional[List[str]] = typer.Option(
+    patterns: list[str] | None = typer.Option(
         ["*.md", "*.txt"],
         "--pattern",
-        "-p", 
+        "-p",
         help="File patterns to match"
     ),
-    output_dir: Optional[str] = typer.Option(
+    output_dir: str | None = typer.Option(
         None,
         "--output-dir",
         "-o",
@@ -161,21 +159,21 @@ def consolidate_experiments(
     """Run full consolidation process on experimental documents."""
     async def _consolidate():
         consolidator = SynapseExperimentConsolidator()
-        
-        with console.status(f"[bold green]Running consolidation analysis..."):
+
+        with console.status("[bold green]Running consolidation analysis..."):
             report = await consolidator.run_full_consolidation(
                 search_path, threshold, patterns
             )
-        
+
         # Display summary
         _display_consolidation_summary(report)
-        
+
         # Save detailed results
         if output_dir:
             _save_consolidation_results(report, output_dir, format_output)
         else:
             _display_consolidation_details(report)
-    
+
     asyncio.run(_consolidate())
 
 
@@ -184,13 +182,13 @@ def extract_metrics(
     search_path: str = typer.Argument(
         help="Directory path to search for experimental documents"
     ),
-    patterns: Optional[List[str]] = typer.Option(
+    patterns: list[str] | None = typer.Option(
         ["*.md", "*.txt"],
         "--pattern",
-        "-p", 
+        "-p",
         help="File patterns to match"
     ),
-    metric_types: Optional[List[str]] = typer.Option(
+    metric_types: list[str] | None = typer.Option(
         None,
         "--type",
         help="Filter by metric types: performance, percentage, throughput, cost, time, engagement"
@@ -200,7 +198,7 @@ def extract_metrics(
         "--min-confidence",
         help="Minimum confidence score for metrics (0.0-1.0)"
     ),
-    output_file: Optional[str] = typer.Option(
+    output_file: str | None = typer.Option(
         None,
         "--output",
         "-o",
@@ -210,40 +208,40 @@ def extract_metrics(
     """Extract and analyze success metrics from experimental documents."""
     async def _extract():
         consolidator = SynapseExperimentConsolidator()
-        
+
         with console.status(f"[bold green]Extracting metrics from {search_path}..."):
             candidates = await consolidator.discover_candidates(search_path, patterns)
-        
+
         if not candidates:
             console.print(f"[red]No candidates found in {search_path}")
             return
-        
+
         # Collect all metrics
         all_metrics = []
         for candidate in candidates:
             all_metrics.extend(candidate.extracted_metrics)
-        
+
         # Filter by confidence and type
         filtered_metrics = [
-            m for m in all_metrics 
+            m for m in all_metrics
             if m.confidence_score >= min_confidence
         ]
-        
+
         if metric_types:
             type_filter = set(metric_types)
             filtered_metrics = [
                 m for m in filtered_metrics
                 if m.metric_type.value in type_filter
             ]
-        
+
         console.print(f"[green]Extracted {len(filtered_metrics)} metrics from {len(candidates)} documents")
-        
+
         if filtered_metrics:
             _display_metrics_table(filtered_metrics)
-        
+
         if output_file:
             _save_metrics_to_file(filtered_metrics, output_file)
-    
+
     asyncio.run(_extract())
 
 
@@ -255,7 +253,7 @@ def _output_candidates_table(candidates, output_file=None):
     table.add_column("Type", style="green")
     table.add_column("Metrics", justify="right", style="blue")
     table.add_column("Patterns", justify="right", style="yellow")
-    
+
     for candidate in candidates:
         table.add_row(
             Path(candidate.file_path).name,
@@ -264,7 +262,7 @@ def _output_candidates_table(candidates, output_file=None):
             str(len(candidate.extracted_metrics)),
             str(len(candidate.architectural_patterns)),
         )
-    
+
     console.print(table)
 
 
@@ -281,7 +279,7 @@ def _output_candidates_json(candidates, output_file=None):
         }
         for candidate in candidates
     ]
-    
+
     if output_file:
         with open(output_file, 'w') as f:
             json.dump(data, f, indent=2)
@@ -298,16 +296,16 @@ def _output_candidates_summary(candidates, output_file=None):
         "total_metrics": 0,
         "total_patterns": 0,
     }
-    
+
     for candidate in candidates:
         # Count by content type
         content_type = candidate.content_type
         summary["content_types"][content_type] = summary["content_types"].get(content_type, 0) + 1
-        
+
         # Count metrics and patterns
         summary["total_metrics"] += len(candidate.extracted_metrics)
         summary["total_patterns"] += len(candidate.architectural_patterns)
-    
+
     if output_file:
         with open(output_file, 'w') as f:
             json.dump(summary, f, indent=2)
@@ -323,7 +321,7 @@ def _display_similarity_matches(similarity_matches):
     table.add_column("Document B", style="magenta")
     table.add_column("Similarity", justify="right", style="green")
     table.add_column("Overlap %", justify="right", style="blue")
-    
+
     for match in similarity_matches:
         table.add_row(
             Path(match.candidate_a.file_path).name,
@@ -331,7 +329,7 @@ def _display_similarity_matches(similarity_matches):
             f"{match.similarity_score:.1%}",
             f"{match.overlap_percentage:.1%}",
         )
-    
+
     console.print(table)
 
 
@@ -363,7 +361,7 @@ def _display_consolidation_details(report):
     """Display detailed consolidation results."""
     if report.experiments_consolidated:
         console.print("\n[bold blue]Consolidated Experiments:[/bold blue]")
-        
+
         for i, experiment in enumerate(report.experiments_consolidated[:5], 1):
             panel = Panel(
                 f"""[bold]{experiment.title}[/bold]
@@ -382,7 +380,7 @@ def _display_consolidation_details(report):
                 border_style="blue",
             )
             console.print(panel)
-    
+
     if report.top_performing_metrics:
         console.print("\n[bold blue]Top Performing Metrics:[/bold blue]")
         _display_metrics_table(report.top_performing_metrics[:10])
@@ -396,7 +394,7 @@ def _display_metrics_table(metrics):
     table.add_column("Unit", style="green")
     table.add_column("Confidence", justify="right", style="blue")
     table.add_column("Context", style="yellow")
-    
+
     for metric in metrics:
         table.add_row(
             metric.metric_type.value.replace('_', ' ').title(),
@@ -405,7 +403,7 @@ def _display_metrics_table(metrics):
             f"{metric.confidence_score:.1%}",
             metric.context[:60] + "..." if len(metric.context) > 60 else metric.context,
         )
-    
+
     console.print(table)
 
 
@@ -413,14 +411,14 @@ def _save_consolidation_results(report, output_dir, format_output):
     """Save consolidation results to files."""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-    
+
     if format_output == "json":
         # Save as JSON
         report_file = output_path / "consolidation_report.json"
         with open(report_file, 'w') as f:
             json.dump(report.dict(), f, indent=2, default=str)
         console.print(f"[green]Report saved to {report_file}")
-    
+
     elif format_output == "markdown":
         # Save as Markdown
         report_file = output_path / "consolidation_report.md"
@@ -428,7 +426,7 @@ def _save_consolidation_results(report, output_dir, format_output):
         with open(report_file, 'w') as f:
             f.write(markdown_content)
         console.print(f"[green]Report saved to {report_file}")
-    
+
     else:  # report format
         # Save multiple files
         _save_detailed_report_files(report, output_path)
@@ -451,7 +449,7 @@ Generated: {report.generated_at.strftime('%Y-%m-%d %H:%M:%S')}
 ## Consolidated Experiments
 
 """
-    
+
     for i, experiment in enumerate(report.experiments_consolidated, 1):
         markdown += f"""### {i}. {experiment.title}
 
@@ -474,7 +472,7 @@ Generated: {report.generated_at.strftime('%Y-%m-%d %H:%M:%S')}
 ---
 
 """
-    
+
     # Add top patterns section
     if report.high_value_patterns:
         markdown += """## High-Value Architectural Patterns
@@ -499,14 +497,14 @@ Generated: {report.generated_at.strftime('%Y-%m-%d %H:%M:%S')}
 ---
 
 """
-    
+
     # Add recommendations section
     markdown += """## Overall Recommendations
 
 """
     for rec in report.recommendations:
         markdown += f"- {rec}\n"
-    
+
     return markdown
 
 
@@ -516,30 +514,30 @@ def _save_detailed_report_files(report, output_path):
     report_file = output_path / "consolidation_report.json"
     with open(report_file, 'w') as f:
         json.dump(report.dict(), f, indent=2, default=str)
-    
+
     # Consolidated experiments
     experiments_file = output_path / "consolidated_experiments.json"
     experiments_data = [exp.dict() for exp in report.experiments_consolidated]
     with open(experiments_file, 'w') as f:
         json.dump(experiments_data, f, indent=2, default=str)
-    
+
     # High-value patterns
     patterns_file = output_path / "high_value_patterns.json"
     patterns_data = [pattern.dict() for pattern in report.high_value_patterns]
     with open(patterns_file, 'w') as f:
         json.dump(patterns_data, f, indent=2, default=str)
-    
+
     # Top metrics
     metrics_file = output_path / "top_performing_metrics.json"
     metrics_data = [metric.dict() for metric in report.top_performing_metrics]
     with open(metrics_file, 'w') as f:
         json.dump(metrics_data, f, indent=2, default=str)
-    
+
     # Markdown summary
     markdown_file = output_path / "consolidation_summary.md"
     with open(markdown_file, 'w') as f:
         f.write(_generate_markdown_report(report))
-    
+
     console.print(f"[green]Detailed reports saved to {output_path}")
     console.print(f"[blue]Files created: {len(list(output_path.glob('*')))} files")
 
@@ -572,10 +570,10 @@ def _save_similarity_analysis(candidates, similarity_matches, output_file):
             for match in similarity_matches
         ],
     }
-    
+
     with open(output_file, 'w') as f:
         json.dump(data, f, indent=2, default=str)
-    
+
     console.print(f"[green]Similarity analysis saved to {output_file}")
 
 
@@ -592,7 +590,7 @@ def _save_metrics_to_file(metrics, output_file):
         }
         for metric in metrics
     ]
-    
+
     if output_file.endswith('.json'):
         with open(output_file, 'w') as f:
             json.dump(data, f, indent=2)
@@ -604,7 +602,7 @@ def _save_metrics_to_file(metrics, output_file):
                 writer = csv.DictWriter(f, fieldnames=data[0].keys())
                 writer.writeheader()
                 writer.writerows(data)
-    
+
     console.print(f"[green]Metrics saved to {output_file}")
 
 

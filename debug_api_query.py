@@ -2,10 +2,9 @@
 """
 Debug script to test the API query flow and see where it breaks.
 """
-import asyncio
 import logging
+
 import requests
-import json
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -13,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def test_api_query():
     """Test the API query endpoint step by step."""
-    
+
     # Test 1: Health check
     logger.info("=== Testing API health ===")
     try:
@@ -23,7 +22,7 @@ def test_api_query():
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         return
-    
+
     # Test 2: Vector store stats via admin endpoint
     logger.info("=== Testing vector store stats ===")
     try:
@@ -35,7 +34,7 @@ def test_api_query():
             logger.error(f"Vector stats error: {response.text}")
     except Exception as e:
         logger.error(f"Vector stats failed: {e}")
-    
+
     # Test 3: Simple search query
     logger.info("=== Testing search query ===")
     try:
@@ -60,7 +59,7 @@ def test_api_query():
             logger.error(f"Search error: {response.text}")
     except Exception as e:
         logger.error(f"Search failed: {e}")
-    
+
     # Test 4: GraphRAG query (the failing one)
     logger.info("=== Testing GraphRAG query ===")
     try:
@@ -84,12 +83,12 @@ def test_api_query():
             logger.error(f"GraphRAG query error: {response.text}")
     except Exception as e:
         logger.error(f"GraphRAG query failed: {e}")
-    
+
     # Test 5: Check if the issue is in the GraphRAGEngine retrieval
     logger.info("=== Testing vector store retrieval directly ===")
     try:
         search_payload = {
-            "query": "LinkedIn development practices", 
+            "query": "LinkedIn development practices",
             "limit": 3,
             "search_type": "vector"
         }

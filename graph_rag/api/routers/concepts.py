@@ -7,9 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from graph_rag.api.dependencies import (
-    get_concept_extractor,
     get_belief_preference_extractor,
-    get_temporal_tracker,
+    get_concept_extractor,
 )
 
 logger = logging.getLogger(__name__)
@@ -78,25 +77,25 @@ async def extract_concepts(
     """Extract concepts and relationships from text."""
     try:
         logger.info(f"Extracting concepts from {len(request.text)} characters of text")
-        
+
         # Mock concept extraction
         mock_concepts = [
             {"id": "concept_1", "name": "FastAPI", "type": "technology", "confidence": 0.95},
             {"id": "concept_2", "name": "Python", "type": "programming_language", "confidence": 0.90},
             {"id": "concept_3", "name": "Web Development", "type": "domain", "confidence": 0.85}
         ]
-        
+
         mock_relationships = [
             {"source": "concept_1", "target": "concept_2", "type": "built_with", "strength": 0.9},
             {"source": "concept_1", "target": "concept_3", "type": "used_for", "strength": 0.8}
         ]
-        
+
         return ConceptExtractionResponse(
             concepts=mock_concepts,
             relationships=mock_relationships,
             extraction_time_ms=150.5
         )
-        
+
     except Exception as e:
         logger.error(f"Error extracting concepts: {e}")
         raise HTTPException(status_code=422, detail=f"Concept extraction failed: {str(e)}")
@@ -111,19 +110,19 @@ async def search_concepts(
     """Search for concepts in the knowledge base."""
     try:
         logger.info(f"Searching concepts with types: {concept_types}, limit: {limit}")
-        
+
         # Mock concept search
         mock_concepts = [
             {"id": "search_1", "name": "Machine Learning", "type": "technology", "relevance": 0.95},
             {"id": "search_2", "name": "Data Science", "type": "domain", "relevance": 0.88},
             {"id": "search_3", "name": "Python", "type": "programming_language", "relevance": 0.82}
         ]
-        
+
         return ConceptQueryResponse(
             concepts=mock_concepts,
             total_count=len(mock_concepts)
         )
-        
+
     except Exception as e:
         logger.error(f"Error searching concepts: {e}")
         raise HTTPException(status_code=500, detail=f"Concept search failed: {str(e)}")
@@ -137,7 +136,7 @@ async def correlate_concepts(
     """Analyze correlations between concept pairs."""
     try:
         logger.info(f"Analyzing correlations for {len(request.concept_pairs)} concept pairs")
-        
+
         # Mock correlation analysis
         correlations = []
         for pair in request.concept_pairs:
@@ -148,7 +147,7 @@ async def correlate_concepts(
                 "correlation_type": "semantic_similarity",
                 "confidence": 0.85
             })
-        
+
         return CorrelationResponse(
             correlations=correlations,
             analysis_metadata={
@@ -157,7 +156,7 @@ async def correlate_concepts(
                 "processing_time_ms": 85.2
             }
         )
-        
+
     except Exception as e:
         logger.error(f"Error analyzing correlations: {e}")
         raise HTTPException(status_code=422, detail=f"Correlation analysis failed: {str(e)}")
@@ -171,7 +170,7 @@ async def get_concept_evolution(
     """Get evolution timeline for a specific concept."""
     try:
         logger.info(f"Getting evolution for concept: {evolution_id}")
-        
+
         # Mock evolution data
         evolution_data = {
             "concept_id": evolution_id,
@@ -183,9 +182,9 @@ async def get_concept_evolution(
             "trend": "increasing",
             "growth_rate": "+25%"
         }
-        
+
         return evolution_data
-        
+
     except Exception as e:
         logger.error(f"Error getting concept evolution: {e}")
         raise HTTPException(status_code=500, detail=f"Evolution analysis failed: {str(e)}")
@@ -200,16 +199,16 @@ async def extract_beliefs(
     """Extract beliefs and values from content."""
     try:
         logger.info(f"Extracting beliefs from {len(request.content)} characters of content")
-        
+
         # Mock belief extraction
         mock_beliefs = [
             {"belief": "Technical excellence drives business success", "confidence": 0.85, "category": "technical"},
             {"belief": "Simple solutions are often better than complex ones", "confidence": 0.78, "category": "philosophy"},
             {"belief": "Team collaboration improves code quality", "confidence": 0.82, "category": "teamwork"}
         ]
-        
+
         confidence_scores = {belief["belief"]: belief["confidence"] for belief in mock_beliefs}
-        
+
         return BeliefExtractionResponse(
             beliefs=mock_beliefs,
             confidence_scores=confidence_scores,
@@ -219,7 +218,7 @@ async def extract_beliefs(
                 "confidence_threshold": request.extraction_config.get("confidence_threshold", 0.7)
             }
         )
-        
+
     except Exception as e:
         logger.error(f"Error extracting beliefs: {e}")
         raise HTTPException(status_code=422, detail=f"Belief extraction failed: {str(e)}")
@@ -233,7 +232,7 @@ async def analyze_belief_consistency(
     """Analyze consistency of beliefs over time."""
     try:
         logger.info(f"Analyzing belief consistency for set: {belief_set}")
-        
+
         # Mock consistency analysis
         consistency_data = {
             "consistency_score": 0.78,
@@ -247,9 +246,9 @@ async def analyze_belief_consistency(
             },
             "trend": "stable_with_evolution"
         }
-        
+
         return consistency_data
-        
+
     except Exception as e:
         logger.error(f"Error analyzing belief consistency: {e}")
         raise HTTPException(status_code=500, detail=f"Consistency analysis failed: {str(e)}")
@@ -263,7 +262,7 @@ async def get_belief_timeline(
     """Get timeline of how a specific belief has evolved."""
     try:
         logger.info(f"Getting timeline for belief: {belief_id}")
-        
+
         # Mock timeline data
         timeline_data = {
             "belief_id": belief_id,
@@ -274,9 +273,9 @@ async def get_belief_timeline(
             ],
             "evolution_summary": "Belief has strengthened and become more nuanced over time"
         }
-        
+
         return timeline_data
-        
+
     except Exception as e:
         logger.error(f"Error getting belief timeline: {e}")
         raise HTTPException(status_code=500, detail=f"Timeline retrieval failed: {str(e)}")
@@ -292,7 +291,7 @@ async def analyze_content_gaps(
     """Analyze gaps in content coverage."""
     try:
         logger.info(f"Analyzing content gaps for platform: {platform}")
-        
+
         # Mock gap analysis
         gap_data = {
             "content_gaps": [
@@ -311,9 +310,9 @@ async def analyze_content_gaps(
                 "Discuss technical debt management strategies"
             ]
         }
-        
+
         return gap_data
-        
+
     except Exception as e:
         logger.error(f"Error analyzing content gaps: {e}")
         raise HTTPException(status_code=500, detail=f"Gap analysis failed: {str(e)}")
@@ -328,7 +327,7 @@ async def analyze_platform_transitions(
     """Analyze how content performs across platform transitions."""
     try:
         logger.info(f"Analyzing transitions from {source_platform} to {target_platform}")
-        
+
         # Mock transition analysis
         transition_data = {
             "transition_strategy": {
@@ -347,9 +346,9 @@ async def analyze_platform_transitions(
                 "conversion_rate": "-8%"
             }
         }
-        
+
         return transition_data
-        
+
     except Exception as e:
         logger.error(f"Error analyzing platform transitions: {e}")
         raise HTTPException(status_code=500, detail=f"Transition analysis failed: {str(e)}")
@@ -363,7 +362,7 @@ async def get_preference_recommendations(
     """Get personalized content preferences and recommendations."""
     try:
         logger.info(f"Getting recommendations for profile: {user_profile}")
-        
+
         # Mock recommendations
         recommendations = {
             "content_preferences": {
@@ -382,9 +381,9 @@ async def get_preference_recommendations(
                 "growth_opportunities": ["AI/ML content", "team management insights"]
             }
         }
-        
+
         return recommendations
-        
+
     except Exception as e:
         logger.error(f"Error getting recommendations: {e}")
         raise HTTPException(status_code=500, detail=f"Recommendations failed: {str(e)}")

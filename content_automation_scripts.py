@@ -5,39 +5,35 @@ Automates content scheduling, performance tracking, and business development fol
 based on the 52-week content strategy and Synapse analysis insights.
 """
 
-import os
 import json
-import schedule
+import os
 import time
-import requests
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-import smtplib
-from email.mime.text import MimeText
-from email.mime.multipart import MimeMultipart
-import csv
+
+import schedule
+
 
 class LinkedInAutomation:
     """Automates LinkedIn content posting and engagement tracking."""
-    
+
     def __init__(self, access_token: str = None):
         self.access_token = access_token or os.getenv('LINKEDIN_ACCESS_TOKEN')
         self.api_base = "https://api.linkedin.com/v2"
-        
+
     def schedule_post(self, content: str, scheduled_time: datetime, content_type: str = "article"):
         """Schedule a LinkedIn post for optimal timing."""
         if not self.access_token:
             print("⚠️  LinkedIn access token not configured. Using manual scheduling reminder.")
             self._create_manual_reminder(content, scheduled_time, content_type)
             return
-        
+
         # Note: LinkedIn API v2 requires approval for posting
         # This is a framework for when API access is available
         headers = {
             'Authorization': f'Bearer {self.access_token}',
             'Content-Type': 'application/json'
         }
-        
+
         payload = {
             "author": "urn:li:person:{person_id}",  # Replace with actual person ID
             "lifecycleState": "PUBLISHED",
@@ -53,14 +49,14 @@ class LinkedInAutomation:
                 "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
             }
         }
-        
+
         # For now, create a reminder since API posting requires special approval
         self._create_manual_reminder(content, scheduled_time, content_type)
-    
+
     def _create_manual_reminder(self, content: str, scheduled_time: datetime, content_type: str):
         """Create manual posting reminder with optimized timing."""
         reminder_file = f"linkedin_reminders_{scheduled_time.strftime('%Y_%m_%d')}.json"
-        
+
         reminder_data = {
             "scheduled_time": scheduled_time.isoformat(),
             "content_type": content_type,
@@ -69,30 +65,30 @@ class LinkedInAutomation:
             "engagement_tip": "40% higher engagement for architecture debates",
             "business_dev_note": "Include consultation CTA for business development"
         }
-        
+
         if os.path.exists(reminder_file):
-            with open(reminder_file, 'r') as f:
+            with open(reminder_file) as f:
                 reminders = json.load(f)
         else:
             reminders = []
-        
+
         reminders.append(reminder_data)
-        
+
         with open(reminder_file, 'w') as f:
             json.dump(reminders, f, indent=2)
-        
+
         print(f"📅 Reminder created: {reminder_file}")
         print(f"🕕 Optimal time: {scheduled_time.strftime('%A %B %d, %Y at %I:%M %p')}")
         print(f"📝 Content type: {content_type}")
 
 class ContentScheduler:
     """Automates weekly content planning and scheduling based on 52-week calendar."""
-    
+
     def __init__(self, calendar_file: str = None):
         self.calendar_file = calendar_file
         self.linkedin = LinkedInAutomation()
-        
-    def load_weekly_content(self, week_number: int) -> Dict:
+
+    def load_weekly_content(self, week_number: int) -> dict:
         """Load content for a specific week from the 52-week calendar."""
         # This would normally load from the Q1-Q4 calendar files
         # For now, return sample structure
@@ -142,38 +138,38 @@ class ContentScheduler:
                 "time": "7:00 PM"
             }
         }
-    
+
     def schedule_week(self, week_number: int, start_date: datetime = None):
         """Schedule all content for a specific week."""
         if not start_date:
             # Calculate start date for the week (assuming Week 1 starts Jan 6, 2025)
             base_date = datetime(2025, 1, 6)
             start_date = base_date + timedelta(weeks=week_number-1)
-        
+
         weekly_content = self.load_weekly_content(week_number)
-        
+
         days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-        
+
         for i, day in enumerate(days):
             if day in weekly_content:
                 day_content = weekly_content[day]
                 post_date = start_date + timedelta(days=i)
-                
+
                 # Parse time
                 post_time = datetime.strptime(day_content['time'], '%I:%M %p').time()
                 scheduled_datetime = datetime.combine(post_date.date(), post_time)
-                
+
                 # Create content using template
                 content = self._generate_content_from_template(day_content, week_number)
-                
+
                 # Schedule the post
                 self.linkedin.schedule_post(content, scheduled_datetime, day_content['type'])
-                
+
                 print(f"✅ Scheduled {day.title()} content: {day_content['headline']}")
-        
+
         print(f"🗓️  Week {week_number} fully scheduled ({start_date.strftime('%B %d')} - {(start_date + timedelta(days=6)).strftime('%B %d, %Y')})")
-    
-    def _generate_content_from_template(self, day_content: Dict, week_number: int) -> str:
+
+    def _generate_content_from_template(self, day_content: dict, week_number: int) -> str:
         """Generate actual post content using templates."""
         templates = {
             "Strategic Tech Leadership": """
@@ -229,7 +225,7 @@ Scaling teams? I'd love to help. Drop me a message! 💬
 #StartupScaling #TeamBuilding #EngineeringManagement
             """
         }
-        
+
         # Use base template structure
         template = templates.get(day_content['type'], """
 {headline}
@@ -238,7 +234,7 @@ Scaling teams? I'd love to help. Drop me a message! 💬
 
 #TechLeadership #Innovation
         """)
-        
+
         # Fill in template variables (this would normally pull from detailed content calendars)
         content = template.format(
             headline=day_content['headline'],
@@ -256,19 +252,19 @@ Scaling teams? I'd love to help. Drop me a message! 💬
             metric_3="Developer onboarding time",
             content_body="Sample content body"
         )
-        
+
         return content.strip()
 
 class PerformanceTracker:
     """Automates performance tracking and reporting."""
-    
+
     def __init__(self, analytics_db: str = "content_analytics.db"):
         self.analytics_db = analytics_db
-        
+
     def daily_performance_check(self):
         """Check yesterday's content performance and send report."""
         yesterday = datetime.now() - timedelta(days=1)
-        
+
         # This would normally pull from LinkedIn API or manual data entry
         performance_data = {
             "date": yesterday.strftime('%Y-%m-%d'),
@@ -280,7 +276,7 @@ class PerformanceTracker:
             "connection_requests": 2,
             "consultation_inquiries": 0
         }
-        
+
         # Generate daily report
         report = f"""
 📊 Daily Performance Report - {yesterday.strftime('%B %d, %Y')}
@@ -299,27 +295,27 @@ class PerformanceTracker:
 💡 Next Optimization:
 - {'Continue current strategy' if performance_data['engagement_rate'] > 0.06 else 'Focus on technical debate content for 40% higher engagement'}
         """
-        
+
         print(report)
         self._save_daily_report(report, yesterday)
-        
+
         return performance_data
-    
+
     def _save_daily_report(self, report: str, date: datetime):
         """Save daily report to file."""
         filename = f"daily_reports/report_{date.strftime('%Y_%m_%d')}.txt"
         os.makedirs(os.path.dirname(filename), exist_ok=True)
-        
+
         with open(filename, 'w') as f:
             f.write(report)
 
 class BusinessDevelopmentAutomation:
     """Automates business development follow-up and lead management."""
-    
-    def __init__(self, email_config: Dict = None):
+
+    def __init__(self, email_config: dict = None):
         self.email_config = email_config or {}
-        
-    def track_consultation_inquiry(self, source_post: str, inquiry_details: Dict):
+
+    def track_consultation_inquiry(self, source_post: str, inquiry_details: dict):
         """Track new consultation inquiry from content."""
         inquiry_data = {
             "timestamp": datetime.now().isoformat(),
@@ -331,34 +327,34 @@ class BusinessDevelopmentAutomation:
             "contact_info": inquiry_details.get('contact', {}),
             "notes": inquiry_details.get('notes', '')
         }
-        
+
         # Save to inquiries file
         inquiries_file = "business_inquiries.json"
         if os.path.exists(inquiries_file):
-            with open(inquiries_file, 'r') as f:
+            with open(inquiries_file) as f:
                 inquiries = json.load(f)
         else:
             inquiries = []
-        
+
         inquiries.append(inquiry_data)
-        
+
         with open(inquiries_file, 'w') as f:
             json.dump(inquiries, f, indent=2)
-        
+
         print(f"💼 New consultation inquiry tracked: {inquiry_details.get('type', 'General')}")
-        
+
         # Send follow-up email if configured
         if self.email_config:
             self._send_followup_email(inquiry_details)
-    
-    def _send_followup_email(self, inquiry_details: Dict):
+
+    def _send_followup_email(self, inquiry_details: dict):
         """Send automated follow-up email to consultation inquiries."""
         if not self.email_config.get('smtp_server'):
             print("📧 Email not configured. Manual follow-up required.")
             return
-        
+
         subject = "Thank you for your technical leadership inquiry"
-        
+
         body = f"""
 Thank you for reaching out regarding technical leadership and fractional CTO services.
 
@@ -381,59 +377,59 @@ Fractional CTO & Technical Leadership Advisor
 
 P.S. You can see more of my insights on technical leadership at [LinkedIn Profile]
         """
-        
+
         # This would normally send via SMTP
         print(f"📧 Follow-up email prepared for {inquiry_details.get('contact', {}).get('email', 'contact')}")
 
 def setup_automation_schedule():
     """Set up automated scheduling for content and performance tracking."""
-    
+
     scheduler = ContentScheduler()
     tracker = PerformanceTracker()
-    
+
     # Schedule weekly content planning (Sunday 8 PM)
     schedule.every().sunday.at("20:00").do(
         lambda: scheduler.schedule_week(
             week_number=datetime.now().isocalendar().week
         )
     )
-    
+
     # Schedule daily performance tracking (8 AM)
     schedule.every().day.at("08:00").do(tracker.daily_performance_check)
-    
+
     # Schedule Tuesday 6:30 AM reminder for technical content
     schedule.every().tuesday.at("06:15").do(
         lambda: print("⏰ Technical Deep Dive post reminder - 6:30 AM optimal timing! (+40% engagement)")
     )
-    
+
     # Schedule Thursday 6:30 AM reminder for FastAPI content
     schedule.every().thursday.at("06:15").do(
         lambda: print("⏰ FastAPI Friday post reminder - 6:30 AM optimal timing!")
     )
-    
+
     print("🤖 Automation schedule configured:")
     print("   • Weekly planning: Sunday 8:00 PM")
     print("   • Daily tracking: 8:00 AM")
     print("   • Technical content reminders: Tuesday/Thursday 6:15 AM")
-    
+
     return schedule
 
 def main():
     """Main automation runner."""
     print("🚀 Content Strategy Automation Starting...")
-    
+
     # Set up scheduler
     automation_schedule = setup_automation_schedule()
-    
+
     # Example: Schedule next week's content
     scheduler = ContentScheduler()
     current_week = datetime.now().isocalendar().week
     scheduler.schedule_week(current_week + 1)
-    
+
     # Example: Track yesterday's performance
     tracker = PerformanceTracker()
     performance = tracker.daily_performance_check()
-    
+
     # Example: Track a consultation inquiry
     bd_automation = BusinessDevelopmentAutomation()
     sample_inquiry = {
@@ -445,12 +441,12 @@ def main():
         'notes': 'Scaling challenges with growing development team'
     }
     bd_automation.track_consultation_inquiry("Technical Deep Dive - Week 5", sample_inquiry)
-    
+
     print("\n✅ Automation setup complete!")
     print("📝 Manual reminders will be created for optimal posting times")
     print("📊 Performance tracking configured for daily reports")
     print("💼 Business development automation ready for inquiry tracking")
-    
+
     # Keep running for scheduled tasks
     print("\n🔄 Running automation scheduler... (Ctrl+C to stop)")
     try:

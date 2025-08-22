@@ -1,14 +1,13 @@
 """Shared persistent vector store implementation with file locking for concurrent access."""
 
 import asyncio
+import fcntl
 import json
 import logging
-import os
 import pickle
 from pathlib import Path
 from typing import Any
 
-import fcntl
 import numpy as np
 from starlette.concurrency import run_in_threadpool
 
@@ -32,28 +31,28 @@ class SharedPersistentVectorStore(VectorStore):
         self.embedding_service = embedding_service
         self.dimension = embedding_service.get_embedding_dimension()
         self.storage_path = Path(storage_path)
-        
+
         # In-memory storage (same as SimpleVectorStore)
         self.vectors: list[np.ndarray] = []
         self.metadata: list[dict] = []
         self.documents: list[str] = []
         self.chunk_ids: list[str] = []
         self.lock = asyncio.Lock()
-        
+
         # BM25 structures
         self._bm25_docs: list[list[str]] = []
         self._bm25_doc_freq: dict[str, int] = {}
         self._bm25_avgdl: float = 0.0
         self._bm25_dirty: bool = False
-        
+
         # Persistence files
         self.vectors_file = self.storage_path / "vectors.pkl"
         self.metadata_file = self.storage_path / "metadata.json"
         self.lock_file = self.storage_path / "store.lock"
-        
+
         # Ensure storage directory exists
         self.storage_path.mkdir(parents=True, exist_ok=True)
-        
+
         # Flag to track if we've attempted to load
         self._load_attempted = False
 
@@ -62,12 +61,12 @@ class SharedPersistentVectorStore(VectorStore):
         logger.info(f"_ensure_loaded called for {self.storage_path}")
         logger.info(f"Current vector count in memory: {len(self.vectors)}")
         logger.info(f"Files exist - vectors: {self.vectors_file.exists()}, metadata: {self.metadata_file.exists()}")
-        
+
         if self._load_attempted:
             logger.info(f"_ensure_loaded: already attempted loading for {self.storage_path}")
             logger.info(f"Current vector count after previous load attempt: {len(self.vectors)}")
             return
-            
+
         self._load_attempted = True
         if self.vectors_file.exists() and self.metadata_file.exists():
             try:
@@ -107,7 +106,7 @@ class SharedPersistentVectorStore(VectorStore):
                 # Use lock file for coordination
                 with open(self.lock_file, 'w') as lock_handle:
                     self._acquire_file_lock(lock_handle)
-                    
+
                     try:
                         # Load vectors
                         with open(self.vectors_file, 'rb') as f:
@@ -121,14 +120,14 @@ class SharedPersistentVectorStore(VectorStore):
                             self._bm25_dirty = data.get('bm25_dirty', False)
 
                         # Load metadata
-                        with open(self.metadata_file, 'r') as f:
+                        with open(self.metadata_file) as f:
                             self.metadata = json.load(f)
 
                         logger.info(f"Loaded {len(self.vectors)} vectors from persistent storage")
-                        
+
                     finally:
                         self._release_file_lock(lock_handle)
-                        
+
             except Exception as e:
                 logger.error(f"Failed to load vector store data: {e}")
                 # Reset to empty state on load failure
@@ -148,7 +147,7 @@ class SharedPersistentVectorStore(VectorStore):
                 # Use lock file for coordination
                 with open(self.lock_file, 'w') as lock_handle:
                     self._acquire_file_lock(lock_handle)
-                    
+
                     try:
                         # Save vectors and related data
                         vectors_data = {
@@ -160,7 +159,7 @@ class SharedPersistentVectorStore(VectorStore):
                             'bm25_avgdl': self._bm25_avgdl,
                             'bm25_dirty': self._bm25_dirty,
                         }
-                        
+
                         with open(self.vectors_file, 'wb') as f:
                             pickle.dump(vectors_data, f)
 
@@ -169,10 +168,10 @@ class SharedPersistentVectorStore(VectorStore):
                             json.dump(self.metadata, f, indent=2)
 
                         logger.debug(f"Saved {len(self.vectors)} vectors to persistent storage")
-                        
+
                     finally:
                         self._release_file_lock(lock_handle)
-                        
+
             except Exception as e:
                 logger.error(f"Failed to save vector store data: {e}")
                 raise
@@ -272,7 +271,7 @@ class SharedPersistentVectorStore(VectorStore):
                 self.documents.extend(final_documents)
                 self.chunk_ids.extend(final_chunk_ids)
                 self._bm25_dirty = True  # Mark BM25 index as needing rebuild
-                
+
             logger.info(
                 f"Finished ingestion. Added {len(final_vectors)} vectors. Total vectors in store: {len(self.vectors)}"
             )
@@ -366,7 +365,7 @@ class SharedPersistentVectorStore(VectorStore):
         """Retrieve a chunk by its ID (same as SimpleVectorStore)."""
         # Ensure data is loaded
         await self._ensure_loaded()
-            
+
         logger.debug(f"Looking for chunk with ID: {chunk_id}")
         async with self.lock:
             try:
@@ -454,7 +453,7 @@ class SharedPersistentVectorStore(VectorStore):
         """Return the number of vectors in the store."""
         # Ensure data is loaded
         await self._ensure_loaded()
-            
+
         async with self.lock:
             return len(self.vectors)
 
@@ -469,7 +468,7 @@ class SharedPersistentVectorStore(VectorStore):
             self._bm25_doc_freq = {}
             self._bm25_avgdl = 0.0
             self._bm25_dirty = False
-            
+
         await self.save()
         logger.info("SharedPersistentVectorStore cleared and persisted.")
 
@@ -480,7 +479,7 @@ class SharedPersistentVectorStore(VectorStore):
         """Perform search with auto-loading."""
         # Ensure data is loaded
         await self._ensure_loaded()
-            
+
         logger.debug(f"Search called with search_type={search_type}, query='{query_text[:50]}...'")
 
         results_with_scores: list[tuple[ChunkData, float]] = []
@@ -492,7 +491,7 @@ class SharedPersistentVectorStore(VectorStore):
                 query_embedding = await self.embedding_service.encode_query(query_text)
             else:
                 query_embedding = await self.embedding_service.generate_embedding(query_text)
-                
+
             if query_embedding:
                 results_with_scores = await self.vector_search(query_text, k=top_k)
             else:
@@ -511,7 +510,7 @@ class SharedPersistentVectorStore(VectorStore):
         """Vector search with auto-loading."""
         # Ensure data is loaded
         await self._ensure_loaded()
-            
+
         logger.debug(f"Performing vector search for query: '{query[:50]}...'")
         if not self.vectors:
             logger.warning("Vector store is empty, cannot perform search.")
@@ -547,7 +546,7 @@ class SharedPersistentVectorStore(VectorStore):
         async with self.lock:
             if not self.vectors:
                 return []
-                
+
             vector_matrix = np.array(self.vectors)
             if vector_matrix.size == 0:
                 return []
@@ -584,17 +583,17 @@ class SharedPersistentVectorStore(VectorStore):
         """BM25 keyword search with auto-loading."""
         # Ensure data is loaded
         await self._ensure_loaded()
-            
+
         logger.debug(f"Performing BM25 keyword search for query: '{query[:50]}...'")
         tokens = self._tokenize(query)
         results: list[tuple[int, float]] = []
-        
+
         async with self.lock:
             self._ensure_bm25_index()
             N = max(1, len(self._bm25_docs))
             k1 = 1.5
             b = 0.75
-            
+
             for i, doc_tokens in enumerate(self._bm25_docs):
                 if not doc_tokens:
                     continue
