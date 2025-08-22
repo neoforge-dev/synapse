@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { UniversalSearch } from './universal-search'
 import {
   LayoutDashboard,
   FileText,
@@ -135,14 +134,24 @@ const navigationSections: NavigationSection[] = [
 
 interface SidebarNavigationProps {
   className?: string
+  isCollapsed?: boolean
+  onToggleCollapse?: () => void
+  onOpenSearch?: () => void
 }
 
-export function SidebarNavigation({ className }: SidebarNavigationProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
+export function SidebarNavigation({ 
+  className, 
+  isCollapsed: externalCollapsed, 
+  onToggleCollapse, 
+  onOpenSearch 
+}: SidebarNavigationProps) {
+  const [internalCollapsed, setInternalCollapsed] = useState(false)
   const [activeQuickActions, setActiveQuickActions] = useState<string | null>(null)
-  const [showSearch, setShowSearch] = useState(false)
   const pathname = usePathname()
   const { data: session } = useSession()
+  
+  // Use external collapsed state if provided, otherwise use internal
+  const isCollapsed = externalCollapsed !== undefined ? externalCollapsed : internalCollapsed
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -151,11 +160,17 @@ export function SidebarNavigation({ className }: SidebarNavigationProps) {
         switch (e.key) {
           case 'b':
             e.preventDefault()
-            setIsCollapsed(!isCollapsed)
+            if (onToggleCollapse) {
+              onToggleCollapse()
+            } else {
+              setInternalCollapsed(!internalCollapsed)
+            }
             break
           case 'k':
             e.preventDefault()
-            setShowSearch(true)
+            if (onOpenSearch) {
+              onOpenSearch()
+            }
             break
         }
       }
@@ -163,7 +178,7 @@ export function SidebarNavigation({ className }: SidebarNavigationProps) {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isCollapsed])
+  }, [isCollapsed, onToggleCollapse, onOpenSearch, internalCollapsed])
 
   const toggleQuickActions = (itemName: string) => {
     setActiveQuickActions(activeQuickActions === itemName ? null : itemName)
@@ -193,7 +208,13 @@ export function SidebarNavigation({ className }: SidebarNavigationProps) {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={() => {
+            if (onToggleCollapse) {
+              onToggleCollapse()
+            } else {
+              setInternalCollapsed(!internalCollapsed)
+            }
+          }}
           className="p-2"
         >
           {isCollapsed ? (
@@ -208,7 +229,7 @@ export function SidebarNavigation({ className }: SidebarNavigationProps) {
       {!isCollapsed && (
         <div className="p-4 border-b border-gray-200">
           <button
-            onClick={() => setShowSearch(true)}
+            onClick={() => onOpenSearch?.()}
             className="w-full flex items-center px-3 py-2 text-sm border border-gray-200 rounded-lg hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-left"
           >
             <Search className="w-4 h-4 text-gray-400 mr-3" />
@@ -374,11 +395,6 @@ export function SidebarNavigation({ className }: SidebarNavigationProps) {
         </div>
       </div>
 
-      {/* Universal Search */}
-      <UniversalSearch 
-        isOpen={showSearch} 
-        onClose={() => setShowSearch(false)} 
-      />
     </div>
   )
 }

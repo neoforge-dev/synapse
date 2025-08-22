@@ -5,6 +5,8 @@ import { useSession } from 'next-auth/react'
 import { SidebarNavigation } from './sidebar-navigation'
 import { MobileBottomNavigation } from './mobile-bottom-navigation'
 import { BreadcrumbNavigation } from './breadcrumb-navigation'
+import { KeyboardShortcuts } from './keyboard-shortcuts'
+import { UniversalSearch } from './universal-search'
 import { PWAInstallBanner, OfflineIndicator } from '@/components/pwa/pwa-install-banner'
 import { cn } from '@/lib/utils'
 
@@ -23,6 +25,8 @@ export function DashboardLayout({
 }: DashboardLayoutProps) {
   const { data: session, status } = useSession()
   const [isMobile, setIsMobile] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   useEffect(() => {
     const checkMobile = () => {
@@ -63,7 +67,13 @@ export function DashboardLayout({
       <OfflineIndicator />
       
       {/* Sidebar Navigation */}
-      {!isMobile && <SidebarNavigation />}
+      {!isMobile && (
+        <SidebarNavigation 
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onOpenSearch={() => setShowSearch(true)}
+        />
+      )}
       
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -94,6 +104,16 @@ export function DashboardLayout({
           <MobileBottomNavigation />
         </div>
       )}
+
+      {/* Global Components */}
+      <UniversalSearch 
+        isOpen={showSearch} 
+        onClose={() => setShowSearch(false)} 
+      />
+      <KeyboardShortcuts 
+        onOpenSearch={() => setShowSearch(true)}
+        onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
     </div>
   )
 }
