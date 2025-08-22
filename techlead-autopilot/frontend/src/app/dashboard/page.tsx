@@ -3,6 +3,7 @@
 import { useSession, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PWAInstallBanner, OfflineIndicator } from "@/components/pwa/pwa-install-banner"
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
@@ -31,6 +32,9 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* PWA Components */}
+      <PWAInstallBanner />
+      <OfflineIndicator />
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
