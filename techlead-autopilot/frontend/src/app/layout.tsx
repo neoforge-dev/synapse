@@ -4,6 +4,7 @@ import "./globals.css";
 import { SessionProviderWrapper } from "@/components/providers/session-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { PWAProvider } from "@/components/providers/pwa-provider";
+import { PerformanceProvider } from "@/components/providers/performance-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,13 +53,15 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <PWAProvider>
-          <SessionProviderWrapper>
-            <QueryProvider>
-              {children}
-            </QueryProvider>
-          </SessionProviderWrapper>
-        </PWAProvider>
+        <PerformanceProvider>
+          <PWAProvider>
+            <SessionProviderWrapper>
+              <QueryProvider>
+                {children}
+              </QueryProvider>
+            </SessionProviderWrapper>
+          </PWAProvider>
+        </PerformanceProvider>
       </body>
     </html>
   );
