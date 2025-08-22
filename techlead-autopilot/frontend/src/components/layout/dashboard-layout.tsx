@@ -9,6 +9,7 @@ import { KeyboardShortcuts } from './keyboard-shortcuts'
 import { UniversalSearch } from './universal-search'
 import { PWAInstallBanner, OfflineIndicator } from '@/components/pwa/pwa-install-banner'
 import { ContextualTips, useContextualTips } from '@/components/onboarding/contextual-tips'
+import { HelpWidget } from '@/components/help/help-widget'
 import { cn } from '@/lib/utils'
 
 interface DashboardLayoutProps {
@@ -119,6 +120,9 @@ export function DashboardLayout({
       
       {/* Contextual Tips System */}
       <ContextualTips isEnabled={tipsEnabled} />
+      
+      {/* Help Widget */}
+      <HelpWidget position="bottom-right" />
     </div>
   )
 }

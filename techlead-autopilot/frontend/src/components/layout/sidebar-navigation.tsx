@@ -125,8 +125,12 @@ const navigationSections: NavigationSection[] = [
       },
       {
         name: "Help & Support",
-        href: "/dashboard/help",
-        icon: HelpCircle
+        href: "/help",
+        icon: HelpCircle,
+        quickActions: [
+          { name: "Browse Articles", href: "/help", icon: FileText },
+          { name: "Contact Support", href: "mailto:support@techleadautopilot.com", icon: MessageSquare }
+        ]
       }
     ]
   }
