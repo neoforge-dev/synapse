@@ -12,6 +12,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
 from ..config import get_settings
+from ..infrastructure.database import init_database, close_database
+from .middleware import (
+    SecurityMiddleware,
+    AuthenticationMiddleware,
+    ErrorHandlingMiddleware,
+    RateLimitingMiddleware,
+    RequestLoggingMiddleware,
+    PII_SanitizationMiddleware
+)
 from .routers import auth, content, leads, organizations, health
 
 
@@ -24,9 +33,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     print(f"Starting TechLead AutoPilot API v{settings.version}")
     print(f"Environment: {settings.environment}")
     
+    try:
+        # Initialize database connection
+        await init_database()
+        print("Database connection initialized")
+    except Exception as e:
+        print(f"Warning: Database initialization failed: {e}")
+    
     yield
     
     # Shutdown logic
+    try:
+        await close_database()
+        print("Database connections closed")
+    except Exception as e:
+        print(f"Warning: Database cleanup failed: {e}")
+    
     print("Shutting down TechLead AutoPilot API")
 
 
@@ -44,15 +66,33 @@ def create_app() -> FastAPI:
         redoc_url="/redoc" if not settings.is_production else None,
     )
     
-    # Add middleware
+    # Add security middleware (order matters - first added = outermost layer)
+    # 1. Error handling (outermost - catches all errors)
+    app.add_middleware(ErrorHandlingMiddleware)
+    app.add_middleware(PII_SanitizationMiddleware)
+    
+    # 2. Request logging (for monitoring)
+    app.add_middleware(RequestLoggingMiddleware)
+    
+    # 3. Rate limiting (prevent abuse)
+    app.add_middleware(RateLimitingMiddleware)
+    
+    # 4. Security headers and validation
+    app.add_middleware(SecurityMiddleware)
+    
+    # 5. Authentication context
+    app.add_middleware(AuthenticationMiddleware)
+    
+    # 6. CORS (allow cross-origin requests)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"] if settings.is_development else ["https://app.techleadautopilot.com"],
+        allow_origins=_get_allowed_origins(settings),
         allow_credentials=True,
-        allow_methods=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
         allow_headers=["*"],
     )
     
+    # 7. Compression (innermost - applied to response)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     
     # Include routers
@@ -96,3 +136,25 @@ def create_app() -> FastAPI:
         }
     
     return app
+
+
+def _get_allowed_origins(settings) -> list[str]:
+    """Get allowed CORS origins based on environment."""
+    if settings.is_development:
+        return [
+            "http://localhost:3000",    # React dev server
+            "http://localhost:8000",    # API server
+            "http://127.0.0.1:3000",   # Alternative localhost
+            "http://127.0.0.1:8000",   # Alternative localhost
+        ]
+    elif settings.environment == "staging":
+        return [
+            "https://staging.techleadautopilot.com",
+            "https://staging-app.techleadautopilot.com",
+        ]
+    else:  # production
+        return [
+            "https://techleadautopilot.com",
+            "https://app.techleadautopilot.com",
+            "https://www.techleadautopilot.com",
+        ]

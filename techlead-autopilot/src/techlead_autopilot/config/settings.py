@@ -29,12 +29,12 @@ class Settings(BaseSettings):
     api_prefix: str = Field(default="/api/v1", description="API prefix")
     
     # Security
-    secret_key: str = Field(description="Secret key for JWT tokens")
+    secret_key: str = Field(default="dev-secret-key-change-in-production", description="Secret key for JWT tokens")
     access_token_expire_minutes: int = Field(default=30, description="Access token expiration in minutes")
     refresh_token_expire_days: int = Field(default=7, description="Refresh token expiration in days")
     
     # Database
-    database_url: str = Field(description="Database connection URL")
+    database_url: str = Field(default="postgresql://user:password@localhost:5432/techlead_autopilot", description="Database connection URL")
     database_pool_size: int = Field(default=20, description="Database connection pool size")
     database_echo: bool = Field(default=False, description="Echo SQL queries")
     
@@ -43,9 +43,9 @@ class Settings(BaseSettings):
     redis_key_prefix: str = Field(default="autopilot:", description="Redis key prefix")
     
     # LinkedIn API
-    linkedin_client_id: str = Field(description="LinkedIn OAuth client ID")
-    linkedin_client_secret: str = Field(description="LinkedIn OAuth client secret")
-    linkedin_redirect_uri: str = Field(description="LinkedIn OAuth redirect URI")
+    linkedin_client_id: str = Field(default="", description="LinkedIn OAuth client ID")
+    linkedin_client_secret: str = Field(default="", description="LinkedIn OAuth client secret")
+    linkedin_redirect_uri: str = Field(default="http://localhost:8000/auth/linkedin/callback", description="LinkedIn OAuth redirect URI")
     
     # OpenAI API
     openai_api_key: Optional[str] = Field(default=None, description="OpenAI API key")
@@ -56,9 +56,9 @@ class Settings(BaseSettings):
     anthropic_model: str = Field(default="claude-3-sonnet-20240229", description="Anthropic model to use")
     
     # Stripe (Billing)
-    stripe_publishable_key: str = Field(description="Stripe publishable key")
-    stripe_secret_key: str = Field(description="Stripe secret key")
-    stripe_webhook_secret: str = Field(description="Stripe webhook secret")
+    stripe_publishable_key: str = Field(default="", description="Stripe publishable key")
+    stripe_secret_key: str = Field(default="", description="Stripe secret key")
+    stripe_webhook_secret: str = Field(default="", description="Stripe webhook secret")
     
     # Content Generation
     content_generation_provider: str = Field(default="openai", description="Content generation provider (openai, anthropic)")
