@@ -100,9 +100,14 @@ export default function DashboardPage() {
                 <p className="text-gray-600 mb-4">
                   Generate high-quality LinkedIn content automatically.
                 </p>
-                <Button className="w-full">
-                  Generate New Content
-                </Button>
+                <div className="space-y-2">
+                  <Button className="w-full" onClick={() => window.location.href = '/dashboard/content/generate'}>
+                    Generate New Content
+                  </Button>
+                  <Button variant="outline" className="w-full" onClick={() => window.location.href = '/dashboard/content'}>
+                    Manage Content
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
