@@ -10,6 +10,7 @@ import { UniversalSearch } from './universal-search'
 import { PWAInstallBanner, OfflineIndicator } from '@/components/pwa/pwa-install-banner'
 import { ContextualTips, useContextualTips } from '@/components/onboarding/contextual-tips'
 import { HelpWidget } from '@/components/help/help-widget'
+import { TooltipProvider } from '@/components/ui/tooltip-provider'
 import { cn } from '@/lib/utils'
 
 interface DashboardLayoutProps {
@@ -64,10 +65,11 @@ export function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* PWA Components */}
-      <PWAInstallBanner />
-      <OfflineIndicator />
+    <TooltipProvider>
+      <div className="min-h-screen bg-gray-50 flex">
+        {/* PWA Components */}
+        <PWAInstallBanner />
+        <OfflineIndicator />
       
       {/* Sidebar Navigation */}
       {!isMobile && (
@@ -123,6 +125,7 @@ export function DashboardLayout({
       
       {/* Help Widget */}
       <HelpWidget position="bottom-right" />
-    </div>
+      </div>
+    </TooltipProvider>
   )
 }
