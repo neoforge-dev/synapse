@@ -23,7 +23,7 @@ from .middleware import (
     PII_SanitizationMiddleware
 )
 from .middleware.logging import ConditionalLoggingMiddleware, RequestContextMiddleware
-from .routers import auth, content, leads, organizations, health, scheduler
+from .routers import auth, content, leads, organizations, health, scheduler, jobs, integrations
 from ..infrastructure.documentation.openapi_enhancer import OpenAPIEnhancer
 
 
@@ -191,6 +191,18 @@ def create_app() -> FastAPI:
         scheduler.router,
         prefix=f"{settings.api_prefix}/scheduler",
         tags=["Automated Posting"]
+    )
+    
+    app.include_router(
+        integrations.router,
+        prefix=f"{settings.api_prefix}/integrations",
+        tags=["LinkedIn Integration"]
+    )
+    
+    app.include_router(
+        jobs.router,
+        prefix=f"{settings.api_prefix}/jobs",
+        tags=["Job Management"]
     )
     
     @app.get("/")
