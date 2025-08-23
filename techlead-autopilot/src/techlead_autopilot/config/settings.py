@@ -83,9 +83,19 @@ class Settings(BaseSettings):
     aws_region: str = Field(default="us-east-1", description="AWS region")
     aws_s3_bucket: Optional[str] = Field(default=None, description="AWS S3 bucket name")
     
-    # Monitoring
+    # Monitoring & Logging
     log_level: str = Field(default="INFO", description="Logging level")
+    log_format: str = Field(default="json", description="Log format (json, console)")
+    log_max_bytes: int = Field(default=52428800, description="Maximum log file size in bytes (50MB)")
+    log_backup_count: int = Field(default=10, description="Number of backup log files to keep")
+    log_audit_backup_count: int = Field(default=20, description="Number of backup audit log files to keep")
+    structured_logging: bool = Field(default=True, description="Enable structured logging")
     sentry_dsn: Optional[str] = Field(default=None, description="Sentry DSN for error tracking")
+    sentry_traces_sample_rate: float = Field(default=0.1, description="Sentry traces sample rate")
+    
+    # Health Checks
+    health_check_interval: int = Field(default=30, description="Health check interval in seconds")
+    health_check_timeout: int = Field(default=10, description="Health check timeout in seconds")
     
     @validator("environment")
     def validate_environment(cls, v: str) -> str:
@@ -110,6 +120,21 @@ class Settings(BaseSettings):
         if v.upper() not in allowed:
             raise ValueError(f"Log level must be one of: {allowed}")
         return v.upper()
+    
+    @validator("log_format")
+    def validate_log_format(cls, v: str) -> str:
+        """Validate log format."""
+        allowed = ["json", "console"]
+        if v.lower() not in allowed:
+            raise ValueError(f"Log format must be one of: {allowed}")
+        return v.lower()
+    
+    @validator("sentry_traces_sample_rate")
+    def validate_sentry_sample_rate(cls, v: float) -> float:
+        """Validate Sentry traces sample rate."""
+        if not 0.0 <= v <= 1.0:
+            raise ValueError("Sentry traces sample rate must be between 0.0 and 1.0")
+        return v
     
     @property
     def is_production(self) -> bool:

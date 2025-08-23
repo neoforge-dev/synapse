@@ -13,14 +13,16 @@ from fastapi.middleware.gzip import GZipMiddleware
 
 from ..config import get_settings
 from ..infrastructure.database import init_database, close_database
+from ..infrastructure.logging import setup_logging, get_logger, log_security_event
+from ..infrastructure.monitoring import get_monitoring_service
 from .middleware import (
     SecurityMiddleware,
     AuthenticationMiddleware,
     ErrorHandlingMiddleware,
     RateLimitingMiddleware,
-    RequestLoggingMiddleware,
     PII_SanitizationMiddleware
 )
+from .middleware.logging import ConditionalLoggingMiddleware, RequestContextMiddleware
 from .routers import auth, content, leads, organizations, health, scheduler
 
 
@@ -29,27 +31,61 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager."""
     settings = get_settings()
     
+    # Initialize logging and monitoring first
+    setup_logging()
+    logger = get_logger('api.startup')
+    
+    # Initialize monitoring service (Sentry if configured)
+    monitoring_service = get_monitoring_service()
+    if monitoring_service.is_enabled():
+        logger.info("Error tracking and monitoring initialized")
+    
     # Startup logic
-    print(f"Starting TechLead AutoPilot API v{settings.version}")
-    print(f"Environment: {settings.environment}")
+    logger.info(
+        "Starting TechLead AutoPilot API",
+        version=settings.version,
+        environment=settings.environment
+    )
     
     try:
         # Initialize database connection
         await init_database()
-        print("Database connection initialized")
+        logger.info("Database connection initialized")
+        
+        # Log security event for application startup
+        log_security_event(
+            event_type="application_startup",
+            description=f"API started in {settings.environment} environment",
+            additional_data={"version": settings.version}
+        )
+        
     except Exception as e:
-        print(f"Warning: Database initialization failed: {e}")
+        logger.error(
+            "Database initialization failed",
+            error=str(e),
+            exc_info=True
+        )
     
     yield
     
     # Shutdown logic
+    logger.info("Shutting down TechLead AutoPilot API")
+    
     try:
         await close_database()
-        print("Database connections closed")
+        logger.info("Database connections closed")
     except Exception as e:
-        print(f"Warning: Database cleanup failed: {e}")
+        logger.error(
+            "Database cleanup failed",
+            error=str(e),
+            exc_info=True
+        )
     
-    print("Shutting down TechLead AutoPilot API")
+    # Log security event for application shutdown
+    log_security_event(
+        event_type="application_shutdown",
+        description=f"API stopped gracefully in {settings.environment} environment"
+    )
 
 
 def create_app() -> FastAPI:
@@ -71,8 +107,9 @@ def create_app() -> FastAPI:
     app.add_middleware(ErrorHandlingMiddleware)
     app.add_middleware(PII_SanitizationMiddleware)
     
-    # 2. Request logging (for monitoring)
-    app.add_middleware(RequestLoggingMiddleware)
+    # 2. Request context and logging (for monitoring)
+    app.add_middleware(RequestContextMiddleware)
+    app.add_middleware(ConditionalLoggingMiddleware, log_requests=True, log_responses=True)
     
     # 3. Rate limiting (prevent abuse)
     app.add_middleware(RateLimitingMiddleware)

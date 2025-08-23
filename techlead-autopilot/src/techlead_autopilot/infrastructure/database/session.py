@@ -7,14 +7,19 @@ multi-tenant isolation.
 
 import logging
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
+import time
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool, QueuePool
+from sqlalchemy import text, event
+from sqlalchemy.engine import Engine
 
 from ...config import get_settings
+from ..logging import get_logger, log_error
+from ..monitoring import add_breadcrumb
 
-logger = logging.getLogger(__name__)
+logger = get_logger('database.session')
 
 # Global variables for database engine and session factory
 _engine = None
@@ -22,38 +27,75 @@ _session_factory = None
 
 
 def get_database_engine():
-    """Get or create the database engine."""
+    """Get or create the database engine with production optimizations."""
     global _engine
     
     if _engine is None:
         settings = get_settings()
         
-        # Configure engine based on environment
-        if settings.is_development:
-            # Development: Smaller pool, more verbose logging
-            _engine = create_async_engine(
-                settings.database_url_async,
-                pool_size=5,
-                max_overflow=10,
-                pool_pre_ping=True,
-                echo=settings.database_echo,
-                future=True
-            )
-        else:
-            # Production: Larger pool, optimized for performance  
-            _engine = create_async_engine(
-                settings.database_url_async,
-                pool_size=settings.database_pool_size,
-                max_overflow=settings.database_pool_size * 2,
-                pool_pre_ping=True,
-                pool_recycle=3600,  # Recycle connections every hour
-                echo=False,
-                future=True
-            )
+        # Base engine configuration
+        engine_kwargs = {
+            'pool_pre_ping': True,
+            'pool_recycle': 3600,  # Recycle connections every hour
+            'future': True,
+            # Connection arguments for PostgreSQL optimization
+            'connect_args': {
+                'server_settings': {
+                    'jit': 'off',  # Disable JIT for better predictability
+                    'statement_timeout': '30000',  # 30 second timeout
+                    'lock_timeout': '10000',  # 10 second lock timeout
+                }
+            }
+        }
         
-        logger.info(f"Database engine created for {settings.environment} environment")
+        # Configure pool based on environment
+        if settings.is_development:
+            engine_kwargs.update({
+                'pool_size': 5,
+                'max_overflow': 10,
+                'echo': settings.database_echo,
+            })
+        else:
+            # Production optimizations
+            engine_kwargs.update({
+                'pool_size': settings.database_pool_size,
+                'max_overflow': settings.database_pool_size * 2,
+                'pool_timeout': 30,  # Max wait time for connection
+                'pool_reset_on_return': 'commit',  # Reset connections on return
+                'echo': False,
+            })
+        
+        _engine = create_async_engine(settings.database_url_async, **engine_kwargs)
+        
+        # Add query performance logging for slow queries
+        if not settings.is_production:
+            _setup_query_logging(_engine)
+        
+        logger.info(
+            "Database engine created",
+            environment=settings.environment,
+            pool_size=engine_kwargs.get('pool_size'),
+            max_overflow=engine_kwargs.get('max_overflow')
+        )
     
     return _engine
+
+
+def _setup_query_logging(engine):
+    """Set up query performance logging for development."""
+    @event.listens_for(engine.sync_engine, "before_cursor_execute")
+    def receive_before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        context._query_start_time = time.time()
+    
+    @event.listens_for(engine.sync_engine, "after_cursor_execute") 
+    def receive_after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        total = time.time() - context._query_start_time
+        if total > 1.0:  # Log queries taking more than 1 second
+            logger.warning(
+                "Slow query detected",
+                duration_seconds=round(total, 3),
+                query=statement[:200] + "..." if len(statement) > 200 else statement
+            )
 
 
 def get_session_factory():
@@ -77,7 +119,7 @@ def get_session_factory():
 @asynccontextmanager
 async def get_database_session() -> AsyncGenerator[AsyncSession, None]:
     """
-    Get an async database session with proper error handling.
+    Get an async database session with proper error handling and monitoring.
     
     Usage:
         async with get_database_session() as session:
@@ -85,16 +127,44 @@ async def get_database_session() -> AsyncGenerator[AsyncSession, None]:
             await session.commit()
     """
     session_factory = get_session_factory()
+    session_start_time = time.time()
     
     async with session_factory() as session:
         try:
+            add_breadcrumb("Database session started")
             yield session
         except Exception as e:
             await session.rollback()
-            logger.error(f"Database session error: {e}")
+            session_duration = time.time() - session_start_time
+            
+            logger.error(
+                "Database session error",
+                error_type=type(e).__name__,
+                error_message=str(e),
+                session_duration_seconds=round(session_duration, 3),
+                exc_info=True
+            )
+            
+            add_breadcrumb(
+                "Database session error",
+                category="database",
+                level="error",
+                data={
+                    "error_type": type(e).__name__,
+                    "duration_seconds": round(session_duration, 3)
+                }
+            )
             raise
         finally:
             await session.close()
+            session_duration = time.time() - session_start_time
+            
+            # Log long-running sessions
+            if session_duration > 5.0:
+                logger.warning(
+                    "Long-running database session",
+                    duration_seconds=round(session_duration, 3)
+                )
 
 
 class DatabaseSession:
