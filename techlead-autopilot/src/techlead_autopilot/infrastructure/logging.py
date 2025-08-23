@@ -11,12 +11,12 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 import structlog
-from pythonjsonlogger import jsonlogger
+from pythonjsonlogger.json import JsonFormatter
 
 from ..config.settings import get_settings
 
 
-class CustomJSONFormatter(jsonlogger.JsonFormatter):
+class CustomJSONFormatter(JsonFormatter):
     """Custom JSON formatter with additional fields."""
     
     def add_fields(self, log_record: Dict[str, Any], record: logging.LogRecord, message_dict: Dict[str, Any]) -> None:

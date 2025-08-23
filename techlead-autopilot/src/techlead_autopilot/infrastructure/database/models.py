@@ -13,10 +13,11 @@ from sqlalchemy import (
     UniqueConstraint, Index
 )
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQL_UUID
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, DeclarativeBase
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    """Base class for all database models."""
+    pass
 
 
 class Organization(Base):
