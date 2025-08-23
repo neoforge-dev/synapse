@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import Optional
 
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -97,7 +97,8 @@ class Settings(BaseSettings):
     health_check_interval: int = Field(default=30, description="Health check interval in seconds")
     health_check_timeout: int = Field(default=10, description="Health check timeout in seconds")
     
-    @validator("environment")
+    @field_validator("environment")
+    @classmethod
     def validate_environment(cls, v: str) -> str:
         """Validate environment value."""
         allowed = ["development", "staging", "production"]
@@ -105,7 +106,8 @@ class Settings(BaseSettings):
             raise ValueError(f"Environment must be one of: {allowed}")
         return v
     
-    @validator("content_generation_provider")
+    @field_validator("content_generation_provider")
+    @classmethod
     def validate_content_provider(cls, v: str) -> str:
         """Validate content generation provider."""
         allowed = ["openai", "anthropic"]
@@ -113,7 +115,8 @@ class Settings(BaseSettings):
             raise ValueError(f"Content provider must be one of: {allowed}")
         return v
     
-    @validator("log_level")
+    @field_validator("log_level")
+    @classmethod
     def validate_log_level(cls, v: str) -> str:
         """Validate log level."""
         allowed = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
@@ -121,7 +124,8 @@ class Settings(BaseSettings):
             raise ValueError(f"Log level must be one of: {allowed}")
         return v.upper()
     
-    @validator("log_format")
+    @field_validator("log_format")
+    @classmethod
     def validate_log_format(cls, v: str) -> str:
         """Validate log format."""
         allowed = ["json", "console"]
@@ -129,7 +133,8 @@ class Settings(BaseSettings):
             raise ValueError(f"Log format must be one of: {allowed}")
         return v.lower()
     
-    @validator("sentry_traces_sample_rate")
+    @field_validator("sentry_traces_sample_rate")
+    @classmethod
     def validate_sentry_sample_rate(cls, v: float) -> float:
         """Validate Sentry traces sample rate."""
         if not 0.0 <= v <= 1.0:

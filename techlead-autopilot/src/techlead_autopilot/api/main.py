@@ -24,6 +24,7 @@ from .middleware import (
 )
 from .middleware.logging import ConditionalLoggingMiddleware, RequestContextMiddleware
 from .routers import auth, content, leads, organizations, health, scheduler
+from ..infrastructure.documentation.openapi_enhancer import OpenAPIEnhancer
 
 
 @asynccontextmanager
@@ -92,14 +93,16 @@ def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
     settings = get_settings()
     
-    # Create FastAPI app
+    # Create FastAPI app with enhanced documentation
     app = FastAPI(
         title="TechLead AutoPilot API",
         description="Technical Leadership Automation Platform - Transform expertise into systematic business growth",
         version=settings.version,
         lifespan=lifespan,
-        docs_url="/docs" if not settings.is_production else None,
-        redoc_url="/redoc" if not settings.is_production else None,
+        # Documentation URLs will be handled by OpenAPI enhancer
+        docs_url=None,
+        redoc_url=None,
+        openapi_url="/openapi.json" if not settings.is_production else "/openapi.json",
     )
     
     # Add security middleware (order matters - first added = outermost layer)
@@ -131,6 +134,27 @@ def create_app() -> FastAPI:
     
     # 7. Compression (innermost - applied to response)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
+    
+    # Setup enhanced OpenAPI documentation
+    docs_url = "/docs" if not settings.is_production else None
+    redoc_url = "/redoc" if not settings.is_production else None
+    
+    openapi_enhancer = OpenAPIEnhancer(
+        app=app,
+        title="TechLead AutoPilot API",
+        version=settings.version,
+        docs_url=docs_url,
+        redoc_url=redoc_url,
+        enable_auth_flows=True,
+        enable_examples=True,
+        enable_multi_env=True
+    )
+    
+    # Setup enhanced OpenAPI schema and custom documentation routes
+    openapi_enhancer.enhance_openapi_schema()
+    
+    if docs_url or redoc_url:
+        openapi_enhancer.setup_custom_docs_routes()
     
     # Include routers
     app.include_router(
