@@ -265,3 +265,7 @@ async def get_current_user_optional(
     except Exception as e:
         logger.debug(f"Optional authentication failed: {e}")
         return None
+
+
+# Alias for compatibility
+get_current_organization = get_organization_from_user

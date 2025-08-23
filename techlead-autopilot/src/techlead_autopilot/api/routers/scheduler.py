@@ -1,7 +1,7 @@
 """Automated posting scheduler API endpoints."""
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -83,7 +83,7 @@ async def schedule_approved_content(
 
 @router.get("/schedule", response_model=PostingScheduleResponse)
 async def get_posting_schedule(
-    days_ahead: int = Field(default=7, ge=1, le=30, description="Days to look ahead"),
+    days_ahead: int = Query(default=7, ge=1, le=30, description="Days to look ahead"),
     scheduler_service: SchedulerService = Depends(get_scheduler_service),
     current_organization: Organization = Depends(get_current_organization)
 ):
@@ -154,7 +154,7 @@ async def get_optimal_posting_times():
 
 @router.get("/posting-analytics")
 async def get_posting_analytics(
-    days: int = Field(default=30, ge=1, le=365, description="Days to analyze"),
+    days: int = Query(default=30, ge=1, le=365, description="Days to analyze"),
     scheduler_service: SchedulerService = Depends(get_scheduler_service),
     current_organization: Organization = Depends(get_current_organization)
 ):
