@@ -9,7 +9,7 @@ from uuid import UUID
 
 from ...core.lead_detection import InquiryType
 from ...services.lead_service import LeadService
-from ...infrastructure.database.session import get_async_session
+from ...infrastructure.database.session import get_db_session
 from ..auth.dependencies import get_current_user, get_current_organization
 from ...infrastructure.database.models import User, Organization
 
@@ -82,7 +82,7 @@ class LeadConversionRequest(BaseModel):
 
 
 # Dependency to get lead service
-async def get_lead_service(db=Depends(get_async_session)) -> LeadService:
+async def get_lead_service(db=Depends(get_db_session)) -> LeadService:
     """Get lead service with database session."""
     return LeadService(db_session=db)
 

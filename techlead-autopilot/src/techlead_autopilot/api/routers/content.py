@@ -9,7 +9,7 @@ from uuid import UUID
 
 from ...core.content_generation import ContentType
 from ...services.content_service import ContentService
-from ...infrastructure.database.session import get_async_session
+from ...infrastructure.database.session import get_db_session
 from ..auth.dependencies import get_current_user, get_current_organization
 from ...infrastructure.database.models import User, Organization
 
@@ -67,7 +67,7 @@ class ContentAnalyticsResponse(BaseModel):
 
 
 # Dependency to get content service
-async def get_content_service(db=Depends(get_async_session)) -> ContentService:
+async def get_content_service(db=Depends(get_db_session)) -> ContentService:
     """Get content service with database session."""
     return ContentService(db_session=db)
 

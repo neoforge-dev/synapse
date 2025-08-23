@@ -16,7 +16,7 @@ from sqlalchemy.orm import selectinload
 
 from ..core.lead_detection import LeadDetectionEngine, ConsultationLead, InquiryType
 from ..infrastructure.database.models import LeadDetected, Organization, ContentGenerated
-from ..infrastructure.database.session import get_async_session
+from ..infrastructure.database.session import get_db_session
 
 logger = logging.getLogger(__name__)
 
@@ -527,5 +527,5 @@ class LeadService:
             return self.db_session
         else:
             # For standalone usage, create new session
-            async with get_async_session() as session:
+            async with get_db_session() as session:
                 return session

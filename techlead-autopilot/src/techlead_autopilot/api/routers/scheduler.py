@@ -8,7 +8,7 @@ from datetime import datetime
 from uuid import UUID
 
 from ...services.scheduler_service import SchedulerService
-from ...infrastructure.database.session import get_async_session
+from ...infrastructure.database.session import get_db_session
 from ..auth.dependencies import get_current_user, get_current_organization
 from ...infrastructure.database.models import User, Organization
 
@@ -38,7 +38,7 @@ class PostingScheduleResponse(BaseModel):
 
 
 # Dependency to get scheduler service
-async def get_scheduler_service(db=Depends(get_async_session)) -> SchedulerService:
+async def get_scheduler_service(db=Depends(get_db_session)) -> SchedulerService:
     """Get scheduler service with database session."""
     return SchedulerService(db_session=db)
 

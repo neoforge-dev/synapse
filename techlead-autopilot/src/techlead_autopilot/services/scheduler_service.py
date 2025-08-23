@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, update
 
 from ..infrastructure.database.models import ContentGenerated, LinkedInIntegration, Organization
-from ..infrastructure.database.session import get_async_session
+from ..infrastructure.database.session import get_db_session
 from ..infrastructure.external_apis import LinkedInAPIClient, LinkedInPostingError
 from .content_service import ContentService
 
@@ -424,7 +424,7 @@ class SchedulerService:
             return self.db_session
         else:
             # For standalone usage, create new session
-            async with get_async_session() as session:
+            async with get_db_session() as session:
                 return session
     
     # Background task methods for production deployment
