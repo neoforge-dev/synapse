@@ -10,7 +10,7 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
 
-from linkedin_posting_system import ConsultationInquiry, LinkedInBusinessDevelopmentEngine
+from .linkedin_posting_system import ConsultationInquiry, LinkedInBusinessDevelopmentEngine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

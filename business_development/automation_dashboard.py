@@ -10,14 +10,11 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# Add business_development to path
-sys.path.insert(0, str(Path(__file__).parent))
-
-from consultation_inquiry_detector import ConsultationInquiryDetector
-from content_scheduler import ContentAutomationPipeline
-from content_templates import ContentType, LinkedInContentGenerator
-from linkedin_api_client import LinkedInAPIClient
-from linkedin_posting_system import LinkedInBusinessDevelopmentEngine
+from .consultation_inquiry_detector import ConsultationInquiryDetector
+from .content_scheduler import ContentAutomationPipeline
+from .content_templates import ContentType, LinkedInContentGenerator
+from .linkedin_api_client import LinkedInAPIClient
+from .linkedin_posting_system import LinkedInBusinessDevelopmentEngine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

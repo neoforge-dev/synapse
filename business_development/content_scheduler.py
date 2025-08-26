@@ -14,12 +14,9 @@ from pathlib import Path
 
 import schedule
 
-# Add business_development to path
-sys.path.insert(0, str(Path(__file__).parent))
-
-from consultation_inquiry_detector import ConsultationInquiryDetector
-from linkedin_api_client import LinkedInAPIClient, LinkedInAutomationScheduler
-from linkedin_posting_system import LinkedInBusinessDevelopmentEngine
+from .consultation_inquiry_detector import ConsultationInquiryDetector
+from .linkedin_api_client import LinkedInAPIClient, LinkedInAutomationScheduler
+from .linkedin_posting_system import LinkedInBusinessDevelopmentEngine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
