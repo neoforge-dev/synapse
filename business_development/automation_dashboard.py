@@ -10,11 +10,21 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from .consultation_inquiry_detector import ConsultationInquiryDetector
-from .content_scheduler import ContentAutomationPipeline
-from .content_templates import ContentType, LinkedInContentGenerator
-from .linkedin_api_client import LinkedInAPIClient
-from .linkedin_posting_system import LinkedInBusinessDevelopmentEngine
+try:
+    from .consultation_inquiry_detector import ConsultationInquiryDetector
+    from .content_scheduler import ContentAutomationPipeline
+    from .content_templates import ContentType, LinkedInContentGenerator
+    from .linkedin_api_client import LinkedInAPIClient
+    from .linkedin_posting_system import LinkedInBusinessDevelopmentEngine
+except ImportError:
+    # For standalone execution
+    import os
+    sys.path.append(os.path.dirname(__file__))
+    from consultation_inquiry_detector import ConsultationInquiryDetector
+    from content_scheduler import ContentAutomationPipeline
+    from content_templates import ContentType, LinkedInContentGenerator
+    from linkedin_api_client import LinkedInAPIClient
+    from linkedin_posting_system import LinkedInBusinessDevelopmentEngine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
