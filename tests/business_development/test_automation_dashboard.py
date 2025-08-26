@@ -58,9 +58,17 @@ class TestComprehensiveStatusReporting:
     
     def test_get_comprehensive_status_happy_path(self, automation_dashboard, mock_business_database):
         """Test comprehensive status retrieval with all systems operational"""
+        # Ensure all components use the same test database
+        automation_dashboard.inquiry_detector.business_engine.db_path = automation_dashboard.business_engine.db_path
+        
         # Arrange - Set up test data in database
         conn = sqlite3.connect(automation_dashboard.business_engine.db_path)
         cursor = conn.cursor()
+        
+        # Clear existing data to ensure test isolation
+        cursor.execute('DELETE FROM consultation_inquiries')
+        cursor.execute('DELETE FROM linkedin_posts')
+        conn.commit()
         
         # Insert test posts
         for post in mock_business_database['linkedin_posts']:
@@ -230,9 +238,17 @@ class TestDailyReportGeneration:
             
     def test_business_metrics_display_happy_path(self, automation_dashboard):
         """Test real-time business metrics display matches actual business state"""
+        # Ensure all components use the same test database
+        automation_dashboard.inquiry_detector.business_engine.db_path = automation_dashboard.business_engine.db_path
+        
         # Arrange - Create realistic business scenario matching current $435K pipeline
         conn = sqlite3.connect(automation_dashboard.business_engine.db_path)
         cursor = conn.cursor()
+        
+        # Clear existing data to ensure test isolation
+        cursor.execute('DELETE FROM consultation_inquiries')
+        cursor.execute('DELETE FROM linkedin_posts')
+        conn.commit()
         
         # Create posts with realistic performance
         posts_data = [
@@ -267,7 +283,7 @@ class TestDailyReportGeneration:
             ('nobuild-1', 25000, 3, 'nobuild_audit'),
             ('nobuild-2', 20000, 3, 'nobuild_audit'),
             ('hiring-1', 35000, 3, 'hiring_strategy'),
-            ('hiring-2', 35000, 3, 'hiring_strategy')
+            ('hiring-2', 40000, 3, 'hiring_strategy')
         ]
         
         total_expected_value = 0
@@ -313,9 +329,17 @@ class TestCriticalAlertsMonitoring:
     @freeze_time("2025-01-22 10:30:00")
     def test_monitor_critical_alerts_happy_path(self, automation_dashboard, high_priority_inquiries):
         """Test detection of critical alerts requiring immediate attention"""
+        # Ensure all components use the same test database
+        automation_dashboard.inquiry_detector.business_engine.db_path = automation_dashboard.business_engine.db_path
+        
         # Arrange - Create high priority inquiries that are overdue
         conn = sqlite3.connect(automation_dashboard.business_engine.db_path)
         cursor = conn.cursor()
+        
+        # Clear existing data to ensure test isolation
+        cursor.execute('DELETE FROM consultation_inquiries')
+        cursor.execute('DELETE FROM linkedin_posts')
+        conn.commit()
         
         for inquiry in high_priority_inquiries:
             cursor.execute('''
@@ -351,6 +375,11 @@ class TestCriticalAlertsMonitoring:
         # Arrange - Create posts with critically low engagement
         conn = sqlite3.connect(automation_dashboard.business_engine.db_path)
         cursor = conn.cursor()
+        
+        # Clear existing data to ensure test isolation
+        cursor.execute('DELETE FROM consultation_inquiries')
+        cursor.execute('DELETE FROM linkedin_posts')
+        conn.commit()
         
         # Create posts from last 3 days with low engagement (below 3% threshold)
         low_engagement_posts = [

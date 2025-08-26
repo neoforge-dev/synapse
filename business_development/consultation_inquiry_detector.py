@@ -98,15 +98,34 @@ class ConsultationInquiryDetector:
         """
         text_lower = text.lower()
 
-        # Strong consultation indicators
+        # Strong consultation indicators - enhanced for business value detection
         strong_indicators = [
             r"\b(would love to|interested in|need help|looking for|want to discuss|can you help|seeking advice)\b",
-            r"\b(schedule|book|call|meeting|consultation|discuss this|dive deeper)\b",
+            r"\b(schedule|book|call|meeting|consultation|discuss this|dive deeper)\b", 
             r"\b(our company|our startup|our team|we are|we're struggling|we need)\b",
-            r"\b(similar situation|same problem|facing this|dealing with|experiencing)\b"
+            r"\b(similar situation|same problem|facing this|dealing with|experiencing)\b",
+            r"\b(help with|assistance with|support with|guidance on)\b"
         ]
 
         has_strong_indicator = any(re.search(pattern, text_lower) for pattern in strong_indicators)
+
+        # Business value indicators - specific company contexts that indicate higher value
+        business_value_indicators = [
+            r"\b(\d+-person company|\d+ employees|\d+ team members)\b",
+            r"\b(25-person|20-person|30-person|50-person)\b", 
+            r"\b(our \d+-person|our \d+ person)\b",
+            r"\b(company with \d+|startup with \d+)\b"
+        ]
+        
+        has_business_value_indicator = any(re.search(pattern, text_lower) for pattern in business_value_indicators)
+
+        # Negative intent indicators - reduce priority
+        negative_indicators = [
+            r"\b(not interested|no thanks|not looking|not ready|not now)\b",
+            r"\b(but not|however not|sounds good but)\b", 
+            r"\b(maybe later|perhaps later|not at this time)\b"
+        ]
+        has_negative_indicator = any(re.search(pattern, text_lower) for pattern in negative_indicators)
 
         best_match = None
         highest_score = 0
@@ -115,15 +134,20 @@ class ConsultationInquiryDetector:
             keyword_matches = sum(1 for keyword in pattern.keywords if keyword in text_lower)
 
             if keyword_matches > 0:
-                # Calculate priority score
+                # Calculate priority score with enhanced business logic
                 base_score = keyword_matches
+                
                 if has_strong_indicator:
                     base_score += 3
 
                 # Company size indicators boost priority
-                company_indicators = ["startup", "series a", "series b", "funded", "employees", "team size"]
+                company_indicators = ["startup", "series a", "series b", "funded", "employees", "team size", "company", "person"]
                 if any(indicator in text_lower for indicator in company_indicators):
                     base_score += 1
+
+                # Business value context indicators provide additional boost
+                if has_business_value_indicator:
+                    base_score += 2  # Higher boost for specific company size mentions
 
                 # Technical complexity indicators
                 tech_indicators = ["complex", "scale", "enterprise", "production", "architecture"]
@@ -131,6 +155,10 @@ class ConsultationInquiryDetector:
                     base_score += 1
 
                 final_score = base_score + pattern.priority_boost
+                
+                # Negative intent significantly reduces final priority (after pattern boost)
+                if has_negative_indicator:
+                    final_score = max(1, final_score - 2)  # Reduce final score after boost
 
                 if final_score > highest_score:
                     highest_score = final_score
@@ -165,7 +193,7 @@ class ConsultationInquiryDetector:
             company_size = self.detect_company_size_from_text(comment_text + " " + commenter_profile)
 
             inquiry = ConsultationInquiry(
-                inquiry_id=f"comment-{post_id}-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                inquiry_id=f"comment-{post_id}-{datetime.now().strftime('%Y%m%d%H%M%S%f')}",
                 source_post_id=post_id,
                 contact_name=commenter_name,
                 company="Unknown",  # Would need profile analysis
@@ -197,7 +225,7 @@ class ConsultationInquiryDetector:
             priority_score = min(priority_score + 1, 5)
 
             inquiry = ConsultationInquiry(
-                inquiry_id=f"dm-{post_id}-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                inquiry_id=f"dm-{post_id}-{datetime.now().strftime('%Y%m%d%H%M%S%f')}",
                 source_post_id=post_id,
                 contact_name=sender_name,
                 company=sender_company or "Unknown",

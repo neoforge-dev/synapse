@@ -107,8 +107,8 @@ class AutomationDashboard:
             'business_metrics': bd_report,
             'pending_inquiries': {
                 'count': len(pending_inquiries),
-                'total_value': sum(inq['estimated_value'] for inq in pending_inquiries),
-                'high_priority': len([inq for inq in pending_inquiries if inq['priority_score'] >= 4])
+                'total_value': sum(inq.get('estimated_value', 0) or 0 for inq in pending_inquiries),
+                'high_priority': len([inq for inq in pending_inquiries if (inq.get('priority_score', 0) or 0) >= 4])
             },
             'content_pipeline': {
                 'total_posts': len(posts_status),

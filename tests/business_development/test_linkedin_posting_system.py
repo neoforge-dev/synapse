@@ -546,8 +546,8 @@ class TestBusinessContinuityValidation:
         # Arrange - Use test database only
         assert "tmp" in linkedin_business_engine.db_path, "Should be using test database"
         
-        # Act - Perform business operations that might trigger API calls
-        with patch('business_development.linkedin_posting_system.requests') as mock_requests:
+        # Act - Perform business operations that might trigger API calls  
+        with patch('business_development.linkedin_api_client.requests') as mock_requests:
             # Test operations that should not make external calls
             linkedin_business_engine.init_database()
             

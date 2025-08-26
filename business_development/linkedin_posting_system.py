@@ -422,21 +422,21 @@ class LinkedInBusinessDevelopmentEngine:
 
         report = {
             'post_performance': {
-                'total_posts': post_summary[0] if post_summary else 0,
-                'avg_engagement_rate': post_summary[1] if post_summary else 0,
-                'total_impressions': post_summary[2] if post_summary else 0,
-                'total_engagement': post_summary[3] if post_summary else 0,
-                'total_consultation_requests': post_summary[4] if post_summary else 0,
-                'total_profile_views': post_summary[5] if post_summary else 0,
-                'total_connection_requests': post_summary[6] if post_summary else 0
+                'total_posts': post_summary[0] if post_summary and post_summary[0] is not None else 0,
+                'avg_engagement_rate': post_summary[1] if post_summary and post_summary[1] is not None else 0,
+                'total_impressions': post_summary[2] if post_summary and post_summary[2] is not None else 0,
+                'total_engagement': post_summary[3] if post_summary and post_summary[3] is not None else 0,
+                'total_consultation_requests': post_summary[4] if post_summary and post_summary[4] is not None else 0,
+                'total_profile_views': post_summary[5] if post_summary and post_summary[5] is not None else 0,
+                'total_connection_requests': post_summary[6] if post_summary and post_summary[6] is not None else 0
             },
             'business_pipeline': {
-                'total_inquiries': inquiry_summary[0] if inquiry_summary else 0,
-                'discovery_calls': inquiry_summary[1] if inquiry_summary else 0,
-                'proposals_sent': inquiry_summary[2] if inquiry_summary else 0,
-                'contracts_won': inquiry_summary[3] if inquiry_summary else 0,
-                'total_pipeline_value': inquiry_summary[4] if inquiry_summary else 0,
-                'won_value': inquiry_summary[5] if inquiry_summary else 0
+                'total_inquiries': inquiry_summary[0] if inquiry_summary and inquiry_summary[0] is not None else 0,
+                'discovery_calls': inquiry_summary[1] if inquiry_summary and inquiry_summary[1] is not None else 0,
+                'proposals_sent': inquiry_summary[2] if inquiry_summary and inquiry_summary[2] is not None else 0,
+                'contracts_won': inquiry_summary[3] if inquiry_summary and inquiry_summary[3] is not None else 0,
+                'total_pipeline_value': inquiry_summary[4] if inquiry_summary and inquiry_summary[4] is not None else 0,
+                'won_value': inquiry_summary[5] if inquiry_summary and inquiry_summary[5] is not None else 0
             },
             'top_performing_posts': [
                 {
