@@ -7,6 +7,7 @@ from uuid import UUID
 
 from .jwt_handler import JWTHandler
 from .models import APIKey, APIKeyCreate, User, UserCreate, UserRole
+from .time_service import TimeService, default_time_service
 
 logger = logging.getLogger(__name__)
 
@@ -14,8 +15,9 @@ logger = logging.getLogger(__name__)
 class AuthProvider(ABC):
     """Abstract base class for authentication providers."""
 
-    def __init__(self, jwt_handler: JWTHandler):
+    def __init__(self, jwt_handler: JWTHandler, time_service: TimeService = None):
         self.jwt_handler = jwt_handler
+        self.time_service = time_service or default_time_service
 
     @abstractmethod
     async def create_user(self, user_data: UserCreate) -> User:
@@ -61,8 +63,8 @@ class AuthProvider(ABC):
 class InMemoryAuthProvider(AuthProvider):
     """In-memory authentication provider for development and testing."""
 
-    def __init__(self, jwt_handler: JWTHandler):
-        super().__init__(jwt_handler)
+    def __init__(self, jwt_handler: JWTHandler, time_service: TimeService = None):
+        super().__init__(jwt_handler, time_service)
         self._users: dict[UUID, User] = {}
         self._usernames: dict[str, UUID] = {}
         self._passwords: dict[UUID, str] = {}  # user_id -> hashed_password
@@ -160,7 +162,7 @@ class InMemoryAuthProvider(AuthProvider):
         """Update user's last login timestamp."""
         user = self._users.get(user_id)
         if user:
-            user.last_login = datetime.utcnow()
+            user.last_login = self.time_service.utcnow()
 
     async def create_api_key(self, user_id: UUID, key_data: APIKeyCreate) -> tuple[APIKey, str]:
         """Create an API key for a user."""
@@ -174,7 +176,7 @@ class InMemoryAuthProvider(AuthProvider):
         # Calculate expiration
         expires_at = None
         if key_data.expires_days:
-            expires_at = datetime.utcnow() + timedelta(days=key_data.expires_days)
+            expires_at = self.time_service.add_days(days=key_data.expires_days)
 
         # Create API key model
         api_key_model = APIKey(
@@ -206,11 +208,11 @@ class InMemoryAuthProvider(AuthProvider):
             return None
 
         # Check expiration
-        if api_key_model.expires_at and datetime.utcnow() > api_key_model.expires_at:
+        if api_key_model.expires_at and self.time_service.utcnow() > api_key_model.expires_at:
             return None
 
         # Update last used timestamp
-        api_key_model.last_used = datetime.utcnow()
+        api_key_model.last_used = self.time_service.utcnow()
 
         user = self._users.get(api_key_model.user_id)
         if user and not user.is_active:

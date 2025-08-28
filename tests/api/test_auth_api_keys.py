@@ -10,11 +10,11 @@ from datetime import datetime, timedelta
 from uuid import uuid4
 
 import pytest
-from freezegun import freeze_time
 
 from graph_rag.api.auth.jwt_handler import JWTHandler, JWTSettings
 from graph_rag.api.auth.models import APIKey, APIKeyCreate, User, UserRole
 from graph_rag.api.auth.providers import InMemoryAuthProvider
+from graph_rag.api.auth.time_service import FixedTimeService
 
 
 class TestAPIKeyGeneration:
@@ -253,19 +253,32 @@ class TestAPIKeyProvider:
             assert user is None
 
     @pytest.mark.asyncio
-    async def test_get_user_by_expired_api_key(self, auth_provider, sample_user):
+    async def test_get_user_by_expired_api_key(self, sample_user):
         """Test that expired API keys return None."""
+        # Create auth provider with fixed time service
+        settings = JWTSettings(secret_key="test-secret-key-32-chars-minimum")
+        jwt_handler = JWTHandler(settings)
+        
+        # Set initial time
+        start_time = datetime(2024, 1, 1)
+        time_service = FixedTimeService(start_time)
+        auth_provider = InMemoryAuthProvider(jwt_handler, time_service)
         auth_provider._users[sample_user.id] = sample_user
 
-        # Create key that expires in the past
-        with freeze_time("2024-01-01"):
-            key_data = APIKeyCreate(name="Expired Key", expires_days=1)
-            _, actual_key = await auth_provider.create_api_key(sample_user.id, key_data)
+        # Create key that expires in 1 day from start_time
+        key_data = APIKeyCreate(name="Expired Key", expires_days=1)
+        _, actual_key = await auth_provider.create_api_key(sample_user.id, key_data)
 
-        # Try to use key in the future (after expiration)
-        with freeze_time("2024-01-10"):
-            user = await auth_provider.get_user_by_api_key(actual_key)
-            assert user is None
+        # Key should work initially
+        user = await auth_provider.get_user_by_api_key(actual_key)
+        assert user is not None
+
+        # Advance time past expiration (10 days later)
+        time_service.advance_days(10)
+        
+        # Key should now be expired
+        user = await auth_provider.get_user_by_api_key(actual_key)
+        assert user is None
 
     @pytest.mark.asyncio
     async def test_get_user_by_revoked_api_key(self, auth_provider, sample_user):
@@ -290,8 +303,16 @@ class TestAPIKeyProvider:
         assert user is None
 
     @pytest.mark.asyncio
-    async def test_last_used_timestamp_update(self, auth_provider, sample_user):
+    async def test_last_used_timestamp_update(self, sample_user):
         """Test that last_used timestamp is updated when key is used."""
+        # Create auth provider with fixed time service
+        settings = JWTSettings(secret_key="test-secret-key-32-chars-minimum")
+        jwt_handler = JWTHandler(settings)
+        
+        # Set fixed time
+        fixed_time = datetime(2024, 1, 1, 12, 0, 0)
+        time_service = FixedTimeService(fixed_time)
+        auth_provider = InMemoryAuthProvider(jwt_handler, time_service)
         auth_provider._users[sample_user.id] = sample_user
 
         key_data = APIKeyCreate(name="Usage Tracking Key")
@@ -303,14 +324,13 @@ class TestAPIKeyProvider:
         assert api_key_model.last_used is None
 
         # Use the key
-        with freeze_time("2024-01-01 12:00:00"):
-            user = await auth_provider.get_user_by_api_key(actual_key)
-            assert user is not None
+        user = await auth_provider.get_user_by_api_key(actual_key)
+        assert user is not None
 
         # Check that last_used was updated
         updated_key = auth_provider._api_keys[api_key_model.id]
         assert updated_key.last_used is not None
-        assert updated_key.last_used == datetime(2024, 1, 1, 12, 0, 0)
+        assert updated_key.last_used == fixed_time
 
 
 class TestAPIKeyRevocation:
