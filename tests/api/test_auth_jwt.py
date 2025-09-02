@@ -225,7 +225,7 @@ class TestJWTHandler:
         token = jwt_handler.create_access_token(sample_user)
 
         # Try to decode with different algorithm
-        with pytest.raises(jwt.InvalidSignatureError):
+        with pytest.raises(jwt.InvalidAlgorithmError):
             jwt.decode(
                 token,
                 jwt_handler.settings.secret_key,
@@ -288,18 +288,27 @@ class TestJWTHandler:
         assert jwt_handler.is_token_expired(expired_token_data)
         assert not jwt_handler.is_token_expired(valid_token_data)
 
-    @freeze_time("2024-01-01 12:00:00")
     def test_token_expiration_time(self, jwt_handler, sample_user):
         """Test that token expiration time is set correctly."""
+        # Record time before token creation (truncated to seconds for comparison)
+        before_creation = datetime.utcnow().replace(microsecond=0)
+        
         token = jwt_handler.create_access_token(sample_user)
         token_data = jwt_handler.decode_token(token)
-
-        expected_exp = datetime.utcnow() + timedelta(
+        
+        # Record time after token creation (truncated to seconds for comparison)
+        after_creation = datetime.utcnow().replace(microsecond=0)
+        
+        expected_min_exp = before_creation + timedelta(
+            minutes=jwt_handler.settings.access_token_expire_minutes
+        )
+        expected_max_exp = after_creation + timedelta(
             minutes=jwt_handler.settings.access_token_expire_minutes
         )
 
-        # Allow small variance due to processing time
-        assert abs((token_data.exp - expected_exp).total_seconds()) < 5
+        # Token expiration should be within the expected range
+        # JWT timestamps are in seconds precision, so we should be within this range
+        assert expected_min_exp <= token_data.exp <= expected_max_exp
 
     def test_generate_api_key(self, jwt_handler):
         """Test API key generation."""

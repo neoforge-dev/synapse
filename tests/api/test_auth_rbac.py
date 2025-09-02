@@ -191,21 +191,21 @@ class TestRoleRequirements:
         with pytest.raises(HTTPException):
             require_user_role(readonly_user)
 
-    def test_get_admin_user_success(self, admin_user):
+    async def test_get_admin_user_success(self, admin_user):
         """Test get_admin_user with admin user."""
-        result = get_admin_user(admin_user)
+        result = await get_admin_user(admin_user)
         assert result == admin_user
 
-    def test_get_admin_user_failure(self, regular_user, readonly_user):
+    async def test_get_admin_user_failure(self, regular_user, readonly_user):
         """Test get_admin_user with non-admin users."""
         with pytest.raises(HTTPException) as exc_info:
-            get_admin_user(regular_user)
+            await get_admin_user(regular_user)
 
         assert exc_info.value.status_code == 403
         assert "admin" in exc_info.value.detail.lower()
 
         with pytest.raises(HTTPException) as exc_info:
-            get_admin_user(readonly_user)
+            await get_admin_user(readonly_user)
 
         assert exc_info.value.status_code == 403
         assert "admin" in exc_info.value.detail.lower()
@@ -397,13 +397,14 @@ class TestRoleIntegrationWithAuthentication:
 
     def test_role_in_token_data(self):
         """Test that roles are included in JWT token data."""
+        from datetime import datetime, timedelta
         from graph_rag.api.auth.models import TokenData
 
         token_data = TokenData(
             user_id=uuid4(),
             username="test",
             role=UserRole.ADMIN,
-            exp=None  # Will be set by JWT handler
+            exp=datetime.utcnow() + timedelta(minutes=30)  # Valid expiration time
         )
 
         assert token_data.role == UserRole.ADMIN
@@ -486,7 +487,7 @@ class TestRoleErrorMessages:
 
         assert "admin" in exc_info.value.detail.lower()
 
-    def test_admin_privilege_error_consistency(self):
+    async def test_admin_privilege_error_consistency(self):
         """Test that admin privilege errors are consistent."""
         user = User(
             username="test",
@@ -496,7 +497,7 @@ class TestRoleErrorMessages:
 
         # Test both admin-requiring functions
         with pytest.raises(HTTPException) as exc1:
-            get_admin_user(user)
+            await get_admin_user(user)
 
         with pytest.raises(HTTPException) as exc2:
             require_admin_role(user)

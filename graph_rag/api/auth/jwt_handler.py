@@ -99,7 +99,7 @@ class JWTHandler:
                 user_id=user_id,
                 username=username,
                 role=UserRole(role),
-                exp=datetime.fromtimestamp(exp)
+                exp=datetime.utcfromtimestamp(exp)
             )
 
         except jwt.ExpiredSignatureError:
