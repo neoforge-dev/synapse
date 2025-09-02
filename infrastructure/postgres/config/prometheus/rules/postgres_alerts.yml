@@ -1,0 +1,193 @@
+groups:
+  - name: postgresql.rules
+    rules:
+      # Query Performance Alerts - Critical for <100ms SLA
+      - alert: PostgreSQLSlowQueries
+        expr: pg_stat_activity_max_tx_duration{datname!~"template.*"} > 1
+        for: 30s
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL slow queries detected"
+          description: "Database {{ $labels.datname }} on {{ $labels.instance }} has queries running longer than 1 second"
+
+      - alert: PostgreSQLVerySlowQueries  
+        expr: pg_stat_activity_max_tx_duration{datname!~"template.*"} > 10
+        for: 10s
+        labels:
+          severity: critical
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL very slow queries detected"
+          description: "Database {{ $labels.datname }} on {{ $labels.instance }} has queries running longer than 10 seconds"
+
+      # Connection Pool Alerts - Critical for Business Continuity
+      - alert: PostgreSQLTooManyConnections
+        expr: pg_stat_database_numbackends / pg_settings_max_connections * 100 > 80
+        for: 2m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL connection usage high"
+          description: "Database {{ $labels.datname }} is using {{ $value }}% of available connections"
+
+      - alert: PostgreSQLConnectionsExhausted
+        expr: pg_stat_database_numbackends / pg_settings_max_connections * 100 > 95
+        for: 30s
+        labels:
+          severity: critical
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL connections nearly exhausted"
+          description: "Database {{ $labels.datname }} is using {{ $value }}% of available connections"
+
+      # Replication Health - Critical for High Availability
+      - alert: PostgreSQLReplicationLag
+        expr: pg_replication_lag > 30
+        for: 1m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL replication lag detected"
+          description: "Replication lag is {{ $value }} seconds on {{ $labels.instance }}"
+
+      - alert: PostgreSQLReplicationBroken
+        expr: pg_replication_lag > 300
+        for: 2m
+        labels:
+          severity: critical
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL replication is broken"
+          description: "Replication lag is {{ $value }} seconds on {{ $labels.instance }} - replication may be broken"
+
+      # Disk and Storage Alerts
+      - alert: PostgreSQLDiskSpaceHigh
+        expr: (pg_database_size_bytes / (1024*1024*1024)) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL database size is large"
+          description: "Database {{ $labels.datname }} size is {{ $value }}GB"
+
+      - alert: PostgreSQLWALFilesAccumulating
+        expr: pg_stat_archiver_archived_count - pg_stat_archiver_failed_count < pg_stat_archiver_archived_count * 0.9
+        for: 10m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL WAL archiving issues"
+          description: "WAL files are not being archived properly on {{ $labels.instance }}"
+
+      # Lock Contention Alerts - Performance Impact
+      - alert: PostgreSQLDeadlocks
+        expr: increase(pg_stat_database_deadlocks[5m]) > 0
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL deadlocks detected"
+          description: "{{ $value }} deadlocks detected in database {{ $labels.datname }} in the last 5 minutes"
+
+      - alert: PostgreSQLHighLockWaits
+        expr: pg_locks_count > 100
+        for: 2m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL high lock contention"
+          description: "{{ $value }} locks detected on {{ $labels.instance }}"
+
+      # Cache Hit Ratio - Performance Indicator
+      - alert: PostgreSQLLowCacheHitRatio
+        expr: pg_stat_database_blks_hit / (pg_stat_database_blks_hit + pg_stat_database_blks_read) < 0.95
+        for: 5m
+        labels:
+          severity: warning
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL low cache hit ratio"
+          description: "Cache hit ratio is {{ $value }} on database {{ $labels.datname }}"
+
+      # Consultation Pipeline Specific Alerts
+      - alert: CoreBusinessDatabaseDown
+        expr: up{job="postgres-primary"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: postgresql
+          impact: business_critical
+        annotations:
+          summary: "Core business database is down"
+          description: "The primary PostgreSQL instance for core business operations is not responding"
+
+      - alert: ConsultationPipelineQueriesSlow
+        expr: pg_stat_activity_max_tx_duration{datname="synapse_core"} > 0.1
+        for: 1m
+        labels:
+          severity: warning
+          service: postgresql  
+          impact: consultation_pipeline
+        annotations:
+          summary: "Consultation pipeline queries exceeding 100ms SLA"
+          description: "Core business queries are taking {{ $value }} seconds, exceeding 100ms SLA"
+
+  - name: pgbouncer.rules
+    rules:
+      # PgBouncer Connection Pool Health
+      - alert: PgBouncerHighQueueTime
+        expr: pgbouncer_pools_maxwait_seconds > 1
+        for: 30s
+        labels:
+          severity: warning
+          service: pgbouncer
+        annotations:
+          summary: "PgBouncer high queue wait time"
+          description: "Queue wait time is {{ $value }} seconds for pool {{ $labels.database }}"
+
+      - alert: PgBouncerPoolExhausted
+        expr: pgbouncer_pools_cl_active / pgbouncer_pools_maxwait > 0.9
+        for: 1m
+        labels:
+          severity: critical
+          service: pgbouncer
+        annotations:
+          summary: "PgBouncer connection pool nearly exhausted"
+          description: "Pool {{ $labels.database }} is {{ $value }}% full"
+
+  - name: business_continuity.rules
+    rules:
+      # Business Impact Alerts for $555K Pipeline
+      - alert: BusinessCriticalSystemDown
+        expr: |
+          (up{job="postgres-primary"} == 0) or
+          (up{job="pgbouncer"} == 0) or  
+          (up{job="haproxy"} == 0)
+        for: 15s
+        labels:
+          severity: critical
+          impact: revenue_loss
+          estimated_loss: "555000"
+        annotations:
+          summary: "Business critical system failure"
+          description: "Core infrastructure component is down, affecting $555K consultation pipeline"
+
+      - alert: ConsultationPipelinePerformanceDegradation
+        expr: |
+          (pg_stat_activity_max_tx_duration{datname="synapse_core"} > 0.5) or
+          (pgbouncer_pools_maxwait_seconds > 2) or
+          (pg_stat_database_numbackends{datname="synapse_core"} / pg_settings_max_connections > 0.85)
+        for: 2m
+        labels:
+          severity: warning
+          impact: business_performance
+        annotations:
+          summary: "Consultation pipeline performance degraded"
+          description: "System performance is degraded, potentially impacting lead generation and consultation booking"

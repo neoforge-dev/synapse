@@ -1,0 +1,6 @@
+"postgres" "SCRAM-SHA-256$4096:salt$hash"
+"synapse_app" "SCRAM-SHA-256$4096:salt$hash"  
+"synapse_readonly" "SCRAM-SHA-256$4096:salt$hash"
+"analytics_user" "SCRAM-SHA-256$4096:salt$hash"
+"revenue_user" "SCRAM-SHA-256$4096:salt$hash"
+"replicator" "SCRAM-SHA-256$4096:salt$hash"

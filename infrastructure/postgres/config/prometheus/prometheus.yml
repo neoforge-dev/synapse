@@ -1,0 +1,92 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: 'production'
+    cluster: 'synapse-postgres'
+
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+scrape_configs:
+  # PostgreSQL Primary Server Monitoring
+  - job_name: 'postgres-primary'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          instance: 'postgres-primary'
+          database_cluster: 'synapse'
+          role: 'primary'
+    scrape_interval: 10s
+    scrape_timeout: 8s
+    metrics_path: /metrics
+
+  # PostgreSQL Analytics Server Monitoring  
+  - job_name: 'postgres-analytics'
+    static_configs:
+      - targets: ['postgres-analytics:5432']
+        labels:
+          instance: 'postgres-analytics'
+          database_cluster: 'synapse'
+          role: 'analytics'
+    scrape_interval: 15s
+
+  # PostgreSQL Revenue Intelligence Monitoring
+  - job_name: 'postgres-revenue'
+    static_configs:
+      - targets: ['postgres-revenue:5432']
+        labels:
+          instance: 'postgres-revenue'
+          database_cluster: 'synapse'
+          role: 'revenue'
+    scrape_interval: 15s
+
+  # PgBouncer Connection Pool Monitoring
+  - job_name: 'pgbouncer'
+    static_configs:
+      - targets: ['pgbouncer:5432']
+        labels:
+          instance: 'pgbouncer'
+          service: 'connection-pool'
+    scrape_interval: 10s
+
+  # HAProxy Load Balancer Monitoring
+  - job_name: 'haproxy'
+    static_configs:
+      - targets: ['haproxy:8080']
+        labels:
+          instance: 'haproxy'
+          service: 'load-balancer'
+    metrics_path: /stats/prometheus
+    scrape_interval: 10s
+
+  # Redis Cache Monitoring
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+        labels:
+          instance: 'redis'
+          service: 'cache'
+    scrape_interval: 15s
+
+  # Node/Container Resource Monitoring
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+
+  # Application Performance Monitoring
+  - job_name: 'synapse-api'
+    static_configs:
+      - targets: ['synapse-api:8000']
+        labels:
+          service: 'synapse-api'
+          environment: 'production'
+    metrics_path: /metrics
+    scrape_interval: 10s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
