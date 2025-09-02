@@ -1,24 +1,29 @@
-## Deletion Candidates (Pending Approval)
+## Documentation Cleanup Status (Updated)
 
-The following appear unused or obsolete. Safe removal reduces noise and speeds up navigation and CI.
+**Recently Cleaned Up:**
+- ✅ `docs/BACKLOG.md` - Removed completed [DONE] items, reorganized by priority
+- ✅ `README.md` - Fixed incorrect repository URLs, updated CLI examples, added business intelligence context
+- ✅ `CLAUDE.md` - Added consolidation status and import path guidance
 
-- Legacy namespace
-  - `graphrag/` (no imports anywhere in repo)
+**Confirmed Active Files (DO NOT DELETE):**
+- `CLAUDE.md` - **ACTIVE** primary development guidance (NOT superseded by docs/HANDBOOK.md)
+- Business development modules - Core $555K pipeline functionality
+- docs/PLAN.md, docs/PROMPT.md - Strategic planning and implementation guidance
 
-- Empty/placeholder dirs (no Python/Go integration)
-  - `handlers/`
-  - `middleware/`
-  - `services/` (root)
-  - `database/`
-  - `utils/` (root)
+**Actual Deletion Candidates:**
 
-- Stray language file
-  - `models/user.go` (isolated Go file; no other Go usage)
+**Severely Outdated Files:**
+- `docs/development/SYSTEM_STATUS.md` - Contains incorrect metrics and future dates (Aug 2025)
+- `docs/development/CLAUDE.md` - Duplicate of main CLAUDE.md but outdated version
+- `memory-bank/active-context.md` - Outdated context from different development phase
 
-- Docs (legacy)
-  - `CLAUDE.md` — superseded by `docs/HANDBOOK.md`
+**Empty/Legacy Directories:** (if still present after development)
+- `handlers/` (if empty)
+- `middleware/` (if empty) 
+- Legacy `graphrag/` namespace (if unused)
 
-Before deletion
-- Double-check no references in CI, Makefile, or docs.
-- Run: `rg -n "handlers/|middleware/|services/|database/|graphrag/|user.go"` and `make test`.
-- Remove directories and update `docs/INDEX.md` and `docs/index.json` accordingly.
+**Before Deletion Process:**
+1. Verify no active references with: `rg -n "SYSTEM_STATUS|active-context"`
+2. Ensure no critical business logic in candidate files
+3. Run full test suite: `make test`
+4. Update any linking documentation

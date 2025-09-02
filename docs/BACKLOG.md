@@ -1,28 +1,49 @@
-# Backlog (Prioritized for Compounding Impact)
+# Current Development Backlog
 
-- CRITICAL: FAISS correctness and persistence [DONE]
-  - Store embeddings alongside metadata to enable index rebuilds [DONE]
-  - Rebuild index on deletions; skip legacy rows without embeddings [DONE]
-  - Add infra tests for delete/rebuild/persistence round-trip [DONE]
+## High Priority (Production Readiness)
 
-- Idempotent ingestion hardening [DONE]
-  - Pre-delete logs now include `doc_id`, `id_source`, and counts
-  - Vector deletion is best-effort with warnings; ingestion continues on errors
+- **Authentication System Stabilization**
+  - Fix 5 JWT/authentication test failures protecting business system access
+  - Resolve token expiration edge cases and algorithm validation issues
+  - Implement comprehensive production authentication testing
 
-- Next: Idempotent ingestion hardening (phase 2)
-  - Emit structured ingest result and per-file outcomes for directory mode in CLI `--json`
-  - Add retry/backoff around transient vector/graph ops
-  - Add metrics counters (deleted_chunks, added_chunks) at INFO level
+- **Import Path Resolution** 
+  - Fix automation_dashboard.py import failures preventing $555K pipeline access
+  - Resolve business_development module dependencies
+  - Enable complete system health validation
 
-- CLI observability and UX
-  - Non-dry-run --json implemented (single, directory, stdin)
-  - Next: --quiet/--verbose consistency; error codes and structured errors
+- **API Consolidation**
+  - Consolidate 18+ router modules to 8-10 efficient, maintainable routers
+  - Reduce system complexity while maintaining full functionality
+  - Improve API performance and maintainability
 
-- Stability & Developer Experience
-  - Reduce spaCy/transformers cold-start via lazy import paths
-  - Makefile targets: smoke, unit-fast, e2e (documented already)
+## Medium Priority (System Optimization)
 
-- Docs & Examples
-  - Architecture overview (docs/ARCHITECTURE.md)
-  - MCP integration plan (docs/MCP.md)
-  - More CLI scripting examples (jq, xargs)
+- **Database Consolidation**
+  - Migrate 12 SQLite databases to 2-3 optimized PostgreSQL instances
+  - Implement ETL pipeline preserving $555K pipeline historical data
+  - Establish connection pooling and performance optimization
+
+- **Performance Improvements**
+  - Reduce spaCy/transformers cold-start via lazy import paths (startup time <10 seconds)
+  - Implement caching layers for frequently accessed business data
+  - Optimize API response times to <200ms average with <500ms 95th percentile
+
+## Low Priority (Enhancement)
+
+- **Documentation & Examples**
+  - Complete architecture overview documentation
+  - Expand CLI scripting examples and automation workflows
+  - Advanced Graph-RAG feature documentation for client presentations
+
+- **Advanced Features**
+  - Multi-hop graph traversal and relationship analysis
+  - Advanced content recommendation algorithms
+  - Predictive analytics for consultation pipeline optimization
+
+## Completed Items (Archive)
+
+✅ **FAISS Persistence & Correctness** - Store embeddings with metadata, rebuild capabilities, comprehensive testing
+✅ **Idempotent Ingestion** - Pre-delete logging, vector deletion error handling, ingestion continuity
+✅ **CLI JSON Output** - Structured results for single file, directory, and stdin modes
+✅ **Authentication Foundation** - TimeService abstraction, JWT token lifecycle management

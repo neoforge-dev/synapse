@@ -43,8 +43,9 @@ make install-local                 # Install via pipx from dist/
 
 ### Business Development Automation
 ```bash
-# Start automation dashboard and control center
+# Start automation dashboard and control center (use module syntax if import issues)
 python business_development/automation_dashboard.py
+# Alternative: python -m business_development.automation_dashboard
 
 # Schedule and manage LinkedIn content posting
 python business_development/content_scheduler.py
@@ -177,3 +178,21 @@ Environment variables use `SYNAPSE_` prefix:
 - Real-time consultation inquiry detection with priority scoring and value estimation
 - Comprehensive automation dashboard for monitoring all business development systems
 - Production-ready for immediate LinkedIn posting and consultation pipeline generation
+
+## System Consolidation Status
+
+**Current Architecture Issues Requiring Attention:**
+- **2.2GB Codebase**: Mixed production and experimental components need systematic cleanup
+- **18+ API Router Modules**: Feature sprawl creating maintenance overhead (target: 8-10 consolidated routers)
+- **12 SQLite Databases**: Data fragmentation preventing unified analytics (target: 2-3 optimized stores)
+- **5 JWT/Authentication Test Failures**: Critical security gaps requiring immediate resolution
+- **Import Path Issues**: business_development module dependencies causing automation_dashboard.py failures
+
+**Critical Pipeline Protection:** $555K consultation pipeline requires zero disruption during consolidation activities
+
+**Consolidation Success Metrics:**
+- Codebase size reduction: 2.2GB → <1.5GB (32% reduction target)
+- API complexity: 18+ → 8-10 routers (44% reduction)
+- Database consolidation: 12 → 2-3 stores (75% reduction)
+- Test reliability: Maintain >95% coverage throughout changes
+- Business continuity: Zero pipeline value loss during architectural improvements
