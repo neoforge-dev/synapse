@@ -24,7 +24,7 @@ class TestUserRegistration:
             "role": "user"
         }
 
-        response = await test_client.post("/auth/register", json=user_data)
+        response = await test_client.post("/api/v1/auth/register", json=user_data)
 
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
@@ -60,7 +60,7 @@ class TestUserRegistration:
             "role": "admin"
         }
 
-        response = await test_client.post("/auth/register", json=user_data)
+        response = await test_client.post("/api/v1/auth/register", json=user_data)
 
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
@@ -78,7 +78,7 @@ class TestUserRegistration:
             "role": "readonly"
         }
 
-        response = await test_client.post("/auth/register", json=user_data)
+        response = await test_client.post("/api/v1/auth/register", json=user_data)
 
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
@@ -96,12 +96,12 @@ class TestUserRegistration:
         }
 
         # First registration should succeed
-        response1 = await test_client.post("/auth/register", json=user_data)
+        response1 = await test_client.post("/api/v1/auth/register", json=user_data)
         assert response1.status_code == status.HTTP_201_CREATED
 
         # Second registration with same username should fail
         user_data["email"] = "second@example.com"  # Different email
-        response2 = await test_client.post("/auth/register", json=user_data)
+        response2 = await test_client.post("/api/v1/auth/register", json=user_data)
         assert response2.status_code == status.HTTP_400_BAD_REQUEST
         assert "already exists" in response2.json()["detail"]
 
@@ -114,7 +114,7 @@ class TestUserRegistration:
             "password": "password123"
         }
 
-        response = await test_client.post("/auth/register", json=user_data)
+        response = await test_client.post("/api/v1/auth/register", json=user_data)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.asyncio
@@ -126,7 +126,7 @@ class TestUserRegistration:
             "password": "short"
         }
 
-        response = await test_client.post("/auth/register", json=user_data)
+        response = await test_client.post("/api/v1/auth/register", json=user_data)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.asyncio
@@ -138,7 +138,7 @@ class TestUserRegistration:
             "password": "password123"
         }
 
-        response = await test_client.post("/auth/register", json=user_data)
+        response = await test_client.post("/api/v1/auth/register", json=user_data)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.asyncio
@@ -149,7 +149,7 @@ class TestUserRegistration:
             # Missing email and password
         }
 
-        response = await test_client.post("/auth/register", json=incomplete_data)
+        response = await test_client.post("/api/v1/auth/register", json=incomplete_data)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
@@ -165,7 +165,7 @@ class TestUserLogin:
             "email": "login@example.com",
             "password": "password123"
         }
-        await test_client.post("/auth/register", json=user_data)
+        await test_client.post("/api/v1/auth/register", json=user_data)
 
         # Now login with OAuth2 form data
         login_data = {
@@ -174,7 +174,7 @@ class TestUserLogin:
         }
 
         response = await test_client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             data=login_data,  # Use data for form encoding
             headers={"Content-Type": "application/x-www-form-urlencoded"}
         )
@@ -202,7 +202,7 @@ class TestUserLogin:
             "email": "json@example.com",
             "password": "password123"
         }
-        await test_client.post("/auth/register", json=user_data)
+        await test_client.post("/api/v1/auth/register", json=user_data)
 
         # Now login with JSON
         login_data = {
@@ -210,7 +210,7 @@ class TestUserLogin:
             "password": "password123"
         }
 
-        response = await test_client.post("/auth/login/json", json=login_data)
+        response = await test_client.post("/api/v1/auth/login/json", json=login_data)
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -234,7 +234,7 @@ class TestUserLogin:
             "email": "wrong@example.com",
             "password": "correctpass"
         }
-        await test_client.post("/auth/register", json=user_data)
+        await test_client.post("/api/v1/auth/register", json=user_data)
 
         # Try to login with wrong password
         login_data = {
@@ -242,7 +242,7 @@ class TestUserLogin:
             "password": "wrongpassword"
         }
 
-        response = await test_client.post("/auth/login/json", json=login_data)
+        response = await test_client.post("/api/v1/auth/login/json", json=login_data)
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert "Invalid username or password" in response.json()["detail"]
@@ -255,7 +255,7 @@ class TestUserLogin:
             "password": "password123"
         }
 
-        response = await test_client.post("/auth/login/json", json=login_data)
+        response = await test_client.post("/api/v1/auth/login/json", json=login_data)
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert "Invalid username or password" in response.json()["detail"]
@@ -268,7 +268,7 @@ class TestUserLogin:
             "password": ""
         }
 
-        response = await test_client.post("/auth/login/json", json=login_data)
+        response = await test_client.post("/api/v1/auth/login/json", json=login_data)
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -285,9 +285,9 @@ class TestCurrentUser:
             "email": "current@example.com",
             "password": "password123"
         }
-        await test_client.post("/auth/register", json=user_data)
+        await test_client.post("/api/v1/auth/register", json=user_data)
 
-        login_response = await test_client.post("/auth/login/json", json={
+        login_response = await test_client.post("/api/v1/auth/login/json", json={
             "username": "currentuser",
             "password": "password123"
         })
@@ -295,7 +295,7 @@ class TestCurrentUser:
 
         # Get current user
         response = await test_client.get(
-            "/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {token}"}
         )
 
@@ -310,7 +310,7 @@ class TestCurrentUser:
     @pytest.mark.asyncio
     async def test_get_current_user_no_token(self, test_client: AsyncClient):
         """Test getting current user without token fails."""
-        response = await test_client.get("/auth/me")
+        response = await test_client.get("/api/v1/auth/me")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert "Authentication required" in response.json()["detail"]
@@ -319,7 +319,7 @@ class TestCurrentUser:
     async def test_get_current_user_invalid_token(self, test_client: AsyncClient):
         """Test getting current user with invalid token fails."""
         response = await test_client.get(
-            "/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": "Bearer invalid-token"}
         )
 
@@ -338,9 +338,9 @@ class TestAPIKeyManagement:
             "email": "api@example.com",
             "password": "password123"
         }
-        await test_client.post("/auth/register", json=user_data)
+        await test_client.post("/api/v1/auth/register", json=user_data)
 
-        login_response = await test_client.post("/auth/login/json", json={
+        login_response = await test_client.post("/api/v1/auth/login/json", json={
             "username": "apiuser",
             "password": "password123"
         })
@@ -354,7 +354,7 @@ class TestAPIKeyManagement:
         }
 
         response = await test_client.post(
-            "/auth/api-keys",
+            "/api/v1/auth/api-keys",
             json=key_data,
             headers={"Authorization": f"Bearer {token}"}
         )
@@ -380,9 +380,9 @@ class TestAPIKeyManagement:
             "email": "noexpiry@example.com",
             "password": "password123"
         }
-        await test_client.post("/auth/register", json=user_data)
+        await test_client.post("/api/v1/auth/register", json=user_data)
 
-        login_response = await test_client.post("/auth/login/json", json={
+        login_response = await test_client.post("/api/v1/auth/login/json", json={
             "username": "noexpiry",
             "password": "password123"
         })
@@ -395,7 +395,7 @@ class TestAPIKeyManagement:
         }
 
         response = await test_client.post(
-            "/auth/api-keys",
+            "/api/v1/auth/api-keys",
             json=key_data,
             headers={"Authorization": f"Bearer {token}"}
         )
@@ -412,7 +412,7 @@ class TestAPIKeyManagement:
             "name": "Unauthorized Key"
         }
 
-        response = await test_client.post("/auth/api-keys", json=key_data)
+        response = await test_client.post("/api/v1/auth/api-keys", json=key_data)
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -425,9 +425,9 @@ class TestAPIKeyManagement:
             "email": "listkeys@example.com",
             "password": "password123"
         }
-        await test_client.post("/auth/register", json=user_data)
+        await test_client.post("/api/v1/auth/register", json=user_data)
 
-        login_response = await test_client.post("/auth/login/json", json={
+        login_response = await test_client.post("/api/v1/auth/login/json", json={
             "username": "listkeys",
             "password": "password123"
         })
@@ -440,14 +440,14 @@ class TestAPIKeyManagement:
                 "description": f"Description {i+1}"
             }
             await test_client.post(
-                "/auth/api-keys",
+                "/api/v1/auth/api-keys",
                 json=key_data,
                 headers={"Authorization": f"Bearer {token}"}
             )
 
         # List keys
         response = await test_client.get(
-            "/auth/api-keys",
+            "/api/v1/auth/api-keys",
             headers={"Authorization": f"Bearer {token}"}
         )
 
@@ -473,9 +473,9 @@ class TestAPIKeyManagement:
             "email": "nokeys@example.com",
             "password": "password123"
         }
-        await test_client.post("/auth/register", json=user_data)
+        await test_client.post("/api/v1/auth/register", json=user_data)
 
-        login_response = await test_client.post("/auth/login/json", json={
+        login_response = await test_client.post("/api/v1/auth/login/json", json={
             "username": "nokeys",
             "password": "password123"
         })
@@ -483,7 +483,7 @@ class TestAPIKeyManagement:
 
         # List keys
         response = await test_client.get(
-            "/auth/api-keys",
+            "/api/v1/auth/api-keys",
             headers={"Authorization": f"Bearer {token}"}
         )
 
@@ -501,9 +501,9 @@ class TestAPIKeyManagement:
             "email": "revoke@example.com",
             "password": "password123"
         }
-        await test_client.post("/auth/register", json=user_data)
+        await test_client.post("/api/v1/auth/register", json=user_data)
 
-        login_response = await test_client.post("/auth/login/json", json={
+        login_response = await test_client.post("/api/v1/auth/login/json", json={
             "username": "revokeuser",
             "password": "password123"
         })
@@ -515,7 +515,7 @@ class TestAPIKeyManagement:
         }
 
         create_response = await test_client.post(
-            "/auth/api-keys",
+            "/api/v1/auth/api-keys",
             json=key_data,
             headers={"Authorization": f"Bearer {token}"}
         )
@@ -523,7 +523,7 @@ class TestAPIKeyManagement:
 
         # Revoke the key
         response = await test_client.delete(
-            f"/auth/api-keys/{key_id}",
+            f"/api/v1/auth/api-keys/{key_id}",
             headers={"Authorization": f"Bearer {token}"}
         )
 
@@ -533,7 +533,7 @@ class TestAPIKeyManagement:
 
         # Verify key is no longer in active list
         list_response = await test_client.get(
-            "/auth/api-keys",
+            "/api/v1/auth/api-keys",
             headers={"Authorization": f"Bearer {token}"}
         )
         keys = list_response.json()
@@ -548,9 +548,9 @@ class TestAPIKeyManagement:
             "email": "nokey@example.com",
             "password": "password123"
         }
-        await test_client.post("/auth/register", json=user_data)
+        await test_client.post("/api/v1/auth/register", json=user_data)
 
-        login_response = await test_client.post("/auth/login/json", json={
+        login_response = await test_client.post("/api/v1/auth/login/json", json={
             "username": "nokey",
             "password": "password123"
         })
@@ -559,7 +559,7 @@ class TestAPIKeyManagement:
         # Try to revoke nonexistent key
         fake_key_id = str(uuid4())
         response = await test_client.delete(
-            f"/auth/api-keys/{fake_key_id}",
+            f"/api/v1/auth/api-keys/{fake_key_id}",
             headers={"Authorization": f"Bearer {token}"}
         )
 
@@ -579,9 +579,9 @@ class TestAPIKeyAuthentication:
             "email": "apiauth@example.com",
             "password": "password123"
         }
-        await test_client.post("/auth/register", json=user_data)
+        await test_client.post("/api/v1/auth/register", json=user_data)
 
-        login_response = await test_client.post("/auth/login/json", json={
+        login_response = await test_client.post("/api/v1/auth/login/json", json={
             "username": "apiauth",
             "password": "password123"
         })
@@ -593,7 +593,7 @@ class TestAPIKeyAuthentication:
         }
 
         create_response = await test_client.post(
-            "/auth/api-keys",
+            "/api/v1/auth/api-keys",
             json=key_data,
             headers={"Authorization": f"Bearer {token}"}
         )
@@ -601,7 +601,7 @@ class TestAPIKeyAuthentication:
 
         # Use API key to authenticate
         response = await test_client.get(
-            "/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {api_key}"}
         )
 
@@ -615,7 +615,7 @@ class TestAPIKeyAuthentication:
     async def test_authenticate_with_invalid_api_key(self, test_client: AsyncClient):
         """Test authentication with invalid API key fails."""
         response = await test_client.get(
-            "/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": "Bearer sk-invalid-key"}
         )
 
@@ -629,7 +629,7 @@ class TestAdminEndpoints:
     async def test_admin_create_user_success(self, test_client: AsyncClient):
         """Test admin can create users."""
         # Use default admin user (admin/admin123)
-        login_response = await test_client.post("/auth/login/json", json={
+        login_response = await test_client.post("/api/v1/auth/login/json", json={
             "username": "admin",
             "password": "admin123"
         })
@@ -644,7 +644,7 @@ class TestAdminEndpoints:
         }
 
         response = await test_client.post(
-            "/auth/admin/users",
+            "/api/v1/auth/admin/users",
             json=user_data,
             headers={"Authorization": f"Bearer {admin_token}"}
         )
@@ -665,9 +665,9 @@ class TestAdminEndpoints:
             "email": "regular@example.com",
             "password": "password123"
         }
-        await test_client.post("/auth/register", json=user_data)
+        await test_client.post("/api/v1/auth/register", json=user_data)
 
-        login_response = await test_client.post("/auth/login/json", json={
+        login_response = await test_client.post("/api/v1/auth/login/json", json={
             "username": "regularuser",
             "password": "password123"
         })
@@ -681,7 +681,7 @@ class TestAdminEndpoints:
         }
 
         response = await test_client.post(
-            "/auth/admin/users",
+            "/api/v1/auth/admin/users",
             json=new_user_data,
             headers={"Authorization": f"Bearer {user_token}"}
         )
@@ -693,7 +693,7 @@ class TestAdminEndpoints:
     async def test_admin_get_user_success(self, test_client: AsyncClient):
         """Test admin can get user by ID."""
         # Use default admin user
-        login_response = await test_client.post("/auth/login/json", json={
+        login_response = await test_client.post("/api/v1/auth/login/json", json={
             "username": "admin",
             "password": "admin123"
         })
@@ -705,12 +705,12 @@ class TestAdminEndpoints:
             "email": "target@example.com",
             "password": "password123"
         }
-        register_response = await test_client.post("/auth/register", json=user_data)
+        register_response = await test_client.post("/api/v1/auth/register", json=user_data)
         user_id = register_response.json()["user"]["id"]
 
         # Admin gets the user
         response = await test_client.get(
-            f"/auth/admin/users/{user_id}",
+            f"/api/v1/auth/admin/users/{user_id}",
             headers={"Authorization": f"Bearer {admin_token}"}
         )
 
@@ -725,7 +725,7 @@ class TestAdminEndpoints:
     async def test_admin_get_user_not_found(self, test_client: AsyncClient):
         """Test admin get user with invalid ID returns 404."""
         # Use default admin user
-        login_response = await test_client.post("/auth/login/json", json={
+        login_response = await test_client.post("/api/v1/auth/login/json", json={
             "username": "admin",
             "password": "admin123"
         })
@@ -734,7 +734,7 @@ class TestAdminEndpoints:
         # Try to get nonexistent user
         fake_user_id = str(uuid4())
         response = await test_client.get(
-            f"/auth/admin/users/{fake_user_id}",
+            f"/api/v1/auth/admin/users/{fake_user_id}",
             headers={"Authorization": f"Bearer {admin_token}"}
         )
 
@@ -750,13 +750,13 @@ class TestAdminEndpoints:
             "email": "nonadmin@example.com",
             "password": "password123"
         }
-        register_response = await test_client.post("/auth/register", json=user_data)
+        register_response = await test_client.post("/api/v1/auth/register", json=user_data)
         user_token = register_response.json()["access_token"]
         user_id = register_response.json()["user"]["id"]
 
         # Try to access admin endpoint
         response = await test_client.get(
-            f"/auth/admin/users/{user_id}",
+            f"/api/v1/auth/admin/users/{user_id}",
             headers={"Authorization": f"Bearer {user_token}"}
         )
 
@@ -771,7 +771,7 @@ class TestAuthenticationErrorHandling:
     async def test_malformed_json_request(self, test_client: AsyncClient):
         """Test handling of malformed JSON requests."""
         response = await test_client.post(
-            "/auth/register",
+            "/api/v1/auth/register",
             content="invalid json{",
             headers={"Content-Type": "application/json"}
         )
@@ -782,7 +782,7 @@ class TestAuthenticationErrorHandling:
     async def test_missing_content_type(self, test_client: AsyncClient):
         """Test handling of requests without content type."""
         response = await test_client.post(
-            "/auth/register",
+            "/api/v1/auth/register",
             content='{"username": "test"}'
         )
 
@@ -805,7 +805,7 @@ class TestAuthenticationErrorHandling:
 
         for token in malformed_tokens:
             response = await test_client.get(
-                "/auth/me",
+                "/api/v1/auth/me",
                 headers={"Authorization": token}
             )
 
@@ -820,7 +820,7 @@ class TestAuthenticationErrorHandling:
         invalid_token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ"
 
         response = await test_client.get(
-            "/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {invalid_token}"}
         )
 
@@ -839,7 +839,7 @@ class TestAuthenticationErrorHandling:
 
         # Start multiple registration attempts simultaneously
         tasks = [
-            test_client.post("/auth/register", json=user_data)
+            test_client.post("/api/v1/auth/register", json=user_data)
             for _ in range(3)
         ]
 
@@ -867,7 +867,7 @@ class TestAuthenticationErrorHandling:
             "password": "password123"
         }
 
-        response = await test_client.post("/auth/register", json=user_data)
+        response = await test_client.post("/api/v1/auth/register", json=user_data)
 
         # Should be rejected by validation
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -885,9 +885,9 @@ class TestAuthenticationHeaders:
             "email": "case@example.com",
             "password": "password123"
         }
-        await test_client.post("/auth/register", json=user_data)
+        await test_client.post("/api/v1/auth/register", json=user_data)
 
-        login_response = await test_client.post("/auth/login/json", json={
+        login_response = await test_client.post("/api/v1/auth/login/json", json={
             "username": "casetest",
             "password": "password123"
         })
@@ -903,7 +903,7 @@ class TestAuthenticationHeaders:
 
         for auth_header in bearer_variations:
             response = await test_client.get(
-                "/auth/me",
+                "/api/v1/auth/me",
                 headers={"Authorization": auth_header}
             )
 
@@ -917,7 +917,7 @@ class TestAuthenticationHeaders:
         # But it's good to test the behavior
 
         response = await test_client.get(
-            "/auth/me",
+            "/api/v1/auth/me",
             headers=[
                 ("Authorization", "Bearer invalid1"),
                 ("Authorization", "Bearer invalid2"),
@@ -931,7 +931,7 @@ class TestAuthenticationHeaders:
     async def test_authorization_header_with_extra_spaces(self, test_client: AsyncClient):
         """Test authorization header with extra whitespace."""
         response = await test_client.get(
-            "/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": "  Bearer   invalid-token  "}
         )
 
@@ -950,9 +950,9 @@ class TestTokenRefresh:
             "email": "oauth2@example.com",
             "password": "password123"
         }
-        await test_client.post("/auth/register", json=user_data)
+        await test_client.post("/api/v1/auth/register", json=user_data)
 
-        login_response = await test_client.post("/auth/login/json", json={
+        login_response = await test_client.post("/api/v1/auth/login/json", json={
             "username": "oauth2test",
             "password": "password123"
         })
