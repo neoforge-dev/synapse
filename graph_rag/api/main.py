@@ -42,6 +42,9 @@ from graph_rag.api.routers.reasoning import create_reasoning_router
 from graph_rag.api.routers.unified_content_simple import create_unified_content_router
 from graph_rag.api.routers.unified_retrieval import create_unified_retrieval_router
 from graph_rag.api.routers.unified_business_intelligence import create_unified_business_intelligence_router
+from graph_rag.api.routers.unified_graph_operations import create_unified_graph_operations_router
+from graph_rag.api.routers.unified_system_admin import create_unified_system_admin_router
+from graph_rag.api.routers.unified_specialized_features import create_unified_specialized_features_router
 
 # Local application imports
 from graph_rag.config import get_settings
@@ -707,6 +710,15 @@ def create_app() -> FastAPI:
     # Epic 2: Unified Business Intelligence Router (replaces dashboard + audience + content_strategy + concepts)
     unified_business_intelligence_router = create_unified_business_intelligence_router()
     
+    # Epic 2: Unified Graph Operations Router (replaces graph + monitoring)
+    unified_graph_operations_router = create_unified_graph_operations_router()
+    
+    # Epic 2: Unified System Admin Router (replaces auth + admin)
+    unified_system_admin_router = create_unified_system_admin_router()
+    
+    # Epic 2: Unified Specialized Features Router (replaces hot_takes + brand_safety)
+    unified_specialized_features_router = create_unified_specialized_features_router()
+    
     # Legacy routers (will be deprecated after consolidation)
     documents_router = documents.create_documents_router()
     ingestion_router = ingestion.create_ingestion_router(
@@ -727,10 +739,13 @@ def create_app() -> FastAPI:
     # Authentication router (no auth required for auth endpoints)
     api_router.include_router(auth_router)
 
-    # Epic 2: Unified Routers (High Performance, Consolidated)
+    # Epic 2: Unified Routers (High Performance, Consolidated) - 18 → 6 Routers Complete!
     api_router.include_router(unified_content_router, prefix="/content", tags=["Unified Content"])
     api_router.include_router(unified_retrieval_router, prefix="/retrieval", tags=["Unified Retrieval"])
     api_router.include_router(unified_business_intelligence_router, prefix="/business", tags=["Unified Business Intelligence"])
+    api_router.include_router(unified_graph_operations_router, prefix="/graph", tags=["Unified Graph Operations"])
+    api_router.include_router(unified_system_admin_router, prefix="/system", tags=["Unified System Admin"])
+    api_router.include_router(unified_specialized_features_router, prefix="/features", tags=["Unified Specialized Features"])
 
     # Legacy routers (maintained for compatibility during transition)
     api_router.include_router(documents_router, prefix="/documents", tags=["Documents (Legacy)"])
