@@ -1,0 +1,575 @@
+---
+# Memgraph Deployment
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: memgraph
+  namespace: synapse-prod
+  labels:
+    app: memgraph
+    component: database
+    tier: database
+spec:
+  serviceName: memgraph-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: memgraph
+  template:
+    metadata:
+      labels:
+        app: memgraph
+        component: database
+        tier: database
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 3000
+        fsGroup: 2000
+      containers:
+      - name: memgraph
+        image: memgraph/memgraph:2.11.1
+        ports:
+        - containerPort: 7687
+          name: bolt
+        - containerPort: 7444
+          name: web
+        env:
+        - name: MEMGRAPH_LOG_LEVEL
+          value: "INFO"
+        - name: MEMGRAPH_ALSO_LOG_TO_STDERR
+          value: "true"
+        command:
+        - /usr/lib/memgraph/memgraph
+        - --bolt-port=7687
+        - --log-level=INFO
+        - --also-log-to-stderr
+        - --data-directory=/var/lib/memgraph
+        - --storage-snapshot-interval-sec=300
+        - --storage-wal-enabled=true
+        - --storage-recover-on-startup=true
+        - --memory-limit=8192
+        - --query-execution-timeout-sec=600
+        - --replication-restore-state-on-startup=true
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 4Gi
+          limits:
+            cpu: 4000m
+            memory: 8Gi
+        volumeMounts:
+        - name: memgraph-data
+          mountPath: /var/lib/memgraph
+        - name: memgraph-logs
+          mountPath: /var/log/memgraph
+        livenessProbe:
+          tcpSocket:
+            port: 7687
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 7687
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+  volumeClaimTemplates:
+  - metadata:
+      name: memgraph-data
+      labels:
+        app: memgraph
+        component: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 100Gi
+      storageClassName: fast-ssd
+  - metadata:
+      name: memgraph-logs
+      labels:
+        app: memgraph
+        component: logs
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+      storageClassName: standard
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: memgraph-service
+  namespace: synapse-prod
+  labels:
+    app: memgraph
+    component: database
+spec:
+  type: ClusterIP
+  ports:
+  - port: 7687
+    targetPort: bolt
+    protocol: TCP
+    name: bolt
+  - port: 7444
+    targetPort: web
+    protocol: TCP
+    name: web
+  selector:
+    app: memgraph
+---
+# PostgreSQL Deployment for Multi-Tenancy
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgresql
+  namespace: synapse-prod
+  labels:
+    app: postgresql
+    component: database
+    tier: database
+spec:
+  serviceName: postgresql-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql
+  template:
+    metadata:
+      labels:
+        app: postgresql
+        component: database
+        tier: database
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      containers:
+      - name: postgresql
+        image: postgres:15.4-alpine
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_DB
+          value: "synapse"
+        - name: POSTGRES_USER
+          value: "synapse"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: synapse-secrets
+              key: postgres-password
+        - name: PGDATA
+          value: "/var/lib/postgresql/data/pgdata"
+        - name: POSTGRES_INITDB_ARGS
+          value: "--encoding=UTF8 --data-checksums"
+        resources:
+          requests:
+            cpu: 500m
+            memory: 2Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        volumeMounts:
+        - name: postgresql-data
+          mountPath: /var/lib/postgresql/data
+        - name: postgresql-init
+          mountPath: /docker-entrypoint-initdb.d
+          readOnly: true
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - exec pg_isready -U synapse -d synapse -h 127.0.0.1 -p 5432
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - exec pg_isready -U synapse -d synapse -h 127.0.0.1 -p 5432
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 999
+          capabilities:
+            drop:
+            - ALL
+  volumeClaimTemplates:
+  - metadata:
+      name: postgresql-data
+      labels:
+        app: postgresql
+        component: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 200Gi
+      storageClassName: fast-ssd
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql-service
+  namespace: synapse-prod
+  labels:
+    app: postgresql
+    component: database
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+    targetPort: postgres
+    protocol: TCP
+    name: postgres
+  selector:
+    app: postgresql
+---
+# Redis Deployment for Caching
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: synapse-prod
+  labels:
+    app: redis
+    component: cache
+    tier: cache
+spec:
+  serviceName: redis-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+        component: cache
+        tier: cache
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      containers:
+      - name: redis
+        image: redis:7.2-alpine
+        ports:
+        - containerPort: 6379
+          name: redis
+        command:
+        - redis-server
+        - /etc/redis/redis.conf
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: synapse-secrets
+              key: redis-password
+        resources:
+          requests:
+            cpu: 250m
+            memory: 1Gi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        - name: redis-config
+          mountPath: /etc/redis
+          readOnly: true
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 999
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: redis-config
+        configMap:
+          name: redis-config
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+      labels:
+        app: redis
+        component: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 20Gi
+      storageClassName: standard
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: synapse-prod
+  labels:
+    app: redis
+    component: cache
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+    targetPort: redis
+    protocol: TCP
+    name: redis
+  selector:
+    app: redis
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: synapse-prod
+  labels:
+    app: redis
+    component: config
+data:
+  redis.conf: |
+    # Redis Configuration for Production
+    bind 0.0.0.0
+    port 6379
+    timeout 300
+    tcp-keepalive 300
+    
+    # Memory management
+    maxmemory 1.5gb
+    maxmemory-policy allkeys-lru
+    
+    # Persistence
+    save 900 1
+    save 300 10
+    save 60 10000
+    
+    # Security
+    requirepass ${REDIS_PASSWORD}
+    
+    # Logging
+    loglevel notice
+    
+    # Performance
+    tcp-backlog 511
+    databases 16
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgresql-init
+  namespace: synapse-prod
+  labels:
+    app: postgresql
+    component: init
+data:
+  01-extensions.sql: |
+    -- Enable required PostgreSQL extensions
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+    CREATE EXTENSION IF NOT EXISTS "hstore";
+    
+  02-tenant-schemas.sql: |
+    -- Create tenant management tables
+    CREATE SCHEMA IF NOT EXISTS tenant_management;
+    
+    CREATE TABLE IF NOT EXISTS tenant_management.tenants (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        name VARCHAR(100) NOT NULL,
+        domain VARCHAR(255) NOT NULL UNIQUE,
+        subdomain VARCHAR(50) NOT NULL UNIQUE,
+        is_active BOOLEAN DEFAULT true,
+        compliance_frameworks TEXT[],
+        data_region VARCHAR(50) DEFAULT 'us-east-1',
+        encryption_key_id VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE,
+        settings JSONB DEFAULT '{}'
+    );
+    
+    CREATE TABLE IF NOT EXISTS tenant_management.users (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        username VARCHAR(50) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        role VARCHAR(20) DEFAULT 'user',
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        last_login TIMESTAMP WITH TIME ZONE,
+        UNIQUE(username),
+        UNIQUE(email)
+    );
+    
+    CREATE TABLE IF NOT EXISTS tenant_management.tenant_users (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES tenant_management.users(id),
+        tenant_id UUID NOT NULL REFERENCES tenant_management.tenants(id),
+        tenant_role VARCHAR(20) DEFAULT 'tenant_user',
+        is_active BOOLEAN DEFAULT true,
+        joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        last_access TIMESTAMP WITH TIME ZONE,
+        permissions TEXT[],
+        UNIQUE(user_id, tenant_id)
+    );
+    
+    -- Create indexes for performance
+    CREATE INDEX IF NOT EXISTS idx_tenants_domain ON tenant_management.tenants(domain);
+    CREATE INDEX IF NOT EXISTS idx_tenants_subdomain ON tenant_management.tenants(subdomain);
+    CREATE INDEX IF NOT EXISTS idx_users_username ON tenant_management.users(username);
+    CREATE INDEX IF NOT EXISTS idx_users_email ON tenant_management.users(email);
+    CREATE INDEX IF NOT EXISTS idx_tenant_users_user_id ON tenant_management.tenant_users(user_id);
+    CREATE INDEX IF NOT EXISTS idx_tenant_users_tenant_id ON tenant_management.tenant_users(tenant_id);
+  
+  03-audit-tables.sql: |
+    -- Create audit schema and tables
+    CREATE SCHEMA IF NOT EXISTS audit;
+    
+    CREATE TABLE IF NOT EXISTS audit.events (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        tenant_id UUID NOT NULL,
+        event_type VARCHAR(50) NOT NULL,
+        user_id UUID,
+        session_id VARCHAR(255),
+        ip_address INET,
+        user_agent TEXT,
+        resource_type VARCHAR(100),
+        resource_id VARCHAR(255),
+        action VARCHAR(100) NOT NULL,
+        result VARCHAR(20) NOT NULL,
+        details JSONB DEFAULT '{}',
+        risk_score INTEGER DEFAULT 0 CHECK (risk_score >= 0 AND risk_score <= 100),
+        compliance_tags TEXT[],
+        retention_period_days INTEGER DEFAULT 2555,
+        timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        signature VARCHAR(512),
+        signature_algorithm VARCHAR(50) DEFAULT 'SHA256-RSA'
+    );
+    
+    -- Partition audit table by month for performance
+    CREATE TABLE IF NOT EXISTS audit.events_y2024m01 PARTITION OF audit.events
+        FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
+    
+    -- Create indexes for audit queries
+    CREATE INDEX IF NOT EXISTS idx_audit_events_tenant_id ON audit.events(tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_events_timestamp ON audit.events(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_audit_events_event_type ON audit.events(event_type);
+    CREATE INDEX IF NOT EXISTS idx_audit_events_user_id ON audit.events(user_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_events_risk_score ON audit.events(risk_score);
+  
+  04-security.sql: |
+    -- Create security-related tables and functions
+    CREATE SCHEMA IF NOT EXISTS security;
+    
+    -- API Keys table
+    CREATE TABLE IF NOT EXISTS security.api_keys (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES tenant_management.users(id),
+        name VARCHAR(100) NOT NULL,
+        description TEXT,
+        key_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        expires_at TIMESTAMP WITH TIME ZONE,
+        last_used TIMESTAMP WITH TIME ZONE,
+        is_active BOOLEAN DEFAULT true
+    );
+    
+    -- MFA configurations
+    CREATE TABLE IF NOT EXISTS security.mfa_configurations (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES tenant_management.users(id),
+        mfa_type VARCHAR(20) NOT NULL,
+        is_enabled BOOLEAN DEFAULT true,
+        is_primary BOOLEAN DEFAULT false,
+        secret_key_encrypted TEXT,
+        phone_number VARCHAR(20),
+        email VARCHAR(255),
+        device_id VARCHAR(255),
+        backup_codes_encrypted TEXT[],
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        last_used TIMESTAMP WITH TIME ZONE
+    );
+    
+    -- Security policies
+    CREATE TABLE IF NOT EXISTS security.policies (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        tenant_id UUID NOT NULL REFERENCES tenant_management.tenants(id),
+        policy_name VARCHAR(100) NOT NULL,
+        min_password_length INTEGER DEFAULT 12,
+        require_uppercase BOOLEAN DEFAULT true,
+        require_lowercase BOOLEAN DEFAULT true,
+        require_numbers BOOLEAN DEFAULT true,
+        require_special_chars BOOLEAN DEFAULT true,
+        password_history_count INTEGER DEFAULT 12,
+        password_max_age_days INTEGER DEFAULT 90,
+        session_timeout_minutes INTEGER DEFAULT 30,
+        max_concurrent_sessions INTEGER DEFAULT 5,
+        require_mfa BOOLEAN DEFAULT true,
+        mfa_required_for_admin BOOLEAN DEFAULT true,
+        ip_whitelist INET[],
+        ip_blacklist INET[],
+        allowed_countries TEXT[],
+        blocked_countries TEXT[],
+        api_rate_limit_per_minute INTEGER DEFAULT 1000,
+        login_attempt_limit INTEGER DEFAULT 5,
+        lockout_duration_minutes INTEGER DEFAULT 30,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE
+    );
+    
+    -- Create indexes
+    CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON security.api_keys(user_id);
+    CREATE INDEX IF NOT EXISTS idx_api_keys_key_hash ON security.api_keys(key_hash);
+    CREATE INDEX IF NOT EXISTS idx_mfa_configurations_user_id ON security.mfa_configurations(user_id);
+    CREATE INDEX IF NOT EXISTS idx_security_policies_tenant_id ON security.policies(tenant_id);

@@ -9,6 +9,7 @@ from ...config import Settings, get_settings
 from .jwt_handler import JWTHandler, JWTSettings
 from .models import User, UserRole
 from .providers import AuthProvider, InMemoryAuthProvider
+from .enterprise_providers import EnterpriseAuthProvider
 
 logger = logging.getLogger(__name__)
 
@@ -42,14 +43,20 @@ def get_jwt_handler(jwt_settings: JWTSettings = Depends(get_jwt_settings)) -> JW
         logger.info("Created singleton JWTHandler instance")
     return _jwt_handler_instance
 
-def get_auth_provider(jwt_handler: JWTHandler = Depends(get_jwt_handler)) -> AuthProvider:
+def get_auth_provider(
+    jwt_handler: JWTHandler = Depends(get_jwt_handler),
+    settings: Settings = Depends(get_settings)
+) -> AuthProvider:
     """Get authentication provider instance (singleton)."""
     global _auth_provider_instance
     if _auth_provider_instance is None:
-        # For now, use in-memory provider. In production, this could be swapped
-        # for a database-backed provider
-        _auth_provider_instance = InMemoryAuthProvider(jwt_handler)
-        logger.info("Created singleton InMemoryAuthProvider instance")
+        # Choose provider based on enterprise authentication setting
+        if getattr(settings, 'enable_enterprise_auth', False):
+            _auth_provider_instance = EnterpriseAuthProvider(jwt_handler)
+            logger.info("Created singleton EnterpriseAuthProvider instance")
+        else:
+            _auth_provider_instance = InMemoryAuthProvider(jwt_handler)
+            logger.info("Created singleton InMemoryAuthProvider instance")
     return _auth_provider_instance
 
 

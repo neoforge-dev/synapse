@@ -31,6 +31,7 @@ from graph_rag.api.routers import documents, ingestion, query, search
 from graph_rag.api.routers.admin import create_admin_router
 from graph_rag.api.routers.audience import router as audience_router
 from graph_rag.api.routers.auth import create_auth_router
+from graph_rag.api.routers.enterprise_auth import create_enterprise_auth_router
 from graph_rag.api.routers.brand_safety import router as brand_safety_router
 from graph_rag.api.routers.concepts import router as concepts_router
 from graph_rag.api.routers.content_strategy import router as content_strategy_router
@@ -734,11 +735,17 @@ def create_app() -> FastAPI:
     dashboard_router = create_dashboard_router()
     admin_router = create_admin_router()
     auth_router = create_auth_router()
+    enterprise_auth_router = create_enterprise_auth_router()
     reasoning_router = create_reasoning_router()
     monitoring_router = create_monitoring_router()
 
     # Authentication router (no auth required for auth endpoints)
     api_router.include_router(auth_router)
+    
+    # Enterprise authentication router (conditional on enterprise features)
+    current_settings = get_settings()
+    if getattr(current_settings, 'enable_enterprise_auth', False):
+        api_router.include_router(enterprise_auth_router)
 
     # Epic 2: Unified Routers (High Performance, Consolidated) - 18 → 6 Routers Complete!
     api_router.include_router(unified_content_router, prefix="/content", tags=["Unified Content"])

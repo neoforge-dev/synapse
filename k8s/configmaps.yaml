@@ -1,0 +1,218 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: synapse-config
+  namespace: synapse-prod
+  labels:
+    app: synapse-graph-rag
+    component: config
+data:
+  # Application Configuration
+  SYNAPSE_API_HOST: "0.0.0.0"
+  SYNAPSE_API_PORT: "8000"
+  SYNAPSE_API_LOG_LEVEL: "INFO"
+  SYNAPSE_API_LOG_JSON: "true"
+  
+  # Enterprise Authentication
+  SYNAPSE_ENABLE_ENTERPRISE_AUTH: "true"
+  SYNAPSE_ENABLE_MULTI_TENANCY: "true"
+  SYNAPSE_TENANT_ISOLATION_LEVEL: "database"
+  SYNAPSE_ENABLE_AUDIT_LOGGING: "true"
+  SYNAPSE_AUDIT_LOG_ENCRYPTION: "true"
+  SYNAPSE_GDPR_COMPLIANCE_MODE: "true"
+  
+  # Security Settings
+  SYNAPSE_ENABLE_AUTHENTICATION: "true"
+  SYNAPSE_REQUIRE_AUTH_FOR_DOCS: "true"
+  SYNAPSE_PASSWORD_MIN_LENGTH: "12"
+  SYNAPSE_SESSION_TIMEOUT_MINUTES: "30"
+  SYNAPSE_MAX_CONCURRENT_SESSIONS: "5"
+  SYNAPSE_REQUIRE_MFA_FOR_ADMIN: "true"
+  
+  # Rate Limiting
+  SYNAPSE_ENABLE_RATE_LIMITING: "true"
+  SYNAPSE_RATE_LIMIT_PER_MINUTE: "300"
+  SYNAPSE_RATE_LIMIT_PER_HOUR: "5000"
+  SYNAPSE_ENTERPRISE_RATE_LIMIT_PER_MINUTE: "1000"
+  SYNAPSE_LOGIN_ATTEMPT_LIMIT: "5"
+  SYNAPSE_LOCKOUT_DURATION_MINUTES: "30"
+  
+  # Database Configuration
+  SYNAPSE_MEMGRAPH_HOST: "memgraph-service"
+  SYNAPSE_MEMGRAPH_PORT: "7687"
+  SYNAPSE_MEMGRAPH_USE_SSL: "false"
+  SYNAPSE_MEMGRAPH_MAX_RETRIES: "3"
+  SYNAPSE_MEMGRAPH_RETRY_DELAY: "2"
+  
+  # Vector Store Configuration
+  SYNAPSE_VECTOR_STORE_TYPE: "faiss"
+  SYNAPSE_USE_OPTIMIZED_FAISS: "true"
+  SYNAPSE_FAISS_USE_GPU: "true"
+  SYNAPSE_FAISS_QUANTIZE: "true"
+  
+  # Embedding Provider
+  SYNAPSE_EMBEDDING_PROVIDER: "sentence-transformers"
+  SYNAPSE_VECTOR_STORE_EMBEDDING_MODEL: "all-MiniLM-L6-v2"
+  
+  # LLM Configuration
+  SYNAPSE_LLM_TYPE: "openai"
+  SYNAPSE_LLM_MODEL_NAME: "gpt-4o-mini"
+  SYNAPSE_LLM_MAX_TOKENS: "2000"
+  SYNAPSE_LLM_TEMPERATURE: "0.3"
+  SYNAPSE_LLM_TIMEOUT: "30.0"
+  
+  # Operational Settings
+  SYNAPSE_AUTO_FALLBACK_VECTOR_MODE: "true"
+  SYNAPSE_ENABLE_METRICS: "true"
+  SYNAPSE_ENABLE_MAINTENANCE_JOBS: "true"
+  SYNAPSE_MAINTENANCE_INTERVAL_SECONDS: "86400"
+  
+  # Cache Configuration
+  SYNAPSE_CACHE_TYPE: "redis"
+  SYNAPSE_REDIS_URL: "redis://redis-service:6379/0"
+  SYNAPSE_CACHE_DEFAULT_TTL: "300"
+  SYNAPSE_CACHE_EMBEDDING_TTL: "3600"
+  SYNAPSE_CACHE_SEARCH_TTL: "600"
+  
+  # High Availability Settings
+  SYNAPSE_ENABLE_HA_MODE: "true"
+  SYNAPSE_BACKUP_ENCRYPTION: "true"
+  SYNAPSE_BACKUP_RETENTION_DAYS: "30"
+  SYNAPSE_CROSS_REGION_REPLICATION: "true"
+  
+  # Encryption Settings
+  SYNAPSE_ENABLE_FIELD_ENCRYPTION: "true"
+  SYNAPSE_ENCRYPTION_ALGORITHM: "AES-256-GCM"
+  SYNAPSE_KEY_ROTATION_INTERVAL_DAYS: "90"
+  
+  # SAML Configuration
+  SYNAPSE_SAML_ENTITY_ID: "https://synapse.company.com/saml/metadata"
+  
+  # OAuth Configuration
+  SYNAPSE_OAUTH_REDIRECT_URI: "https://synapse.company.com/auth/enterprise/oauth/callback"
+  
+  # LDAP Configuration
+  SYNAPSE_LDAP_CONNECTION_TIMEOUT: "10"
+  SYNAPSE_LDAP_SEARCH_TIMEOUT: "30"
+  
+  # MFA Configuration
+  SYNAPSE_MFA_ISSUER_NAME: "Synapse Enterprise Graph-RAG"
+  SYNAPSE_MFA_BACKUP_CODE_LENGTH: "8"
+  SYNAPSE_MFA_TOTP_WINDOW: "1"
+  
+  # Compliance Settings
+  SYNAPSE_AUDIT_RETENTION_DAYS: "2555"  # 7 years
+  SYNAPSE_DEFAULT_TENANT_DOMAIN: "synapse.company.com"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: synapse-nginx-config
+  namespace: synapse-prod
+  labels:
+    app: synapse-graph-rag
+    component: nginx
+data:
+  nginx.conf: |
+    events {
+        worker_connections 1024;
+    }
+    
+    http {
+        include /etc/nginx/mime.types;
+        default_type application/octet-stream;
+        
+        # Logging format
+        log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                       '$status $body_bytes_sent "$http_referer" '
+                       '"$http_user_agent" "$http_x_forwarded_for" '
+                       'tenant="$http_x_tenant_id"';
+        
+        access_log /var/log/nginx/access.log main;
+        error_log /var/log/nginx/error.log warn;
+        
+        # Security headers
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        
+        # Rate limiting
+        limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+        limit_req_zone $http_x_tenant_id zone=tenant:10m rate=100r/s;
+        
+        upstream synapse_api {
+            server synapse-api-service:8000 max_fails=3 fail_timeout=30s;
+        }
+        
+        server {
+            listen 80;
+            server_name *.synapse.company.com synapse.company.com;
+            return 301 https://$server_name$request_uri;
+        }
+        
+        server {
+            listen 443 ssl http2;
+            server_name *.synapse.company.com synapse.company.com;
+            
+            # SSL Configuration
+            ssl_certificate /etc/nginx/ssl/tls.crt;
+            ssl_certificate_key /etc/nginx/ssl/tls.key;
+            ssl_protocols TLSv1.2 TLSv1.3;
+            ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+            ssl_prefer_server_ciphers off;
+            
+            # Security headers
+            add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+            
+            # Extract tenant from subdomain
+            set $tenant_subdomain "";
+            if ($host ~* ^([^.]+)\.synapse\.company\.com$) {
+                set $tenant_subdomain $1;
+            }
+            
+            # Add tenant header
+            proxy_set_header X-Tenant-Subdomain $tenant_subdomain;
+            
+            location / {
+                # Rate limiting
+                limit_req zone=api burst=20 nodelay;
+                limit_req zone=tenant burst=50 nodelay;
+                
+                # Proxy to API
+                proxy_pass http://synapse_api;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                
+                # Timeout settings
+                proxy_connect_timeout 30s;
+                proxy_send_timeout 30s;
+                proxy_read_timeout 30s;
+                
+                # Buffer settings
+                proxy_buffering on;
+                proxy_buffer_size 4k;
+                proxy_buffers 8 4k;
+            }
+            
+            location /health {
+                # Health check endpoint - no rate limiting
+                proxy_pass http://synapse_api;
+                proxy_set_header Host $host;
+                access_log off;
+            }
+            
+            location /metrics {
+                # Metrics endpoint - restrict access
+                allow 10.0.0.0/8;
+                allow 172.16.0.0/12;
+                allow 192.168.0.0/16;
+                deny all;
+                
+                proxy_pass http://synapse_api;
+                proxy_set_header Host $host;
+            }
+        }
+    }

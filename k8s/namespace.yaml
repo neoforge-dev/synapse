@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: synapse-prod
+  labels:
+    app: synapse-graph-rag
+    environment: production
+    compliance: soc2-gdpr
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: synapse-staging
+  labels:
+    app: synapse-graph-rag
+    environment: staging
+    compliance: testing
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: synapse-monitoring
+  labels:
+    app: synapse-graph-rag
+    component: monitoring
+    environment: production

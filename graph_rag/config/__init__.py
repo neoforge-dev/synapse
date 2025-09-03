@@ -318,6 +318,169 @@ class Settings(BaseSettings):
         description="Interval between maintenance runs in seconds (default 1 day).",
     )
 
+    # --- Enterprise Authentication Settings ---
+    enable_enterprise_auth: bool = Field(
+        False,
+        description="Enable enterprise authentication features (SSO, multi-tenancy, compliance). Default: False"
+    )
+    
+    # SAML 2.0 Configuration
+    saml_entity_id: str = Field(
+        "",
+        description="SAML Service Provider Entity ID. Default: auto-generated"
+    )
+    saml_cert_file: str | None = Field(
+        None,
+        description="Path to SAML X.509 certificate file for signature verification"
+    )
+    saml_key_file: str | None = Field(
+        None,
+        description="Path to SAML private key file"
+    )
+    
+    # OAuth 2.0/OpenID Connect Configuration
+    oauth_redirect_uri: str = Field(
+        "http://localhost:8000/auth/enterprise/oauth/callback",
+        description="OAuth redirect URI for authentication callbacks"
+    )
+    
+    # LDAP/Active Directory Configuration
+    ldap_connection_timeout: int = Field(
+        10,
+        ge=1,
+        description="LDAP connection timeout in seconds. Default: 10"
+    )
+    ldap_search_timeout: int = Field(
+        30,
+        ge=1,
+        description="LDAP search operation timeout in seconds. Default: 30"
+    )
+    
+    # Multi-Factor Authentication Settings
+    mfa_issuer_name: str = Field(
+        "Synapse Graph-RAG",
+        description="Issuer name for MFA TOTP tokens"
+    )
+    mfa_backup_code_length: int = Field(
+        8,
+        ge=6,
+        le=12,
+        description="Length of MFA backup codes. Default: 8"
+    )
+    mfa_totp_window: int = Field(
+        1,
+        ge=0,
+        le=5,
+        description="TOTP time window tolerance (periods). Default: 1"
+    )
+    
+    # Multi-Tenancy Settings
+    enable_multi_tenancy: bool = Field(
+        False,
+        description="Enable multi-tenant architecture with data isolation. Default: False"
+    )
+    default_tenant_domain: str = Field(
+        "synapse.local",
+        description="Default tenant domain for single-tenant deployments"
+    )
+    tenant_isolation_level: str = Field(
+        "database",
+        description="Tenant isolation level ('database', 'schema', 'row'). Default: database"
+    )
+    
+    # Compliance and Audit Settings
+    enable_audit_logging: bool = Field(
+        True,
+        description="Enable comprehensive audit logging for compliance. Default: True"
+    )
+    audit_log_encryption: bool = Field(
+        True,
+        description="Enable encryption of audit logs for tamper-evidence. Default: True"
+    )
+    audit_retention_days: int = Field(
+        2555,
+        ge=30,
+        description="Audit log retention period in days (7 years default for compliance)"
+    )
+    gdpr_compliance_mode: bool = Field(
+        False,
+        description="Enable GDPR compliance mode with data subject rights. Default: False"
+    )
+    
+    # Security Policy Settings
+    password_min_length: int = Field(
+        12,
+        ge=8,
+        le=128,
+        description="Minimum password length for enterprise users. Default: 12"
+    )
+    session_timeout_minutes: int = Field(
+        30,
+        ge=5,
+        le=1440,
+        description="Session timeout in minutes. Default: 30"
+    )
+    max_concurrent_sessions: int = Field(
+        5,
+        ge=1,
+        description="Maximum concurrent sessions per user. Default: 5"
+    )
+    require_mfa_for_admin: bool = Field(
+        True,
+        description="Require MFA for admin users. Default: True"
+    )
+    
+    # Rate Limiting for Enterprise
+    enterprise_rate_limit_per_minute: int = Field(
+        1000,
+        ge=10,
+        description="Enterprise API rate limit per minute. Default: 1000"
+    )
+    login_attempt_limit: int = Field(
+        5,
+        ge=3,
+        description="Maximum failed login attempts before lockout. Default: 5"
+    )
+    lockout_duration_minutes: int = Field(
+        30,
+        ge=5,
+        description="Account lockout duration in minutes. Default: 30"
+    )
+    
+    # Encryption and Key Management
+    enable_field_encryption: bool = Field(
+        True,
+        description="Enable field-level encryption for sensitive data. Default: True"
+    )
+    encryption_algorithm: str = Field(
+        "AES-256-GCM",
+        description="Encryption algorithm for sensitive data. Default: AES-256-GCM"
+    )
+    key_rotation_interval_days: int = Field(
+        90,
+        ge=30,
+        description="Encryption key rotation interval in days. Default: 90"
+    )
+    
+    # High Availability and Disaster Recovery
+    enable_ha_mode: bool = Field(
+        False,
+        description="Enable high availability mode with failover. Default: False"
+    )
+    backup_encryption: bool = Field(
+        True,
+        description="Enable encryption of backups. Default: True"
+    )
+    backup_retention_days: int = Field(
+        30,
+        ge=7,
+        description="Backup retention period in days. Default: 30"
+    )
+    cross_region_replication: bool = Field(
+        False,
+        description="Enable cross-region data replication for DR. Default: False"
+    )
+    
     # Add other settings as needed...
 
     @model_validator(mode="after")
