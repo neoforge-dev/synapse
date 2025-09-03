@@ -1,0 +1,56 @@
+{
+  "validation_timestamp": "2025-09-03T15:10:52.647704",
+  "duration_seconds": 0.6,
+  "deployment_ready": false,
+  "summary": {
+    "total_checks": 25,
+    "successful_checks": 17,
+    "critical_failures": 4,
+    "warnings": 4,
+    "success_rate_percent": 68.0
+  },
+  "results": {
+    "passed": [
+      "\u2705 Docker available",
+      "\u2705 Docker Compose available",
+      "\u2705 Database operations work: test_linkedin_business_development.db",
+      "\u2705 Database operations work: test_content_queue.db",
+      "\u2705 Database operations work: test_production_monitoring.db",
+      "\u2705 Database operations work: test_unified_business_intelligence.db",
+      "\u2705 Content queue system functional",
+      "\u2705 Brand safety checking functional",
+      "\u2705 FastAPI application loads successfully",
+      "\u2705 Prometheus configuration present",
+      "\u2705 Alert rules configuration present",
+      "\u2705 Docker security: non-root user",
+      "\u2705 Consultation inquiry data structure valid",
+      "\u2705 Optimal posting schedule configured",
+      "\u2705 Engagement rate calculation valid",
+      "\u2705 ROI calculation system functional",
+      "\u2705 Unified analytics integration loads"
+    ],
+    "failed": [
+      "Missing environment variables: ['LINKEDIN_API_TOKEN', 'NOTIFICATION_EMAIL', 'SMTP_USERNAME', 'SMTP_PASSWORD', 'JWT_SECRET_KEY', 'API_SECRET_KEY', 'DOMAIN_NAME']",
+      "JWT secret key too short or missing",
+      "API secret key too short or missing",
+      "Production automation import error: No module named 'schedule'"
+    ],
+    "warnings": [
+      "Production directory missing: /opt/linkedin_automation/data",
+      "Production directory missing: /opt/linkedin_automation/backups",
+      "Production directory missing: /opt/linkedin_automation/logs",
+      "Domain appears to be placeholder or localhost"
+    ]
+  },
+  "deployment_status": "NOT READY - Critical issues must be resolved",
+  "recommendations": [
+    "\u274c CRITICAL: Resolve all critical failures before deployment",
+    "  \u2022 Missing environment variables: ['LINKEDIN_API_TOKEN', 'NOTIFICATION_EMAIL', 'SMTP_USERNAME', 'SMTP_PASSWORD', 'JWT_SECRET_KEY', 'API_SECRET_KEY', 'DOMAIN_NAME']",
+    "  \u2022 JWT secret key too short or missing",
+    "  \u2022 API secret key too short or missing",
+    "\u26a0\ufe0f WARNINGS: Address the following for optimal performance",
+    "  \u2022 Production directory missing: /opt/linkedin_automation/data",
+    "  \u2022 Production directory missing: /opt/linkedin_automation/backups",
+    "  \u2022 Production directory missing: /opt/linkedin_automation/logs"
+  ]
+}

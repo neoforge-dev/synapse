@@ -1,0 +1,228 @@
+# LinkedIn Automation Alert Rules
+
+groups:
+  - name: linkedin_automation_alerts
+    rules:
+      # High-level service availability
+      - alert: LinkedInAutomationDown
+        expr: up{job="linkedin-automation"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: linkedin-automation
+        annotations:
+          summary: "LinkedIn Automation service is down"
+          description: "The LinkedIn Automation service has been down for more than 2 minutes."
+
+      # API response time alerts
+      - alert: HighAPIResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: linkedin-automation
+        annotations:
+          summary: "High API response time detected"
+          description: "95th percentile API response time is {{ $value }} seconds, exceeding 2 second threshold."
+
+      # LinkedIn API circuit breaker alerts
+      - alert: CircuitBreakerActivated
+        expr: circuit_breaker_failures_total > 5
+        for: 1m
+        labels:
+          severity: critical
+          service: linkedin-automation
+        annotations:
+          summary: "LinkedIn API circuit breaker activated"
+          description: "Circuit breaker has been activated with {{ $value }} consecutive failures."
+
+      # Content posting failure alerts
+      - alert: HighPostingFailureRate
+        expr: rate(linkedin_posts_failed_total[10m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: linkedin-automation
+        annotations:
+          summary: "High posting failure rate detected"
+          description: "LinkedIn posting failure rate is {{ $value | humanizePercentage }} over the last 10 minutes."
+
+      # Content queue depletion
+      - alert: ContentQueueLow
+        expr: content_queue_items{status="queued"} < 10
+        for: 15m
+        labels:
+          severity: warning
+          service: linkedin-automation
+        annotations:
+          summary: "Content queue running low"
+          description: "Only {{ $value }} items remaining in content queue. Queue refill needed."
+
+      # Engagement rate drop alert
+      - alert: LowEngagementRate
+        expr: avg_over_time(linkedin_engagement_rate[24h]) < 0.02
+        for: 1h
+        labels:
+          severity: warning
+          service: linkedin-automation
+        annotations:
+          summary: "LinkedIn engagement rate below threshold"
+          description: "Average engagement rate over 24h is {{ $value | humanizePercentage }}, below 2% threshold."
+
+      # High consultation inquiry volume (good problem!)
+      - alert: HighConsultationInquiryVolume
+        expr: increase(consultation_inquiries_total[1h]) > 5
+        for: 5m
+        labels:
+          severity: info
+          service: linkedin-automation
+        annotations:
+          summary: "High consultation inquiry volume detected"
+          description: "{{ $value }} consultation inquiries received in the last hour. Review for follow-up."
+
+      # Database connection issues
+      - alert: DatabaseConnectionFailures
+        expr: rate(database_connection_errors_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+          service: linkedin-automation
+        annotations:
+          summary: "Database connection failures detected"
+          description: "Database connection error rate is {{ $value }} per second."
+
+      # Disk space alerts
+      - alert: HighDiskUsage
+        expr: (1 - node_filesystem_avail_bytes{mountpoint="/app/data"} / node_filesystem_size_bytes{mountpoint="/app/data"}) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High disk usage on data volume"
+          description: "Disk usage is {{ $value | humanizePercentage }} on /app/data volume."
+
+      # Memory usage alerts
+      - alert: HighMemoryUsage
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value | humanizePercentage }} of total available memory."
+
+      # SSL certificate expiration
+      - alert: SSLCertificateExpiringSoon
+        expr: ssl_cert_not_after - time() < 86400 * 7  # 7 days
+        for: 1h
+        labels:
+          severity: warning
+          service: ssl
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate for {{ $labels.instance }} expires in {{ $value | humanizeDuration }}."
+
+      # Brand safety check failures
+      - alert: BrandSafetyCheckFailures
+        expr: rate(brand_safety_checks_failed_total[1h]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          service: linkedin-automation
+        annotations:
+          summary: "Brand safety check failures detected"
+          description: "Brand safety check failure rate is {{ $value }} per hour. Review content generation."
+
+      # Rate limiting alerts
+      - alert: LinkedInRateLimitApproaching
+        expr: linkedin_api_rate_limit_remaining < 10
+        for: 1m
+        labels:
+          severity: warning
+          service: linkedin-automation
+        annotations:
+          summary: "LinkedIn API rate limit approaching"
+          description: "Only {{ $value }} LinkedIn API requests remaining before rate limit."
+
+  - name: business_metrics_alerts
+    rules:
+      # Business development pipeline alerts
+      - alert: LowPipelineValue
+        expr: consultation_pipeline_value_usd < 50000
+        for: 1h
+        labels:
+          severity: info
+          service: business-development
+        annotations:
+          summary: "Consultation pipeline value below target"
+          description: "Current pipeline value is ${{ $value }}, below $50K target."
+
+      # Conversion rate alerts
+      - alert: LowConversionRate
+        expr: avg_over_time(consultation_conversion_rate[7d]) < 0.05
+        for: 2h
+        labels:
+          severity: warning
+          service: business-development
+        annotations:
+          summary: "Low consultation conversion rate"
+          description: "7-day average conversion rate is {{ $value | humanizePercentage }}, below 5% target."
+
+      # Revenue generation tracking
+      - alert: RevenueTarget
+        expr: consultation_revenue_generated_usd >= 25000
+        for: 1m
+        labels:
+          severity: info
+          service: business-development
+        annotations:
+          summary: "Revenue milestone achieved"
+          description: "${{ $value }} revenue generated from LinkedIn automation system."
+
+  - name: system_health_alerts
+    rules:
+      # Service restart alerts
+      - alert: FrequentServiceRestarts
+        expr: increase(process_start_time_seconds[1h]) > 3
+        for: 5m
+        labels:
+          severity: warning
+          service: linkedin-automation
+        annotations:
+          summary: "Frequent service restarts detected"
+          description: "Service has restarted {{ $value }} times in the last hour."
+
+      # Log error rate
+      - alert: HighErrorLogRate
+        expr: rate(log_entries_total{level="error"}[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          service: linkedin-automation
+        annotations:
+          summary: "High error log rate detected"
+          description: "Error log rate is {{ $value }} per second over the last 5 minutes."
+
+      # External API dependency health
+      - alert: LinkedInAPIDown
+        expr: probe_success{job="blackbox", instance="https://api.linkedin.com/v2"} == 0
+        for: 3m
+        labels:
+          severity: critical
+          service: external-api
+        annotations:
+          summary: "LinkedIn API is unreachable"
+          description: "LinkedIn API health check has been failing for more than 3 minutes."
+
+      # Backup health
+      - alert: BackupFailure
+        expr: time() - backup_last_success_timestamp > 86400 * 2  # 2 days
+        for: 1h
+        labels:
+          severity: warning
+          service: backup
+        annotations:
+          summary: "Backup has not completed successfully"
+          description: "Last successful backup was {{ $value | humanizeDuration }} ago."

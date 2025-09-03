@@ -1,0 +1,231 @@
+version: '3.8'
+
+services:
+  linkedin-automation:
+    build:
+      context: ../../
+      dockerfile: business_development/deployment/Dockerfile
+    container_name: linkedin_automation_prod
+    restart: unless-stopped
+    
+    environment:
+      # Application Configuration
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - LINKEDIN_DB_PATH=/app/data/linkedin_business_development.db
+      - CONTENT_QUEUE_PATH=/app/data/content_queue.db
+      - MONITORING_DB_PATH=/app/data/production_monitoring.db
+      
+      # LinkedIn API Configuration
+      - LINKEDIN_API_TOKEN=${LINKEDIN_API_TOKEN}
+      - LINKEDIN_USER_ID=${LINKEDIN_USER_ID}
+      - LINKEDIN_CLIENT_ID=${LINKEDIN_CLIENT_ID}
+      - LINKEDIN_CLIENT_SECRET=${LINKEDIN_CLIENT_SECRET}
+      
+      # Email/SMS Notifications
+      - NOTIFICATION_EMAIL=${NOTIFICATION_EMAIL}
+      - SMTP_SERVER=${SMTP_SERVER:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      
+      # Security Configuration
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - API_SECRET_KEY=${API_SECRET_KEY}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      
+      # Monitoring and Analytics
+      - SENTRY_DSN=${SENTRY_DSN}
+      - PROMETHEUS_PORT=9090
+      - GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      
+      # Domain and SSL Configuration
+      - DOMAIN_NAME=${DOMAIN_NAME}
+      - SSL_EMAIL=${SSL_EMAIL}
+      - ENABLE_SSL=${ENABLE_SSL:-true}
+      
+      # Performance Configuration
+      - MAX_CONCURRENT_POSTS=3
+      - RATE_LIMIT_PER_HOUR=10
+      - CIRCUIT_BREAKER_THRESHOLD=5
+      - RETRY_MAX_ATTEMPTS=3
+    
+    volumes:
+      # Persistent data storage
+      - linkedin_data:/app/data
+      - linkedin_backups:/app/backups
+      - linkedin_logs:/var/log/linkedin_automation
+      
+      # SSL certificates (Let's Encrypt)
+      - letsencrypt:/etc/letsencrypt
+      - certbot_webroot:/var/www/certbot
+      
+      # Configuration overrides
+      - ./config:/app/config:ro
+      
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8000:8000"  # API endpoint
+      - "9090:9090"  # Prometheus metrics
+      - "3000:3000"  # Grafana dashboard
+    
+    networks:
+      - linkedin_automation_network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Redis for caching and task queues
+  redis:
+    image: redis:7-alpine
+    container_name: linkedin_redis
+    restart: unless-stopped
+    
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    
+    volumes:
+      - redis_data:/data
+    
+    networks:
+      - linkedin_automation_network
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: linkedin_prometheus
+    restart: unless-stopped
+    
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    
+    networks:
+      - linkedin_automation_network
+    
+    expose:
+      - "9090"
+
+  # Grafana for monitoring dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: linkedin_grafana
+    restart: unless-stopped
+    
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    
+    networks:
+      - linkedin_automation_network
+    
+    expose:
+      - "3000"
+    
+    depends_on:
+      - prometheus
+
+  # Backup service for data protection
+  backup:
+    image: alpine:latest
+    container_name: linkedin_backup
+    restart: "no"
+    
+    command: >
+      sh -c "
+        apk add --no-cache tar gzip aws-cli &&
+        tar -czf /backups/linkedin_data_$$(date +%Y%m%d_%H%M%S).tar.gz /data &&
+        find /backups -name '*.tar.gz' -mtime +7 -delete &&
+        if [ -n '${AWS_ACCESS_KEY_ID}' ]; then
+          aws s3 sync /backups s3://${BACKUP_S3_BUCKET}/linkedin-automation/
+        fi
+      "
+    
+    volumes:
+      - linkedin_data:/data:ro
+      - linkedin_backups:/backups
+    
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - BACKUP_S3_BUCKET=${BACKUP_S3_BUCKET}
+    
+    networks:
+      - linkedin_automation_network
+
+volumes:
+  linkedin_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/linkedin_automation/data
+  
+  linkedin_backups:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/linkedin_automation/backups
+  
+  linkedin_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/linkedin_automation/logs
+  
+  redis_data:
+    driver: local
+  
+  prometheus_data:
+    driver: local
+  
+  grafana_data:
+    driver: local
+  
+  letsencrypt:
+    driver: local
+  
+  certbot_webroot:
+    driver: local
+
+networks:
+  linkedin_automation_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

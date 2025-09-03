@@ -1,0 +1,35 @@
+# LinkedIn Automation Production Cron Jobs
+
+# Set environment variables for cron jobs
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+PYTHONPATH=/app
+
+# Daily backup at 2:00 AM
+0 2 * * * linkedin_automation /usr/local/bin/python /app/business_development/backup_service.py >> /var/log/linkedin_automation/backup_cron.log 2>&1
+
+# Database cleanup at 3:00 AM daily
+0 3 * * * linkedin_automation /usr/local/bin/python /app/business_development/database_cleanup.py >> /var/log/linkedin_automation/cleanup_cron.log 2>&1
+
+# Performance analytics report every 4 hours
+0 */4 * * * linkedin_automation /usr/local/bin/python /app/business_development/performance_report.py >> /var/log/linkedin_automation/analytics_cron.log 2>&1
+
+# Health check every 15 minutes
+*/15 * * * * linkedin_automation /usr/local/bin/python /app/business_development/health_check.py >> /var/log/linkedin_automation/health_cron.log 2>&1
+
+# Content queue refill check every 6 hours
+0 */6 * * * linkedin_automation /usr/local/bin/python /app/business_development/queue_manager.py refill >> /var/log/linkedin_automation/queue_cron.log 2>&1
+
+# Weekly analytics report every Monday at 9:00 AM
+0 9 * * 1 linkedin_automation /usr/local/bin/python /app/business_development/weekly_report.py >> /var/log/linkedin_automation/weekly_report_cron.log 2>&1
+
+# Monthly data archive on the 1st at 1:00 AM
+0 1 1 * * linkedin_automation /usr/local/bin/python /app/business_development/monthly_archive.py >> /var/log/linkedin_automation/archive_cron.log 2>&1
+
+# SSL certificate renewal check daily at 4:30 AM
+30 4 * * * root /usr/bin/certbot renew --quiet --deploy-hook "service nginx reload" >> /var/log/linkedin_automation/ssl_renewal.log 2>&1
+
+# Log rotation for application logs every Sunday at 5:00 AM
+0 5 * * 0 linkedin_automation find /var/log/linkedin_automation -name "*.log" -type f -mtime +7 -delete >> /var/log/linkedin_automation/log_cleanup.log 2>&1
+
+# Empty line required at end of cron file
