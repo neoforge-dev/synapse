@@ -1,0 +1,19 @@
+{
+  "timestamp": "20250903_143917",
+  "backup_path": "/Users/bogdan/til/graph-rag-mcp/database_migration/backups/migration_backup_20250903_143917",
+  "databases_backed_up": [
+    "content_analytics.db",
+    "performance_analytics.db",
+    "optimized_performance_analytics.db",
+    "cross_platform_analytics.db",
+    "twitter_analytics.db",
+    "revenue_acceleration.db",
+    "ab_testing.db",
+    "synapse_content_intelligence.db",
+    "week3_business_development.db",
+    "unified_content_management.db",
+    "cross_platform_performance.db"
+  ],
+  "migration_phase": "preparation",
+  "backup_size_bytes": 638976
+}

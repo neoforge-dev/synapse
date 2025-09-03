@@ -1,0 +1,13 @@
+{
+  "timestamp": "20250903_143633",
+  "backup_path": "/Users/bogdan/til/graph-rag-mcp/database_migration/backups/migration_backup_20250903_143633",
+  "databases_backed_up": [
+    "linkedin_business_development.db",
+    "business_development/linkedin_business_development.db",
+    "week3_business_development.db",
+    "performance_analytics.db",
+    "content_analytics.db"
+  ],
+  "migration_phase": "preparation",
+  "backup_size_bytes": 385024
+}
