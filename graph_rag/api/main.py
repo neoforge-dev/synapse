@@ -45,6 +45,7 @@ from graph_rag.api.routers.unified_business_intelligence import create_unified_b
 from graph_rag.api.routers.unified_graph_operations import create_unified_graph_operations_router
 from graph_rag.api.routers.unified_system_admin import create_unified_system_admin_router
 from graph_rag.api.routers.unified_specialized_features import create_unified_specialized_features_router
+from graph_rag.api.advanced_graph_demo import router as advanced_graph_demo_router
 
 # Local application imports
 from graph_rag.config import get_settings
@@ -764,6 +765,9 @@ def create_app() -> FastAPI:
     api_router.include_router(audience_router, tags=["Audience"])
     api_router.include_router(content_strategy_router, tags=["Content Strategy"])
     api_router.include_router(brand_safety_router, tags=["Brand Safety"])
+
+    # Epic 5: Advanced Graph-RAG Intelligence for Premium Positioning
+    api_router.include_router(advanced_graph_demo_router, tags=["Advanced Graph Intelligence"])
 
     app.include_router(api_router)  # Remove prefix="/api/v1" here
 

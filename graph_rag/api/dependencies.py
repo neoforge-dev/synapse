@@ -32,6 +32,7 @@ from graph_rag.core.interfaces import (
     GraphRepository,
     VectorStore,
 )
+from graph_rag.core.advanced_graph_intelligence import AdvancedGraphIntelligenceEngine
 from graph_rag.core.knowledge_graph_builder import (
     SimpleKnowledgeGraphBuilder,
 )
@@ -745,6 +746,39 @@ async def get_belief_preference_extractor(
         )
         logger.debug("Created BeliefPreferenceExtractor instance for Epic 6")
 
+    return _singletons[cache_key]
+
+
+# --- Advanced Graph Intelligence Dependencies ---
+
+async def get_graph_intelligence_engine(
+    graph_repository: GraphRepository = Depends(get_graph_repository),
+    vector_store: VectorStore = Depends(get_vector_store),
+) -> AdvancedGraphIntelligenceEngine:
+    """Dependency getter for Advanced Graph Intelligence Engine for Epic 5."""
+    cache_key = "advanced_graph_intelligence_engine"
+    if cache_key not in _singletons:
+        _singletons[cache_key] = AdvancedGraphIntelligenceEngine(
+            graph_repository=graph_repository,
+            vector_store=vector_store
+        )
+        logger.debug("Created AdvancedGraphIntelligenceEngine instance for Epic 5")
+
+    return _singletons[cache_key]
+
+
+async def get_unified_analytics() -> Any:
+    """Dependency getter for Unified Analytics Integration."""
+    cache_key = "unified_analytics"
+    if cache_key not in _singletons:
+        try:
+            from business_development.unified_analytics_integration import UnifiedAnalyticsIntegration
+            _singletons[cache_key] = UnifiedAnalyticsIntegration()
+            logger.debug("Created UnifiedAnalyticsIntegration instance")
+        except ImportError:
+            logger.warning("UnifiedAnalyticsIntegration not available, using mock")
+            _singletons[cache_key] = None
+    
     return _singletons[cache_key]
 
 
