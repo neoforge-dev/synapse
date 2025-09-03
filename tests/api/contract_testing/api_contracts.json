@@ -1,0 +1,192 @@
+[
+  {
+    "path": "/api/v1/documents",
+    "method": "GET",
+    "status_code": 503,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 21.566152572631836
+  },
+  {
+    "path": "/api/v1/documents",
+    "method": "POST",
+    "status_code": 503,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 2.512693405151367
+  },
+  {
+    "path": "/api/v1/chunks",
+    "method": "GET",
+    "status_code": 404,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 1.7399787902832031
+  },
+  {
+    "path": "/api/v1/chunks",
+    "method": "POST",
+    "status_code": 404,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 1.5912055969238281
+  },
+  {
+    "path": "/api/v1/ingestion/documents",
+    "method": "POST",
+    "status_code": 503,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 2.3882389068603516
+  },
+  {
+    "path": "/api/v1/search",
+    "method": "POST",
+    "status_code": 404,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 1.50299072265625
+  },
+  {
+    "path": "/api/v1/query",
+    "method": "POST",
+    "status_code": 503,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 4.974126815795898
+  },
+  {
+    "path": "/api/v1/reasoning/analyze",
+    "method": "POST",
+    "status_code": 404,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 1.5101432800292969
+  },
+  {
+    "path": "/api/v1/dashboard/metrics",
+    "method": "GET",
+    "status_code": 404,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 1.4688968658447266
+  },
+  {
+    "path": "/api/v1/audience/analyze",
+    "method": "POST",
+    "status_code": 422,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 1992.3579692840576
+  },
+  {
+    "path": "/api/v1/concepts/extract",
+    "method": "POST",
+    "status_code": 422,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 165.3430461883545
+  },
+  {
+    "path": "/api/v1/graph/nodes",
+    "method": "GET",
+    "status_code": 404,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 2.5031566619873047
+  },
+  {
+    "path": "/api/v1/graph/relationships",
+    "method": "GET",
+    "status_code": 404,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 2.0732879638671875
+  },
+  {
+    "path": "/api/v1/monitoring/health",
+    "method": "GET",
+    "status_code": 200,
+    "response_schema": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "uptime_seconds": {
+          "type": "number"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {}
+        },
+        "degraded_services": {
+          "type": "unknown"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "request_schema": null,
+    "performance_baseline_ms": 5.925178527832031
+  },
+  {
+    "path": "/api/v1/auth/token",
+    "method": "POST",
+    "status_code": 404,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 2.062082290649414
+  },
+  {
+    "path": "/api/v1/admin/system",
+    "method": "GET",
+    "status_code": 404,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 1.7521381378173828
+  },
+  {
+    "path": "/api/v1/hot-takes/generate",
+    "method": "POST",
+    "status_code": 404,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 1.9521713256835938
+  },
+  {
+    "path": "/api/v1/brand-safety/check",
+    "method": "POST",
+    "status_code": 404,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 1.8258094787597656
+  },
+  {
+    "path": "/health",
+    "method": "GET",
+    "status_code": 503,
+    "response_schema": {},
+    "request_schema": null,
+    "performance_baseline_ms": 2.44903564453125
+  },
+  {
+    "path": "/ready",
+    "method": "GET",
+    "status_code": 200,
+    "response_schema": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string"
+        }
+      }
+    },
+    "request_schema": null,
+    "performance_baseline_ms": 1.6241073608398438
+  }
+]

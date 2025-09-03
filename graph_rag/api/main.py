@@ -39,6 +39,7 @@ from graph_rag.api.routers.graph import create_graph_router
 from graph_rag.api.routers.hot_takes import router as hot_takes_router
 from graph_rag.api.routers.monitoring import create_monitoring_router
 from graph_rag.api.routers.reasoning import create_reasoning_router
+from graph_rag.api.routers.unified_content_simple import create_unified_content_router
 
 # Local application imports
 from graph_rag.config import get_settings
@@ -695,6 +696,10 @@ def create_app() -> FastAPI:
 
     # Use factory functions to get routers
 
+    # Epic 2: Unified Content Router (replaces documents + chunks + ingestion)
+    unified_content_router = create_unified_content_router()
+    
+    # Legacy routers (will be deprecated after consolidation)
     documents_router = documents.create_documents_router()
     ingestion_router = ingestion.create_ingestion_router(
         doc_processor_dep=get_doc_processor,
@@ -714,9 +719,12 @@ def create_app() -> FastAPI:
     # Authentication router (no auth required for auth endpoints)
     api_router.include_router(auth_router)
 
-    # Routers - Prefixes are defined within the factory's router
-    api_router.include_router(documents_router, prefix="/documents", tags=["Documents"])
-    api_router.include_router(ingestion_router, prefix="/ingestion", tags=["Ingestion"])
+    # Epic 2: Unified Routers (High Performance, Consolidated)
+    api_router.include_router(unified_content_router, prefix="/content", tags=["Unified Content"])
+
+    # Legacy routers (maintained for compatibility during transition)
+    api_router.include_router(documents_router, prefix="/documents", tags=["Documents (Legacy)"])
+    api_router.include_router(ingestion_router, prefix="/ingestion", tags=["Ingestion (Legacy)"])
     api_router.include_router(search_router, prefix="/search", tags=["Search"])
     api_router.include_router(
         query_router, prefix="/query", tags=["Query"]

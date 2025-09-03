@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -122,6 +122,9 @@ class DocumentCreate(BaseModel):
     id: str | None = Field(
         default=None, description="Optional client-provided ID for the document."
     )  # Add optional ID
+    title: str = Field(
+        default="Untitled", description="The title of the document."
+    )
     content: str = Field(
         ..., min_length=1, description="The text content of the document."
     )  # Add validation
@@ -144,3 +147,52 @@ class DocumentMetadataUpdate(BaseModel):
     properties: dict[str, Any] = Field(
         ..., description="Metadata key-value pairs to update."
     )
+
+
+# --- Unified Content Router Schemas (Epic 2) ---
+
+class DocumentResponse(BaseModel):
+    """Enhanced document response for unified content router."""
+    id: str
+    title: str
+    content: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class ChunkResponse(BaseModel):
+    """Enhanced chunk response for unified content router."""
+    id: str
+    text: str
+    document_id: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: Optional[datetime] = None
+
+
+class DocumentIngestionRequest(BaseModel):
+    """Request schema for unified document ingestion."""
+    title: str = Field(..., min_length=1, description="Document title")
+    content: str = Field(..., min_length=1, description="Document content")
+    metadata: Optional[dict[str, Any]] = Field(default_factory=dict, description="Document metadata")
+    source_type: Optional[str] = Field(default="api", description="Source type (api, file_upload, batch_api)")
+
+
+class IngestionResponse(BaseModel):
+    """Response schema for unified document ingestion."""
+    document_id: str
+    chunks_created: int
+    chunk_ids: List[str]
+    processing_time_ms: float
+    message: str
+
+
+class ContentAnalyticsSummary(BaseModel):
+    """Summary analytics for unified content system."""
+    total_documents: int
+    total_chunks: int
+    total_vectors: int
+    total_content_size_bytes: int
+    average_chunks_per_document: float
+    system_health: str = "healthy"
+    last_updated: Optional[datetime] = Field(default_factory=datetime.now)
