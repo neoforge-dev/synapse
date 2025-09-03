@@ -1,0 +1,391 @@
+# HashiCorp Vault Integration for Kubernetes
+# Provides secure key management and secrets injection
+
+---
+# Vault Agent Injector Webhook Configuration
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingAdmissionWebhook
+metadata:
+  name: vault-agent-injector-cfg
+  labels:
+    app.kubernetes.io/name: vault-agent-injector
+    security.synapse.ai/component: "key-management"
+webhooks:
+- name: vault.hashicorp.com
+  clientConfig:
+    service:
+      name: vault-agent-injector-svc
+      namespace: vault-system
+      path: "/mutate"
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  namespaceSelector:
+    matchLabels:
+      vault-injection: "enabled"
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  failurePolicy: Fail
+
+---
+# Vault Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-auth
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/service-account: "vault"
+    compliance.synapse.ai/verified: "true"
+  annotations:
+    vault.hashicorp.com/agent-inject: "true"
+    vault.hashicorp.com/role: "synapse-kv-reader"
+    vault.hashicorp.com/agent-pre-populate-only: "true"
+
+---
+# ClusterRole for Vault Auth
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vault-auth
+  labels:
+    security.synapse.ai/rbac: "vault-auth"
+rules:
+- apiGroups: [""]
+  resources: ["serviceaccounts", "serviceaccounts/token"]
+  verbs: ["create", "get", "list"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vault-auth-binding
+  labels:
+    security.synapse.ai/rbac: "vault-auth"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vault-auth
+subjects:
+- kind: ServiceAccount
+  name: vault-auth
+  namespace: synapse-prod
+
+---
+# Vault External Secrets Operator
+apiVersion: external-secrets.io/v1beta1
+kind: ClusterSecretStore
+metadata:
+  name: vault-backend
+  labels:
+    security.synapse.ai/secret-store: "vault"
+spec:
+  provider:
+    vault:
+      server: "https://vault.synapse.internal:8200"
+      path: "synapse-kv"
+      version: "v2"
+      namespace: "synapse"
+      auth:
+        kubernetes:
+          mountPath: "kubernetes"
+          role: "synapse-external-secrets"
+          serviceAccountRef:
+            name: "vault-auth"
+            namespace: "synapse-prod"
+      caBundle: |
+        LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t...
+        # Vault CA Certificate (base64 encoded)
+
+---
+# External Secret for Encryption Keys
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: synapse-encryption-keys
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/secret-type: "encryption-keys"
+  annotations:
+    reloader.stakater.com/match: "true"
+spec:
+  refreshInterval: 1h  # Refresh every hour
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: synapse-encryption-config
+    creationPolicy: Owner
+    template:
+      type: Opaque
+      metadata:
+        labels:
+          security.synapse.ai/encrypted: "true"
+        annotations:
+          security.synapse.ai/key-rotation: "30d"
+  data:
+  - secretKey: master-key
+    remoteRef:
+      key: tenants/shared/master-keys/encryption
+      property: key
+  - secretKey: tenant-key-derivation-salt
+    remoteRef:
+      key: tenants/shared/key-derivation
+      property: salt
+  - secretKey: vault-role-id
+    remoteRef:
+      key: auth/approle/synapse-api
+      property: role_id
+  - secretKey: vault-secret-id
+    remoteRef:
+      key: auth/approle/synapse-api
+      property: secret_id
+
+---
+# External Secret for Database Credentials
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: synapse-database-credentials
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/secret-type: "database-credentials"
+spec:
+  refreshInterval: 24h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: synapse-db-config
+    creationPolicy: Owner
+    template:
+      type: Opaque
+      engineVersion: v2
+      metadata:
+        labels:
+          security.synapse.ai/encrypted: "true"
+  data:
+  - secretKey: postgres-username
+    remoteRef:
+      key: database/postgresql/creds/synapse-rw
+      property: username
+  - secretKey: postgres-password
+    remoteRef:
+      key: database/postgresql/creds/synapse-rw
+      property: password
+  - secretKey: postgres-connection-string
+    remoteRef:
+      key: database/postgresql/config
+      property: connection_string_encrypted
+  - secretKey: memgraph-auth-token
+    remoteRef:
+      key: database/memgraph/auth
+      property: token
+
+---
+# Vault Agent Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-agent-config
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/component: "vault-agent"
+data:
+  vault-agent.hcl: |
+    vault {
+      address = "https://vault.synapse.internal:8200"
+      ca_cert = "/vault/tls/ca.crt"
+      tls_skip_verify = false
+    }
+    
+    auto_auth {
+      method {
+        type      = "kubernetes"
+        config = {
+          role = "synapse-kv-reader"
+          token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+        }
+      }
+      
+      sink {
+        type = "file"
+        config = {
+          path = "/vault/secrets/.vault-token"
+          mode = 0640
+        }
+      }
+    }
+    
+    template {
+      source      = "/vault/config/encryption-keys.tpl"
+      destination = "/vault/secrets/encryption-keys"
+      perms       = 0640
+      command     = "/bin/sh -c 'pkill -HUP synapse-api || true'"
+    }
+    
+    template {
+      source      = "/vault/config/database-config.tpl" 
+      destination = "/vault/secrets/database-config"
+      perms       = 0640
+      command     = "/bin/sh -c 'pkill -HUP synapse-api || true'"
+    }
+
+  encryption-keys.tpl: |
+    {{- with secret "synapse-kv/data/tenants/shared/master-keys/encryption" -}}
+    MASTER_ENCRYPTION_KEY="{{ .Data.data.key }}"
+    KEY_VERSION="{{ .Data.data.metadata.version }}"
+    KEY_CREATED_AT="{{ .Data.data.metadata.created_at }}"
+    {{- end }}
+    
+    {{- with secret "synapse-kv/data/tenants/shared/key-derivation" -}}
+    KEY_DERIVATION_SALT="{{ .Data.data.salt }}"
+    {{- end }}
+
+  database-config.tpl: |
+    {{- with secret "database/postgresql/creds/synapse-rw" -}}
+    POSTGRES_USER="{{ .Data.username }}"
+    POSTGRES_PASSWORD="{{ .Data.password }}"
+    {{- end }}
+    
+    {{- with secret "database/memgraph/auth" -}}
+    MEMGRAPH_AUTH_TOKEN="{{ .Data.token }}"
+    {{- end }}
+    
+    {{- with secret "synapse-kv/data/database/postgresql/config" -}}
+    POSTGRES_CONNECTION_STRING="{{ .Data.data.connection_string_encrypted }}"
+    {{- end }}
+
+---
+# Vault Secrets Webhook Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-secrets-webhook-config
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/component: "vault-webhook"
+data:
+  config.yaml: |
+    vault:
+      address: "https://vault.synapse.internal:8200"
+      authPath: "auth/kubernetes"
+      role: "synapse-webhook"
+      ignoreMissingSecrets: false
+      vaultSkipVerify: false
+      caPath: "/vault/tls/ca.crt"
+    
+    configMapMutation: true
+    secretInit: true
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    
+    metrics:
+      enabled: true
+      port: 8080
+      path: "/metrics"
+    
+    webhook:
+      logLevel: info
+      annotations: []
+      podAnnotations:
+        vault.security.banzaicloud.io/vault-addr: "https://vault.synapse.internal:8200"
+        vault.security.banzaicloud.io/vault-role: "synapse-webhook"
+        vault.security.banzaicloud.io/vault-skip-verify: "false"
+
+---
+# Vault Policy ConfigMap  
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-policies
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/component: "vault-policies"
+data:
+  synapse-kv-reader.hcl: |
+    # Policy for Synapse API to read KV secrets
+    path "synapse-kv/data/tenants/+/master-keys/*" {
+      capabilities = ["read"]
+    }
+    
+    path "synapse-kv/data/tenants/+/data-keys/*" {
+      capabilities = ["read"] 
+    }
+    
+    path "synapse-kv/data/tenants/shared/*" {
+      capabilities = ["read"]
+    }
+    
+    path "auth/token/lookup-self" {
+      capabilities = ["read"]
+    }
+    
+    path "auth/token/renew-self" {
+      capabilities = ["update"]
+    }
+
+  synapse-kv-writer.hcl: |
+    # Policy for Synapse services to write KV secrets
+    path "synapse-kv/data/tenants/+/master-keys/*" {
+      capabilities = ["create", "read", "update"]
+    }
+    
+    path "synapse-kv/data/tenants/+/data-keys/*" {
+      capabilities = ["create", "read", "update", "delete"]
+    }
+    
+    path "synapse-kv/data/tenants/+/archived-keys/*" {
+      capabilities = ["create", "read"]
+    }
+    
+    path "auth/token/lookup-self" {
+      capabilities = ["read"]
+    }
+    
+    path "auth/token/renew-self" {
+      capabilities = ["update"]
+    }
+
+  synapse-admin.hcl: |
+    # Administrative policy for key rotation and management
+    path "synapse-kv/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+    
+    path "sys/policies/acl/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+    
+    path "auth/kubernetes/role/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+    
+    path "sys/auth/kubernetes" {
+      capabilities = ["create", "read", "update", "delete", "sudo"]
+    }
+
+---
+# Kubernetes Auth Configuration Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vault-k8s-auth-config
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/secret-type: "vault-auth"
+type: Opaque
+stringData:
+  kubernetes-ca-cert: |
+    -----BEGIN CERTIFICATE-----
+    # Kubernetes CA Certificate
+    -----END CERTIFICATE-----
+  token-reviewer-jwt: |
+    # JWT token for Vault to authenticate with Kubernetes API
+  kubernetes-host: "https://kubernetes.default.svc.cluster.local"

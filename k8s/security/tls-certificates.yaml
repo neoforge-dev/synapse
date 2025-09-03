@@ -1,0 +1,480 @@
+# TLS 1.3 Certificate Management with cert-manager
+# Provides automated certificate lifecycle management with perfect forward secrecy
+
+---
+# cert-manager ClusterIssuer for Let's Encrypt Production
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: synapse-letsencrypt-prod
+  labels:
+    security.synapse.ai/issuer: "production"
+    compliance.synapse.ai/framework: "tls-1.3"
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: security@synapse.ai
+    privateKeySecretRef:
+      name: synapse-letsencrypt-prod-private-key
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+          podTemplate:
+            spec:
+              nodeSelector:
+                security.synapse.ai/zone: "secure"
+    - dns01:
+        route53:
+          region: us-west-2
+          accessKeyID: VAULT:secret/data/aws#access-key-id
+          secretAccessKeySecretRef:
+            name: route53-credentials
+            key: secret-access-key
+
+---
+# cert-manager ClusterIssuer for Internal CA
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: synapse-internal-ca
+  labels:
+    security.synapse.ai/issuer: "internal"
+    compliance.synapse.ai/framework: "enterprise"
+spec:
+  ca:
+    secretName: synapse-internal-ca-key-pair
+
+---
+# Internal CA Root Certificate
+apiVersion: v1
+kind: Secret
+metadata:
+  name: synapse-internal-ca-key-pair
+  namespace: cert-manager
+  labels:
+    security.synapse.ai/certificate: "root-ca"
+type: kubernetes.io/tls
+data:
+  # Generated with: openssl genrsa -out ca-key.pem 4096
+  # Generated with: openssl req -new -x509 -sha256 -key ca-key.pem -days 3650 -out ca-cert.pem
+  tls.crt: |
+    LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t
+    # Base64 encoded internal CA certificate (4096-bit RSA)
+    # Subject: CN=Synapse Internal CA, O=Synapse AI, C=US
+    # Valid for 10 years, SHA-256 signature
+    LS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
+  tls.key: |
+    LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQ==
+    # Base64 encoded internal CA private key (4096-bit RSA)
+    # Encrypted with AES-256-CBC
+    LS0tLS1FTkQgUlNBIFBSSVZBVEUgS0VZLS0tLS0=
+
+---
+# Certificate for API Gateway (Public)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: synapse-api-tls
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/certificate: "api-public"
+    compliance.synapse.ai/tls-version: "1.3"
+  annotations:
+    cert-manager.io/revision-history-limit: "3"
+spec:
+  secretName: synapse-api-tls-secret
+  issuerRef:
+    name: synapse-letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: api.synapse.ai
+  dnsNames:
+  - api.synapse.ai
+  - api-prod.synapse.ai
+  - synapse.ai
+  - www.synapse.ai
+  duration: 2160h  # 90 days
+  renewBefore: 360h  # 15 days before expiry
+  keySize: 4096
+  keyAlgorithm: rsa
+  keyEncoding: pkcs8
+  usages:
+  - digital signature
+  - key encipherment
+  - server auth
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+
+---
+# Certificate for Internal Services
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: synapse-internal-services-tls
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/certificate: "internal-services"
+    compliance.synapse.ai/tls-version: "1.3"
+spec:
+  secretName: synapse-internal-tls-secret
+  issuerRef:
+    name: synapse-internal-ca
+    kind: ClusterIssuer
+  commonName: synapse.internal
+  dnsNames:
+  - synapse.internal
+  - api.synapse.internal
+  - vault.synapse.internal
+  - monitoring.synapse.internal
+  - postgres.synapse.internal
+  - memgraph.synapse.internal
+  - redis.synapse.internal
+  - "*.synapse.internal"
+  - "*.synapse-prod.svc.cluster.local"
+  duration: 8760h  # 1 year
+  renewBefore: 720h  # 30 days before expiry
+  keySize: 4096
+  keyAlgorithm: rsa
+  usages:
+  - digital signature
+  - key encipherment
+  - server auth
+  - client auth
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+
+---
+# Certificate for Database Connections
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: synapse-database-client-tls
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/certificate: "database-client"
+    compliance.synapse.ai/purpose: "mutual-tls"
+spec:
+  secretName: synapse-database-client-tls-secret
+  issuerRef:
+    name: synapse-internal-ca
+    kind: ClusterIssuer
+  commonName: synapse-database-client
+  duration: 4380h  # 6 months
+  renewBefore: 360h  # 15 days before expiry
+  keySize: 4096
+  keyAlgorithm: rsa
+  usages:
+  - digital signature
+  - key encipherment
+  - client auth
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+  subject:
+    organizationalUnits:
+    - "Database Access"
+    - "Client Authentication"
+    organizations:
+    - "Synapse AI"
+    countries:
+    - "US"
+
+---
+# Certificate for Vault Communication
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: synapse-vault-client-tls
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/certificate: "vault-client"
+    compliance.synapse.ai/purpose: "key-management"
+spec:
+  secretName: synapse-vault-client-tls-secret
+  issuerRef:
+    name: synapse-internal-ca
+    kind: ClusterIssuer
+  commonName: synapse-vault-client
+  duration: 2160h  # 3 months (short-lived for security)
+  renewBefore: 168h  # 7 days before expiry
+  keySize: 4096
+  keyAlgorithm: rsa
+  usages:
+  - digital signature
+  - key encipherment
+  - client auth
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+
+---
+# Ingress with TLS 1.3 Configuration
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: synapse-api-ingress-tls
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/ingress: "tls-1.3"
+    compliance.synapse.ai/framework: "zero-trust"
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "synapse-letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.3"
+    nginx.ingress.kubernetes.io/ssl-ciphers: "TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256,TLS_AES_128_GCM_SHA256"
+    nginx.ingress.kubernetes.io/ssl-prefer-server-ciphers: "on"
+    nginx.ingress.kubernetes.io/ssl-session-cache: "shared:SSL:10m"
+    nginx.ingress.kubernetes.io/ssl-session-timeout: "10m"
+    nginx.ingress.kubernetes.io/hsts: "true"
+    nginx.ingress.kubernetes.io/hsts-max-age: "31536000"  # 1 year
+    nginx.ingress.kubernetes.io/hsts-include-subdomains: "true"
+    nginx.ingress.kubernetes.io/hsts-preload: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-ssl-verify: "on"
+    nginx.ingress.kubernetes.io/proxy-ssl-name: "api.synapse.internal"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    nginx.ingress.kubernetes.io/secure-backends: "true"
+    # OCSP Stapling for certificate validation
+    nginx.ingress.kubernetes.io/server-snippet: |
+      ssl_stapling on;
+      ssl_stapling_verify on;
+      ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+      resolver 8.8.8.8 8.8.4.4 valid=300s;
+      resolver_timeout 5s;
+      # Perfect Forward Secrecy
+      ssl_ecdh_curve secp384r1;
+      # Security headers
+      add_header X-Content-Type-Options nosniff always;
+      add_header X-Frame-Options DENY always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header Content-Security-Policy "default-src 'self'" always;
+spec:
+  tls:
+  - hosts:
+    - api.synapse.ai
+    - api-prod.synapse.ai
+    - synapse.ai
+    - www.synapse.ai
+    secretName: synapse-api-tls-secret
+  rules:
+  - host: api.synapse.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: synapse-api-service
+            port:
+              number: 8443
+  - host: api-prod.synapse.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: synapse-api-service
+            port:
+              number: 8443
+
+---
+# NGINX ConfigMap for TLS 1.3 Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-tls-config
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/component: "tls-config"
+data:
+  tls.conf: |
+    # TLS 1.3 Only Configuration
+    ssl_protocols TLSv1.3;
+    
+    # Modern cipher suite for TLS 1.3
+    ssl_ciphers 'TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256';
+    ssl_prefer_server_ciphers on;
+    
+    # Perfect Forward Secrecy
+    ssl_ecdh_curve secp384r1:secp256r1;
+    
+    # SSL Session Configuration
+    ssl_session_cache shared:SSL:50m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+    
+    # OCSP Stapling
+    ssl_stapling on;
+    ssl_stapling_verify on;
+    ssl_trusted_certificate /etc/nginx/ssl/ca-bundle.crt;
+    resolver 1.1.1.1 1.0.0.1 valid=300s;
+    resolver_timeout 5s;
+    
+    # Security Headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self';" always;
+    
+    # Certificate Transparency
+    add_header Expect-CT "max-age=86400, enforce" always;
+
+---
+# Certificate Monitoring and Alerting
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: synapse-certificate-alerts
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/monitoring: "certificates"
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+  - name: certificate.rules
+    rules:
+    - alert: CertificateExpiringSoon
+      expr: (certmanager_certificate_expiration_timestamp_seconds - time()) / 86400 < 30
+      for: 1h
+      labels:
+        severity: warning
+        category: security
+      annotations:
+        summary: "Certificate {{ $labels.name }} expires in less than 30 days"
+        description: "Certificate {{ $labels.name }} in namespace {{ $labels.namespace }} expires in {{ $value }} days."
+        runbook_url: "https://docs.synapse.ai/runbooks/certificate-renewal"
+    
+    - alert: CertificateExpired
+      expr: certmanager_certificate_expiration_timestamp_seconds < time()
+      for: 0m
+      labels:
+        severity: critical
+        category: security
+      annotations:
+        summary: "Certificate {{ $labels.name }} has expired"
+        description: "Certificate {{ $labels.name }} in namespace {{ $labels.namespace }} has expired."
+        runbook_url: "https://docs.synapse.ai/runbooks/certificate-expired"
+    
+    - alert: CertificateRenewalFailed
+      expr: increase(certmanager_certificate_renewal_timestamp_seconds[1h]) == 0 and ON(name, namespace) (certmanager_certificate_expiration_timestamp_seconds - time()) / 86400 < 21
+      for: 1h
+      labels:
+        severity: critical
+        category: security
+      annotations:
+        summary: "Certificate {{ $labels.name }} renewal has failed"
+        description: "Certificate {{ $labels.name }} in namespace {{ $labels.namespace }} has not been renewed and expires in {{ $value }} days."
+
+---
+# Certificate Auto-Rotation CronJob
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: certificate-health-check
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/component: "cert-health-check"
+spec:
+  schedule: "0 */6 * * *"  # Every 6 hours
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            security.synapse.ai/job: "cert-health-check"
+        spec:
+          serviceAccountName: synapse-cert-checker-sa
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            fsGroup: 65534
+          containers:
+          - name: cert-checker
+            image: synapse/certificate-checker:v1.0.0
+            imagePullPolicy: Always
+            command:
+            - /bin/sh
+            - -c
+            - |
+              # Check certificate expiration dates
+              for cert in synapse-api-tls synapse-internal-services-tls synapse-database-client-tls synapse-vault-client-tls; do
+                echo "Checking certificate: $cert"
+                kubectl get certificate $cert -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+                if [ $? -ne 0 ]; then
+                  echo "Certificate $cert is not ready - triggering renewal"
+                  kubectl annotate certificate $cert cert-manager.io/force-renew=$(date +%s) --overwrite
+                fi
+              done
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: 200m
+                memory: 256Mi
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+          restartPolicy: OnFailure
+          nodeSelector:
+            security.synapse.ai/zone: "secure"
+
+---
+# ServiceAccount for Certificate Checker
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: synapse-cert-checker-sa
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/service-account: "cert-checker"
+
+---
+# RBAC for Certificate Checker
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: synapse-prod
+  name: synapse-cert-checker-role
+rules:
+- apiGroups: ["cert-manager.io"]
+  resources: ["certificates"]
+  verbs: ["get", "list", "patch", "update"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["synapse-api-tls-secret", "synapse-internal-tls-secret", "synapse-database-client-tls-secret", "synapse-vault-client-tls-secret"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: synapse-cert-checker-binding
+  namespace: synapse-prod
+subjects:
+- kind: ServiceAccount
+  name: synapse-cert-checker-sa
+  namespace: synapse-prod
+roleRef:
+  kind: Role
+  name: synapse-cert-checker-role
+  apiGroup: rbac.authorization.k8s.io

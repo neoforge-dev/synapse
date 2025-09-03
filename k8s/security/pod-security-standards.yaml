@@ -1,0 +1,387 @@
+# Pod Security Standards for Zero-Trust Architecture
+# Implements strict security controls and policies
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: synapse-prod
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    security.synapse.ai/zone: "production"
+    compliance.synapse.ai/level: "enterprise"
+  annotations:
+    scheduler.alpha.kubernetes.io/node-selector: "security.synapse.ai/zone=secure"
+
+---
+# Network Security Policy - Default Deny All
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: synapse-zero-trust-default-deny
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/policy: "zero-trust"
+    compliance.synapse.ai/framework: "nist"
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  # Empty ingress/egress rules = deny all by default
+
+---
+# Network Security Policy - Encrypted Communication Only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: synapse-encrypted-communication
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/policy: "tls-only"
+spec:
+  podSelector:
+    matchLabels:
+      security.synapse.ai/encryption: "required"
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          security.synapse.ai/tls-verified: "true"
+    ports:
+    - protocol: TCP
+      port: 8443  # HTTPS only
+    - protocol: TCP  
+      port: 5432  # PostgreSQL with SSL
+    - protocol: TCP
+      port: 7687  # Memgraph with SSL
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          security.synapse.ai/tls-verified: "true"
+    ports:
+    - protocol: TCP
+      port: 8443
+    - protocol: TCP
+      port: 5432
+    - protocol: TCP
+      port: 7687
+  # Allow DNS resolution (encrypted)
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 853  # DNS over TLS
+
+---
+# Pod Security Policy for API Pods
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: synapse-api-restricted
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/policy: "restricted"
+    compliance.synapse.ai/framework: "cis-kubernetes"
+spec:
+  privileged: false
+  allowPrivilegeEscalation: false
+  requiredDropCapabilities:
+    - ALL
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    - 'persistentVolumeClaim'
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+  runAsUser:
+    rule: 'MustRunAsNonRoot'
+  runAsGroup:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1000
+        max: 65535
+  seLinux:
+    rule: 'RunAsAny'
+  fsGroup:
+    rule: 'RunAsAny'
+  readOnlyRootFilesystem: true
+  seccompProfile:
+    type: RuntimeDefault
+  allowedCapabilities: []
+  defaultAddCapabilities: []
+  requiredDropCapabilities:
+    - ALL
+
+---
+# RBAC for Encrypted Workloads
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: synapse-prod
+  name: synapse-encrypted-workload
+  labels:
+    security.synapse.ai/rbac: "encrypted-workload"
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["synapse-encryption-config", "synapse-tls-certs"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["synapse-app-config"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: synapse-encrypted-workload-binding
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/rbac: "encrypted-workload"
+subjects:
+- kind: ServiceAccount
+  name: synapse-api-sa
+  namespace: synapse-prod
+- kind: ServiceAccount
+  name: synapse-worker-sa
+  namespace: synapse-prod
+roleRef:
+  kind: Role
+  name: synapse-encrypted-workload
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# ServiceAccount with Image Pull Policy
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: synapse-api-sa
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/service-account: "api"
+    compliance.synapse.ai/verified: "true"
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::ACCOUNT:role/SynapseAPIRole"
+    security.synapse.ai/image-verification: "required"
+imagePullSecrets:
+- name: synapse-registry-secret
+automountServiceAccountToken: true
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: synapse-worker-sa
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/service-account: "worker"
+    compliance.synapse.ai/verified: "true"
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::ACCOUNT:role/SynapseWorkerRole"
+    security.synapse.ai/image-verification: "required"
+imagePullSecrets:
+- name: synapse-registry-secret
+automountServiceAccountToken: true
+
+---
+# Resource Quota for Security Controls
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: synapse-security-quota
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/quota: "production"
+spec:
+  hard:
+    requests.cpu: "20"
+    requests.memory: 64Gi
+    limits.cpu: "40" 
+    limits.memory: 128Gi
+    persistentvolumeclaims: "20"
+    secrets: "50"
+    configmaps: "50"
+    services.loadbalancers: "5"
+    services.nodeports: "0"  # Disable NodePort for security
+
+---
+# Limit Range for Security Boundaries
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: synapse-security-limits
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/limits: "production"
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: 500m
+      memory: 1Gi
+      ephemeral-storage: 2Gi
+    defaultRequest:
+      cpu: 100m
+      memory: 256Mi
+      ephemeral-storage: 1Gi
+    max:
+      cpu: "4"
+      memory: 8Gi
+      ephemeral-storage: 10Gi
+    min:
+      cpu: 50m
+      memory: 128Mi
+      ephemeral-storage: 512Mi
+  - type: Pod
+    max:
+      cpu: "8"
+      memory: 16Gi
+      ephemeral-storage: 20Gi
+  - type: PersistentVolumeClaim
+    max:
+      storage: 1Ti
+    min:
+      storage: 1Gi
+
+---
+# Security Context Constraints
+apiVersion: v1
+kind: SecurityContextConstraints
+metadata:
+  name: synapse-restricted-scc
+  labels:
+    security.synapse.ai/scc: "restricted"
+    compliance.synapse.ai/framework: "openshift"
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegedContainer: false
+allowedCapabilities: []
+defaultAddCapabilities: []
+requiredDropCapabilities:
+- ALL
+allowedFlexVolumes: []
+fsGroup:
+  type: RunAsAny
+readOnlyRootFilesystem: true
+runAsUser:
+  type: MustRunAsNonRoot
+seLinuxContext:
+  type: RunAsAny
+seccompProfiles:
+- runtime/default
+users: []
+groups:
+- system:authenticated
+volumes:
+- configMap
+- downwardAPI
+- emptyDir
+- persistentVolumeClaim
+- projected
+- secret
+
+---
+# Admission Controller Configuration
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionWebhook
+metadata:
+  name: synapse-security-validator
+  labels:
+    security.synapse.ai/admission: "validation"
+webhooks:
+- name: security.validation.synapse.ai
+  clientConfig:
+    service:
+      name: synapse-admission-controller
+      namespace: synapse-prod
+      path: "/validate"
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["apps"]
+    apiVersions: ["v1"]
+    resources: ["deployments", "statefulsets", "daemonsets"]
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods", "services", "configmaps", "secrets"]
+  namespaceSelector:
+    matchLabels:
+      security.synapse.ai/zone: "production"
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  failurePolicy: Fail  # Strict - fail closed for security
+
+---
+# Open Policy Agent Gatekeeper Constraints
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: synapseencryptionrequired
+  labels:
+    security.synapse.ai/policy: "encryption-required"
+spec:
+  crd:
+    spec:
+      names:
+        kind: SynapseEncryptionRequired
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            excludedImages:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package synapseencryptionrequired
+        
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          not has_encryption_annotation
+          msg := sprintf("Container %v must have encryption annotations", [container.name])
+        }
+        
+        has_encryption_annotation {
+          input.review.object.metadata.annotations["security.synapse.ai/encryption"]
+        }
+
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: SynapseEncryptionRequired
+metadata:
+  name: synapse-must-have-encryption
+  namespace: synapse-prod
+  labels:
+    security.synapse.ai/constraint: "encryption"
+spec:
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet"]
+    namespaces: ["synapse-prod"]
+  parameters:
+    excludedImages: []

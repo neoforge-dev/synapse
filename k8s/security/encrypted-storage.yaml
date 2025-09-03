@@ -1,0 +1,247 @@
+# Encrypted Storage Classes and Persistent Volume Configuration
+# Provides end-to-end encryption for all data at rest
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: synapse-encrypted-fast
+  namespace: synapse-prod
+  labels:
+    app.kubernetes.io/name: synapse
+    app.kubernetes.io/component: storage
+    security.synapse.ai/encryption: "aes-256-gcm"
+    compliance.synapse.ai/level: "enterprise"
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+    volume.beta.kubernetes.io/storage-encryption: "true"
+    security.synapse.ai/key-rotation: "30d"
+    compliance.synapse.ai/audit-required: "true"
+provisioner: ebs.csi.aws.com  # AWS EBS CSI driver
+parameters:
+  type: gp3
+  encrypted: "true"
+  kmsKeyId: "arn:aws:kms:us-west-2:ACCOUNT:key/VAULT-KMS-KEY-ID"
+  fsType: ext4
+  iops: "3000"
+  throughput: "125"
+  tagSpecification_1: "Key=Environment,Value=production"
+  tagSpecification_2: "Key=Project,Value=synapse-graph-rag" 
+  tagSpecification_3: "Key=Security,Value=encrypted"
+  tagSpecification_4: "Key=Compliance,Value=enterprise"
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Retain  # Retain for security compliance
+mountOptions:
+  - noatime
+  - nodiratime
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: synapse-encrypted-ssd
+  namespace: synapse-prod
+  labels:
+    app.kubernetes.io/name: synapse
+    app.kubernetes.io/component: storage
+    security.synapse.ai/encryption: "aes-256-gcm"
+    compliance.synapse.ai/level: "hipaa"
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+    volume.beta.kubernetes.io/storage-encryption: "true"
+    security.synapse.ai/key-rotation: "7d"  # Weekly rotation for HIPAA
+    compliance.synapse.ai/audit-required: "true"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: io2
+  encrypted: "true"
+  kmsKeyId: "arn:aws:kms:us-west-2:ACCOUNT:key/VAULT-KMS-KEY-ID"
+  fsType: ext4
+  iops: "10000"
+  tagSpecification_1: "Key=Environment,Value=production"
+  tagSpecification_2: "Key=Project,Value=synapse-graph-rag"
+  tagSpecification_3: "Key=Security,Value=max-encryption"
+  tagSpecification_4: "Key=Compliance,Value=hipaa"
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+mountOptions:
+  - noatime
+  - nodiratime
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: synapse-encrypted-backup
+  namespace: synapse-prod
+  labels:
+    app.kubernetes.io/name: synapse
+    app.kubernetes.io/component: backup-storage
+    security.synapse.ai/encryption: "aes-256-gcm"
+    compliance.synapse.ai/level: "archive"
+  annotations:
+    volume.beta.kubernetes.io/storage-encryption: "true"
+    security.synapse.ai/immutable: "true"
+    security.synapse.ai/retention: "7y"
+    compliance.synapse.ai/audit-required: "true"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: sc1  # Cold HDD for long-term storage
+  encrypted: "true"
+  kmsKeyId: "arn:aws:kms:us-west-2:ACCOUNT:key/VAULT-KMS-KEY-ID"
+  fsType: ext4
+  tagSpecification_1: "Key=Environment,Value=production"
+  tagSpecification_2: "Key=Project,Value=synapse-graph-rag"
+  tagSpecification_3: "Key=StorageType,Value=backup"
+  tagSpecification_4: "Key=Retention,Value=7years"
+volumeBindingMode: Immediate
+allowVolumeExpansion: false
+reclaimPolicy: Retain
+
+---
+# Encrypted PVC for Database
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: synapse-postgres-encrypted-pvc
+  namespace: synapse-prod
+  labels:
+    app.kubernetes.io/name: synapse
+    app.kubernetes.io/component: database
+    security.synapse.ai/encryption: "required"
+  annotations:
+    volume.beta.kubernetes.io/storage-encryption: "true"
+    security.synapse.ai/data-classification: "confidential"
+    compliance.synapse.ai/requires-audit: "true"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: synapse-encrypted-ssd
+  resources:
+    requests:
+      storage: 200Gi
+  selector:
+    matchLabels:
+      security.synapse.ai/encryption: "aes-256-gcm"
+
+---
+# Encrypted PVC for Memgraph
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: synapse-memgraph-encrypted-pvc
+  namespace: synapse-prod
+  labels:
+    app.kubernetes.io/name: synapse
+    app.kubernetes.io/component: graph-database
+    security.synapse.ai/encryption: "required"
+  annotations:
+    volume.beta.kubernetes.io/storage-encryption: "true"
+    security.synapse.ai/data-classification: "restricted"
+    compliance.synapse.ai/requires-audit: "true"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: synapse-encrypted-ssd
+  resources:
+    requests:
+      storage: 500Gi
+  selector:
+    matchLabels:
+      security.synapse.ai/encryption: "aes-256-gcm"
+
+---
+# Encrypted PVC for Vector Store
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: synapse-vectorstore-encrypted-pvc
+  namespace: synapse-prod
+  labels:
+    app.kubernetes.io/name: synapse
+    app.kubernetes.io/component: vector-store
+    security.synapse.ai/encryption: "required"
+  annotations:
+    volume.beta.kubernetes.io/storage-encryption: "true"
+    security.synapse.ai/data-classification: "confidential"
+    compliance.synapse.ai/requires-audit: "true"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: synapse-encrypted-fast
+  resources:
+    requests:
+      storage: 100Gi
+  selector:
+    matchLabels:
+      security.synapse.ai/encryption: "aes-256-gcm"
+
+---
+# Encrypted PVC for Application Logs
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: synapse-logs-encrypted-pvc
+  namespace: synapse-prod
+  labels:
+    app.kubernetes.io/name: synapse
+    app.kubernetes.io/component: logging
+    security.synapse.ai/encryption: "required"
+  annotations:
+    volume.beta.kubernetes.io/storage-encryption: "true"
+    security.synapse.ai/data-classification: "internal"
+    compliance.synapse.ai/retention: "2y"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: synapse-encrypted-fast
+  resources:
+    requests:
+      storage: 50Gi
+
+---
+# Encrypted ConfigMap for Encryption Keys (sealed)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: synapse-encryption-config
+  namespace: synapse-prod
+  labels:
+    app.kubernetes.io/name: synapse
+    app.kubernetes.io/component: encryption
+    security.synapse.ai/type: "encryption-keys"
+  annotations:
+    reloader.stakater.com/match: "true"  # Auto-reload on changes
+    security.synapse.ai/rotation-schedule: "30d"
+    kubernetes.io/managed-by: "vault-secrets-operator"
+type: Opaque
+data:
+  # These will be populated by Vault Secrets Operator
+  VAULT_ADDRESS: ""  # Base64 encoded Vault address
+  VAULT_ROLE_ID: ""  # Base64 encoded Role ID for AppRole auth
+  VAULT_NAMESPACE: ""  # Base64 encoded Vault namespace
+  ENCRYPTION_KEY_PATH: ""  # Base64 encoded key path in Vault
+
+---
+# VolumeSnapshot Class for Encrypted Backups
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: synapse-encrypted-snapshot
+  namespace: synapse-prod
+  labels:
+    app.kubernetes.io/name: synapse
+    app.kubernetes.io/component: backup
+    security.synapse.ai/encryption: "required"
+  annotations:
+    snapshot.storage.kubernetes.io/is-default-class: "false"
+    security.synapse.ai/retention-policy: "encrypt-at-rest"
+driver: ebs.csi.aws.com
+deletionPolicy: Retain
+parameters:
+  tagSpecification_1: "Key=Environment,Value=production"
+  tagSpecification_2: "Key=Project,Value=synapse-graph-rag"
+  tagSpecification_3: "Key=BackupType,Value=encrypted-snapshot"
+  tagSpecification_4: "Key=Compliance,Value=enterprise"
