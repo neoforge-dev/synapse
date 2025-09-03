@@ -196,3 +196,50 @@ class ContentAnalyticsSummary(BaseModel):
     average_chunks_per_document: float
     system_health: str = "healthy"
     last_updated: Optional[datetime] = Field(default_factory=datetime.now)
+
+
+# --- Unified Retrieval Router Schemas (Epic 2) ---
+
+class QueryRequest(BaseModel):
+    """Request schema for unified query processing."""
+    query: str = Field(..., min_length=1, description="Query text")
+    top_k: Optional[int] = Field(default=5, description="Number of results to return")
+    search_type: Optional[str] = Field(default="hybrid", description="Search type: vector, keyword, hybrid, graph, auto")
+    include_embeddings: Optional[bool] = Field(default=False, description="Include embeddings in response")
+    context_limit: Optional[int] = Field(default=8, description="Maximum context sources")
+    graph_depth: Optional[int] = Field(default=2, description="Maximum graph traversal depth")
+
+
+class ReasoningRequest(BaseModel):
+    """Request schema for unified reasoning analysis."""
+    prompt: str = Field(..., min_length=1, description="Reasoning prompt")
+    reasoning_type: Optional[str] = Field(default="analytical", description="Type of reasoning: analytical, logical, creative")
+    use_context_expansion: Optional[bool] = Field(default=True, description="Use context expansion via entity relationships")
+    context_limit: Optional[int] = Field(default=8, description="Maximum context sources")
+    relationship_types: Optional[List[str]] = Field(default_factory=lambda: ["RELATES_TO", "MENTIONS"], description="Relationship types for context expansion")
+
+
+class SearchQueryResponse(BaseModel):
+    """Response schema for unified search operations."""
+    results: List[SearchResultSchema]
+    query: str
+    search_type: str
+    total_results: int
+    processing_time_ms: float
+
+
+class QueryResponse(BaseModel):
+    """Response schema for unified query operations."""
+    query: str
+    answer: str
+    sources: List[dict]
+    metadata: dict
+
+
+class ReasoningResponse(BaseModel):
+    """Response schema for unified reasoning operations."""
+    prompt: str
+    reasoning: str
+    context_sources: List[dict]
+    related_context: List[dict]
+    analysis_metadata: dict
