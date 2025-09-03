@@ -658,7 +658,11 @@ class PostMigrationBusinessVerificationTests(unittest.TestCase):
             {'count': 5}   # active inquiries
         ]
         
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+        # Configure mock cursor context manager properly
+        mock_cursor_context = Mock()
+        mock_cursor_context.__enter__ = Mock(return_value=mock_cursor)
+        mock_cursor_context.__exit__ = Mock(return_value=None)
+        mock_conn.cursor.return_value = mock_cursor_context
         
         return mock_conn
     

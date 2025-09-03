@@ -51,6 +51,8 @@ dependencies = [
   "faiss-cpu>=1.10.0",
   "pytest-timeout>=2.4.0",
   "pytest-cov>=6.2.1",
+  "psycopg2-binary>=2.9.10",
+  "asyncpg>=0.30.0",
 ]
 keywords = ["rag", "graph", "memgraph", "faiss", "notion", "mcp", "retrieval", "ai", "nlp", "vscode", "claude", "ide"]
 

@@ -406,6 +406,11 @@ class PostgreSQLLoader:
                         post.get('data_source')
                     ))
                 
+                # Log batch details
+                logger.info(f"About to insert {len(batch_data)} posts")
+                if batch_data:
+                    logger.info(f"Sample data: {batch_data[0][:5]}...")  # First 5 fields
+                
                 # Batch insert for performance
                 cursor.executemany(insert_sql, batch_data)
                 conn.commit()
@@ -413,6 +418,7 @@ class PostgreSQLLoader:
                 # Validation query
                 cursor.execute("SELECT COUNT(*) FROM posts")
                 loaded_count = cursor.fetchone()[0]
+                logger.info(f"Posts loaded: {loaded_count} out of {len(batch_data)} attempted")
                 
                 processing_time = (datetime.now() - start_time).total_seconds()
                 
@@ -532,9 +538,11 @@ class PostgreSQLLoader:
         try:
             # Try multiple timestamp formats
             formats = [
-                '%Y-%m-%d %H:%M:%S',
-                '%Y-%m-%d',
-                '%Y-%m-%d %H:%M:%S.%f',
+                '%Y-%m-%dT%H:%M:%S',      # ISO format: 2025-01-20T07:00:00
+                '%Y-%m-%d %H:%M:%S',      # Standard format: 2025-01-20 07:00:00
+                '%Y-%m-%d',               # Date only: 2025-01-20
+                '%Y-%m-%d %H:%M:%S.%f',   # With microseconds
+                '%Y-%m-%dT%H:%M:%S.%f',   # ISO with microseconds
             ]
             
             for fmt in formats:

@@ -31,12 +31,12 @@
           "integration_health": 98.0
         },
         "system_performance": {
-          "avg_query_time": 0.8173584938049316,
+          "avg_query_time": 0.6781816482543945,
           "db_connectivity_score": 100.0,
           "data_consistency_score": 99.5
         },
-        "baseline_hash": "d34e86207c23d91bc7a3363ee179d28f",
-        "established_at": "2025-09-02T23:14:21.373334"
+        "baseline_hash": "6a34a2f5997ce674871a97854106a635",
+        "established_at": "2025-09-03T10:40:46.344606"
       },
       "consultation_inquiries": 17,
       "pipeline_value": 585000.0
@@ -46,10 +46,10 @@
       "total_tests": 17,
       "success_rate": 88.23529411764706,
       "details": {
-        "execution_time": 0.08754086494445801,
+        "execution_time": 0.04323387145996094,
         "test_suites": {
           "pre_migration_validation": {
-            "execution_time": 0.012800931930541992,
+            "execution_time": 0.002730131149291992,
             "tests_run": 4,
             "failures": 0,
             "errors": 0,
@@ -58,29 +58,29 @@
             "error_details": []
           },
           "migration_process_integrity": {
-            "execution_time": 0.06773877143859863,
+            "execution_time": 0.03329205513000488,
             "tests_run": 5,
             "failures": 1,
             "errors": 0,
             "success_rate": 80.0,
             "failure_details": [
-              "(<business_continuity_migration_suite.MigrationProcessIntegrityTests testMethod=test_migration_data_integrity_validation>, 'Traceback (most recent call last):\\n  File \"/Users/bogdan/til/graph-rag-mcp/tests/business_continuity_migration_suite.py\", line 456, in test_migration_data_integrity_validation\\n    self.assertEqual(len(critical_failures), 0,\\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n                    f\"No critical failures allowed: {[f.message for f in critical_failures]}\")\\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError: 1 != 0 : No critical failures allowed: [\\'Row count mismatch for consultation_inquiries: Expected 17, got 16\\']\\n')"
+              "(<business_continuity_migration_suite.MigrationProcessIntegrityTests testMethod=test_migration_data_integrity_validation>, 'Traceback (most recent call last):\\n  File \"/Users/bogdan/til/graph-rag-mcp/tests/business_continuity_migration_suite.py\", line 456, in test_migration_data_integrity_validation\\n    self.assertEqual(len(critical_failures), 0,\\nAssertionError: 1 != 0 : No critical failures allowed: [\\'Row count mismatch for consultation_inquiries: Expected 17, got 16\\']\\n')"
             ],
             "error_details": []
           },
           "post_migration_verification": {
-            "execution_time": 0.0032491683959960938,
+            "execution_time": 0.002398967742919922,
             "tests_run": 4,
             "failures": 0,
             "errors": 1,
             "success_rate": 75.0,
             "failure_details": [],
             "error_details": [
-              "(<business_continuity_migration_suite.PostMigrationBusinessVerificationTests testMethod=test_consultation_pipeline_continuity>, 'Traceback (most recent call last):\\n  File \"/Users/bogdan/til/graph-rag-mcp/tests/business_continuity_migration_suite.py\", line 544, in test_consultation_pipeline_continuity\\n    \\'synapse_business_core\\': self._create_mock_postgresql_connection()\\n                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\\n  File \"/Users/bogdan/til/graph-rag-mcp/tests/business_continuity_migration_suite.py\", line 661, in _create_mock_postgresql_connection\\n    mock_conn.cursor.return_value.__enter__.return_value = mock_cursor\\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \"/opt/homebrew/Cellar/python@3.13/3.13.7/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py\", line 692, in __getattr__\\n    raise AttributeError(name)\\nAttributeError: __enter__\\n')"
+              "(<business_continuity_migration_suite.PostMigrationBusinessVerificationTests testMethod=test_consultation_pipeline_continuity>, 'Traceback (most recent call last):\\n  File \"/Users/bogdan/til/graph-rag-mcp/tests/business_continuity_migration_suite.py\", line 544, in test_consultation_pipeline_continuity\\n    \\'synapse_business_core\\': self._create_mock_postgresql_connection()\\n                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \"/Users/bogdan/til/graph-rag-mcp/tests/business_continuity_migration_suite.py\", line 661, in _create_mock_postgresql_connection\\n    mock_conn.cursor.return_value.__enter__.return_value = mock_cursor\\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \"/Users/bogdan/.local/share/uv/python/cpython-3.12.7-macos-aarch64-none/lib/python3.12/unittest/mock.py\", line 662, in __getattr__\\n    raise AttributeError(name)\\nAttributeError: __enter__\\n')"
             ]
           },
           "consultation_pipeline_continuity": {
-            "execution_time": 0.0034821033477783203,
+            "execution_time": 0.004647016525268555,
             "tests_run": 4,
             "failures": 0,
             "errors": 0,
@@ -104,5 +104,5 @@
     "\ud83d\udccb Consider phased migration approach",
     "\ud83d\udcca Test success rate too low: 0.0%"
   ],
-  "execution_time_seconds": 0.156131
+  "execution_time_seconds": 0.059405
 }
