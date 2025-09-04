@@ -47,6 +47,7 @@ from graph_rag.api.routers.unified_business_intelligence import create_unified_b
 from graph_rag.api.routers.unified_graph_operations import create_unified_graph_operations_router
 from graph_rag.api.routers.unified_system_admin import create_unified_system_admin_router
 from graph_rag.api.routers.unified_specialized_features import create_unified_specialized_features_router
+from graph_rag.api.routers.unified_platform import create_unified_platform_router
 from graph_rag.api.advanced_graph_demo import router as advanced_graph_demo_router
 
 # Local application imports
@@ -459,6 +460,26 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("LIFESPAN: Ingestion Service already initialized.")
 
+    # 9. Initialize Unified Platform Orchestrator (Epic 6 Week 4)
+    logger.info("LIFESPAN: Initializing Unified Platform Orchestrator...")
+    if not hasattr(app.state, "unified_platform") or app.state.unified_platform is None:
+        try:
+            # Import the unified platform orchestrator
+            import sys
+            from pathlib import Path
+            sys.path.append(str(Path(__file__).parent.parent.parent / "infrastructure" / "integration"))
+            
+            from unified_platform_orchestrator import UnifiedPlatformOrchestrator
+            app.state.unified_platform = UnifiedPlatformOrchestrator()
+            logger.info("LIFESPAN: Initialized UnifiedPlatformOrchestrator with integrated systems.")
+        except Exception as e:
+            logger.warning(
+                f"LIFESPAN: Failed to initialize UnifiedPlatformOrchestrator: {e}. Continuing without unified platform integration."
+            )
+            app.state.unified_platform = None
+    else:
+        logger.info("LIFESPAN: Unified Platform Orchestrator already initialized.")
+
     logger.info(
         "LIFESPAN END: Application startup dependencies initialized successfully."
     )
@@ -499,6 +520,16 @@ async def lifespan(app: FastAPI):
                 exc_info=True,
             )
 
+    # Shutdown unified platform orchestrator
+    if hasattr(app.state, "unified_platform") and app.state.unified_platform:
+        try:
+            logger.info("LIFESPAN SHUTDOWN: Unified Platform Orchestrator shutdown.")
+        except Exception as e:
+            logger.error(
+                f"LIFESPAN SHUTDOWN: Error shutting down Unified Platform: {e}",
+                exc_info=True,
+            )
+
     # Clear state (optional but good practice)
     app.state.graph_rag_engine = None
     app.state.kg_builder = None
@@ -510,6 +541,7 @@ async def lifespan(app: FastAPI):
     app.state.settings = None
     app.state.ingestion_service = None
     app.state.maintenance_scheduler = None
+    app.state.unified_platform = None
     logger.info("LIFESPAN SHUTDOWN: Application shutdown complete.")
 
 
@@ -646,6 +678,7 @@ def get_search_service(request: Request):
         raise HTTPException(status_code=503, detail="Search service not available")
 
 
+
 # --- FastAPI App Creation ---
 def create_app() -> FastAPI:
     """Factory function to create the FastAPI application with all dependencies."""
@@ -722,6 +755,9 @@ def create_app() -> FastAPI:
     # Epic 2: Unified Specialized Features Router (replaces hot_takes + brand_safety)
     unified_specialized_features_router = create_unified_specialized_features_router()
     
+    # Epic 6: Unified Platform Router (production integration orchestrator)
+    unified_platform_router = create_unified_platform_router()
+    
     # Legacy routers (will be deprecated after consolidation)
     documents_router = documents.create_documents_router()
     ingestion_router = ingestion.create_ingestion_router(
@@ -760,6 +796,9 @@ def create_app() -> FastAPI:
     api_router.include_router(unified_graph_operations_router, prefix="/graph", tags=["Unified Graph Operations"])
     api_router.include_router(unified_system_admin_router, prefix="/system", tags=["Unified System Admin"])
     api_router.include_router(unified_specialized_features_router, prefix="/features", tags=["Unified Specialized Features"])
+    
+    # Epic 6: Unified Platform Integration (AI + Multi-Cloud + Business + Auth)
+    api_router.include_router(unified_platform_router, tags=["Unified Platform"])
 
     # Legacy routers (maintained for compatibility during transition)
     api_router.include_router(documents_router, prefix="/documents", tags=["Documents (Legacy)"])

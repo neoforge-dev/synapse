@@ -944,3 +944,15 @@ async def close_graph_repository():
 
 # You might register these cleanup functions with FastAPI's lifespan events
 # in your main application setup (e.g., main.py).
+
+
+# --- Unified Platform Dependencies (Epic 6 Week 4) ---
+def get_unified_platform(request: Request):
+    """Get unified platform orchestrator from app state."""
+    if (
+        not hasattr(request.app.state, "unified_platform")
+        or request.app.state.unified_platform is None
+    ):
+        logger.error("Dependency Error: Unified Platform requested but not initialized.")
+        raise HTTPException(status_code=503, detail="Unified Platform not initialized")
+    return request.app.state.unified_platform
