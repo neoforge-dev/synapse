@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -125,7 +125,7 @@ def create_compliance_router() -> APIRouter:
         control_id: str,
         tester: str,
         test_description: str,
-        test_results: Dict[str, any],
+        test_results: Dict[str, Any],
         current_user: User = Depends(require_admin_role)
     ):
         """Perform and record a SOC 2 control test."""
@@ -156,7 +156,7 @@ def create_compliance_router() -> APIRouter:
         evidence_type: str,
         description: str,
         file_path: Optional[str] = None,
-        metadata: Optional[Dict[str, any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
         current_user: User = Depends(require_admin_role)
     ):
         """Add evidence for a SOC 2 control."""
