@@ -1,0 +1,419 @@
+# Cross-Region PostgreSQL Replication Infrastructure
+# Enterprise-grade disaster recovery with <5-minute RTO for $555K pipeline protection
+
+version: '3.8'
+
+networks:
+  replication-network:
+    driver: bridge
+  monitoring-network:
+    driver: bridge
+  failover-network:
+    driver: bridge
+
+volumes:
+  replication_primary_data:
+    driver: local
+  replication_secondary_data:
+    driver: local
+  replication_tertiary_data:
+    driver: local
+  failover_coordinator_data:
+    driver: local
+  replication_monitoring:
+    driver: local
+
+services:
+  # Primary Region PostgreSQL Master
+  postgres-primary-region:
+    image: postgres:16
+    container_name: postgres-primary-region
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: synapse_core
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-synapse_secure_2024}
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-repl_secure_2024}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      # Streaming replication configuration
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+      # Cross-region replication settings
+      AWS_REGION: ${AWS_PRIMARY_REGION:-us-west-2}
+      REPLICATION_SLOTS_ENABLED: "true"
+      WAL_LEVEL: "replica"
+      MAX_WAL_SENDERS: "10"
+      MAX_REPLICATION_SLOTS: "10"
+      SYNCHRONOUS_COMMIT: "remote_apply"
+      # Archive settings for cross-region WAL shipping
+      ARCHIVE_MODE: "on"
+      ARCHIVE_COMMAND: "aws s3 cp %p s3://${S3_WAL_ARCHIVE_BUCKET:-synapse-wal-archive}/%f --region ${AWS_PRIMARY_REGION:-us-west-2}"
+    ports:
+      - "5432:5432"
+    volumes:
+      - replication_primary_data:/var/lib/postgresql/data
+      - ./config/postgresql/primary-region:/etc/postgresql
+      - ./scripts/replication:/scripts
+    command: |
+      bash -c "
+      echo 'Configuring primary region PostgreSQL for cross-region replication...'
+      
+      # Install AWS CLI for WAL archiving
+      apt-get update && apt-get install -y awscli
+      
+      # Configure PostgreSQL for streaming replication
+      cat >> /etc/postgresql/postgresql.conf << EOF
+      # Replication Settings for Cross-Region DR
+      wal_level = replica
+      max_wal_senders = 10
+      max_replication_slots = 10
+      synchronous_standby_names = 'secondary_region,tertiary_region'
+      synchronous_commit = remote_apply
+      
+      # Archive settings for cross-region WAL shipping
+      archive_mode = on
+      archive_command = 'aws s3 cp %p s3://${S3_WAL_ARCHIVE_BUCKET:-synapse-wal-archive}/%f --region ${AWS_PRIMARY_REGION:-us-west-2}'
+      
+      # Performance tuning for replication
+      shared_preload_libraries = 'pg_stat_statements'
+      max_connections = 200
+      shared_buffers = 256MB
+      effective_cache_size = 1GB
+      work_mem = 4MB
+      maintenance_work_mem = 64MB
+      checkpoint_completion_target = 0.9
+      wal_buffers = 16MB
+      default_statistics_target = 100
+      
+      # Monitoring and logging
+      log_replication_commands = on
+      log_checkpoints = on
+      log_connections = on
+      log_disconnections = on
+      log_lock_waits = on
+      log_statement = 'ddl'
+      EOF
+      
+      # Configure pg_hba.conf for replication
+      cat >> /etc/postgresql/pg_hba.conf << EOF
+      # Replication connections for cross-region DR
+      host replication replicator 0.0.0.0/0 md5
+      host replication replicator ::/0 md5
+      EOF
+      
+      # Start PostgreSQL
+      postgres -c config_file=/etc/postgresql/postgresql.conf -c hba_file=/etc/postgresql/pg_hba.conf
+      "
+    networks:
+      - replication-network
+      - monitoring-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres && psql -U postgres -c 'SELECT pg_is_in_recovery();' | grep -q 'f'"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Secondary Region PostgreSQL Replica
+  postgres-secondary-region:
+    image: postgres:16
+    container_name: postgres-secondary-region
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: synapse_core
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-synapse_secure_2024}
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-repl_secure_2024}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      PGUSER: postgres
+      AWS_REGION: ${AWS_SECONDARY_REGION:-us-east-1}
+      PRIMARY_HOST: postgres-primary-region
+      REPLICATION_SLOT_NAME: secondary_region
+    ports:
+      - "5433:5432"
+    volumes:
+      - replication_secondary_data:/var/lib/postgresql/data
+      - ./config/postgresql/secondary-region:/etc/postgresql
+      - ./scripts/replication:/scripts
+    depends_on:
+      postgres-primary-region:
+        condition: service_healthy
+    command: |
+      bash -c "
+      echo 'Setting up secondary region PostgreSQL replica...'
+      
+      # Install AWS CLI
+      apt-get update && apt-get install -y awscli
+      
+      # Wait for primary to be ready
+      until pg_isready -h postgres-primary-region -p 5432 -U postgres; do
+        echo 'Waiting for primary region to be ready...'
+        sleep 5
+      done
+      
+      # Create replication slot on primary
+      PGPASSWORD=${POSTGRES_REPLICATION_PASSWORD:-repl_secure_2024} psql -h postgres-primary-region -U replicator -d postgres -c \"SELECT pg_create_physical_replication_slot('secondary_region');\" || true
+      
+      # Perform base backup from primary
+      echo 'Performing base backup from primary region...'
+      rm -rf /var/lib/postgresql/data/pgdata/*
+      PGPASSWORD=${POSTGRES_REPLICATION_PASSWORD:-repl_secure_2024} pg_basebackup -h postgres-primary-region -D /var/lib/postgresql/data/pgdata -U replicator -v -P -W -R
+      
+      # Configure recovery settings
+      cat >> /var/lib/postgresql/data/pgdata/postgresql.conf << EOF
+      # Secondary region replica configuration
+      primary_conninfo = 'host=postgres-primary-region port=5432 user=replicator password=${POSTGRES_REPLICATION_PASSWORD:-repl_secure_2024} application_name=secondary_region sslmode=prefer'
+      primary_slot_name = 'secondary_region'
+      hot_standby = on
+      max_standby_streaming_delay = 30s
+      max_standby_archive_delay = 60s
+      wal_receiver_status_interval = 10s
+      hot_standby_feedback = on
+      
+      # Cross-region optimization
+      tcp_keepalives_idle = 600
+      tcp_keepalives_interval = 30
+      tcp_keepalives_count = 3
+      EOF
+      
+      # Start PostgreSQL in recovery mode
+      postgres
+      "
+    networks:
+      - replication-network
+      - monitoring-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres && psql -U postgres -c 'SELECT pg_is_in_recovery();' | grep -q 't'"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  # Tertiary Region PostgreSQL Replica (Europe/Asia)
+  postgres-tertiary-region:
+    image: postgres:16
+    container_name: postgres-tertiary-region
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: synapse_core
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-synapse_secure_2024}
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-repl_secure_2024}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      PGUSER: postgres
+      AWS_REGION: ${AWS_TERTIARY_REGION:-eu-west-1}
+      PRIMARY_HOST: postgres-primary-region
+      REPLICATION_SLOT_NAME: tertiary_region
+    ports:
+      - "5434:5432"
+    volumes:
+      - replication_tertiary_data:/var/lib/postgresql/data
+      - ./config/postgresql/tertiary-region:/etc/postgresql
+      - ./scripts/replication:/scripts
+    depends_on:
+      postgres-primary-region:
+        condition: service_healthy
+    command: |
+      bash -c "
+      echo 'Setting up tertiary region PostgreSQL replica...'
+      
+      # Install AWS CLI
+      apt-get update && apt-get install -y awscli
+      
+      # Wait for primary to be ready
+      until pg_isready -h postgres-primary-region -p 5432 -U postgres; do
+        echo 'Waiting for primary region to be ready...'
+        sleep 10
+      done
+      
+      # Create replication slot on primary
+      PGPASSWORD=${POSTGRES_REPLICATION_PASSWORD:-repl_secure_2024} psql -h postgres-primary-region -U replicator -d postgres -c \"SELECT pg_create_physical_replication_slot('tertiary_region');\" || true
+      
+      # Perform base backup from primary
+      echo 'Performing base backup from primary region...'
+      rm -rf /var/lib/postgresql/data/pgdata/*
+      PGPASSWORD=${POSTGRES_REPLICATION_PASSWORD:-repl_secure_2024} pg_basebackup -h postgres-primary-region -D /var/lib/postgresql/data/pgdata -U replicator -v -P -W -R
+      
+      # Configure recovery settings for tertiary region
+      cat >> /var/lib/postgresql/data/pgdata/postgresql.conf << EOF
+      # Tertiary region replica configuration
+      primary_conninfo = 'host=postgres-primary-region port=5432 user=replicator password=${POSTGRES_REPLICATION_PASSWORD:-repl_secure_2024} application_name=tertiary_region sslmode=prefer'
+      primary_slot_name = 'tertiary_region'
+      hot_standby = on
+      max_standby_streaming_delay = 30s
+      max_standby_archive_delay = 60s
+      wal_receiver_status_interval = 10s
+      hot_standby_feedback = on
+      
+      # Cross-region optimization for longer distance
+      tcp_keepalives_idle = 600
+      tcp_keepalives_interval = 30
+      tcp_keepalives_count = 3
+      wal_receiver_timeout = 60s
+      EOF
+      
+      # Start PostgreSQL in recovery mode
+      postgres
+      "
+    networks:
+      - replication-network
+      - monitoring-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres && psql -U postgres -c 'SELECT pg_is_in_recovery();' | grep -q 't'"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+  # Failover Coordinator for Automated DR
+  failover-coordinator:
+    image: postgres:16
+    container_name: failover-coordinator
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-synapse_secure_2024}
+      REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-repl_secure_2024}
+      RTO_TARGET_MINUTES: 5
+      HEALTH_CHECK_INTERVAL: 30
+      PIPELINE_VALUE: 555000
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      PAGERDUTY_API_KEY: ${PAGERDUTY_API_KEY}
+    volumes:
+      - failover_coordinator_data:/data
+      - ./scripts/failover:/scripts
+      - ./config/failover:/config
+    command: |
+      bash -c "
+      echo 'Starting failover coordinator for <5-minute RTO...'
+      
+      # Install dependencies
+      apt-get update && apt-get install -y python3-pip curl jq awscli
+      pip3 install psycopg2-binary prometheus_client boto3
+      
+      # Start failover monitoring and coordination
+      /scripts/failover_coordinator.py &
+      
+      # Start health monitoring
+      /scripts/health_monitor.py &
+      
+      # Start replication lag monitor
+      /scripts/replication_lag_monitor.py &
+      
+      # Keep container running
+      tail -f /dev/null
+      "
+    networks:
+      - replication-network
+      - failover-network
+      - monitoring-network
+    depends_on:
+      - postgres-primary-region
+      - postgres-secondary-region
+      - postgres-tertiary-region
+
+  # Replication Monitoring Dashboard
+  replication-monitor:
+    image: grafana/grafana:latest
+    container_name: replication-monitor
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-replication_admin_2024}
+      GF_INSTALL_PLUGINS: grafana-worldmap-panel,grafana-clock-panel
+    volumes:
+      - replication_monitoring:/var/lib/grafana
+      - ./config/monitoring/replication-dashboards:/var/lib/grafana/dashboards
+      - ./config/monitoring/replication-provisioning:/etc/grafana/provisioning
+    networks:
+      - monitoring-network
+
+  # Cross-Region Network Latency Monitor
+  network-monitor:
+    image: prom/blackbox-exporter:latest
+    container_name: network-monitor
+    restart: unless-stopped
+    ports:
+      - "9115:9115"
+    volumes:
+      - ./config/monitoring/blackbox.yml:/config/blackbox.yml:ro
+    command:
+      - '--config.file=/config/blackbox.yml'
+    networks:
+      - monitoring-network
+
+  # Automated DR Testing Service
+  dr-test-service:
+    image: postgres:16
+    container_name: dr-test-service
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-synapse_secure_2024}
+      DR_TEST_SCHEDULE: "0 2 1 * *"  # Monthly DR testing
+      RTO_TARGET_MINUTES: 5
+      PIPELINE_VALUE: 555000
+    volumes:
+      - ./scripts/dr-testing:/scripts
+      - ./logs/dr-testing:/logs
+    command: |
+      bash -c "
+      echo 'Setting up automated DR testing...'
+      
+      # Install dependencies
+      apt-get update && apt-get install -y python3-pip curl jq postgresql-client-16
+      pip3 install psycopg2-binary pytest boto3
+      
+      # Set up monthly DR testing
+      echo '0 2 1 * * /scripts/automated_dr_test.py' | crontab -
+      
+      # Start DR test monitoring
+      /scripts/dr_test_monitor.py &
+      
+      # Start cron daemon
+      cron -f
+      "
+    networks:
+      - replication-network
+      - monitoring-network
+    depends_on:
+      - failover-coordinator
+
+  # WAL Archive Management
+  wal-archive-manager:
+    image: postgres:16
+    container_name: wal-archive-manager
+    restart: unless-stopped
+    environment:
+      AWS_DEFAULT_REGION: ${AWS_PRIMARY_REGION:-us-west-2}
+      S3_WAL_ARCHIVE_BUCKET: ${S3_WAL_ARCHIVE_BUCKET:-synapse-wal-archive}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-synapse_secure_2024}
+      ARCHIVE_RETENTION_DAYS: 30
+    volumes:
+      - ./scripts/wal-archive:/scripts
+      - ./logs/wal-archive:/logs
+    command: |
+      bash -c "
+      echo 'Setting up WAL archive management...'
+      
+      # Install dependencies
+      apt-get update && apt-get install -y awscli postgresql-client-16 python3-pip
+      pip3 install boto3 psycopg2-binary
+      
+      # Set up WAL archive cleanup (daily)
+      echo '0 3 * * * /scripts/cleanup_wal_archives.py' | crontab -
+      
+      # Set up WAL archive verification (every 6 hours)
+      echo '0 */6 * * * /scripts/verify_wal_archives.py' | crontab -
+      
+      # Start WAL archive monitoring
+      /scripts/wal_archive_monitor.py &
+      
+      # Start cron daemon
+      cron -f
+      "
+    networks:
+      - replication-network
+    depends_on:
+      - postgres-primary-region

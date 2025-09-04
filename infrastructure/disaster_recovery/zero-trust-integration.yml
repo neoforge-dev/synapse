@@ -1,0 +1,522 @@
+# Zero-Trust Encryption Integration for Disaster Recovery
+# Enterprise-grade security with business continuity for $555K pipeline protection
+
+version: '3.8'
+
+networks:
+  zero-trust-network:
+    driver: bridge
+    driver_opts:
+      encrypted: "true"
+  vault-network:
+    driver: bridge
+    driver_opts:
+      encrypted: "true"
+
+volumes:
+  vault_data:
+    driver: local
+  vault_logs:
+    driver: local
+  encryption_keys:
+    driver: local
+  business_continuity_data:
+    driver: local
+
+services:
+  # HashiCorp Vault for Zero-Trust Key Management
+  vault-server:
+    image: vault:1.15.4
+    container_name: vault-server
+    restart: unless-stopped
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_ROOT_TOKEN:-hvs.dev_root_token_555k}
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+      VAULT_ADDR: "http://0.0.0.0:8200"
+      SKIP_CHOWN: "true"
+      VAULT_LOCAL_CONFIG: |
+        {
+          "backend": {
+            "consul": {
+              "address": "consul:8500",
+              "path": "vault/"
+            }
+          },
+          "listener": {
+            "tcp": {
+              "address": "0.0.0.0:8200",
+              "tls_disable": false,
+              "tls_cert_file": "/vault/tls/vault.crt",
+              "tls_key_file": "/vault/tls/vault.key"
+            }
+          },
+          "ui": true,
+          "api_addr": "https://0.0.0.0:8200",
+          "cluster_addr": "https://0.0.0.0:8201",
+          "disable_mlock": true,
+          "default_lease_ttl": "168h",
+          "max_lease_ttl": "720h"
+        }
+    ports:
+      - "8200:8200"
+      - "8201:8201"
+    volumes:
+      - vault_data:/vault/data
+      - vault_logs:/vault/logs
+      - ./config/vault/tls:/vault/tls:ro
+      - ./config/vault/policies:/vault/policies:ro
+    command: |
+      sh -c "
+      echo 'Starting Vault server for Zero-Trust encryption...'
+      
+      # Initialize Vault if not already done
+      if [ ! -f /vault/data/initialized ]; then
+        echo 'Initializing Vault for disaster recovery...'
+        
+        # Start Vault in background for initialization
+        vault server -config=/vault/config/vault.json &
+        VAULT_PID=\$!
+        
+        # Wait for Vault to be ready
+        sleep 10
+        
+        # Initialize Vault
+        export VAULT_ADDR='http://0.0.0.0:8200'
+        vault operator init -key-shares=5 -key-threshold=3 > /vault/data/init_output.txt
+        
+        # Extract unseal keys and root token
+        UNSEAL_KEY_1=\$(grep 'Unseal Key 1:' /vault/data/init_output.txt | awk '{print \$4}')
+        UNSEAL_KEY_2=\$(grep 'Unseal Key 2:' /vault/data/init_output.txt | awk '{print \$4}')
+        UNSEAL_KEY_3=\$(grep 'Unseal Key 3:' /vault/data/init_output.txt | awk '{print \$4}')
+        ROOT_TOKEN=\$(grep 'Initial Root Token:' /vault/data/init_output.txt | awk '{print \$4}')
+        
+        # Unseal Vault
+        vault operator unseal \$UNSEAL_KEY_1
+        vault operator unseal \$UNSEAL_KEY_2
+        vault operator unseal \$UNSEAL_KEY_3
+        
+        # Authenticate with root token
+        vault auth \$ROOT_TOKEN
+        
+        # Enable KV secrets engine for DR
+        vault secrets enable -path=synapse-dr kv-v2
+        
+        # Enable database secrets engine
+        vault secrets enable database
+        
+        # Enable AWS secrets engine for cross-region access
+        vault secrets enable aws
+        
+        # Create DR encryption keys
+        vault kv put synapse-dr/backup-encryption \\
+          master-key=\$(openssl rand -base64 32) \\
+          secondary-key=\$(openssl rand -base64 32) \\
+          pipeline-protection-key=\$(openssl rand -base64 32)
+        
+        # Create database credentials
+        vault kv put synapse-dr/database-credentials \\
+          postgres-password='${POSTGRES_PASSWORD:-synapse_secure_2024}' \\
+          replication-password='${POSTGRES_REPLICATION_PASSWORD:-repl_secure_2024}' \\
+          backup-user-password=\$(openssl rand -base64 16)
+        
+        # Create pipeline protection secrets
+        vault kv put synapse-dr/pipeline-secrets \\
+          consultation-signing-key=\$(openssl rand -base64 32) \\
+          revenue-encryption-key=\$(openssl rand -base64 32) \\
+          client-data-key=\$(openssl rand -base64 32) \\
+          pipeline-value='555000'
+        
+        # Create disaster recovery policy
+        cat > /tmp/dr-policy.hcl << EOF
+      path \"synapse-dr/*\" {
+        capabilities = [\"create\", \"read\", \"update\", \"delete\", \"list\"]
+      }
+      path \"database/*\" {
+        capabilities = [\"create\", \"read\", \"update\", \"delete\", \"list\"]
+      }
+      path \"aws/*\" {
+        capabilities = [\"create\", \"read\", \"update\", \"delete\", \"list\"]
+      }
+      path \"auth/token/lookup-self\" {
+        capabilities = [\"read\"]
+      }
+      path \"sys/capabilities-self\" {
+        capabilities = [\"update\"]
+      }
+      EOF
+        
+        vault policy write disaster-recovery /tmp/dr-policy.hcl
+        
+        # Create service tokens for DR components
+        vault token create -policy=disaster-recovery -ttl=8760h -display-name=\"backup-orchestrator\" > /vault/data/backup-token.txt
+        vault token create -policy=disaster-recovery -ttl=8760h -display-name=\"failover-coordinator\" > /vault/data/failover-token.txt
+        
+        touch /vault/data/initialized
+        echo 'Vault initialization completed for disaster recovery'
+        
+        # Stop background Vault process
+        kill \$VAULT_PID
+      fi
+      
+      # Start Vault server normally
+      exec vault server -config=/vault/config/vault.json
+      "
+    networks:
+      - vault-network
+      - zero-trust-network
+    healthcheck:
+      test: ["CMD-SHELL", "vault status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Vault Agent for Automatic Token Renewal
+  vault-agent:
+    image: vault:1.15.4
+    container_name: vault-agent
+    restart: unless-stopped
+    environment:
+      VAULT_ADDR: "http://vault-server:8200"
+    volumes:
+      - ./config/vault/agent:/vault/config
+      - encryption_keys:/vault/secrets
+    command: |
+      sh -c "
+      echo 'Starting Vault Agent for automatic secret retrieval...'
+      
+      # Create Vault Agent configuration
+      cat > /vault/config/agent.hcl << EOF
+      vault {
+        address = \"http://vault-server:8200\"
+        retry {
+          num_retries = 5
+        }
+      }
+      
+      auto_auth {
+        method {
+          type = \"approle\"
+          config = {
+            role_id_file_path = \"/vault/config/role-id\"
+            secret_id_file_path = \"/vault/config/secret-id\"
+          }
+        }
+        
+        sink {
+          type = \"file\"
+          config = {
+            path = \"/vault/secrets/token\"
+          }
+        }
+      }
+      
+      template {
+        source = \"/vault/config/backup-encryption.tpl\"
+        destination = \"/vault/secrets/backup-encryption.env\"
+        command = \"echo 'Backup encryption keys updated'\"
+      }
+      
+      template {
+        source = \"/vault/config/database-creds.tpl\"
+        destination = \"/vault/secrets/database-creds.env\"  
+        command = \"echo 'Database credentials updated'\"
+      }
+      
+      template {
+        source = \"/vault/config/pipeline-secrets.tpl\"
+        destination = \"/vault/secrets/pipeline-secrets.env\"
+        command = \"echo 'Pipeline protection keys updated'\"
+      }
+      EOF
+      
+      # Start Vault Agent
+      vault agent -config=/vault/config/agent.hcl
+      "
+    networks:
+      - vault-network
+    depends_on:
+      - vault-server
+
+  # Encryption Service for Zero-Trust Data Protection
+  encryption-service:
+    image: postgres:16
+    container_name: encryption-service
+    restart: unless-stopped
+    environment:
+      VAULT_ADDR: "http://vault-server:8200"
+      VAULT_TOKEN_FILE: "/vault/secrets/token"
+      PIPELINE_VALUE: 555000
+    volumes:
+      - encryption_keys:/vault/secrets:ro
+      - ./scripts/encryption:/scripts
+      - ./logs/encryption:/logs
+    command: |
+      bash -c "
+      echo 'Starting Zero-Trust Encryption Service...'
+      
+      # Install dependencies
+      apt-get update && apt-get install -y python3-pip curl jq
+      pip3 install hvac cryptography psycopg2-binary prometheus_client
+      
+      # Start encryption service
+      /scripts/encryption_service.py &
+      
+      # Start key rotation monitor
+      /scripts/key_rotation_monitor.py &
+      
+      # Keep container running
+      tail -f /dev/null
+      "
+    networks:
+      - vault-network
+      - zero-trust-network
+    depends_on:
+      - vault-agent
+
+  # Business Continuity Validator
+  business-continuity-validator:
+    image: postgres:16
+    container_name: business-continuity-validator
+    restart: unless-stopped
+    environment:
+      VAULT_ADDR: "http://vault-server:8200"
+      PIPELINE_VALUE: 555000
+      BUSINESS_CONTINUITY_SLA: "99.99"
+      RTO_TARGET_MINUTES: 5
+      RPO_TARGET_MINUTES: 15
+    volumes:
+      - business_continuity_data:/data
+      - encryption_keys:/vault/secrets:ro
+      - ./scripts/business-continuity:/scripts
+      - ./logs/business-continuity:/logs
+    command: |
+      bash -c "
+      echo 'Starting Business Continuity Validation System...'
+      echo 'Protecting \$555K consultation pipeline with zero-trust principles'
+      
+      # Install dependencies
+      apt-get update && apt-get install -y python3-pip postgresql-client-16
+      pip3 install hvac psycopg2-binary prometheus_client boto3 requests
+      
+      # Start business continuity monitoring
+      /scripts/business_continuity_monitor.py &
+      
+      # Start SLA validation
+      /scripts/sla_validator.py &
+      
+      # Start pipeline protection validator
+      /scripts/pipeline_protection_validator.py &
+      
+      # Keep container running
+      tail -f /dev/null
+      "
+    networks:
+      - vault-network
+      - zero-trust-network
+    depends_on:
+      - encryption-service
+
+  # Secure Backup Coordinator with Zero-Trust
+  secure-backup-coordinator:
+    image: postgres:16
+    container_name: secure-backup-coordinator
+    restart: unless-stopped
+    environment:
+      VAULT_ADDR: "http://vault-server:8200"
+      AWS_REGION: ${AWS_DEFAULT_REGION:-us-west-2}
+      PIPELINE_VALUE: 555000
+      ZERO_TRUST_ENABLED: "true"
+      ENCRYPTION_REQUIRED: "true"
+    volumes:
+      - encryption_keys:/vault/secrets:ro
+      - ./backups:/backups
+      - ./scripts/secure-backup:/scripts
+      - ./logs/secure-backup:/logs
+    command: |
+      bash -c "
+      echo 'Starting Secure Backup Coordinator with Zero-Trust Encryption...'
+      
+      # Install dependencies
+      apt-get update && apt-get install -y python3-pip awscli postgresql-client-16
+      pip3 install hvac cryptography psycopg2-binary boto3 prometheus_client
+      
+      # Start secure backup orchestration
+      /scripts/secure_backup_orchestrator.py &
+      
+      # Start encryption validation
+      /scripts/backup_encryption_validator.py &
+      
+      # Start zero-trust compliance monitor
+      /scripts/zero_trust_compliance_monitor.py &
+      
+      # Keep container running
+      tail -f /dev/null
+      "
+    networks:
+      - vault-network
+      - zero-trust-network
+    depends_on:
+      - business-continuity-validator
+
+  # Cross-Region Security Replication
+  security-replication-coordinator:
+    image: postgres:16
+    container_name: security-replication-coordinator
+    restart: unless-stopped
+    environment:
+      VAULT_ADDR: "http://vault-server:8200"
+      PRIMARY_REGION: ${AWS_DEFAULT_REGION:-us-west-2}
+      SECONDARY_REGION: ${AWS_SECONDARY_REGION:-us-east-1}
+      TERTIARY_REGION: ${AWS_TERTIARY_REGION:-eu-west-1}
+      PIPELINE_VALUE: 555000
+    volumes:
+      - encryption_keys:/vault/secrets:ro
+      - ./scripts/security-replication:/scripts
+      - ./logs/security-replication:/logs
+    command: |
+      bash -c "
+      echo 'Starting Cross-Region Security Replication...'
+      
+      # Install dependencies
+      apt-get update && apt-get install -y python3-pip awscli
+      pip3 install hvac cryptography boto3 psycopg2-binary
+      
+      # Start cross-region key synchronization
+      /scripts/cross_region_key_sync.py &
+      
+      # Start security policy replication
+      /scripts/security_policy_replication.py &
+      
+      # Start encrypted backup replication
+      /scripts/encrypted_backup_replication.py &
+      
+      # Keep container running
+      tail -f /dev/null
+      "
+    networks:
+      - vault-network
+      - zero-trust-network
+    depends_on:
+      - secure-backup-coordinator
+
+  # Compliance and Audit Monitor
+  compliance-monitor:
+    image: postgres:16
+    container_name: compliance-monitor
+    restart: unless-stopped
+    environment:
+      VAULT_ADDR: "http://vault-server:8200"
+      COMPLIANCE_FRAMEWORKS: "SOC2,GDPR,HIPAA,PCI-DSS"
+      PIPELINE_VALUE: 555000
+      AUDIT_RETENTION_YEARS: 7
+    volumes:
+      - encryption_keys:/vault/secrets:ro
+      - ./logs/compliance:/logs
+      - ./scripts/compliance:/scripts
+    command: |
+      bash -c "
+      echo 'Starting Compliance and Audit Monitoring...'
+      
+      # Install dependencies
+      apt-get update && apt-get install -y python3-pip
+      pip3 install hvac psycopg2-binary prometheus_client requests
+      
+      # Start compliance monitoring
+      /scripts/compliance_monitor.py &
+      
+      # Start audit trail validation
+      /scripts/audit_trail_validator.py &
+      
+      # Start regulatory reporting
+      /scripts/regulatory_reporting.py &
+      
+      # Keep container running
+      tail -f /dev/null
+      "
+    networks:
+      - vault-network
+    depends_on:
+      - security-replication-coordinator
+
+  # Zero-Trust Network Monitor
+  network-security-monitor:
+    image: postgres:16
+    container_name: network-security-monitor
+    restart: unless-stopped
+    environment:
+      VAULT_ADDR: "http://vault-server:8200"
+      ZERO_TRUST_POLICY: "deny-by-default"
+      PIPELINE_VALUE: 555000
+    volumes:
+      - encryption_keys:/vault/secrets:ro
+      - ./logs/network-security:/logs
+      - ./scripts/network-security:/scripts
+    command: |
+      bash -c "
+      echo 'Starting Zero-Trust Network Security Monitoring...'
+      
+      # Install dependencies
+      apt-get update && apt-get install -y python3-pip tcpdump nmap
+      pip3 install hvac scapy prometheus_client
+      
+      # Start network traffic analysis
+      /scripts/network_traffic_analyzer.py &
+      
+      # Start zero-trust policy enforcement
+      /scripts/zero_trust_policy_enforcer.py &
+      
+      # Start threat detection
+      /scripts/threat_detector.py &
+      
+      # Keep container running
+      tail -f /dev/null
+      "
+    networks:
+      - zero-trust-network
+    depends_on:
+      - compliance-monitor
+
+# Service mesh for zero-trust communication
+  istio-proxy:
+    image: istio/proxyv2:1.19.0
+    container_name: istio-proxy
+    restart: unless-stopped
+    environment:
+      PILOT_ENABLE_WORKLOAD_ENTRY_AUTOREGISTRATION: "true"
+      PILOT_ENABLE_CROSS_CLUSTER_WORKLOAD_ENTRY: "true"
+    volumes:
+      - ./config/istio:/etc/istio
+    command: |
+      sh -c "
+      echo 'Starting Istio Proxy for Zero-Trust Service Mesh...'
+      
+      # Configure mTLS for all DR services
+      cat > /etc/istio/mesh-config.yaml << EOF
+      defaultConfig:
+        meshId: synapse-dr-mesh
+        trustDomain: synapse.local
+        proxyStatsMatcher:
+          inclusionRegexps:
+          - \".*circuit_breakers.*\"
+          - \".*upstream_rq_retry.*\"
+          - \".*_cx_.*\"
+      EOF
+      
+      # Start Envoy proxy with zero-trust configuration
+      /usr/local/bin/pilot-agent proxy sidecar \\
+        --domain synapse-dr.local \\
+        --configPath /etc/istio \\
+        --binaryPath /usr/local/bin/envoy \\
+        --serviceCluster synapse-dr \\
+        --drainDuration 45s \\
+        --parentShutdownDuration 1m0s \\
+        --discoveryAddress pilot:15010 \\
+        --connectTimeout 10s \\
+        --statsdUdpAddress 127.0.0.1:9125 \\
+        --proxyAdminPort 15000 \\
+        --controlPlaneAuthPolicy MUTUAL_TLS
+      "
+    networks:
+      - zero-trust-network
+    cap_add:
+      - NET_ADMIN

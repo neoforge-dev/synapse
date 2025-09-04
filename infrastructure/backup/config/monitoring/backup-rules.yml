@@ -1,0 +1,304 @@
+# Prometheus Alerting Rules for Backup Health Monitoring
+# Critical alerts for $555K consultation pipeline protection
+
+groups:
+  # Critical Backup Failure Alerts
+  - name: backup-critical-alerts
+    interval: 30s
+    rules:
+      - alert: BackupSystemDown
+        expr: up{job="backup-orchestrator"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          pipeline_value: "555000"
+          impact: "high"
+          team: "platform"
+        annotations:
+          summary: "🚨 Backup System Offline - $555K Pipeline at Risk"
+          description: "Backup orchestrator is down for {{ $labels.instance }}. $555K consultation pipeline is unprotected."
+          runbook_url: "https://docs.synapse.ai/runbooks/backup-system-down"
+          action_required: "Immediate restart of backup services required"
+
+      - alert: RPOViolation
+        expr: time() - backup_last_successful_timestamp{type="incremental"} > 1800  # 30 minutes
+        for: 5m
+        labels:
+          severity: critical
+          pipeline_value: "555000"
+          rpo_violation: "true"
+        annotations:
+          summary: "🚨 RPO Violation - Backup Missing for {{ $value | humanizeDuration }}"
+          description: "No successful incremental backup in {{ $value | humanizeDuration }}. RPO target of 15 minutes exceeded. $555K pipeline data at risk."
+          runbook_url: "https://docs.synapse.ai/runbooks/rpo-violation"
+
+      - alert: BackupFailure
+        expr: backup_success{type="incremental"} == 0 or backup_success{type="full"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          pipeline_value: "555000"
+          backup_type: "{{ $labels.type }}"
+        annotations:
+          summary: "🚨 {{ $labels.type | title }} Backup Failed"
+          description: "{{ $labels.type | title }} backup failed on {{ $labels.instance }}. $555K consultation pipeline at risk."
+          runbook_url: "https://docs.synapse.ai/runbooks/backup-failure"
+
+      - alert: CrossRegionReplicationFailure
+        expr: synapse_database_health{role="replica"} == 0
+        for: 3m
+        labels:
+          severity: critical
+          pipeline_value: "555000"
+          region: "{{ $labels.region }}"
+        annotations:
+          summary: "🚨 Cross-Region Replica Down in {{ $labels.region }}"
+          description: "Cross-region replica in {{ $labels.region }} is unhealthy. DR capability compromised."
+          runbook_url: "https://docs.synapse.ai/runbooks/replica-failure"
+
+      - alert: FailoverSystemFailure
+        expr: up{job="failover-coordinator"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          pipeline_value: "555000"
+          rto_impact: "true"
+        annotations:
+          summary: "🚨 Failover Coordinator Down - RTO at Risk"
+          description: "Failover coordinator is offline. 5-minute RTO target cannot be guaranteed."
+          runbook_url: "https://docs.synapse.ai/runbooks/failover-coordinator-down"
+
+      - alert: VeleroBackupFailure
+        expr: velero_backup_failure_total > 0
+        for: 0m
+        labels:
+          severity: critical
+          pipeline_value: "555000"
+          backup_system: "velero"
+        annotations:
+          summary: "🚨 Velero Kubernetes Backup Failed"
+          description: "Velero backup failed. Cluster-level DR capability compromised."
+          runbook_url: "https://docs.synapse.ai/runbooks/velero-backup-failure"
+
+  # High Severity Backup Warnings
+  - name: backup-warning-alerts
+    interval: 60s
+    rules:
+      - alert: BackupSizeAnomaly
+        expr: |
+          (
+            backup_size_bytes{type="full"} / 
+            (backup_size_bytes{type="full"} offset 24h)
+          ) > 2 or
+          (
+            backup_size_bytes{type="full"} / 
+            (backup_size_bytes{type="full"} offset 24h)
+          ) < 0.5
+        for: 10m
+        labels:
+          severity: warning
+          pipeline_value: "555000"
+        annotations:
+          summary: "⚠️  Backup Size Anomaly Detected"
+          description: "Backup size changed by >50% compared to 24h ago. Current: {{ $value | humanizeBytes }}"
+          runbook_url: "https://docs.synapse.ai/runbooks/backup-size-anomaly"
+
+      - alert: BackupDurationHigh
+        expr: backup_duration_seconds > 1800  # 30 minutes
+        for: 5m
+        labels:
+          severity: warning
+          backup_type: "{{ $labels.type }}"
+        annotations:
+          summary: "⚠️  {{ $labels.type | title }} Backup Taking Too Long"
+          description: "{{ $labels.type | title }} backup duration is {{ $value | humanizeDuration }}, exceeding 30-minute threshold."
+
+      - alert: ReplicationLagHigh
+        expr: synapse_replication_lag_seconds > 300  # 5 minutes
+        for: 5m
+        labels:
+          severity: warning
+          region: "{{ $labels.region }}"
+          pipeline_value: "555000"
+        annotations:
+          summary: "⚠️  High Replication Lag in {{ $labels.region }}"
+          description: "Replication lag is {{ $value | humanizeDuration }} in {{ $labels.region }}, exceeding 5-minute threshold."
+
+      - alert: StorageSpaceLow
+        expr: |
+          (
+            (backup_storage_free_bytes / backup_storage_total_bytes) * 100
+          ) < 20
+        for: 15m
+        labels:
+          severity: warning
+          storage_type: "{{ $labels.storage_type }}"
+        annotations:
+          summary: "⚠️  Backup Storage Space Low"
+          description: "Only {{ $value }}% free space remaining in {{ $labels.storage_type }} backup storage."
+
+      - alert: EncryptionKeyRotationDue
+        expr: time() - encryption_key_last_rotation_timestamp > 2592000  # 30 days
+        for: 1h
+        labels:
+          severity: warning
+          security: "encryption"
+        annotations:
+          summary: "⚠️  Encryption Key Rotation Due"
+          description: "Backup encryption key has not been rotated in {{ $value | humanizeDuration }}. Security policy requires 30-day rotation."
+
+  # Business Continuity Monitoring
+  - name: business-continuity-alerts
+    interval: 300s  # 5 minutes
+    rules:
+      - alert: PipelineValueAtRisk
+        expr: synapse_pipeline_value_at_risk_dollars > 0
+        for: 5m
+        labels:
+          severity: critical
+          business_impact: "high"
+          pipeline_value: "{{ $value }}"
+        annotations:
+          summary: "🚨 ${{ $value | humanize }} Consultation Pipeline at Risk"
+          description: "Business pipeline valued at ${{ $value | humanize }} is currently at risk due to backup/DR issues."
+          action_required: "Immediate intervention to protect revenue pipeline"
+
+      - alert: RTOTargetAtRisk
+        expr: synapse_rto_target_seconds - time() + synapse_failover_start_timestamp > 0 and synapse_failover_start_timestamp > 0
+        for: 1m
+        labels:
+          severity: critical
+          rto_violation: "imminent"
+        annotations:
+          summary: "🚨 RTO Target at Risk - Failover in Progress"
+          description: "Failover is in progress and may exceed 5-minute RTO target."
+
+      - alert: DRTestingOverdue
+        expr: time() - dr_test_last_successful_timestamp > 2678400  # 31 days
+        for: 1h
+        labels:
+          severity: warning
+          compliance: "required"
+        annotations:
+          summary: "⚠️  DR Testing Overdue"
+          description: "Disaster recovery testing has not been performed in {{ $value | humanizeDuration }}. Monthly testing required for compliance."
+
+      - alert: BackupIntegrityFailure
+        expr: backup_integrity_check_success == 0
+        for: 0m
+        labels:
+          severity: critical
+          data_integrity: "compromised"
+          pipeline_value: "555000"
+        annotations:
+          summary: "🚨 Backup Integrity Check Failed"
+          description: "Backup integrity validation failed. Data corruption possible. $555K pipeline may be at risk."
+          runbook_url: "https://docs.synapse.ai/runbooks/backup-integrity-failure"
+
+  # Performance and Capacity Monitoring
+  - name: backup-performance-alerts
+    interval: 120s
+    rules:
+      - alert: BackupThroughputLow
+        expr: |
+          (
+            rate(backup_bytes_transferred_total[10m]) / 1024 / 1024
+          ) < 10  # Less than 10 MB/s
+        for: 10m
+        labels:
+          severity: warning
+          performance: "degraded"
+        annotations:
+          summary: "⚠️  Backup Throughput Below Threshold"
+          description: "Backup transfer rate is {{ $value | humanize }}MB/s, below 10MB/s threshold."
+
+      - alert: S3BackupCostAnomaly
+        expr: |
+          (
+            s3_backup_cost_daily_usd / 
+            (s3_backup_cost_daily_usd offset 24h)
+          ) > 1.5
+        for: 6h
+        labels:
+          severity: warning
+          cost_management: "required"
+        annotations:
+          summary: "⚠️  Backup Storage Cost Spike"
+          description: "Daily backup storage cost increased by {{ $value | humanizePercentage }}% in 24h."
+
+      - alert: NetworkLatencyHigh
+        expr: probe_duration_seconds{job="network-latency"} > 0.1  # 100ms
+        for: 5m
+        labels:
+          severity: warning
+          network: "performance"
+        annotations:
+          summary: "⚠️  High Network Latency to {{ $labels.instance }}"
+          description: "Network latency to {{ $labels.instance }} is {{ $value | humanizeDuration }}, exceeding 100ms threshold."
+
+  # Compliance and Audit Alerts
+  - name: compliance-alerts
+    interval: 3600s  # 1 hour
+    rules:
+      - alert: AuditLogBackupMissing
+        expr: time() - audit_log_backup_timestamp > 86400  # 24 hours
+        for: 1h
+        labels:
+          severity: warning
+          compliance: "audit"
+        annotations:
+          summary: "⚠️  Audit Log Backup Overdue"
+          description: "Audit logs have not been backed up in {{ $value | humanizeDuration }}. Compliance requirement violation."
+
+      - alert: RetentionPolicyViolation
+        expr: backup_retention_violation_count > 0
+        for: 30m
+        labels:
+          severity: warning
+          compliance: "retention"
+        annotations:
+          summary: "⚠️  Backup Retention Policy Violation"
+          description: "{{ $value }} backups are violating retention policies. Compliance risk detected."
+
+      - alert: EncryptionComplianceIssue
+        expr: backup_unencrypted_count > 0
+        for: 0m
+        labels:
+          severity: critical
+          compliance: "encryption"
+          security: "data-at-rest"
+        annotations:
+          summary: "🚨 Unencrypted Backups Detected"
+          description: "{{ $value }} unencrypted backups found. Enterprise compliance violation."
+
+# Advanced Business Logic Rules
+  - name: pipeline-protection-logic
+    interval: 60s
+    rules:
+      # Calculate pipeline protection status
+      - record: synapse:pipeline_protection_status
+        expr: |
+          (
+            (backup_success{type="incremental"} == 1) and
+            (backup_success{type="full"} == 1) and
+            (synapse_database_health{role="primary"} == 1) and
+            (synapse_database_health{role="replica"} == 1)
+          ) * 555000
+
+      # Calculate effective RTO based on current system state
+      - record: synapse:effective_rto_minutes
+        expr: |
+          (
+            (5 * synapse_database_health{role="primary"}) +
+            (10 * (1 - synapse_database_health{role="primary"})) +
+            (synapse_replication_lag_seconds / 60)
+          )
+
+      # Calculate backup coverage percentage
+      - record: synapse:backup_coverage_percent
+        expr: |
+          (
+            (backup_success{type="incremental"} * 40) +
+            (backup_success{type="full"} * 40) +
+            (velero_backup_success * 20)
+          )

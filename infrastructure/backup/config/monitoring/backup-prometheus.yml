@@ -1,0 +1,201 @@
+# Prometheus Configuration for Backup Health Monitoring
+# Enterprise-grade monitoring for $555K consultation pipeline protection
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+  external_labels:
+    cluster: 'synapse-production'
+    pipeline_value: '555000'
+    backup_tier: 'enterprise'
+
+rule_files:
+  - "/etc/prometheus/backup-rules.yml"
+  - "/etc/prometheus/disaster-recovery-rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - backup-alertmanager:9093
+      path_prefix: /
+      scheme: http
+
+scrape_configs:
+  # Backup Orchestrator Metrics
+  - job_name: 'backup-orchestrator'
+    static_configs:
+      - targets: ['backup-orchestrator:8080']
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+    params:
+      module: [backup_health]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: backup-orchestrator:8080
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'backup_.*'
+        target_label: service
+        replacement: 'backup-system'
+
+  # Cross-Region Replication Metrics
+  - job_name: 'replication-monitor'
+    static_configs:
+      - targets: 
+        - 'postgres-primary-region:9187'
+        - 'postgres-secondary-region:9187' 
+        - 'postgres-tertiary-region:9187'
+    scrape_interval: 15s
+    metrics_path: '/metrics'
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: 'postgres-(.+)-region:.*'
+        target_label: region
+        replacement: '${1}'
+      - source_labels: [__address__]
+        target_label: database_role
+        replacement: 'unknown'
+
+  # Failover Coordinator Metrics  
+  - job_name: 'failover-coordinator'
+    static_configs:
+      - targets: ['failover-coordinator:8080']
+    scrape_interval: 15s
+    metrics_path: '/metrics'
+    honor_labels: true
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'synapse_.*'
+        target_label: pipeline_protection
+        replacement: 'enabled'
+
+  # Velero Backup System Metrics
+  - job_name: 'velero-metrics'
+    kubernetes_sd_configs:
+      - role: service
+        namespaces:
+          names: ['velero']
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: velero-metrics
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'velero_.*'
+        target_label: backup_system
+        replacement: 'velero'
+
+  # Database Health Metrics
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets:
+        - 'postgres-primary-region:9187'
+        - 'postgres-secondary-region:9187'
+        - 'postgres-tertiary-region:9187'
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: 'postgres-(.+)-region:.*'
+        target_label: region
+        replacement: '${1}'
+
+  # Storage Health Monitoring
+  - job_name: 'storage-health'
+    static_configs:
+      - targets: ['backup-orchestrator:8080']
+    scrape_interval: 60s
+    metrics_path: '/storage-metrics'
+    honor_labels: true
+
+  # Network Latency Monitoring
+  - job_name: 'network-latency'
+    static_configs:
+      - targets: ['network-monitor:9115']
+    scrape_interval: 30s
+    metrics_path: '/probe'
+    params:
+      module: [icmp]
+      target: 
+        - 'postgres-primary-region'
+        - 'postgres-secondary-region'
+        - 'postgres-tertiary-region'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: network-monitor:9115
+
+  # S3 Backup Storage Metrics
+  - job_name: 's3-backup-metrics'
+    static_configs:
+      - targets: ['backup-orchestrator:8080']
+    scrape_interval: 300s  # 5 minutes
+    metrics_path: '/s3-metrics'
+    honor_labels: true
+
+  # Disaster Recovery Test Results
+  - job_name: 'dr-test-results'
+    static_configs:
+      - targets: ['dr-test-service:8080']
+    scrape_interval: 3600s  # 1 hour
+    metrics_path: '/test-metrics'
+    honor_labels: true
+
+  # Business Continuity Metrics
+  - job_name: 'business-continuity'
+    static_configs:
+      - targets: ['backup-orchestrator:8080']
+    scrape_interval: 60s
+    metrics_path: '/business-metrics'
+    honor_labels: true
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'pipeline_.*'
+        target_label: business_impact
+        replacement: 'critical'
+
+  # Encryption Health Monitoring
+  - job_name: 'encryption-health'
+    static_configs:
+      - targets: ['backup-orchestrator:8080']
+    scrape_interval: 300s
+    metrics_path: '/encryption-metrics'
+    honor_labels: true
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'encryption_.*'
+        target_label: security_tier
+        replacement: 'enterprise'
+
+# Remote write to long-term storage for compliance
+remote_write:
+  - url: "https://prometheus-remote-write.synapse.ai/api/v1/write"
+    queue_config:
+      max_samples_per_send: 10000
+      batch_send_deadline: 5s
+      min_shards: 4
+      max_shards: 200
+    metadata_config:
+      send: true
+    write_relabel_configs:
+      - source_labels: [__name__]
+        regex: '(backup_|velero_|synapse_|pipeline_).*'
+        action: keep
+      - target_label: environment
+        replacement: production
+      - target_label: compliance
+        replacement: enterprise

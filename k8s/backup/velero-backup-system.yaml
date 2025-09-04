@@ -1,0 +1,556 @@
+# Kubernetes-Native DR with Velero Integration
+# Enterprise-grade cluster-level disaster recovery for $555K pipeline protection
+
+---
+# Velero Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: velero
+  labels:
+    name: velero
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: backup
+    security.synapse.ai/backup-system: "true"
+
+---
+# Velero BackupStorageLocation for Primary Region
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: synapse-primary-backup
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: storage
+    region: us-west-2
+    tier: primary
+spec:
+  provider: aws
+  objectStorage:
+    bucket: synapse-velero-backups-primary
+    prefix: k8s-backups
+  config:
+    region: us-west-2
+    s3ForcePathStyle: "false"
+    kmsKeyId: "arn:aws:kms:us-west-2:ACCOUNT:key/VAULT-KMS-KEY-ID"
+    serverSideEncryption: AES256
+  default: true
+
+---
+# Velero BackupStorageLocation for Secondary Region
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: synapse-secondary-backup
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: storage
+    region: us-east-1
+    tier: secondary
+spec:
+  provider: aws
+  objectStorage:
+    bucket: synapse-velero-backups-secondary
+    prefix: k8s-backups
+  config:
+    region: us-east-1
+    s3ForcePathStyle: "false"
+    kmsKeyId: "arn:aws:kms:us-east-1:ACCOUNT:key/VAULT-KMS-KEY-ID-EAST"
+    serverSideEncryption: AES256
+
+---
+# Velero VolumeSnapshotLocation for EBS Snapshots
+apiVersion: velero.io/v1
+kind: VolumeSnapshotLocation
+metadata:
+  name: synapse-ebs-snapshots
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: snapshots
+    provider: aws-ebs
+spec:
+  provider: aws
+  config:
+    region: us-west-2
+    enableSharedConfig: "true"
+
+---
+# Critical Infrastructure Backup Schedule (15-minute RPO)
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: synapse-critical-infrastructure
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: schedule
+    backup-tier: critical
+    pipeline-protection: "555000"
+  annotations:
+    backup.velero.io/pipeline-value: "555000"
+    backup.velero.io/rpo-minutes: "15"
+    backup.velero.io/rto-minutes: "5"
+spec:
+  schedule: "*/15 * * * *"  # Every 15 minutes for critical components
+  template:
+    metadata:
+      labels:
+        backup-type: critical-infrastructure
+        pipeline-protection: "true"
+    spec:
+      includeClusterResources: true
+      includedNamespaces:
+        - synapse-prod
+        - velero
+        - monitoring
+        - security
+      includedResources:
+        - persistentvolumes
+        - persistentvolumeclaims
+        - secrets
+        - configmaps
+        - services
+        - deployments
+        - statefulsets
+        - ingresses
+      excludedResources:
+        - events
+        - pods
+        - replicationcontrollers
+      storageLocation: synapse-primary-backup
+      volumeSnapshotLocations:
+        - synapse-ebs-snapshots
+      ttl: 2160h  # 90 days
+      snapshotVolumes: true
+      includeClusterScopedResources: true
+      hooks:
+        resources:
+          - name: postgres-backup-hook
+            includedNamespaces: ["synapse-prod"]
+            includedResources: ["pods"]
+            labelSelector:
+              matchLabels:
+                app: postgresql
+            pre:
+              - exec:
+                  command:
+                    - /bin/bash
+                    - -c
+                    - |
+                      echo "Starting pre-backup hook for PostgreSQL..."
+                      pg_dump -h localhost -U postgres -d synapse_core > /tmp/pre_backup_dump.sql
+                      echo "Pre-backup hook completed"
+            post:
+              - exec:
+                  command:
+                    - /bin/bash
+                    - -c
+                    - |
+                      echo "Post-backup cleanup completed"
+                      rm -f /tmp/pre_backup_dump.sql
+
+---
+# Database Backup Schedule (Daily Full Backup)
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: synapse-database-backup
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: schedule
+    backup-tier: database
+    pipeline-protection: "555000"
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM UTC
+  template:
+    metadata:
+      labels:
+        backup-type: database-full
+        pipeline-protection: "true"
+    spec:
+      includeClusterResources: false
+      includedNamespaces:
+        - synapse-prod
+      labelSelector:
+        matchLabels:
+          tier: database
+      storageLocation: synapse-primary-backup
+      volumeSnapshotLocations:
+        - synapse-ebs-snapshots
+      ttl: 8760h  # 1 year retention
+      snapshotVolumes: true
+      hooks:
+        resources:
+          - name: database-consistent-backup
+            includedNamespaces: ["synapse-prod"]
+            labelSelector:
+              matchLabels:
+                component: database
+            pre:
+              - exec:
+                  command:
+                    - /bin/bash
+                    - -c
+                    - |
+                      echo "Starting database consistent backup..."
+                      # Flush all buffers and create consistency point
+                      if command -v psql >/dev/null 2>&1; then
+                        psql -U postgres -c "CHECKPOINT;" || true
+                        psql -U postgres -c "SELECT pg_start_backup('velero-backup', true, false);" || true
+                      fi
+                      echo "Database pre-backup preparation completed"
+            post:
+              - exec:
+                  command:
+                    - /bin/bash
+                    - -c
+                    - |
+                      echo "Finalizing database backup..."
+                      if command -v psql >/dev/null 2>&1; then
+                        psql -U postgres -c "SELECT pg_stop_backup(false, true);" || true
+                      fi
+                      echo "Database post-backup finalization completed"
+
+---
+# Application State Backup Schedule  
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: synapse-application-state
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: schedule
+    backup-tier: application
+    pipeline-protection: "555000"
+spec:
+  schedule: "0 */6 * * *"  # Every 6 hours
+  template:
+    metadata:
+      labels:
+        backup-type: application-state
+        pipeline-protection: "true"
+    spec:
+      includeClusterResources: true
+      includedNamespaces:
+        - synapse-prod
+      includedResources:
+        - deployments
+        - statefulsets
+        - services
+        - ingresses
+        - configmaps
+        - secrets
+        - horizontalpodautoscalers
+        - networkpolicies
+      storageLocation: synapse-primary-backup
+      ttl: 720h  # 30 days
+      snapshotVolumes: false
+
+---
+# Security and Compliance Backup Schedule
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: synapse-security-backup
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: schedule
+    backup-tier: security
+    compliance: enterprise
+spec:
+  schedule: "0 4 * * *"  # Daily at 4 AM UTC
+  template:
+    metadata:
+      labels:
+        backup-type: security-compliance
+        compliance: enterprise
+    spec:
+      includeClusterResources: true
+      includedNamespaces:
+        - security
+        - cert-manager
+        - vault
+      includedResources:
+        - secrets
+        - certificates
+        - clusterissuers
+        - vaultconfigs
+        - policies
+        - roles
+        - rolebindings
+        - clusterroles
+        - clusterrolebindings
+      storageLocation: synapse-primary-backup
+      ttl: 17520h  # 2 years for compliance
+      snapshotVolumes: true
+
+---
+# Cross-Region Replication Schedule
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: synapse-cross-region-replication
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: schedule
+    backup-tier: replication
+    disaster-recovery: "true"
+spec:
+  schedule: "0 6 * * *"  # Daily at 6 AM UTC
+  template:
+    metadata:
+      labels:
+        backup-type: cross-region-replication
+        disaster-recovery: "true"
+    spec:
+      includeClusterResources: true
+      includedNamespaces:
+        - synapse-prod
+        - velero
+        - monitoring
+        - security
+      storageLocation: synapse-secondary-backup
+      ttl: 2160h  # 90 days
+      snapshotVolumes: true
+
+---
+# Disaster Recovery Restore Job Template
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: synapse-dr-restore-job
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: restore
+    disaster-recovery: "true"
+  annotations:
+    backup.velero.io/restore-priority: "critical"
+    backup.velero.io/pipeline-protection: "555000"
+spec:
+  template:
+    metadata:
+      labels:
+        job-type: dr-restore
+        pipeline-protection: "true"
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: velero
+      containers:
+      - name: dr-restore
+        image: velero/velero:v1.12.1
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Starting disaster recovery restore process..."
+          echo "Target RTO: 5 minutes for $555,000 pipeline protection"
+          
+          # Find latest critical backup
+          LATEST_BACKUP=$(velero backup get --output json | jq -r '.items[] | select(.metadata.labels["backup-type"] == "critical-infrastructure") | select(.status.phase == "Completed") | .metadata.name' | sort -r | head -1)
+          
+          if [ -z "$LATEST_BACKUP" ]; then
+            echo "ERROR: No completed critical infrastructure backup found"
+            exit 1
+          fi
+          
+          echo "Found latest backup: $LATEST_BACKUP"
+          
+          # Create restore with priority order
+          cat <<EOF | kubectl apply -f -
+          apiVersion: velero.io/v1
+          kind: Restore
+          metadata:
+            name: synapse-dr-restore-$(date +%s)
+            namespace: velero
+            labels:
+              restore-type: disaster-recovery
+              pipeline-protection: "true"
+          spec:
+            backupName: $LATEST_BACKUP
+            includedNamespaces:
+              - synapse-prod
+            includeClusterResources: true
+            restorePVs: true
+            preserveNodePorts: false
+            existingResourcePolicy: update
+          EOF
+          
+          echo "Disaster recovery restore initiated"
+          echo "Monitoring restore progress..."
+          
+          # Monitor restore progress
+          while true; do
+            RESTORE_STATUS=$(kubectl get restore synapse-dr-restore-$(date +%s) -n velero -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
+            
+            if [ "$RESTORE_STATUS" = "Completed" ]; then
+              echo "✅ Disaster recovery restore completed successfully"
+              echo "✅ $555,000 consultation pipeline restored"
+              break
+            elif [ "$RESTORE_STATUS" = "Failed" ] || [ "$RESTORE_STATUS" = "PartiallyFailed" ]; then
+              echo "❌ Disaster recovery restore failed"
+              exit 1
+            fi
+            
+            echo "Restore status: $RESTORE_STATUS"
+            sleep 30
+          done
+        env:
+        - name: VELERO_NAMESPACE
+          value: velero
+        volumeMounts:
+        - name: velero-config
+          mountPath: /etc/velero
+      volumes:
+      - name: velero-config
+        configMap:
+          name: velero-config
+
+---
+# Backup Monitoring ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: velero-monitoring-config
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: monitoring
+data:
+  prometheus-rules.yaml: |
+    groups:
+    - name: velero-backup-rules
+      rules:
+      - alert: VeleroBackupFailure
+        expr: velero_backup_failure_total > 0
+        for: 0m
+        labels:
+          severity: critical
+          pipeline_value: "555000"
+        annotations:
+          summary: "Velero backup failed"
+          description: "Velero backup has failed, $555K pipeline at risk"
+          runbook_url: "https://docs.synapse.ai/runbooks/backup-failure"
+      
+      - alert: VeleroBackupTakingTooLong
+        expr: velero_backup_duration_seconds > 900  # 15 minutes
+        for: 5m
+        labels:
+          severity: warning
+          pipeline_value: "555000"
+        annotations:
+          summary: "Velero backup taking too long"
+          description: "Backup duration exceeds 15 minutes, may impact RPO"
+      
+      - alert: VeleroRestoreFailure  
+        expr: velero_restore_failure_total > 0
+        for: 0m
+        labels:
+          severity: critical
+          pipeline_value: "555000"
+        annotations:
+          summary: "Velero restore failed"
+          description: "Critical: Disaster recovery restore failed, manual intervention required"
+      
+      - alert: VeleroRPOViolation
+        expr: time() - velero_backup_last_successful_timestamp > 1800  # 30 minutes
+        for: 5m
+        labels:
+          severity: critical
+          pipeline_value: "555000"
+        annotations:
+          summary: "Backup RPO violated"
+          description: "No successful backup in 30 minutes, RPO target of 15 minutes exceeded"
+
+---
+# Velero Backup Metrics Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: velero-metrics
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: metrics
+spec:
+  ports:
+  - name: monitoring
+    port: 8085
+    targetPort: 8085
+  selector:
+    component: velero
+
+---
+# ServiceMonitor for Prometheus Integration
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: velero-backup-monitor
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: velero
+  endpoints:
+  - port: monitoring
+    interval: 30s
+    path: /metrics
+
+---
+# PodDisruptionBudget for Velero
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: velero-pdb
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: availability
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      component: velero
+
+---
+# NetworkPolicy for Velero Backup System
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: velero-network-policy
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+    app.kubernetes.io/component: security
+spec:
+  podSelector:
+    matchLabels:
+      component: velero
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 8085
+  egress:
+  - to: []  # Allow all egress for S3 access
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80

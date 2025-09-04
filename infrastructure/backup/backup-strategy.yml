@@ -1,0 +1,232 @@
+# Multi-Tier Backup Strategy with 15-minute RPO
+# Enterprise-grade backup system for $555K consultation pipeline protection
+
+version: '3.8'
+
+networks:
+  backup-network:
+    driver: bridge
+  monitoring-network:
+    driver: bridge
+
+volumes:
+  backup_primary_storage:
+    driver: local
+  backup_secondary_storage:
+    driver: local
+  backup_archive_storage:
+    driver: local
+  backup_monitoring_data:
+    driver: local
+  wal_streaming_data:
+    driver: local
+
+services:
+  # Primary Backup Orchestrator with 15-minute intervals
+  backup-orchestrator:
+    image: postgres:16
+    container_name: backup-orchestrator
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-synapse_secure_2024}
+      BACKUP_INTERVAL_MINUTES: 15
+      RPO_TARGET_MINUTES: 15
+      RTO_TARGET_MINUTES: 5
+      ENCRYPTION_KEY: ${VAULT_ENCRYPTION_KEY}
+      S3_BACKUP_BUCKET: ${S3_BACKUP_BUCKET:-synapse-backup-primary}
+      S3_ARCHIVE_BUCKET: ${S3_ARCHIVE_BUCKET:-synapse-backup-archive}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-west-2}
+    volumes:
+      - backup_primary_storage:/backups/primary
+      - backup_secondary_storage:/backups/secondary  
+      - backup_archive_storage:/backups/archive
+      - wal_streaming_data:/wal-streaming
+      - ./scripts/backup:/scripts
+      - ./config/backup:/config
+    command: |
+      bash -c "
+      echo 'Installing backup tools and dependencies...'
+      apt-get update && apt-get install -y awscli cron curl jq postgresql-client-16
+      pip install boto3 psycopg2-binary
+      
+      echo 'Setting up continuous backup orchestration...'
+      
+      # Configure WAL-E for continuous archiving
+      export WALE_S3_PREFIX='s3://${S3_BACKUP_BUCKET}/wal-archive'
+      export AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY_ID}'
+      export AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}'
+      export WALE_GPG_KEY_ID='${VAULT_ENCRYPTION_KEY}'
+      
+      # Set up 15-minute backup schedule
+      echo '*/15 * * * * /scripts/incremental_backup.sh' | crontab -
+      echo '0 2 * * * /scripts/full_backup.sh' | crontab -
+      echo '*/5 * * * * /scripts/health_check.sh' | crontab -
+      
+      # Start backup monitoring
+      /scripts/backup_monitor.py &
+      
+      # Start cron daemon
+      cron -f
+      "
+    networks:
+      - backup-network
+      - monitoring-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Cross-Region Replication Coordinator
+  replication-coordinator:
+    image: postgres:16
+    container_name: replication-coordinator
+    restart: unless-stopped
+    environment:
+      PRIMARY_REGION: ${AWS_DEFAULT_REGION:-us-west-2}
+      SECONDARY_REGION: ${AWS_SECONDARY_REGION:-us-east-1}
+      TERTIARY_REGION: ${AWS_TERTIARY_REGION:-eu-west-1}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-synapse_secure_2024}
+      REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-repl_secure_2024}
+    volumes:
+      - ./scripts/replication:/scripts
+      - ./config/replication:/config
+    command: |
+      bash -c "
+      echo 'Setting up cross-region replication coordination...'
+      apt-get update && apt-get install -y awscli postgresql-client-16 python3-pip
+      pip3 install boto3 psycopg2-binary prometheus_client
+      
+      # Initialize replication slots and monitoring
+      /scripts/setup_cross_region_replication.py
+      
+      # Start replication health monitoring
+      /scripts/replication_monitor.py &
+      
+      # Keep container running
+      tail -f /dev/null
+      "
+    networks:
+      - backup-network
+    depends_on:
+      - backup-orchestrator
+
+  # Backup Integrity Validator
+  integrity-validator:
+    image: postgres:16
+    container_name: integrity-validator
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-synapse_secure_2024}
+      VALIDATION_SCHEDULE: "0 */4 * * *"  # Every 4 hours
+    volumes:
+      - backup_primary_storage:/backups/primary:ro
+      - backup_secondary_storage:/backups/secondary:ro
+      - ./scripts/validation:/scripts
+      - ./logs/validation:/logs
+    command: |
+      bash -c "
+      echo 'Setting up backup integrity validation...'
+      apt-get update && apt-get install -y postgresql-client-16 python3-pip
+      pip3 install psycopg2-binary cryptography
+      
+      # Set up validation schedule
+      echo '0 */4 * * * /scripts/validate_backup_integrity.sh' | crontab -
+      
+      # Start validation monitor
+      /scripts/integrity_monitor.py &
+      
+      # Start cron daemon
+      cron -f
+      "
+    networks:
+      - backup-network
+
+  # Disaster Recovery Testing Automation
+  dr-testing:
+    image: postgres:16
+    container_name: dr-testing
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-synapse_secure_2024}
+      TEST_SCHEDULE: "0 2 1 * *"  # Monthly DR testing
+      DR_TEST_DATABASE: synapse_dr_test
+    volumes:
+      - ./scripts/dr-testing:/scripts
+      - ./logs/dr-testing:/logs
+      - backup_primary_storage:/backups/primary:ro
+    command: |
+      bash -c "
+      echo 'Setting up automated DR testing...'
+      apt-get update && apt-get install -y postgresql-client-16 python3-pip
+      pip3 install psycopg2-binary pytest
+      
+      # Set up monthly DR testing
+      echo '0 2 1 * * /scripts/automated_dr_test.sh' | crontab -
+      
+      # Start DR test monitor
+      /scripts/dr_test_monitor.py &
+      
+      # Start cron daemon  
+      cron -f
+      "
+    networks:
+      - backup-network
+
+  # Backup Metrics Collector
+  backup-metrics:
+    image: prom/prometheus:latest
+    container_name: backup-metrics
+    restart: unless-stopped
+    ports:
+      - "9091:9090"
+    volumes:
+      - backup_monitoring_data:/prometheus
+      - ./config/monitoring/backup-prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/monitoring/backup-rules.yml:/etc/prometheus/backup-rules.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=90d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--web.external-url=http://localhost:9091'
+    networks:
+      - monitoring-network
+
+  # Grafana Dashboard for Backup Monitoring
+  backup-grafana:
+    image: grafana/grafana:latest
+    container_name: backup-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-backup_admin_2024}
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-worldmap-panel
+    volumes:
+      - ./volumes/backup-grafana:/var/lib/grafana
+      - ./config/monitoring/backup-dashboards:/var/lib/grafana/dashboards
+      - ./config/monitoring/backup-provisioning:/etc/grafana/provisioning
+    networks:
+      - monitoring-network
+    depends_on:
+      - backup-metrics
+
+  # Alert Manager for Backup Failures
+  backup-alertmanager:
+    image: prom/alertmanager:latest
+    container_name: backup-alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./config/monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    networks:
+      - monitoring-network
