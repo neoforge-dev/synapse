@@ -223,7 +223,7 @@ class MockGraphRepository(GraphStore, GraphRepository):
         logger.debug(f"MockGraphRepository: Getting neighbors for {entity_id} (returning empty lists) (sync)")
         return [], []
 
-    def search_entities_by_properties(
+    async def search_entities_by_properties(
         self, properties: dict[str, Any], limit: int | None = None
     ) -> list[Entity]:
         """Searches for entities matching specific properties."""
@@ -233,7 +233,13 @@ class MockGraphRepository(GraphStore, GraphRepository):
             for entity in self._entities.values():
                 if name_query in entity.name.lower():
                     matching_entities.append(entity)
+        elif "type" in properties:
+            # Handle search by type (like "Document")
+            type_query = properties["type"]
+            for entity in self._entities.values():
+                if entity.type == type_query:
+                    matching_entities.append(entity)
         if limit:
             matching_entities = matching_entities[:limit]
-        logger.debug(f"MockGraphRepository: Found {len(matching_entities)} entities matching properties (sync)")
+        logger.debug(f"MockGraphRepository: Found {len(matching_entities)} entities matching properties")
         return matching_entities

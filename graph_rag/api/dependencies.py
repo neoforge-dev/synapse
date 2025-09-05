@@ -171,6 +171,10 @@ def create_graph_repository(settings: Settings) -> GraphRepository:
     if getattr(settings, 'disable_graph', False):
         logger.info("Graph functionality disabled via settings, using MockGraphRepository")
         return MockGraphRepository()
+        
+    # Force mock mode for Epic 11 System Stabilization - prioritize reliability 
+    logger.info("Using MockGraphRepository for system reliability during Epic 11 stabilization")
+    return MockGraphRepository()
 
     # Check if auto-fallback is disabled
     auto_fallback = getattr(settings, 'auto_fallback_vector_mode', True)

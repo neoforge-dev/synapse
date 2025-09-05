@@ -180,26 +180,13 @@ async def lifespan(app: FastAPI):
 
     # 1. Initialize Graph Repository (lazy-connect via mgclient when used)
 
-    # 2. Initialize MemgraphGraphRepository
+    # 2. Initialize Graph Repository using factory function for proper fallback
     logger.info("LIFESPAN: Initializing Graph Repository...")
     if not hasattr(app.state, "graph_repository") or app.state.graph_repository is None:
         try:
-            # Handle both real and mock MemgraphGraphRepository classes
-            try:
-                app.state.graph_repository = MemgraphGraphRepository(
-                    settings_obj=current_settings
-                )
-            except TypeError as te:
-                if "takes no arguments" in str(te):
-                    # Fallback to mock class (no arguments)
-                    logger.warning(
-                        "LIFESPAN: MemgraphGraphRepository appears to be mock class, initializing without arguments"
-                    )
-                    app.state.graph_repository = MemgraphGraphRepository()
-                else:
-                    raise
-            # Optional: Add a check method to repository if needed
-            # await app.state.graph_repository.check_connection()
+            # Use the factory function from dependencies.py for proper fallback logic
+            from graph_rag.api.dependencies import create_graph_repository
+            app.state.graph_repository = create_graph_repository(current_settings)
             logger.info(
                 f"LIFESPAN: Initialized Graph Repository: {type(app.state.graph_repository)}"
             )
