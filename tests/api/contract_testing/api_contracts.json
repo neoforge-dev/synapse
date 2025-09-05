@@ -5,7 +5,7 @@
     "status_code": 503,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 32.167911529541016
+    "performance_baseline_ms": 21.79884910583496
   },
   {
     "path": "/api/v1/documents",
@@ -13,7 +13,7 @@
     "status_code": 503,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 7.414102554321289
+    "performance_baseline_ms": 2.2020339965820312
   },
   {
     "path": "/api/v1/chunks",
@@ -21,7 +21,7 @@
     "status_code": 404,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 4.294872283935547
+    "performance_baseline_ms": 1.7249584197998047
   },
   {
     "path": "/api/v1/chunks",
@@ -29,7 +29,7 @@
     "status_code": 404,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 3.8771629333496094
+    "performance_baseline_ms": 1.3761520385742188
   },
   {
     "path": "/api/v1/ingestion/documents",
@@ -37,7 +37,7 @@
     "status_code": 503,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 4.945993423461914
+    "performance_baseline_ms": 2.103090286254883
   },
   {
     "path": "/api/v1/search",
@@ -45,7 +45,7 @@
     "status_code": 404,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 3.608226776123047
+    "performance_baseline_ms": 1.44195556640625
   },
   {
     "path": "/api/v1/query",
@@ -53,7 +53,7 @@
     "status_code": 503,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 8.32986831665039
+    "performance_baseline_ms": 4.596948623657227
   },
   {
     "path": "/api/v1/reasoning/analyze",
@@ -61,7 +61,7 @@
     "status_code": 404,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 3.9429664611816406
+    "performance_baseline_ms": 1.3890266418457031
   },
   {
     "path": "/api/v1/dashboard/metrics",
@@ -69,7 +69,7 @@
     "status_code": 404,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 5.035161972045898
+    "performance_baseline_ms": 1.374959945678711
   },
   {
     "path": "/api/v1/audience/analyze",
@@ -77,7 +77,7 @@
     "status_code": 422,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 191.04695320129395
+    "performance_baseline_ms": 171.22817039489746
   },
   {
     "path": "/api/v1/concepts/extract",
@@ -85,7 +85,7 @@
     "status_code": 422,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 156.9969654083252
+    "performance_baseline_ms": 173.22802543640137
   },
   {
     "path": "/api/v1/graph/nodes",
@@ -93,7 +93,7 @@
     "status_code": 500,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 3.615140914916992
+    "performance_baseline_ms": 6.665945053100586
   },
   {
     "path": "/api/v1/graph/relationships",
@@ -112,7 +112,7 @@
       }
     },
     "request_schema": null,
-    "performance_baseline_ms": 1.6720294952392578
+    "performance_baseline_ms": 3.1130313873291016
   },
   {
     "path": "/api/v1/monitoring/health",
@@ -143,7 +143,7 @@
       }
     },
     "request_schema": null,
-    "performance_baseline_ms": 6.165981292724609
+    "performance_baseline_ms": 8.098840713500977
   },
   {
     "path": "/api/v1/auth/token",
@@ -151,7 +151,7 @@
     "status_code": 404,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 1.6622543334960938
+    "performance_baseline_ms": 4.347085952758789
   },
   {
     "path": "/api/v1/admin/system",
@@ -159,7 +159,7 @@
     "status_code": 404,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 1.64794921875
+    "performance_baseline_ms": 3.119945526123047
   },
   {
     "path": "/api/v1/hot-takes/generate",
@@ -167,7 +167,7 @@
     "status_code": 404,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 1.516103744506836
+    "performance_baseline_ms": 3.361940383911133
   },
   {
     "path": "/api/v1/brand-safety/check",
@@ -175,7 +175,7 @@
     "status_code": 404,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 1.505136489868164
+    "performance_baseline_ms": 3.963947296142578
   },
   {
     "path": "/health",
@@ -183,7 +183,7 @@
     "status_code": 503,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 1.6942024230957031
+    "performance_baseline_ms": 3.017902374267578
   },
   {
     "path": "/ready",
@@ -198,6 +198,6 @@
       }
     },
     "request_schema": null,
-    "performance_baseline_ms": 1.5130043029785156
+    "performance_baseline_ms": 2.7551651000976562
   }
 ]
