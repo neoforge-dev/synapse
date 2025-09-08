@@ -57,7 +57,7 @@ class DataSubjectRights(str, Enum):
 class RetentionPolicy(BaseModel):
     """Data retention policy configuration."""
     
-    policy_id: str = Field(..., regex=r'^[a-zA-Z0-9_-]+$')
+    policy_id: str = Field(..., pattern=r'^[a-zA-Z0-9_-]+$')
     name: str
     description: str
     

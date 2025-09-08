@@ -25,9 +25,9 @@ logger = logging.getLogger(__name__)
 class SSOProvider(BaseModel):
     """Enterprise SSO provider configuration."""
     
-    provider_id: str = Field(..., regex=r'^[a-zA-Z0-9_-]+$')
+    provider_id: str = Field(..., pattern=r'^[a-zA-Z0-9_-]+$')
     name: str = Field(..., min_length=1, max_length=100)
-    type: str = Field(..., regex=r'^(saml|oidc|oauth2)$')
+    type: str = Field(..., pattern=r'^(saml|oidc|oauth2)$')
     
     # SAML Configuration
     saml_sso_url: Optional[HttpUrl] = None

@@ -49,7 +49,7 @@ class EncryptionConfig(BaseModel):
 class TenantConfiguration(BaseModel):
     """Per-tenant enterprise configuration."""
     
-    tenant_id: str = Field(..., regex=r'^[a-zA-Z0-9_-]+$')
+    tenant_id: str = Field(..., pattern=r'^[a-zA-Z0-9_-]+$')
     client_id: str
     
     # SSO Configuration
