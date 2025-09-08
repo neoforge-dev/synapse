@@ -33,6 +33,9 @@ from graph_rag.api.routers.enterprise_platform import create_enterprise_platform
 from graph_rag.api.routers.analytics_intelligence import create_analytics_intelligence_router_factory
 from graph_rag.api.routers.advanced_features import create_advanced_features_router
 
+# Epic 15 Phase 3: Unified Business Intelligence API Router
+from graph_rag.api.routers.unified_business_intelligence_api import create_unified_business_intelligence_api_router
+
 # Legacy routers - deprecated in Epic 15 Phase 2 (functionality moved to consolidated routers)
 # from graph_rag.api.routers import documents, ingestion, query, search
 # from graph_rag.api.routers.admin import create_admin_router
@@ -806,6 +809,10 @@ def create_app() -> FastAPI:
     
     # Epic 6: Unified Platform Integration (AI + Multi-Cloud + Business + Auth)
     api_router.include_router(unified_platform_router, tags=["Unified Platform"])
+    
+    # Epic 15 Phase 3: Unified Business Intelligence API
+    unified_bi_router = create_unified_business_intelligence_api_router()
+    api_router.include_router(unified_bi_router, tags=["Epic 15 Unified Business Intelligence"])
 
     # ===================================================================
     # LEGACY ROUTERS - DEPRECATED IN EPIC 15 PHASE 2
