@@ -17,7 +17,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 import uvicorn
 
-from epic7_sales_automation import SalesAutomationEngine, CRMContact
+from .epic7_sales_automation import SalesAutomationEngine, CRMContact
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
