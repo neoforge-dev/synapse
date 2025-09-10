@@ -784,16 +784,16 @@ def create_app() -> FastAPI:
     advanced_features_router = create_advanced_features_router()
     
     # 1. Core Business Operations (documents + ingestion + search + query + Epic 7 CRM)
-    api_router.include_router(core_business_operations_router, prefix="/api/v1", tags=["Core Business Operations"])
+    api_router.include_router(core_business_operations_router, tags=["Core Business Operations"])
     
     # 2. Enterprise Platform (auth + enterprise_auth + compliance + admin)
-    api_router.include_router(enterprise_platform_router, prefix="/api/v1", tags=["Enterprise Platform"])
+    api_router.include_router(enterprise_platform_router, tags=["Enterprise Platform"])
     
     # 3. Analytics Intelligence (dashboard + analytics + audience + concepts)
-    api_router.include_router(analytics_intelligence_router, prefix="/api/v1", tags=["Analytics Intelligence"])
+    api_router.include_router(analytics_intelligence_router, tags=["Analytics Intelligence"])
     
     # 4. Advanced Features (graph + reasoning + specialized features)
-    api_router.include_router(advanced_features_router, prefix="/api/v1", tags=["Advanced Features"])
+    api_router.include_router(advanced_features_router, tags=["Advanced Features"])
 
     # Note: Authentication, enterprise auth, and compliance are now consolidated 
     # into the Enterprise Platform router above. Legacy endpoints removed to 
