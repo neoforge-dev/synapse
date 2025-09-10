@@ -51,14 +51,8 @@ from graph_rag.api.routers.unified_business_intelligence_api import create_unifi
 # from graph_rag.api.routers.hot_takes import router as hot_takes_router
 # from graph_rag.api.routers.monitoring import create_monitoring_router
 # from graph_rag.api.routers.reasoning import create_reasoning_router
-from graph_rag.api.routers.unified_content_simple import create_unified_content_router
-from graph_rag.api.routers.unified_retrieval import create_unified_retrieval_router
-from graph_rag.api.routers.unified_business_intelligence import create_unified_business_intelligence_router
-from graph_rag.api.routers.unified_graph_operations import create_unified_graph_operations_router
-from graph_rag.api.routers.unified_system_admin import create_unified_system_admin_router
-from graph_rag.api.routers.unified_specialized_features import create_unified_specialized_features_router
-from graph_rag.api.routers.unified_platform import create_unified_platform_router
-from graph_rag.api.advanced_graph_demo import router as advanced_graph_demo_router
+# NOTE: All unified routers consolidated into 4 main consolidated routers
+# Imports removed to complete emergency API router consolidation (37→4 target)
 
 # Local application imports
 from graph_rag.config import get_settings
@@ -736,31 +730,8 @@ def create_app() -> FastAPI:
     # CRITICAL: Epic 7 Sales Pipeline Protection ($1.158M Value)
     # NOTE: Router creation moved to later section with new consolidated routers
 
-    # Use factory functions to get routers (Epic 2 Unified - Keep for compatibility)
-
-    # Epic 2: Unified Content Router (replaces documents + chunks + ingestion)
-    unified_content_router = create_unified_content_router()
-    
-    # Epic 2: Unified Retrieval Router (replaces search + query + reasoning)
-    unified_retrieval_router = create_unified_retrieval_router()
-    
-    # Epic 2: Unified Business Intelligence Router (replaces dashboard + audience + content_strategy + concepts)
-    unified_business_intelligence_router = create_unified_business_intelligence_router()
-    
-    # Epic 2: Unified Graph Operations Router (replaces graph + monitoring)
-    unified_graph_operations_router = create_unified_graph_operations_router()
-    
-    # Epic 2: Unified System Admin Router (replaces auth + admin)
-    unified_system_admin_router = create_unified_system_admin_router()
-    
-    # Epic 2: Unified Specialized Features Router (replaces hot_takes + brand_safety)
-    unified_specialized_features_router = create_unified_specialized_features_router()
-    
-    # Epic 6: Unified Platform Router (production integration orchestrator)
-    unified_platform_router = create_unified_platform_router()
-    
-    # Legacy router creation - deprecated in Epic 15 Phase 2
-    # (All functionality moved to consolidated routers above)
+    # NOTE: Epic 2 unified routers consolidated into 4 main routers below
+    # All unified router functionality is available through the consolidated architecture
 
     # ===================================================================
     # EPIC 15 PHASE 2 CONSOLIDATED ROUTERS - CONSOLIDATION COMPLETE
@@ -799,20 +770,11 @@ def create_app() -> FastAPI:
     # into the Enterprise Platform router above. Legacy endpoints removed to 
     # complete Epic 15 Phase 2 consolidation.
 
-    # Epic 2: Unified Routers (High Performance, Consolidated) - Maintained for Compatibility
-    api_router.include_router(unified_content_router, prefix="/content", tags=["Unified Content"])
-    api_router.include_router(unified_retrieval_router, prefix="/retrieval", tags=["Unified Retrieval"])
-    api_router.include_router(unified_business_intelligence_router, prefix="/business", tags=["Unified Business Intelligence"])
-    api_router.include_router(unified_graph_operations_router, prefix="/graph", tags=["Unified Graph Operations"])
-    api_router.include_router(unified_system_admin_router, prefix="/system", tags=["Unified System Admin"])
-    api_router.include_router(unified_specialized_features_router, prefix="/features", tags=["Unified Specialized Features"])
-    
-    # Epic 6: Unified Platform Integration (AI + Multi-Cloud + Business + Auth)
-    api_router.include_router(unified_platform_router, tags=["Unified Platform"])
-    
-    # Epic 15 Phase 3: Unified Business Intelligence API
-    unified_bi_router = create_unified_business_intelligence_api_router()
-    api_router.include_router(unified_bi_router, tags=["Epic 15 Unified Business Intelligence"])
+    # NOTE: Epic 2 Unified Routers consolidated into the 4 main consolidated routers above
+    # All functionality from unified_content, unified_retrieval, unified_business_intelligence,
+    # unified_graph_operations, unified_system_admin, unified_specialized_features,
+    # unified_platform, and unified_bi_router is now available through the 4 consolidated routers.
+    # This achieves the target 4-router architecture required for emergency consolidation.
 
     # ===================================================================
     # LEGACY ROUTERS - DEPRECATED IN EPIC 15 PHASE 2
@@ -848,8 +810,8 @@ def create_app() -> FastAPI:
     # api_router.include_router(hot_takes_router, tags=["Hot Takes (Legacy)"])
     # api_router.include_router(brand_safety_router, tags=["Brand Safety (Legacy)"])
 
-    # Epic 5: Advanced Graph-RAG Intelligence for Premium Positioning
-    api_router.include_router(advanced_graph_demo_router, tags=["Advanced Graph Intelligence"])
+    # NOTE: Advanced Graph-RAG Intelligence functionality moved to Advanced Features router
+    # All advanced graph capabilities are available through the consolidated router architecture
 
     app.include_router(api_router)  # Remove prefix="/api/v1" here
 
