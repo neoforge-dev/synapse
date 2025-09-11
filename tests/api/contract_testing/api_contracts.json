@@ -2,26 +2,62 @@
   {
     "path": "/api/v1/documents",
     "method": "GET",
-    "status_code": 404,
+    "status_code": 503,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 31.494140625
+    "performance_baseline_ms": 29.652833938598633
   },
   {
     "path": "/api/v1/documents",
     "method": "POST",
-    "status_code": 404,
+    "status_code": 503,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 2.498626708984375
+    "performance_baseline_ms": 13.024091720581055
   },
   {
     "path": "/api/v1/chunks",
     "method": "GET",
-    "status_code": 404,
-    "response_schema": {},
+    "status_code": 200,
+    "response_schema": {
+      "type": "object",
+      "properties": {
+        "chunks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "chunk_id": {
+                "type": "string"
+              },
+              "document_id": {
+                "type": "string"
+              },
+              "content_preview": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer"
+              },
+              "created_at": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "total": {
+          "type": "integer"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "skip": {
+          "type": "integer"
+        }
+      }
+    },
     "request_schema": null,
-    "performance_baseline_ms": 2.3849010467529297
+    "performance_baseline_ms": 375.9419918060303
   },
   {
     "path": "/api/v1/chunks",
@@ -29,23 +65,23 @@
     "status_code": 404,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 2.3097991943359375
+    "performance_baseline_ms": 4.63104248046875
   },
   {
     "path": "/api/v1/ingestion/documents",
     "method": "POST",
-    "status_code": 404,
+    "status_code": 503,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 2.2950172424316406
+    "performance_baseline_ms": 3.709077835083008
   },
   {
     "path": "/api/v1/search",
     "method": "POST",
-    "status_code": 404,
+    "status_code": 503,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 2.2699832916259766
+    "performance_baseline_ms": 3.9207935333251953
   },
   {
     "path": "/api/v1/query",
@@ -53,15 +89,15 @@
     "status_code": 404,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 2.2678375244140625
+    "performance_baseline_ms": 2.9768943786621094
   },
   {
     "path": "/api/v1/reasoning/analyze",
     "method": "POST",
-    "status_code": 404,
+    "status_code": 503,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 2.1729469299316406
+    "performance_baseline_ms": 5.9070587158203125
   },
   {
     "path": "/api/v1/dashboard/metrics",
@@ -69,50 +105,39 @@
     "status_code": 404,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 2.267122268676758
+    "performance_baseline_ms": 2.201080322265625
   },
   {
     "path": "/api/v1/audience/analyze",
     "method": "POST",
-    "status_code": 404,
+    "status_code": 422,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 2.110004425048828
+    "performance_baseline_ms": 3.4749507904052734
   },
   {
     "path": "/api/v1/concepts/extract",
     "method": "POST",
-    "status_code": 404,
+    "status_code": 422,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 2.174854278564453
+    "performance_baseline_ms": 2.756834030151367
   },
   {
     "path": "/api/v1/graph/nodes",
     "method": "GET",
-    "status_code": 500,
+    "status_code": 404,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 12.846231460571289
+    "performance_baseline_ms": 2.0570755004882812
   },
   {
     "path": "/api/v1/graph/relationships",
     "method": "GET",
-    "status_code": 200,
-    "response_schema": {
-      "type": "object",
-      "properties": {
-        "relationships": {
-          "type": "array",
-          "items": {}
-        },
-        "count": {
-          "type": "integer"
-        }
-      }
-    },
+    "status_code": 404,
+    "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 2.457141876220703
+    "performance_baseline_ms": 2.1250247955322266
   },
   {
     "path": "/api/v1/monitoring/health",
@@ -120,7 +145,7 @@
     "status_code": 404,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 2.3698806762695312
+    "performance_baseline_ms": 2.073049545288086
   },
   {
     "path": "/api/v1/auth/token",
@@ -128,7 +153,7 @@
     "status_code": 404,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 2.2590160369873047
+    "performance_baseline_ms": 2.0601749420166016
   },
   {
     "path": "/api/v1/admin/system",
@@ -136,7 +161,7 @@
     "status_code": 404,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 2.270221710205078
+    "performance_baseline_ms": 1.9068717956542969
   },
   {
     "path": "/api/v1/hot-takes/generate",
@@ -144,15 +169,15 @@
     "status_code": 404,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 2.1681785583496094
+    "performance_baseline_ms": 2.196073532104492
   },
   {
     "path": "/api/v1/brand-safety/check",
     "method": "POST",
-    "status_code": 404,
+    "status_code": 422,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 2.362966537475586
+    "performance_baseline_ms": 174.89194869995117
   },
   {
     "path": "/health",
@@ -160,7 +185,7 @@
     "status_code": 503,
     "response_schema": {},
     "request_schema": null,
-    "performance_baseline_ms": 2.6187896728515625
+    "performance_baseline_ms": 2.4251937866210938
   },
   {
     "path": "/ready",
@@ -175,6 +200,6 @@
       }
     },
     "request_schema": null,
-    "performance_baseline_ms": 2.2199153900146484
+    "performance_baseline_ms": 3.155946731567383
   }
 ]
