@@ -69,8 +69,8 @@ def test_api_propagates_relationship_flags():
     mock_engine.query = mock_query
 
     # Simulate router processing
-    from graph_rag.api.routers.query import create_query_router
-    router = create_query_router()
+    from graph_rag.api.routers.core_business_operations import create_core_business_operations_router
+    router = create_core_business_operations_router()
 
     # Find and call the ask endpoint
     for route in router.routes:
