@@ -1,4 +1,3 @@
 from . import dependencies, main, schemas
-from .routers import chunks, documents
 
-__all__ = ["chunks", "dependencies", "documents", "main", "schemas"]
+__all__ = ["dependencies", "main", "schemas"]
