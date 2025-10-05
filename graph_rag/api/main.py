@@ -451,7 +451,66 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("LIFESPAN: Ingestion Service already initialized.")
 
-    # 9. Initialize Unified Platform Orchestrator (Epic 6 Week 4)
+    # 9. Initialize PostgreSQL Session Factories (Epic 20 Phase 1)
+    logger.info("LIFESPAN: Initializing PostgreSQL session factories...")
+    try:
+        from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+
+        # Core platform database (document management, graph metadata)
+        core_db_url = getattr(current_settings, "postgres_core_url",
+                              "postgresql+asyncpg://synapse_user:synapse_pass@localhost/synapse_core")
+        core_engine = create_async_engine(
+            core_db_url,
+            pool_size=20,
+            max_overflow=10,
+            echo=getattr(current_settings, "postgres_echo", False)
+        )
+        app.state.core_db = async_sessionmaker(core_engine, class_=AsyncSession, expire_on_commit=False)
+        logger.info(f"LIFESPAN: Initialized Core PostgreSQL database: {core_db_url.split('@')[1]}")
+
+        # Business operations database (Epic 7 + business development)
+        business_db_url = getattr(current_settings, "postgres_business_url",
+                                  "postgresql+asyncpg://synapse_user:synapse_pass@localhost/synapse_business")
+        business_engine = create_async_engine(
+            business_db_url,
+            pool_size=20,
+            max_overflow=10,
+            echo=getattr(current_settings, "postgres_echo", False)
+        )
+        app.state.business_db = async_sessionmaker(business_engine, class_=AsyncSession, expire_on_commit=False)
+        logger.info(f"LIFESPAN: Initialized Business PostgreSQL database: {business_db_url.split('@')[1]}")
+
+        # Analytics intelligence database (performance, metrics, A/B testing)
+        analytics_db_url = getattr(current_settings, "postgres_analytics_url",
+                                   "postgresql+asyncpg://synapse_user:synapse_pass@localhost/synapse_analytics")
+        analytics_engine = create_async_engine(
+            analytics_db_url,
+            pool_size=20,
+            max_overflow=10,
+            echo=getattr(current_settings, "postgres_echo", False)
+        )
+        app.state.analytics_db = async_sessionmaker(analytics_engine, class_=AsyncSession, expire_on_commit=False)
+        logger.info(f"LIFESPAN: Initialized Analytics PostgreSQL database: {analytics_db_url.split('@')[1]}")
+
+        # Store engines for shutdown cleanup
+        app.state.core_engine = core_engine
+        app.state.business_engine = business_engine
+        app.state.analytics_engine = analytics_engine
+
+        logger.info("LIFESPAN: PostgreSQL session factories initialized successfully")
+
+    except Exception as e:
+        logger.warning(
+            f"LIFESPAN: Failed to initialize PostgreSQL session factories: {e}. Continuing with SQLite fallback."
+        )
+        app.state.core_db = None
+        app.state.business_db = None
+        app.state.analytics_db = None
+        app.state.core_engine = None
+        app.state.business_engine = None
+        app.state.analytics_engine = None
+
+    # 10. Initialize Unified Platform Orchestrator (Epic 6 Week 4)
     logger.info("LIFESPAN: Initializing Unified Platform Orchestrator...")
     if not hasattr(app.state, "unified_platform") or app.state.unified_platform is None:
         try:
@@ -459,7 +518,7 @@ async def lifespan(app: FastAPI):
             import sys
             from pathlib import Path
             sys.path.append(str(Path(__file__).parent.parent.parent / "infrastructure" / "integration"))
-            
+
             from unified_platform_orchestrator import UnifiedPlatformOrchestrator
             app.state.unified_platform = UnifiedPlatformOrchestrator()
             logger.info("LIFESPAN: Initialized UnifiedPlatformOrchestrator with integrated systems.")
@@ -521,6 +580,18 @@ async def lifespan(app: FastAPI):
                 exc_info=True,
             )
 
+    # Shutdown PostgreSQL engines (Epic 20)
+    for engine_name in ["core_engine", "business_engine", "analytics_engine"]:
+        if hasattr(app.state, engine_name) and getattr(app.state, engine_name):
+            try:
+                await getattr(app.state, engine_name).dispose()
+                logger.info(f"LIFESPAN SHUTDOWN: {engine_name} disposed.")
+            except Exception as e:
+                logger.error(
+                    f"LIFESPAN SHUTDOWN: Error disposing {engine_name}: {e}",
+                    exc_info=True,
+                )
+
     # Clear state (optional but good practice)
     app.state.graph_rag_engine = None
     app.state.kg_builder = None
@@ -533,6 +604,12 @@ async def lifespan(app: FastAPI):
     app.state.ingestion_service = None
     app.state.maintenance_scheduler = None
     app.state.unified_platform = None
+    app.state.core_db = None
+    app.state.business_db = None
+    app.state.analytics_db = None
+    app.state.core_engine = None
+    app.state.business_engine = None
+    app.state.analytics_engine = None
     logger.info("LIFESPAN SHUTDOWN: Application shutdown complete.")
 
 
