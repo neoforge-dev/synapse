@@ -1,0 +1,19 @@
+CONTACTS
+contact_id,name,company,title,email,lead_score,estimated_value,priority_tier,qualification_status,created_at,updated_at
+crm-inquiry-20250903100000,Emily Chen,GreenTech Energy,Unknown,,100,200000,platinum,qualified,2025-09-03T10:00:00,2025-09-08T18:36:08.252837
+crm-inquiry-20250902130000,Robert Martinez,Manufacturing Tech Solutions,Unknown,,100,150000,platinum,qualified,2025-09-02T13:00:00,2025-09-08T18:36:08.252809
+crm-inquiry-20250901120000,Sarah Chen,DataFlow Analytics,Unknown,,100,120000,platinum,qualified,2025-09-01T12:00:00,2025-09-08T18:36:08.252753
+crm-inquiry-20250903140000,Monica Patel,Cybersecurity Solutions Ltd,Unknown,,100,110000,platinum,qualified,2025-09-03T14:00:00,2025-09-08T18:36:08.252857
+crm-inquiry-20250904120000,Anna Kowalski,Travel Tech Solutions,Unknown,,98,90000,platinum,qualified,2025-09-04T12:00:00,2025-09-08T18:36:08.252901
+crm-inquiry-20250901140000,Michael Rodriguez,FinTech Solutions Corp,Unknown,,100,85000,platinum,qualified,2025-09-01T14:00:00,2025-09-08T18:36:08.252767
+crm-inquiry-20250904100000,James Wilson,Digital Health Platform,Unknown,,97,75000,platinum,qualified,2025-09-04T10:00:00,2025-09-08T18:36:08.252892
+crm-inquiry-20250902090000,David Thompson,E-commerce Growth Co,Unknown,,100,65000,platinum,qualified,2025-09-02T09:00:00,2025-09-08T18:36:08.252789
+crm-inquiry-20250902150000,Amanda Foster,EdTech Innovations,Unknown,,75,45000,gold,qualified,2025-09-02T15:00:00,2025-09-08T18:36:08.252819
+crm-inquiry-20250903080000,Thomas Anderson,Logistics Optimization Inc,Unknown,,83,40000,gold,qualified,2025-09-03T08:00:00,2025-09-08T18:36:08.252828
+crm-inquiry-20250901160000,Jennifer Kim,Healthcare Innovation Labs,Unknown,,73,35000,gold,qualified,2025-09-01T16:00:00,2025-09-08T18:36:08.252778
+crm-inquiry-20250903160000,Carlos Mendoza,Mobile Gaming Studio,Unknown,,89,35000,gold,qualified,2025-09-03T16:00:00,2025-09-08T18:36:08.252873
+crm-inquiry-20250903120000,Kevin O'Brien,SaaS Metrics Dashboard,Unknown,,80,30000,gold,qualified,2025-09-03T12:00:00,2025-09-08T18:36:08.252847
+crm-inquiry-20250826083530,John Smith,TechStartup Inc,Unknown,,97,25000,gold,qualified,2025-08-26T08:35:30.174854,2025-09-08T18:36:08.252729
+
+PIPELINE
+pipeline_id,contact_id,stage,probability,expected_close_date,deal_value,notes,created_at,updated_at

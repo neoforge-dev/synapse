@@ -10,12 +10,12 @@ Designed for seamless integration with VS Code, Claude IDE, and other MCP client
 """
 from __future__ import annotations
 
-import json
 import logging
 import os
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -322,6 +322,8 @@ def _ingest_files(paths: list[str], embeddings: bool = True, replace: bool = Tru
                         "document_id": str(path.absolute()),
                         "content": content,
                         "metadata": file_metadata,
+                        "generate_embeddings": embeddings,
+                        "replace_existing": replace,
                     }
 
                     # Make API call
@@ -623,7 +625,7 @@ def _wrap_handler(handler: Callable, schema: dict[str, Any]) -> Callable:
             return {
                 "success": True,
                 "data": result,
-                "timestamp": json.dumps(None)  # Will be replaced by actual timestamp
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
         except ValidationError as e:

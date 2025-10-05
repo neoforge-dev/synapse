@@ -575,11 +575,68 @@ async def test_client(
 
 
 @pytest.fixture(scope="function")
-def sync_test_client(app: FastAPI) -> TestClient:
-    """Provides a synchronous TestClient for basic app checks (if needed)."""
-    # Note: This client won't easily work with async dependencies unless mocked carefully.
-    # Prefer async_test_client for most API tests.
-    return TestClient(app)
+def sync_test_client(
+    app: FastAPI,
+    mock_graph_repo: AsyncMock,
+    mock_ingestion_service: AsyncMock,
+    mock_graph_rag_engine: AsyncMock,
+    mock_vector_store: AsyncMock,
+    mock_doc_processor: AsyncMock,
+    mock_kg_builder: AsyncMock,
+    mock_entity_extractor: MockEntityExtractor,
+    mock_background_tasks: AsyncMock,
+) -> TestClient:
+    """Provides a synchronous TestClient with mocked dependencies."""
+    # Store original overrides to restore later
+    original_overrides = app.dependency_overrides.copy()
+
+    # Apply mock overrides
+    app.dependency_overrides[get_graph_repository] = lambda: mock_graph_repo
+    app.dependency_overrides[get_ingestion_service] = lambda: mock_ingestion_service
+    app.dependency_overrides[get_graph_rag_engine] = lambda: mock_graph_rag_engine
+    app.dependency_overrides[get_vector_store] = lambda: mock_vector_store
+    app.dependency_overrides[get_document_processor] = lambda: mock_doc_processor
+    app.dependency_overrides[get_knowledge_graph_builder] = lambda: mock_kg_builder
+    app.dependency_overrides[get_entity_extractor] = lambda: mock_entity_extractor
+
+    # Also override state-aware getters used by routers
+    try:
+        from graph_rag.api.main import (
+            get_graph_repository as main_get_graph_repository,
+        )
+        from graph_rag.api.main import (
+            get_ingestion_service as main_get_ingestion_service,
+        )
+        from graph_rag.api.main import (
+            get_vector_store as main_get_vector_store,
+        )
+
+        app.dependency_overrides[main_get_graph_repository] = lambda: mock_graph_repo
+        app.dependency_overrides[main_get_vector_store] = lambda: mock_vector_store
+        app.dependency_overrides[main_get_ingestion_service] = (
+            lambda: mock_ingestion_service
+        )
+    except Exception:
+        pass
+
+    # Also populate app.state so state-aware getters succeed
+    try:
+        app.state.graph_repository = mock_graph_repo
+        app.state.vector_store = mock_vector_store
+        app.state.ingestion_service = mock_ingestion_service
+    except Exception:
+        pass
+
+    # Override BackgroundTasks dependency
+    app.dependency_overrides[BackgroundTasks] = lambda: mock_background_tasks
+
+    # Create the test client
+    client = TestClient(app)
+
+    # Restore original overrides after creating client
+    app.dependency_overrides = original_overrides
+
+    return client
 
 
 # --- Environment Setup & Integration Fixtures ---

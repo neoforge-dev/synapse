@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epic 7 Sales Automation Dashboard</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; margin-bottom: 30px; }
+        .header h1 { margin: 0; font-size: 2.5em; }
+        .header p { margin: 10px 0 0; opacity: 0.9; }
+        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .metric-card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .metric-value { font-size: 2.5em; font-weight: bold; color: #333; margin-bottom: 5px; }
+        .metric-label { color: #666; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; }
+        .metric-change { font-size: 0.85em; margin-top: 10px; }
+        .positive { color: #10b981; }
+        .neutral { color: #6b7280; }
+        .section { background: white; border-radius: 10px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .section h2 { margin: 0 0 20px; color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-weight: 600; }
+        .priority-platinum { background: #fdf2f8; color: #be185d; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; }
+        .priority-gold { background: #fef3c7; color: #d97706; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; }
+        .priority-silver { background: #f1f5f9; color: #475569; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; }
+        .nav { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .nav a { margin-right: 20px; text-decoration: none; color: #667eea; font-weight: 500; }
+        .nav a:hover { color: #764ba2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Epic 7 Sales Automation</h1>
+            <p>Systematic $2M+ ARR Sales Engine - Converting Leads to Revenue</p>
+        </div>
+        
+        <div class="nav">
+            <a href="/">Dashboard</a>
+            <a href="/contacts">CRM Contacts</a>
+            <a href="/proposals">Proposals</a>
+            <a href="/analytics">Analytics</a>
+        </div>
+        
+        <div class="metrics">
+            <div class="metric-card">
+                <div class="metric-value">{{ summary.total_contacts }}</div>
+                <div class="metric-label">Total Contacts</div>
+                <div class="metric-change neutral">{{ summary.qualified_leads }} qualified leads</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">${{ "{:,}".format(summary.total_pipeline_value) }}</div>
+                <div class="metric-label">Pipeline Value</div>
+                <div class="metric-change positive">{{ summary.pipeline_health_score }}% health score</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{{ summary.avg_close_probability }}%</div>
+                <div class="metric-label">Avg Close Rate</div>
+                <div class="metric-change neutral">{{ summary.sent_proposals }} sent proposals</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">${{ "{:,}".format(summary.projected_annual_revenue) }}</div>
+                <div class="metric-label">Projected ARR</div>
+                <div class="metric-change positive">{% if summary.projected_annual_revenue >= 2000000 %}🎉 Target Met!{% else %}Need ${{ "{:,}".format(2000000 - summary.projected_annual_revenue) }} more{% endif %}</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>High-Priority Contacts</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Company</th>
+                        <th>Lead Score</th>
+                        <th>Priority</th>
+                        <th>Value</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contact in recent_contacts %}
+                    <tr>
+                        <td><a href="/contacts/{{ contact[0] }}">{{ contact[1] }}</a></td>
+                        <td>{{ contact[2] }}</td>
+                        <td>{{ contact[3] }}</td>
+                        <td><span class="priority-{{ contact[4] }}">{{ contact[4]|title }}</span></td>
+                        <td>${{ "{:,}".format(contact[6]) }}</td>
+                        <td><a href="/contacts/{{ contact[0] }}">View Details</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="section">
+            <h2>Recent Proposals</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Contact</th>
+                        <th>Company</th>
+                        <th>Value</th>
+                        <th>Close Probability</th>
+                        <th>Status</th>
+                        <th>Generated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for proposal in recent_proposals %}
+                    <tr>
+                        <td><a href="/proposals/{{ proposal[0] }}">{{ proposal[1] }}</a></td>
+                        <td>{{ proposal[2] }}</td>
+                        <td>${{ "{:,}".format(proposal[3]) }}</td>
+                        <td>{{ "{:.1%}".format(proposal[4]) }}</td>
+                        <td>{{ proposal[5]|title }}</td>
+                        <td>{{ proposal[6][:10] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

@@ -46,9 +46,21 @@ from graph_rag.api.dependencies import (
     get_ingestion_service,
     get_vector_store,
 )
-from graph_rag.api.metrics import observe_query_latency
-from graph_rag.api.models import IngestRequest, IngestResponse
+from graph_rag.api.metrics import (
+    inc_llm_rel_inferred,
+    inc_llm_rel_persisted,
+    observe_query_latency,
+)
+from graph_rag.api.models import (
+    AskRequest,
+    IngestRequest,
+    IngestResponse,
+    QueryResponse,
+    QueryResultChunk,
+    QueryResultGraphContext,
+)
 from graph_rag.core.graph_rag_engine import QueryResult
+from graph_rag.core.graph_rag_engine import QueryResult as DomainQueryResult
 from graph_rag.core.interfaces import GraphRAGEngine, GraphRepository, SearchResultData, VectorStore
 from graph_rag.domain.models import Entity
 from graph_rag.services.ingestion import IngestionService
@@ -56,6 +68,185 @@ from graph_rag.services.ingestion import IngestionService
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Helper functions for ask endpoint
+def _to_api_chunks(query_result: DomainQueryResult) -> list[QueryResultChunk]:
+    """Convert domain QueryResult chunks to API QueryResultChunk models.
+
+    Args:
+        query_result: Domain query result containing relevant chunks
+
+    Returns:
+        List of API-compatible QueryResultChunk models
+    """
+    api_chunks: list[QueryResultChunk] = []
+    for chunk in query_result.relevant_chunks:
+        # Handle both chunk model types: domain.models.Chunk (has properties) and models.Chunk (has metadata)
+        chunk_metadata = {}
+        chunk_score = None
+
+        # Try to get metadata/properties from chunk
+        if hasattr(chunk, 'properties') and chunk.properties:
+            chunk_metadata = chunk.properties
+            chunk_score = chunk.properties.get("score")
+        elif hasattr(chunk, 'metadata') and chunk.metadata:
+            chunk_metadata = chunk.metadata
+            chunk_score = chunk.metadata.get("score")
+
+        # Get text content - handle both 'text' and 'content' attributes
+        chunk_text = getattr(chunk, 'text', None) or getattr(chunk, 'content', '')
+
+        api_chunks.append(
+            QueryResultChunk(
+                id=chunk.id,
+                text=chunk_text,
+                document_id=chunk.document_id,
+                metadata=chunk_metadata,
+                score=chunk_score,
+            )
+        )
+    return api_chunks
+
+
+def _to_api_graph_context(query_result: DomainQueryResult):
+    """Convert domain graph context to API QueryResultGraphContext model.
+
+    Args:
+        query_result: Domain query result containing graph context
+
+    Returns:
+        API-compatible QueryResultGraphContext model or None if no graph context
+    """
+    if not query_result.graph_context:
+        return None
+    try:
+        domain_entities, domain_relationships = query_result.graph_context
+        return QueryResultGraphContext(
+            entities=[e.model_dump() for e in domain_entities]
+            if domain_entities
+            else [],
+            relationships=[r.model_dump() for r in domain_relationships]
+            if domain_relationships
+            else [],
+        )
+    except (TypeError, ValueError):
+        return None
+
+
+def _get_error_guidance(error: Exception) -> str:
+    """Provide user-friendly error guidance based on exception type."""
+    error_str = str(error).lower()
+    error_type = type(error).__name__
+
+    # Check for common error patterns
+    if "chunk" in error_str and ("properties" in error_str or "metadata" in error_str):
+        return "There's a data model mismatch. The system is trying to access chunk properties that don't exist."
+
+    elif "connection" in error_str or "timeout" in error_str:
+        return "There's a connectivity issue with the underlying services (database or LLM)."
+
+    elif "memory" in error_str or "out of memory" in error_str:
+        return "The system is running out of memory. Try reducing query complexity or chunk size."
+
+    elif "llm" in error_str or "language model" in error_str:
+        return "There's an issue with the language model service. Check LLM configuration and connectivity."
+
+    elif error_type == "AttributeError":
+        return "A required attribute or method is missing. This may indicate a configuration or version mismatch."
+
+    elif error_type == "ValueError":
+        return "Invalid input value provided. Check the request parameters and data format."
+
+    elif error_type == "TypeError":
+        return "Data type mismatch detected. This may indicate an internal data processing issue."
+
+    elif error_type == "ImportError" or error_type == "ModuleNotFoundError":
+        return "A required module or dependency is missing or not properly installed."
+
+    else:
+        return "An unexpected error occurred. Check the system logs for more details."
+
+
+def _get_recovery_suggestions(error: Exception) -> list[str]:
+    """Provide specific recovery suggestions based on the error."""
+    error_str = str(error).lower()
+    error_type = type(error).__name__
+    suggestions = []
+
+    # Check for common error patterns and provide suggestions
+    if "chunk" in error_str and ("properties" in error_str or "metadata" in error_str):
+        suggestions.extend([
+            "Restart the API server to ensure latest data models are loaded",
+            "Check if recent data was ingested with incompatible chunk formats",
+            "Clear the vector store and re-ingest documents if the issue persists"
+        ])
+
+    elif "connection" in error_str or "timeout" in error_str:
+        suggestions.extend([
+            "Check if Memgraph is running: 'docker ps' or 'synapse up'",
+            "Verify network connectivity to external services",
+            "Check service logs for more detailed error information",
+            "Try again in a few moments as this may be a temporary issue"
+        ])
+
+    elif "rate limit" in error_str:
+        suggestions.extend([
+            "Wait a few minutes before making additional requests",
+            "Reduce the frequency of your requests",
+            "Contact support if you need higher rate limits"
+        ])
+
+    elif "api key" in error_str or "unauthorized" in error_str:
+        suggestions.extend([
+            "Check environment variables for API keys (OPENAI_API_KEY, ANTHROPIC_API_KEY)",
+            "Verify API key permissions and quotas",
+            "Ensure you're using the correct API endpoint"
+        ])
+
+    elif "not found" in error_str:
+        suggestions.extend([
+            "Ingest some documents first using the /api/v1/ingestion/documents endpoint",
+            "Check if the requested resource ID is correct",
+            "Verify that the data was successfully stored"
+        ])
+
+    elif "vector store" in error_str or "embedding" in error_str:
+        suggestions.extend([
+            "Check if the embedding service is properly configured",
+            "Verify that the vector store path is accessible and writable",
+            "Try switching to a different vector store type (simple/faiss)"
+        ])
+
+    elif "graph" in error_str or "memgraph" in error_str:
+        suggestions.extend([
+            "Start Memgraph: 'make up' or 'docker run -p 7687:7687 memgraph/memgraph'",
+            "Check Memgraph connection settings in environment variables",
+            "Switch to vector-only mode if graph features aren't required"
+        ])
+
+    elif "llm" in error_str:
+        suggestions.extend([
+            "Check LLM service configuration and API keys",
+            "Try switching to mock LLM service for testing",
+            "Verify internet connectivity for external LLM services"
+        ])
+
+    elif error_type == "ImportError" or error_type == "ModuleNotFoundError":
+        suggestions.extend([
+            "Install missing dependencies: 'pip install -e .'",
+            "Check if optional dependencies are needed for your configuration",
+            "Verify Python environment and virtual environment setup"
+        ])
+
+    else:
+        suggestions.extend([
+            "Check system logs for more detailed error information",
+            "Try with a simpler query to isolate the issue",
+            "Restart the API server if the problem persists",
+            "Contact support with the error details if issues continue"
+        ])
+
+    return suggestions
 
 # Epic 7 CRM Models
 class CRMContactResponse(BaseModel):
@@ -168,7 +359,12 @@ def get_sales_automation_engine(request: Request):
         )
 
 async def process_document_with_service(
-    document_id: str, content: str, metadata: dict, ingestion_service: IngestionService
+    document_id: str,
+    content: str,
+    metadata: dict,
+    ingestion_service: IngestionService,
+    generate_embeddings: bool = True,
+    replace_existing: bool = True,
 ):
     """Background task to process a document using the IngestionService."""
     logger.info(f"DEBUG: process_document_with_service called for doc {document_id}")
@@ -182,7 +378,8 @@ async def process_document_with_service(
             document_id=document_id,
             content=content,
             metadata=metadata,
-            generate_embeddings=True,
+            generate_embeddings=generate_embeddings,
+            replace_existing=replace_existing,
         )
         logger.info(f"DEBUG: Document {document_id} processed successfully.")
     except Exception as e:
@@ -465,6 +662,8 @@ def create_core_business_operations_router() -> APIRouter:
             content=payload.content,
             metadata=payload.metadata or {},
             ingestion_service=ingestion_service,
+            generate_embeddings=payload.generate_embeddings,
+            replace_existing=payload.replace_existing,
         )
 
         return IngestResponse(
@@ -1303,6 +1502,93 @@ def create_core_business_operations_router() -> APIRouter:
             logger.error(f"Failed to get conversion funnel: {e}")
             raise HTTPException(status_code=500, detail="Failed to retrieve conversion funnel analytics")
 
+    @router.post(
+        "/ask",
+        response_model=QueryResponse,
+        summary="Ask a question and get a synthesized answer",
+        description="Retrieves context (optionally with graph) and synthesizes an answer using the configured LLM.",
+        tags=["Query & Ask"]
+    )
+    async def ask(
+        ask_request: AskRequest,
+        engine: Annotated[GraphRAGEngine, Depends(get_graph_rag_engine)],
+        request: Request = None,
+    ):
+        logger.info(
+            f"Received ask: {ask_request.text[:100]}... (k={ask_request.k}, graph={ask_request.include_graph})"
+        )
+        # Increment ask counter if app metrics are configured
+        # no-op placeholder removed (was creating an unused variable)
+        try:
+            config = {
+                "k": ask_request.k,
+                "include_graph": ask_request.include_graph,
+                "search_type": ask_request.search_type,
+                "blend_vector_weight": ask_request.blend_vector_weight,
+                "blend_keyword_weight": ask_request.blend_keyword_weight,
+                "rerank": ask_request.rerank,
+                "mmr_lambda": ask_request.mmr_lambda,
+                "no_answer_min_score": ask_request.no_answer_min_score,
+                "style": ask_request.style,
+                "conversation_id": ask_request.conversation_id,
+                # Relationship extraction controls
+                "extract_relationships": True,
+                "extract_relationships_persist": ask_request.extract_relationships_persist,
+                "extract_relationships_dry_run": ask_request.extract_relationships_dry_run,
+            }
+            result: DomainQueryResult = await engine.query(
+                ask_request.text, config=config
+            )
+            # Increment LLM relationship counters if present in config (best effort)
+            try:
+                inferred = int(config.get("llm_relations_inferred_total", 0))
+                persisted = int(config.get("llm_relations_persisted_total", 0))
+                inc_llm_rel_inferred(inferred)
+                inc_llm_rel_persisted(persisted)
+            except Exception:
+                pass
+
+            # Include citations in metadata
+            try:
+                citations = [
+                    {"chunk_id": c.id, "document_id": getattr(c, 'document_id', None)}
+                    for c in result.relevant_chunks
+                    if hasattr(c, 'id')
+                ]
+            except Exception:
+                citations = []
+            meta_with_citations = dict(result.metadata or {})
+            if citations:
+                meta_with_citations.setdefault("citations", citations)
+
+            return QueryResponse(
+                answer=result.answer,
+                relevant_chunks=_to_api_chunks(result),
+                graph_context=_to_api_graph_context(result),
+                metadata=meta_with_citations,
+                answer_with_citations=getattr(result, "answer_with_citations", None),
+                citations=(getattr(result, "citations", None) or []),
+                bibliography=(getattr(result, "bibliography", None) or {}),
+            )
+        except Exception as e:
+            logger.error(
+                f"Error processing ask '{ask_request.text}': {e}", exc_info=True
+            )
+
+            # Provide specific error guidance based on error type
+            error_guidance = _get_error_guidance(e)
+            error_detail = {
+                "error": str(e),
+                "type": type(e).__name__,
+                "guidance": error_guidance,
+                "suggestions": _get_recovery_suggestions(e)
+            }
+
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_detail,
+            )
+
     return router
 
 
@@ -1310,3 +1596,183 @@ def create_core_business_operations_router() -> APIRouter:
 def create_core_business_operations_router_factory() -> APIRouter:
     """Create and configure the Core Business Operations consolidated router"""
     return create_core_business_operations_router()
+
+
+# Helper functions for ask endpoint
+def _to_api_chunks(query_result: DomainQueryResult) -> list[QueryResultChunk]:
+    """Convert domain QueryResult chunks to API QueryResultChunk models.
+
+    Args:
+        query_result: Domain query result containing relevant chunks
+
+    Returns:
+        List of API-compatible QueryResultChunk models
+    """
+    api_chunks: list[QueryResultChunk] = []
+    for chunk in query_result.relevant_chunks:
+        # Handle both chunk model types: domain.models.Chunk (has properties) and models.Chunk (has metadata)
+        chunk_metadata = {}
+        chunk_score = None
+
+        # Try to get metadata/properties from chunk
+        if hasattr(chunk, 'properties') and chunk.properties:
+            chunk_metadata = chunk.properties
+            chunk_score = chunk.properties.get("score")
+        elif hasattr(chunk, 'metadata') and chunk.metadata:
+            chunk_metadata = chunk.metadata
+            chunk_score = chunk.metadata.get("score")
+
+        # Get text content - handle both 'text' and 'content' attributes
+        chunk_text = getattr(chunk, 'text', None) or getattr(chunk, 'content', '')
+
+        api_chunks.append(
+            QueryResultChunk(
+                id=chunk.id,
+                text=chunk_text,
+                document_id=chunk.document_id,
+                metadata=chunk_metadata,
+                score=chunk_score,
+            )
+        )
+    return api_chunks
+
+
+def _to_api_graph_context(query_result: DomainQueryResult):
+    """Convert domain graph context to API QueryResultGraphContext model.
+
+    Args:
+        query_result: Domain query result containing graph context
+
+    Returns:
+        API-compatible QueryResultGraphContext model or None if no graph context
+    """
+    if not query_result.graph_context:
+        return None
+    try:
+        domain_entities, domain_relationships = query_result.graph_context
+        return QueryResultGraphContext(
+            entities=[e.model_dump() for e in domain_entities]
+            if domain_entities
+            else [],
+            relationships=[r.model_dump() for r in domain_relationships]
+            if domain_relationships
+            else [],
+        )
+    except (TypeError, ValueError):
+        return None
+
+
+def _get_error_guidance(error: Exception) -> str:
+    """Provide user-friendly error guidance based on exception type."""
+    error_str = str(error).lower()
+    error_type = type(error).__name__
+
+    # Check for common error patterns
+    if "chunk" in error_str and ("properties" in error_str or "metadata" in error_str):
+        return "There's a data model mismatch. The system is trying to access chunk properties that don't exist."
+
+    elif "connection" in error_str or "timeout" in error_str:
+        return "There's a connectivity issue with the underlying services (database or LLM)."
+
+    elif "memory" in error_str or "out of memory" in error_str:
+        return "The system is running out of memory. Try reducing query complexity or chunk size."
+
+    elif "llm" in error_str or "language model" in error_str:
+        return "There's an issue with the language model service. Check LLM configuration and connectivity."
+
+    elif error_type == "AttributeError":
+        return "A required attribute or method is missing. This may indicate a configuration or version mismatch."
+
+    elif error_type == "ValueError":
+        return "Invalid input value provided. Check the request parameters and data format."
+
+    elif error_type == "TypeError":
+        return "Data type mismatch detected. This may indicate an internal data processing issue."
+
+    elif error_type == "ImportError" or error_type == "ModuleNotFoundError":
+        return "A required module or dependency is missing or not properly installed."
+
+    else:
+        return "An unexpected error occurred. Check the system logs for more details."
+
+
+def _get_recovery_suggestions(error: Exception) -> list[str]:
+    """Provide specific recovery suggestions based on the error."""
+    error_str = str(error).lower()
+    error_type = type(error).__name__
+    suggestions = []
+
+    # Check for common error patterns and provide suggestions
+    if "chunk" in error_str and ("properties" in error_str or "metadata" in error_str):
+        suggestions.extend([
+            "Restart the API server to ensure latest data models are loaded",
+            "Check if recent data was ingested with incompatible chunk formats",
+            "Clear the vector store and re-ingest documents if the issue persists"
+        ])
+
+    elif "connection" in error_str or "timeout" in error_str:
+        suggestions.extend([
+            "Check if Memgraph is running: 'docker ps' or 'synapse up'",
+            "Verify network connectivity to external services",
+            "Check service logs for more detailed error information",
+            "Try again in a few moments as this may be a temporary issue"
+        ])
+
+    elif "rate limit" in error_str:
+        suggestions.extend([
+            "Wait a few minutes before making additional requests",
+            "Reduce the frequency of your requests",
+            "Contact support if you need higher rate limits"
+        ])
+
+    elif "api key" in error_str or "unauthorized" in error_str:
+        suggestions.extend([
+            "Check environment variables for API keys (OPENAI_API_KEY, ANTHROPIC_API_KEY)",
+            "Verify API key permissions and quotas",
+            "Ensure you're using the correct API endpoint"
+        ])
+
+    elif "not found" in error_str:
+        suggestions.extend([
+            "Ingest some documents first using the /api/v1/ingestion/documents endpoint",
+            "Check if the requested resource ID is correct",
+            "Verify that the data was successfully stored"
+        ])
+
+    elif "vector store" in error_str or "embedding" in error_str:
+        suggestions.extend([
+            "Check if the embedding service is properly configured",
+            "Verify that the vector store path is accessible and writable",
+            "Try switching to a different vector store type (simple/faiss)"
+        ])
+
+    elif "graph" in error_str or "memgraph" in error_str:
+        suggestions.extend([
+            "Start Memgraph: 'make up' or 'docker run -p 7687:7687 memgraph/memgraph'",
+            "Check Memgraph connection settings in environment variables",
+            "Switch to vector-only mode if graph features aren't required"
+        ])
+
+    elif "llm" in error_str:
+        suggestions.extend([
+            "Check LLM service configuration and API keys",
+            "Try switching to mock LLM service for testing",
+            "Verify internet connectivity for external LLM services"
+        ])
+
+    elif error_type == "ImportError" or error_type == "ModuleNotFoundError":
+        suggestions.extend([
+            "Install missing dependencies: 'pip install -e .'",
+            "Check if optional dependencies are needed for your configuration",
+            "Verify Python environment and virtual environment setup"
+        ])
+
+    else:
+        suggestions.extend([
+            "Check system logs for more detailed error information",
+            "Try with a simpler query to isolate the issue",
+            "Restart the API server if the problem persists",
+            "Contact support with the error details if issues continue"
+        ])
+
+    return suggestions

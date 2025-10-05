@@ -1,5 +1,8 @@
 """Tests for MCP server functionality."""
 
+import sys
+from datetime import datetime
+from types import ModuleType
 from unittest.mock import Mock, patch
 
 import httpx
@@ -14,9 +17,11 @@ from graph_rag.mcp.server import (
     _get_document,
     _ingest_files,
     _list_documents,
+    _delete_document,
     _query_answer,
     _search,
     _system_status,
+    _wrap_handler,
     _validate_input,
     health_check,
     make_tools,
@@ -142,7 +147,10 @@ class TestHealthCheck:
         mock_response.raise_for_status.return_value = None
         mock_client.get.return_value = mock_response
 
-        with patch('mcp.server.Server'):  # Mock MCP package availability
+        fake_mcp = ModuleType("mcp")
+        fake_mcp.__version__ = "0.1"
+
+        with patch.dict(sys.modules, {'mcp': fake_mcp}):
             status = health_check()
 
         assert status["healthy"] is True
@@ -260,6 +268,69 @@ class TestToolHandlers:
         assert result["errors"][0]["error"] == "file_not_found"
 
     @patch('graph_rag.mcp.server._client')
+    def test_ingest_files_success(self, mock_client_factory, tmp_path):
+        """Test ingest_files successfully posts document content."""
+        test_file = tmp_path / "document.txt"
+        test_file.write_text("Sample content", encoding="utf-8")
+
+        mock_client = Mock()
+        mock_client.__enter__ = Mock(return_value=mock_client)
+        mock_client.__exit__ = Mock(return_value=None)
+        mock_client_factory.return_value = mock_client
+
+        mock_response = Mock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"document_id": str(test_file), "status": "ok"}
+        mock_client.post.return_value = mock_response
+
+        result = _ingest_files([str(test_file)], metadata={"tag": "unit-test"})
+
+        assert result["success"] is True
+        assert result["ingested_count"] == 1
+        assert result["error_count"] == 0
+        assert result["results"][0]["path"] == str(test_file)
+
+        mock_client.post.assert_called_once()
+        _, kwargs = mock_client.post.call_args
+        payload = kwargs["json"]
+        assert payload["document_id"] == str(test_file.resolve())
+        assert payload["metadata"]["filename"] == "document.txt"
+        assert payload["metadata"]["tag"] == "unit-test"
+        assert payload["content"] == "Sample content"
+        assert payload["generate_embeddings"] is True
+        assert payload["replace_existing"] is True
+
+    @patch('graph_rag.mcp.server._client')
+    def test_ingest_files_custom_flags(self, mock_client_factory, tmp_path):
+        """Custom embedding/replace flags propagate to API payload."""
+        test_file = tmp_path / "document.txt"
+        test_file.write_text("Sample content", encoding="utf-8")
+
+        mock_client = Mock()
+        mock_client.__enter__ = Mock(return_value=mock_client)
+        mock_client.__exit__ = Mock(return_value=None)
+        mock_client_factory.return_value = mock_client
+
+        mock_response = Mock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"document_id": str(test_file)}
+        mock_client.post.return_value = mock_response
+
+        result = _ingest_files(
+            [str(test_file)],
+            embeddings=False,
+            replace=False,
+            metadata={"tag": "unit-test"},
+        )
+
+        assert result["success"] is True
+        mock_client.post.assert_called_once()
+        _, kwargs = mock_client.post.call_args
+        payload = kwargs["json"]
+        assert payload["generate_embeddings"] is False
+        assert payload["replace_existing"] is False
+
+    @patch('graph_rag.mcp.server._client')
     def test_list_documents_success(self, mock_client_factory):
         """Test successful list documents operation."""
         mock_client = Mock()
@@ -306,6 +377,43 @@ class TestToolHandlers:
         assert "Document not found" in str(exc_info.value)
 
     @patch('graph_rag.mcp.server._client')
+    def test_delete_document_success(self, mock_client_factory):
+        """Test successful document deletion with empty response body."""
+        mock_client = Mock()
+        mock_client.__enter__ = Mock(return_value=mock_client)
+        mock_client.__exit__ = Mock(return_value=None)
+        mock_client_factory.return_value = mock_client
+
+        mock_response = Mock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.content = b""
+        mock_client.delete.return_value = mock_response
+
+        result = _delete_document("doc-123")
+
+        assert result == {"deleted": True, "document_id": "doc-123"}
+        mock_client.delete.assert_called_once()
+
+    @patch('graph_rag.mcp.server._client')
+    def test_delete_document_not_found(self, mock_client_factory):
+        """Test delete document returns DOCUMENT_NOT_FOUND for 404."""
+        mock_client = Mock()
+        mock_client.__enter__ = Mock(return_value=mock_client)
+        mock_client.__exit__ = Mock(return_value=None)
+        mock_client_factory.return_value = mock_client
+
+        mock_response = Mock()
+        mock_response.status_code = 404
+        http_error = httpx.HTTPStatusError("Not found", request=Mock(), response=mock_response)
+        mock_client.delete.side_effect = http_error
+
+        with pytest.raises(McpError) as exc_info:
+            _delete_document("missing")
+
+        assert exc_info.value.code == "DOCUMENT_NOT_FOUND"
+        assert "Document not found" in str(exc_info.value)
+
+    @patch('graph_rag.mcp.server._client')
     def test_system_status_success(self, mock_client_factory):
         """Test successful system status operation."""
         mock_client = Mock()
@@ -341,6 +449,65 @@ class TestToolHandlers:
         assert result["health"]["status"] == "healthy"
         assert result["mcp_server"] == "connected"
         assert "api_base_url" in result
+
+
+class TestHandlerWrapper:
+    """Test wrapper logic around MCP tool handlers."""
+
+    def test_wrap_handler_success(self):
+        """Wrapper returns success payload with ISO timestamp."""
+        schema = {
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "required": ["name"],
+        }
+
+        def handler(name: str) -> dict[str, str]:
+            return {"greeting": f"Hello {name}"}
+
+        wrapped = _wrap_handler(handler, schema)
+        result = wrapped(name="Synapse")
+
+        assert result["success"] is True
+        assert result["data"] == {"greeting": "Hello Synapse"}
+        # Should be parseable ISO8601 timestamp
+        datetime.fromisoformat(result["timestamp"])
+
+    def test_wrap_handler_validation_error(self):
+        """Wrapper surfaces validation errors without calling handler."""
+        schema = {
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "required": ["name"],
+        }
+
+        handler = Mock()
+        wrapped = _wrap_handler(handler, schema)
+        result = wrapped()
+
+        assert result["success"] is False
+        assert result["error"]["type"] == "validation_error"
+        assert result["error"]["code"] == "VALIDATION_ERROR"
+        handler.assert_not_called()
+
+    def test_wrap_handler_connection_error(self):
+        """Wrapper normalizes ConnectionError exceptions."""
+        schema = {
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "required": ["name"],
+        }
+
+        def handler(name: str) -> dict[str, str]:
+            raise ConnectionError("failed", status_code=503)
+
+        wrapped = _wrap_handler(handler, schema)
+        result = wrapped(name="Synapse")
+
+        assert result["success"] is False
+        assert result["error"]["type"] == "connection_error"
+        assert result["error"]["code"] == "CONNECTION_ERROR"
+        assert result["error"]["details"]["status_code"] == 503
 
 
 class TestErrorHandling:

@@ -9,7 +9,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pytest
 from fastapi.testclient import TestClient
@@ -44,20 +44,25 @@ class ContractTestResult(BaseModel):
 
 class APIContractTester:
     """Contract testing framework for API consolidation."""
-    
-    def __init__(self):
-        self.app = create_app()
-        self.client = TestClient(self.app)
+
+    def __init__(self, test_client: Optional[TestClient] = None):
+        if test_client is not None:
+            self.client = test_client
+        else:
+            self.app = create_app()
+            self.client = TestClient(self.app)
         self.contracts: List[EndpointContract] = []
         self.results: List[ContractTestResult] = []
         
-    def load_existing_contracts(self, contracts_file: str = None) -> None:
+    def load_existing_contracts(self, contracts_file: Optional[str] = None) -> None:
         """Load existing contracts from JSON file."""
         if contracts_file is None:
-            contracts_file = Path(__file__).parent / "api_contracts.json"
-            
-        if Path(contracts_file).exists():
-            with open(contracts_file, 'r') as f:
+            contracts_file_path = Path(__file__).parent / "api_contracts.json"
+        else:
+            contracts_file_path = Path(contracts_file)
+
+        if contracts_file_path.exists():
+            with open(contracts_file_path, 'r') as f:
                 contracts_data = json.load(f)
                 self.contracts = [EndpointContract(**contract) for contract in contracts_data]
             logger.info(f"Loaded {len(self.contracts)} existing contracts")
@@ -127,10 +132,10 @@ class APIContractTester:
         """Test an endpoint to establish its contract."""
         try:
             start_time = time.time()
-            
+
             # Prepare test request based on endpoint spec
             test_data = self._generate_test_data(spec)
-            
+
             if method == "GET":
                 response = self.client.get(path, params=test_data.get("params", {}))
             elif method == "POST":
@@ -143,9 +148,9 @@ class APIContractTester:
                 response = self.client.patch(path, json=test_data.get("json", {}))
             else:
                 return None
-            
+
             response_time_ms = (time.time() - start_time) * 1000
-            
+
             # Extract response schema
             response_schema = {}
             if response.status_code < 400 and response.content:
@@ -154,7 +159,7 @@ class APIContractTester:
                     response_schema = self._extract_schema(response_data)
                 except:
                     response_schema = {"type": "text", "content_type": response.headers.get("content-type")}
-            
+
             return EndpointContract(
                 path=path,
                 method=method,
@@ -163,7 +168,7 @@ class APIContractTester:
                 request_schema=test_data.get("schema"),
                 performance_baseline_ms=response_time_ms
             )
-            
+
         except Exception as e:
             logger.error(f"Failed to test endpoint {method} {path}: {e}")
             return None
@@ -254,16 +259,18 @@ class APIContractTester:
         else:
             return {"type": "unknown"}
     
-    def save_contracts(self, contracts_file: str = None) -> None:
+    def save_contracts(self, contracts_file: Optional[str] = None) -> None:
         """Save contracts to JSON file."""
         if contracts_file is None:
-            contracts_file = Path(__file__).parent / "api_contracts.json"
-        
+            contracts_file_path = Path(__file__).parent / "api_contracts.json"
+        else:
+            contracts_file_path = Path(contracts_file)
+
         contracts_data = [contract.model_dump() for contract in self.contracts]
-        with open(contracts_file, 'w') as f:
+        with open(contracts_file_path, 'w') as f:
             json.dump(contracts_data, f, indent=2)
-        
-        logger.info(f"Saved {len(self.contracts)} contracts to {contracts_file}")
+
+        logger.info(f"Saved {len(self.contracts)} contracts to {contracts_file_path}")
     
     def test_contracts(self) -> List[ContractTestResult]:
         """Test all contracts and return results."""
@@ -280,12 +287,12 @@ class APIContractTester:
         """Test a single contract."""
         try:
             start_time = time.time()
-            
+
             # Generate test data
             test_data = {}
             if contract.request_schema:
                 test_data = self._generate_sample_data(contract.request_schema)
-            
+
             # Make request
             if contract.method == "GET":
                 response = self.client.get(contract.path)
@@ -297,19 +304,21 @@ class APIContractTester:
                 response = self.client.delete(contract.path)
             elif contract.method == "PATCH":
                 response = self.client.patch(contract.path, json=test_data)
-            
+            else:
+                raise ValueError(f"Unsupported HTTP method: {contract.method}")
+
             response_time_ms = (time.time() - start_time) * 1000
-            
+
             # Validate contract
             status_valid = response.status_code == contract.status_code
             schema_valid = True  # TODO: Implement schema validation
-            
+
             passed = status_valid and schema_valid
             error_message = None
-            
+
             if not status_valid:
                 error_message = f"Status code mismatch: expected {contract.status_code}, got {response.status_code}"
-            
+
             return ContractTestResult(
                 endpoint=contract.path,
                 method=contract.method,
@@ -319,7 +328,7 @@ class APIContractTester:
                 schema_valid=schema_valid,
                 error_message=error_message
             )
-            
+
         except Exception as e:
             return ContractTestResult(
                 endpoint=contract.path,
@@ -368,16 +377,16 @@ class APIContractTester:
 # Test fixtures and test functions
 
 @pytest.fixture
-def contract_tester():
-    """Fixture providing contract tester instance."""
-    return APIContractTester()
+def contract_tester(sync_test_client):
+    """Fixture providing contract tester instance with mocked dependencies."""
+    return APIContractTester(test_client=sync_test_client)
 
 
 def test_generate_baseline_contracts(contract_tester):
     """Test generating baseline contracts for all endpoints."""
     contract_tester.generate_contracts()
     assert len(contract_tester.contracts) > 0
-    
+
     # Save baseline contracts
     contract_tester.save_contracts()
 
@@ -385,16 +394,40 @@ def test_generate_baseline_contracts(contract_tester):
 def test_validate_existing_contracts(contract_tester):
     """Test validation of existing contracts."""
     contract_tester.load_existing_contracts()
-    
+
     if not contract_tester.contracts:
         pytest.skip("No existing contracts found")
-    
+
     results = contract_tester.test_contracts()
     report = contract_tester.generate_report()
-    
+
+    # Convert ContractTestResult objects to dicts for JSON serialization
+    serializable_report = {
+        "summary": report["summary"],
+        "failed_tests": [
+            {
+                "endpoint": test["endpoint"],
+                "method": test["method"],
+                "error": test["error"]
+            } for test in report["failed_tests"]
+        ],
+        "performance_analysis": {
+            "fastest_endpoint": {
+                "endpoint": report["performance_analysis"]["fastest_endpoint"].endpoint,
+                "method": report["performance_analysis"]["fastest_endpoint"].method,
+                "response_time_ms": report["performance_analysis"]["fastest_endpoint"].response_time_ms
+            },
+            "slowest_endpoint": {
+                "endpoint": report["performance_analysis"]["slowest_endpoint"].endpoint,
+                "method": report["performance_analysis"]["slowest_endpoint"].method,
+                "response_time_ms": report["performance_analysis"]["slowest_endpoint"].response_time_ms
+            }
+        }
+    }
+
     # Log report
-    logger.info(f"Contract test report: {json.dumps(report, indent=2)}")
-    
+    logger.info(f"Contract test report: {json.dumps(serializable_report, indent=2)}")
+
     # Assert success rate > 95%
     success_rate = report["summary"]["success_rate"]
     assert success_rate >= 95.0, f"Contract success rate {success_rate}% is below 95% threshold"
@@ -404,33 +437,33 @@ def test_performance_baseline(contract_tester):
     """Test that current API performance meets baseline requirements."""
     contract_tester.load_existing_contracts()
     results = contract_tester.test_contracts()
-    
+
     # Check average response time
     avg_time = sum(r.response_time_ms for r in results) / len(results)
     assert avg_time < 500, f"Average response time {avg_time}ms exceeds 500ms baseline"
-    
+
     # Check that no endpoint takes more than 2 seconds
     slow_endpoints = [r for r in results if r.response_time_ms > 2000]
     assert len(slow_endpoints) == 0, f"Slow endpoints found: {slow_endpoints}"
 
 
 @pytest.mark.integration
-def test_contract_compatibility_after_consolidation():
+def test_contract_compatibility_after_consolidation(test_client):
     """Test that consolidated API maintains contract compatibility."""
     # This test will be run after consolidation to ensure compatibility
-    contract_tester = APIContractTester()
+    contract_tester = APIContractTester(test_client=test_client)
     contract_tester.load_existing_contracts()
-    
+
     if not contract_tester.contracts:
         pytest.skip("No baseline contracts found")
-    
+
     results = contract_tester.test_contracts()
     report = contract_tester.generate_report()
-    
+
     # Assert 100% compatibility maintained
     success_rate = report["summary"]["success_rate"]
     assert success_rate == 100.0, f"API compatibility broken: {success_rate}% success rate"
-    
+
     # Assert performance improvement
     avg_time = report["summary"]["average_response_time_ms"]
     assert avg_time < 200, f"Performance target missed: {avg_time}ms average response time"

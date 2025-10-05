@@ -18,6 +18,14 @@ class IngestRequest(BaseModel):
         None,
         description="Optional explicit ID for the document. If not provided, one may be generated.",
     )
+    generate_embeddings: bool = Field(
+        True,
+        description="Whether to create embeddings for the document's chunks during ingestion.",
+    )
+    replace_existing: bool = Field(
+        True,
+        description="Replace previously ingested content for the same document_id if present.",
+    )
 
 
 class IngestResponse(BaseModel):

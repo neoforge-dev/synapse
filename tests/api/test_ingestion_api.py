@@ -146,6 +146,8 @@ async def test_ingest_document_with_id(test_client: AsyncClient):
         mock_add_task.assert_called_once()
         args, kwargs = mock_add_task.call_args
         assert kwargs["document_id"] == provided_id
+        assert kwargs["generate_embeddings"] is True
+        assert kwargs["replace_existing"] is True
 
 
 @pytest.mark.asyncio
@@ -179,6 +181,8 @@ async def test_background_processing_success(
         assert kwargs["metadata"] == payload["metadata"]
         assert "document_id" in kwargs
         assert "ingestion_service" in kwargs  # Check that service instance was passed
+        assert kwargs["generate_embeddings"] is True
+        assert kwargs["replace_existing"] is True
 
 
 @pytest.mark.asyncio
@@ -195,6 +199,26 @@ async def test_ingest_large_document(test_client: AsyncClient):
     assert response_data["document_id"].startswith("doc-")
 
     # No assertion on mock_process_document_task here
+
+
+@pytest.mark.asyncio
+async def test_ingest_document_custom_flags(test_client: AsyncClient):
+    """Flags for generate_embeddings and replace_existing are forwarded to task."""
+    payload = {
+        "content": "Flag controlled content.",
+        "metadata": {"source": "api-test-flags"},
+        "generate_embeddings": False,
+        "replace_existing": False,
+    }
+
+    with patch("fastapi.BackgroundTasks.add_task") as mock_add_task:
+        response = await test_client.post("/api/v1/ingestion/documents", json=payload)
+
+        assert response.status_code == status.HTTP_202_ACCEPTED
+        mock_add_task.assert_called_once()
+        _, kwargs = mock_add_task.call_args
+        assert kwargs["generate_embeddings"] is False
+        assert kwargs["replace_existing"] is False
 
 
 @pytest.mark.asyncio

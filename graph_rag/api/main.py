@@ -755,7 +755,7 @@ def create_app() -> FastAPI:
     advanced_features_router = create_advanced_features_router()
     
     # 1. Core Business Operations (documents + ingestion + search + query + Epic 7 CRM)
-    api_router.include_router(core_business_operations_router, tags=["Core Business Operations"])
+    api_router.include_router(core_business_operations_router, prefix="/query", tags=["Core Business Operations"])
     
     # 2. Enterprise Platform (auth + enterprise_auth + compliance + admin)
     api_router.include_router(enterprise_platform_router, tags=["Enterprise Platform"])

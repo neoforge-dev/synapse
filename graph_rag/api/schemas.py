@@ -35,6 +35,14 @@ class DocumentIngestRequest(BaseModel):
     content: str
     metadata: dict[str, Any] = Field(default_factory=dict)
     document_id: str | None = None  # Allow client to specify ID (optional)
+    generate_embeddings: bool = Field(
+        True,
+        description="Generate embeddings for the ingested document chunks.",
+    )
+    replace_existing: bool = Field(
+        True,
+        description="Replace existing chunks when the document_id already exists.",
+    )
 
 
 class IngestionResponse(BaseModel):
