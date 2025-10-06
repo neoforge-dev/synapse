@@ -46,7 +46,8 @@ class AnalyticsConsolidationMigrator:
 
     def __init__(self):
         # Source databases (from latest backup)
-        self.backup_dir = Path("../consolidation_backups/20250905_221023")
+        project_root = Path(__file__).parent.parent
+        self.backup_dir = project_root / "consolidation_backups" / "20250905_221023"
         self.postgres_config = {
             'host': os.getenv('POSTGRES_HOST', 'localhost'),
             'port': int(os.getenv('POSTGRES_PORT', '5432')),
@@ -601,8 +602,38 @@ class AnalyticsConsolidationMigrator:
                 'conversion_paths': 'conversion_paths',
                 'cross_platform_performance': 'cross_platform_performance',
                 'platform_interactions': 'platform_interactions'
+            },
+            'twitter_analytics.db': {
+                'twitter_posts': 'twitter_posts',
+                'twitter_threads': 'twitter_threads'
+            },
+            'optimized_performance_analytics.db': {
+                'content_patterns': 'content_patterns',
+                'performance_predictions': 'performance_predictions',
+                'content_analysis': 'content_analysis',
+                'performance_metrics_agg': 'performance_metrics_agg'
+            },
+            'unified_content_management.db': {
+                'content_pieces': 'content_pieces',
+                'platform_adaptations': 'platform_adaptations',
+                'cross_platform_metrics': 'cross_platform_metrics',
+                'content_strategies': 'content_strategies'
+            },
+            'synapse_content_intelligence.db': {
+                'content_insights': 'content_insights',
+                'audience_intelligence': 'audience_intelligence',
+                'content_recommendations': 'content_recommendations'
+            },
+            'week3_business_development.db': {
+                'week3_posts': 'week3_posts',
+                'consultation_inquiries': 'consultation_inquiries'
+            },
+            'advanced_graph_rag_analytics.db': {
+                'graph_insights': 'graph_insights',
+                'consultation_predictions': 'consultation_predictions',
+                'autonomous_optimizations': 'autonomous_optimizations',
+                'graph_patterns': 'graph_patterns'
             }
-            # Add mappings for remaining databases as needed
         }
 
         migration_results = {}
