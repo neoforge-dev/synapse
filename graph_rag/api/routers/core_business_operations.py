@@ -1074,40 +1074,39 @@ def create_core_business_operations_router() -> APIRouter:
     ):
         """List CRM contacts with filtering options"""
         try:
-            import sqlite3
-            
-            conn = sqlite3.connect(engine.db_path)
-            cursor = conn.cursor()
-            
-            # Build query with filters
-            query = "SELECT * FROM crm_contacts WHERE 1=1"
-            params = []
-            
-            if priority_tier:
-                query += " AND priority_tier = ?"
-                params.append(priority_tier)
-            
-            if qualification_status:
-                query += " AND qualification_status = ?"
-                params.append(qualification_status)
-            
-            query += " ORDER BY lead_score DESC, created_at DESC LIMIT ? OFFSET ?"
-            params.extend([limit, skip])
-            
-            cursor.execute(query, params)
-            contacts = cursor.fetchall()
-            
-            # Convert to response models
-            columns = [description[0] for description in cursor.description]
+            # Use CRM service layer via engine
+            contacts = engine.list_contacts(
+                skip=skip,
+                limit=limit,
+                priority_tier=priority_tier,
+                qualification_status=qualification_status
+            )
+
+            # Convert to API response models
             contact_list = []
-            
-            for contact_data in contacts:
-                contact_dict = dict(zip(columns, contact_data, strict=False))
-                contact_list.append(CRMContactResponse(**contact_dict))
-            
-            conn.close()
+            for contact in contacts:
+                contact_list.append(CRMContactResponse(
+                    contact_id=str(contact.contact_id),
+                    name=contact.name,
+                    company=contact.company or "",
+                    company_size=contact.company_size or "",
+                    title=contact.title or "",
+                    email=contact.email,
+                    linkedin_profile=contact.linkedin_profile or "",
+                    phone=contact.phone or "",
+                    lead_score=contact.lead_score,
+                    qualification_status=contact.qualification_status,
+                    estimated_value=int(contact.estimated_value),
+                    priority_tier=contact.priority_tier,
+                    next_action=contact.next_action or "",
+                    next_action_date=contact.next_action_date.isoformat() if contact.next_action_date else "",
+                    created_at=contact.created_at.isoformat(),
+                    updated_at=contact.updated_at.isoformat(),
+                    notes=contact.notes or ""
+                ))
+
             return contact_list
-            
+
         except Exception as e:
             logger.error(f"Failed to list contacts: {e}")
             raise HTTPException(status_code=500, detail="Failed to retrieve contacts")
@@ -1121,23 +1120,33 @@ def create_core_business_operations_router() -> APIRouter:
     ):
         """Get individual contact details"""
         try:
-            import sqlite3
-            
-            conn = sqlite3.connect(engine.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute("SELECT * FROM crm_contacts WHERE contact_id = ?", (contact_id,))
-            contact_data = cursor.fetchone()
-            
-            if not contact_data:
+            # Use CRM service layer via engine
+            contact = engine.get_contact(contact_id)
+
+            if not contact:
                 raise HTTPException(status_code=404, detail="Contact not found")
-            
-            columns = [description[0] for description in cursor.description]
-            contact_dict = dict(zip(columns, contact_data, strict=False))
-            
-            conn.close()
-            return CRMContactResponse(**contact_dict)
-            
+
+            # Convert to API response model
+            return CRMContactResponse(
+                contact_id=str(contact.contact_id),
+                name=contact.name,
+                company=contact.company or "",
+                company_size=contact.company_size or "",
+                title=contact.title or "",
+                email=contact.email,
+                linkedin_profile=contact.linkedin_profile or "",
+                phone=contact.phone or "",
+                lead_score=contact.lead_score,
+                qualification_status=contact.qualification_status,
+                estimated_value=int(contact.estimated_value),
+                priority_tier=contact.priority_tier,
+                next_action=contact.next_action or "",
+                next_action_date=contact.next_action_date.isoformat() if contact.next_action_date else "",
+                created_at=contact.created_at.isoformat(),
+                updated_at=contact.updated_at.isoformat(),
+                notes=contact.notes or ""
+            )
+
         except HTTPException:
             raise
         except Exception as e:
@@ -1154,42 +1163,62 @@ def create_core_business_operations_router() -> APIRouter:
     ):
         """Update contact information"""
         try:
-            import sqlite3
-            
-            conn = sqlite3.connect(engine.db_path)
-            cursor = conn.cursor()
-            
-            # Build update query
-            updates = []
-            values = []
-            
-            for field, value in contact_update.dict(exclude_unset=True).items():
-                if value is not None:
-                    updates.append(f"{field} = ?")
-                    values.append(value)
-            
-            if updates:
-                updates.append("updated_at = ?")
-                values.append(datetime.now().isoformat())
-                values.append(contact_id)
-                
-                query = f"UPDATE crm_contacts SET {', '.join(updates)} WHERE contact_id = ?"
-                cursor.execute(query, values)
-                conn.commit()
-            
-            # Return updated contact
-            cursor.execute("SELECT * FROM crm_contacts WHERE contact_id = ?", (contact_id,))
-            contact_data = cursor.fetchone()
-            
-            if not contact_data:
-                raise HTTPException(status_code=404, detail="Contact not found")
-            
-            columns = [description[0] for description in cursor.description]
-            contact_dict = dict(zip(columns, contact_data, strict=False))
-            
-            conn.close()
-            return CRMContactResponse(**contact_dict)
-            
+            # Build update dictionary from request
+            update_data = contact_update.dict(exclude_unset=True)
+
+            if update_data:
+                # Use CRM service layer via engine
+                updated_contact = engine.update_contact(contact_id, **update_data)
+
+                if not updated_contact:
+                    raise HTTPException(status_code=404, detail="Contact not found")
+
+                # Convert to API response model
+                return CRMContactResponse(
+                    contact_id=str(updated_contact.contact_id),
+                    name=updated_contact.name,
+                    company=updated_contact.company or "",
+                    company_size=updated_contact.company_size or "",
+                    title=updated_contact.title or "",
+                    email=updated_contact.email,
+                    linkedin_profile=updated_contact.linkedin_profile or "",
+                    phone=updated_contact.phone or "",
+                    lead_score=updated_contact.lead_score,
+                    qualification_status=updated_contact.qualification_status,
+                    estimated_value=int(updated_contact.estimated_value),
+                    priority_tier=updated_contact.priority_tier,
+                    next_action=updated_contact.next_action or "",
+                    next_action_date=updated_contact.next_action_date.isoformat() if updated_contact.next_action_date else "",
+                    created_at=updated_contact.created_at.isoformat(),
+                    updated_at=updated_contact.updated_at.isoformat(),
+                    notes=updated_contact.notes or ""
+                )
+            else:
+                # No updates provided, just return existing contact
+                contact = engine.get_contact(contact_id)
+                if not contact:
+                    raise HTTPException(status_code=404, detail="Contact not found")
+
+                return CRMContactResponse(
+                    contact_id=str(contact.contact_id),
+                    name=contact.name,
+                    company=contact.company or "",
+                    company_size=contact.company_size or "",
+                    title=contact.title or "",
+                    email=contact.email,
+                    linkedin_profile=contact.linkedin_profile or "",
+                    phone=contact.phone or "",
+                    lead_score=contact.lead_score,
+                    qualification_status=contact.qualification_status,
+                    estimated_value=int(contact.estimated_value),
+                    priority_tier=contact.priority_tier,
+                    next_action=contact.next_action or "",
+                    next_action_date=contact.next_action_date.isoformat() if contact.next_action_date else "",
+                    created_at=contact.created_at.isoformat(),
+                    updated_at=contact.updated_at.isoformat(),
+                    notes=contact.notes or ""
+                )
+
         except HTTPException:
             raise
         except Exception as e:
@@ -1205,52 +1234,29 @@ def create_core_business_operations_router() -> APIRouter:
     ):
         """Generate automated proposal for contact"""
         try:
+            # Use engine's proposal generation method
             proposal = engine.generate_automated_proposal(
                 contact_id=proposal_request.contact_id,
                 inquiry_type=proposal_request.inquiry_type
             )
-            
+
             if 'error' in proposal:
                 raise HTTPException(status_code=404, detail=proposal['error'])
-            
-            # Get contact information for response
-            import sqlite3
-            conn = sqlite3.connect(engine.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute("SELECT name, company FROM crm_contacts WHERE contact_id = ?", (proposal_request.contact_id,))
-            contact_info = cursor.fetchone()
-            
-            # Get generated proposal details
-            cursor.execute("""
-                SELECT proposal_id, template_used, proposal_value, estimated_close_probability, 
-                       roi_calculation, status, generated_at
-                FROM generated_proposals 
-                WHERE proposal_id = ?
-            """, (proposal['proposal_id'],))
-            
-            proposal_data = cursor.fetchone()
-            conn.close()
-            
-            if not proposal_data or not contact_info:
-                raise HTTPException(status_code=500, detail="Failed to retrieve generated proposal")
-            
-            # Parse ROI calculation
-            import json
-            roi_analysis = json.loads(proposal_data[4])
-            
+
+            # Proposal generation should return all necessary data
+            # The engine method already handles both contact and proposal data
             return ProposalResponse(
-                proposal_id=proposal_data[0],
-                contact_name=contact_info[0],
-                company=contact_info[1],
-                template_used=proposal_data[1],
-                proposal_value=proposal_data[2],
-                estimated_close_probability=proposal_data[3],
-                roi_analysis=roi_analysis,
-                status=proposal_data[5],
-                generated_at=proposal_data[6]
+                proposal_id=proposal['proposal_id'],
+                contact_name=proposal['content']['client_name'],
+                company=proposal['content']['company_name'],
+                template_used=proposal['content']['template_title'],
+                proposal_value=proposal['content']['investment_proposal']['recommended']['price'],
+                estimated_close_probability=proposal['content']['close_probability'],
+                roi_analysis=proposal['content']['roi_analysis'],
+                status='draft',
+                generated_at=datetime.now().isoformat()
             )
-            
+
         except HTTPException:
             raise
         except Exception as e:
@@ -1268,51 +1274,29 @@ def create_core_business_operations_router() -> APIRouter:
     ):
         """List generated proposals with filtering options"""
         try:
-            import sqlite3
-            import json
-            
-            conn = sqlite3.connect(engine.db_path)
-            cursor = conn.cursor()
-            
-            # Build query with filters
-            query = """
-                SELECT p.proposal_id, c.name, c.company, p.template_used, p.proposal_value,
-                       p.estimated_close_probability, p.roi_calculation, p.status, p.generated_at
-                FROM generated_proposals p
-                JOIN crm_contacts c ON p.contact_id = c.contact_id
-                WHERE 1=1
-            """
-            params = []
-            
-            if status:
-                query += " AND p.status = ?"
-                params.append(status)
-            
-            query += " ORDER BY p.generated_at DESC LIMIT ? OFFSET ?"
-            params.extend([limit, skip])
-            
-            cursor.execute(query, params)
-            proposals = cursor.fetchall()
-            
+            # Use CRM service layer via engine
+            proposals = engine.list_proposals(
+                skip=skip,
+                limit=limit,
+                status=status
+            )
+
             proposal_list = []
-            for proposal_data in proposals:
-                roi_analysis = json.loads(proposal_data[6])
-                
+            for proposal in proposals:
                 proposal_list.append(ProposalResponse(
-                    proposal_id=proposal_data[0],
-                    contact_name=proposal_data[1],
-                    company=proposal_data[2],
-                    template_used=proposal_data[3],
-                    proposal_value=proposal_data[4],
-                    estimated_close_probability=proposal_data[5],
-                    roi_analysis=roi_analysis,
-                    status=proposal_data[7],
-                    generated_at=proposal_data[8]
+                    proposal_id=str(proposal.proposal_id),
+                    contact_name=proposal.contact.name,
+                    company=proposal.contact.company or "",
+                    template_used=proposal.template_used,
+                    proposal_value=int(proposal.proposal_value),
+                    estimated_close_probability=float(proposal.estimated_close_probability),
+                    roi_analysis=proposal.roi_calculation or {},
+                    status=proposal.status,
+                    generated_at=proposal.generated_at.isoformat()
                 ))
-            
-            conn.close()
+
             return proposal_list
-            
+
         except Exception as e:
             logger.error(f"Failed to list proposals: {e}")
             raise HTTPException(status_code=500, detail="Failed to retrieve proposals")
@@ -1326,25 +1310,14 @@ def create_core_business_operations_router() -> APIRouter:
     ):
         """Mark proposal as sent"""
         try:
-            import sqlite3
-            
-            conn = sqlite3.connect(engine.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute("""
-                UPDATE generated_proposals 
-                SET status = 'sent', sent_at = ?
-                WHERE proposal_id = ?
-            """, (datetime.now().isoformat(), proposal_id))
-            
-            if cursor.rowcount == 0:
+            # Use CRM service layer via engine
+            success = engine.send_proposal(proposal_id)
+
+            if not success:
                 raise HTTPException(status_code=404, detail="Proposal not found")
-            
-            conn.commit()
-            conn.close()
-            
+
             return {"success": True, "message": "Proposal marked as sent"}
-            
+
         except HTTPException:
             raise
         except Exception as e:
@@ -1378,62 +1351,14 @@ def create_core_business_operations_router() -> APIRouter:
     ):
         """Get lead scoring analysis for contact"""
         try:
-            import sqlite3
-            import json
-            
-            conn = sqlite3.connect(engine.db_path)
-            cursor = conn.cursor()
-            
-            # Get current contact score
-            cursor.execute("SELECT lead_score, notes FROM crm_contacts WHERE contact_id = ?", (contact_id,))
-            contact_data = cursor.fetchone()
-            
-            if not contact_data:
+            # Use CRM service layer via engine
+            lead_scoring = engine.get_lead_scoring_analysis(contact_id)
+
+            if not lead_scoring:
                 raise HTTPException(status_code=404, detail="Contact not found")
-            
-            current_score = contact_data[0]
-            notes = contact_data[1]
-            
-            # Get scoring history
-            cursor.execute("""
-                SELECT previous_score, scoring_factors 
-                FROM lead_scoring_history 
-                WHERE contact_id = ? 
-                ORDER BY scored_at DESC 
-                LIMIT 1
-            """, (contact_id,))
-            
-            history_data = cursor.fetchone()
-            previous_score = history_data[0] if history_data else None
-            scoring_factors = json.loads(history_data[1]) if history_data else {}
-            
-            # Generate recommendations
-            recommendations = []
-            
-            if current_score < 50:
-                recommendations.append("Contact requires additional qualification before proposal generation")
-                recommendations.append("Gather more information about company size and technical challenges")
-            elif current_score < 70:
-                recommendations.append("Good candidate for discovery call to increase qualification score")
-                recommendations.append("Focus on understanding specific pain points and ROI potential")
-            else:
-                recommendations.append("High-priority lead ready for proposal generation")
-                recommendations.append("Schedule consultation call within 24-48 hours")
-            
-            if "enterprise" in notes.lower() or "series b" in notes.lower():
-                recommendations.append("Enterprise prospect - consider premium service offerings")
-            
-            conn.close()
-            
-            return LeadScoringResponse(
-                contact_id=contact_id,
-                current_score=current_score,
-                previous_score=previous_score,
-                scoring_factors=scoring_factors,
-                score_change=current_score - previous_score if previous_score else 0,
-                recommendations=recommendations
-            )
-            
+
+            return LeadScoringResponse(**lead_scoring)
+
         except HTTPException:
             raise
         except Exception as e:
@@ -1448,56 +1373,11 @@ def create_core_business_operations_router() -> APIRouter:
     ):
         """Get sales conversion funnel analytics"""
         try:
-            import sqlite3
-            
-            conn = sqlite3.connect(engine.db_path)
-            cursor = conn.cursor()
-            
-            # Total leads by stage
-            cursor.execute("SELECT COUNT(*) FROM crm_contacts")
-            total_leads = cursor.fetchone()[0]
-            
-            cursor.execute("SELECT COUNT(*) FROM crm_contacts WHERE qualification_status = 'qualified'")
-            qualified_leads = cursor.fetchone()[0]
-            
-            cursor.execute("SELECT COUNT(*) FROM generated_proposals")
-            proposals_sent = cursor.fetchone()[0]
-            
-            cursor.execute("SELECT COUNT(*) FROM generated_proposals WHERE status = 'sent'")
-            active_proposals = cursor.fetchone()[0]
-            
-            # Calculate conversion rates
-            qualification_rate = (qualified_leads / total_leads * 100) if total_leads > 0 else 0
-            proposal_rate = (proposals_sent / qualified_leads * 100) if qualified_leads > 0 else 0
-            
-            # Value analysis
-            cursor.execute("SELECT AVG(estimated_value) FROM crm_contacts WHERE qualification_status = 'qualified'")
-            avg_deal_size = cursor.fetchone()[0] or 0
-            
-            cursor.execute("SELECT AVG(estimated_close_probability) FROM generated_proposals")
-            avg_close_rate = cursor.fetchone()[0] or 0
-            
-            conn.close()
-            
-            return {
-                "funnel_stages": {
-                    "total_leads": total_leads,
-                    "qualified_leads": qualified_leads,
-                    "proposals_generated": proposals_sent,
-                    "active_proposals": active_proposals
-                },
-                "conversion_rates": {
-                    "qualification_rate": round(qualification_rate, 1),
-                    "proposal_rate": round(proposal_rate, 1),
-                    "overall_conversion": round(qualification_rate * proposal_rate / 100, 1)
-                },
-                "value_metrics": {
-                    "average_deal_size": int(avg_deal_size),
-                    "average_close_probability": round(avg_close_rate * 100, 1),
-                    "projected_monthly_revenue": int(avg_deal_size * avg_close_rate * qualified_leads / 12)
-                }
-            }
-            
+            # Use CRM service layer via engine
+            funnel_analytics = engine.get_conversion_funnel_analytics()
+
+            return funnel_analytics
+
         except Exception as e:
             logger.error(f"Failed to get conversion funnel: {e}")
             raise HTTPException(status_code=500, detail="Failed to retrieve conversion funnel analytics")
