@@ -2,20 +2,25 @@
 """
 Consultation Inquiry Detection and Follow-up System
 Automatically detect consultation opportunities and manage systematic follow-up
+
+Migrated to PostgreSQL for Epic 20 database consolidation.
 """
 
 import logging
+import os
 import re
-import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
+
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 try:
     from .linkedin_posting_system import ConsultationInquiry, LinkedInBusinessDevelopmentEngine
 except ImportError:
     # For standalone execution
     import sys
-    import os
     sys.path.append(os.path.dirname(__file__))
     from linkedin_posting_system import ConsultationInquiry, LinkedInBusinessDevelopmentEngine
 
@@ -32,11 +37,44 @@ class InquiryPattern:
     estimated_value_base: int
 
 class ConsultationInquiryDetector:
-    """Detect consultation inquiries from various channels"""
+    """
+    Detect consultation inquiries from various channels
 
-    def __init__(self):
+    Uses PostgreSQL for inquiry storage and tracking (Epic 20 migration).
+    """
+
+    def __init__(self, db_host: str = "localhost", db_port: int = 5432,
+                 db_name: str = "synapse_analytics", db_user: str = "postgres",
+                 db_password: str = "postgres"):
+        """
+        Initialize consultation inquiry detector with PostgreSQL connection
+
+        Args:
+            db_host: PostgreSQL host (default: localhost)
+            db_port: PostgreSQL port (default: 5432)
+            db_name: Database name (default: synapse_analytics)
+            db_user: Database user (default: postgres)
+            db_password: Database password (default: postgres)
+        """
+        # Get config from environment variables (fallback to defaults)
+        self.db_config = {
+            "host": os.getenv("SYNAPSE_DB_HOST", db_host),
+            "port": int(os.getenv("SYNAPSE_DB_PORT", db_port)),
+            "database": os.getenv("SYNAPSE_DB_NAME", db_name),
+            "user": os.getenv("SYNAPSE_DB_USER", db_user),
+            "password": os.getenv("SYNAPSE_DB_PASSWORD", db_password),
+        }
+
+        # Keep business engine for backward compatibility (but don't use its db_path)
         self.business_engine = LinkedInBusinessDevelopmentEngine()
         self.inquiry_patterns = self._load_inquiry_patterns()
+
+        logger.info(f"Initialized ConsultationInquiryDetector with PostgreSQL "
+                   f"({self.db_config['host']}:{self.db_config['port']}/{self.db_config['database']})")
+
+    def _get_connection(self):
+        """Get PostgreSQL database connection"""
+        return psycopg2.connect(**self.db_config)
 
     def _load_inquiry_patterns(self) -> list[InquiryPattern]:
         """Load patterns for detecting consultation inquiries"""
@@ -214,7 +252,7 @@ class ConsultationInquiryDetector:
                 created_at=datetime.now().isoformat()
             )
 
-            self.business_engine.log_consultation_inquiry(inquiry)
+            self.log_consultation_inquiry(inquiry)
             logger.info(f"Detected consultation inquiry from comment: {inquiry.inquiry_id}")
             return inquiry.inquiry_id
 
@@ -246,7 +284,7 @@ class ConsultationInquiryDetector:
                 created_at=datetime.now().isoformat()
             )
 
-            self.business_engine.log_consultation_inquiry(inquiry)
+            self.log_consultation_inquiry(inquiry)
             logger.info(f"Detected consultation inquiry from DM: {inquiry.inquiry_id}")
             return inquiry.inquiry_id
 
@@ -254,18 +292,19 @@ class ConsultationInquiryDetector:
 
     def generate_follow_up_response(self, inquiry_id: str) -> dict[str, str]:
         """Generate appropriate follow-up response for consultation inquiry"""
-        conn = sqlite3.connect(self.business_engine.db_path)
-        cursor = conn.cursor()
+        conn = self._get_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(
+                    'SELECT * FROM consultation_inquiries WHERE external_inquiry_id = %s',
+                    (inquiry_id,)
+                )
+                inquiry = cursor.fetchone()
 
-        cursor.execute('SELECT * FROM consultation_inquiries WHERE inquiry_id = ?', (inquiry_id,))
-        result = cursor.fetchone()
-
-        if not result:
-            return {"error": "Inquiry not found"}
-
-        columns = [description[0] for description in cursor.description]
-        inquiry = dict(zip(columns, result, strict=False))
-        conn.close()
+                if not inquiry:
+                    return {"error": "Inquiry not found"}
+        finally:
+            conn.close()
 
         # Generate response based on inquiry type
         response_templates = {
@@ -298,40 +337,84 @@ class ConsultationInquiryDetector:
 
     def get_pending_inquiries(self, priority_threshold: int = 3) -> list[dict]:
         """Get pending consultation inquiries above priority threshold"""
-        conn = sqlite3.connect(self.business_engine.db_path)
-        cursor = conn.cursor()
+        conn = self._get_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute('''
+                    SELECT * FROM consultation_inquiries
+                    WHERE status = 'new' AND priority_score >= %s
+                    ORDER BY priority_score DESC, created_at ASC
+                ''', (priority_threshold,))
 
-        cursor.execute('''
-            SELECT * FROM consultation_inquiries 
-            WHERE status = 'new' AND priority_score >= ?
-            ORDER BY priority_score DESC, created_at ASC
-        ''', (priority_threshold,))
+                results = cursor.fetchall()
+                return [dict(row) for row in results]
+        finally:
+            conn.close()
 
-        results = cursor.fetchall()
-        columns = [description[0] for description in cursor.description]
+    def log_consultation_inquiry(self, inquiry: ConsultationInquiry):
+        """
+        Log a new consultation inquiry to PostgreSQL
 
-        inquiries = []
-        for result in results:
-            inquiry = dict(zip(columns, result, strict=False))
-            inquiries.append(inquiry)
+        Args:
+            inquiry: ConsultationInquiry object with inquiry details
+        """
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute('''
+                    INSERT INTO consultation_inquiries
+                    (external_inquiry_id, source_post_id, contact_name, company, company_size,
+                     inquiry_type, inquiry_channel, inquiry_text, estimated_value,
+                     priority_score, status, created_at, last_contact, notes, data_source)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (external_inquiry_id) DO UPDATE SET
+                        status = EXCLUDED.status,
+                        last_contact = EXCLUDED.last_contact,
+                        notes = EXCLUDED.notes,
+                        updated_at = CURRENT_TIMESTAMP
+                ''', (
+                    inquiry.inquiry_id,
+                    None,  # source_post_id (UUID) - will need mapping if needed
+                    inquiry.contact_name,
+                    inquiry.company,
+                    inquiry.company_size,
+                    inquiry.inquiry_type,
+                    inquiry.inquiry_channel,
+                    inquiry.inquiry_text,
+                    inquiry.estimated_value,
+                    inquiry.priority_score,
+                    inquiry.status,
+                    inquiry.created_at,
+                    inquiry.last_contact if hasattr(inquiry, 'last_contact') else None,
+                    inquiry.notes if hasattr(inquiry, 'notes') else "",
+                    "consultation_inquiry_detector"
+                ))
 
-        conn.close()
-        return inquiries
+                conn.commit()
+                logger.info(f"Logged consultation inquiry to PostgreSQL: {inquiry.inquiry_id}")
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Failed to log consultation inquiry: {e}", exc_info=True)
+            raise
+        finally:
+            conn.close()
 
     def mark_inquiry_contacted(self, inquiry_id: str, notes: str = ""):
         """Mark inquiry as contacted and add notes"""
-        conn = sqlite3.connect(self.business_engine.db_path)
-        cursor = conn.cursor()
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute('''
+                    UPDATE consultation_inquiries
+                    SET status = 'contacted', last_contact = %s, notes = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE external_inquiry_id = %s
+                ''', (datetime.now(), notes, inquiry_id))
 
-        cursor.execute('''
-            UPDATE consultation_inquiries 
-            SET status = 'contacted', last_contact = ?, notes = ?
-            WHERE inquiry_id = ?
-        ''', (datetime.now().isoformat(), notes, inquiry_id))
-
-        conn.commit()
-        conn.close()
-        logger.info(f"Marked inquiry as contacted: {inquiry_id}")
+                conn.commit()
+                logger.info(f"Marked inquiry as contacted: {inquiry_id}")
+        finally:
+            conn.close()
 
 def main():
     """Demonstrate consultation inquiry detection system"""
