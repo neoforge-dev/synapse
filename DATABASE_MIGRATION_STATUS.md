@@ -142,10 +142,13 @@ This document tracks the systematic migration from SQLite to PostgreSQL across t
 
 ## PENDING MIGRATIONS
 
-### Phase 4: Business Development Databases (PRIORITY 1)
-**Target Date:** Q1 2025
-**Business Risk:** Medium
-**Estimated Effort:** 40 hours
+### Phase 4: Epic 16 Fortune 500 Acquisition Migration (PLANNED)
+**Target Date:** Q1 2025 (Weeks 2-7 after Epic 7 completion)
+**Business Risk:** Medium-High (Epic 7 integration dependencies)
+**Estimated Effort:** 212 hours (6 weeks with buffer)
+**Business Value:** $5M+ ARR Fortune 500 acquisition pipeline
+
+**See:** [EPIC16_MIGRATION_PLAN.md](EPIC16_MIGRATION_PLAN.md) for comprehensive migration strategy
 
 #### Active SQLite Databases to Migrate
 
