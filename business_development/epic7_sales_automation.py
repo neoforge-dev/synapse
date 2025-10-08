@@ -12,6 +12,7 @@ import logging
 import sqlite3  # Legacy fallback only
 import json
 import os
+import warnings
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
 from typing import Dict, List, Optional, Tuple
@@ -70,9 +71,14 @@ class SalesAutomationEngine:
     """Epic 7 Week 1 Sales Automation System
 
     Migration Status: PostgreSQL-enabled with backward compatibility
-    - Uses CRM service layer for all database operations
+    - **PREFERRED**: Uses CRM service layer for all database operations (use_postgres=True)
+    - **DEPRECATED**: SQLite mode is legacy and will be removed in a future version
     - Maintains SQLite paths for legacy consultation_inquiry_detector.py compatibility
     - Supports dependency injection for testing
+
+    IMPORTANT: Always use PostgreSQL mode (use_postgres=True) in production.
+    SQLite mode is deprecated and only maintained for backward compatibility.
+    Set SYNAPSE_FORCE_POSTGRES=true to enforce PostgreSQL-only mode.
     """
 
     def __init__(
@@ -84,13 +90,45 @@ class SalesAutomationEngine:
         """Initialize sales automation engine
 
         Args:
-            db_path: Legacy SQLite path (kept for backward compatibility)
+            db_path: Legacy SQLite path (kept for backward compatibility, DEPRECATED)
             crm_service: Optional CRM service for dependency injection (testing)
-            use_postgres: Use PostgreSQL via CRM service (default: True)
+            use_postgres: Use PostgreSQL via CRM service (default: True, RECOMMENDED)
+
+        Note:
+            PostgreSQL mode is the preferred and recommended configuration.
+            SQLite mode is deprecated and will be removed in a future version.
+
+        Raises:
+            RuntimeError: If SQLite mode is used when SYNAPSE_FORCE_POSTGRES=true
         """
         self.db_path = db_path  # Legacy SQLite path for consultation_inquiry_detector
         self.consultation_db_path = "business_development/linkedin_business_development.db"
         self.use_postgres = use_postgres
+
+        # Check environment variable enforcement
+        force_postgres = os.getenv("SYNAPSE_FORCE_POSTGRES", "").lower() in ("true", "1", "yes")
+
+        if not use_postgres:
+            # Emit deprecation warning
+            warnings.warn(
+                "SQLite mode is deprecated and will be removed in a future version. "
+                "Please use PostgreSQL by setting use_postgres=True (default). "
+                "This mode is only maintained for backward compatibility with legacy code.",
+                DeprecationWarning,
+                stacklevel=2
+            )
+            logger.warning(
+                "⚠️  DEPRECATION WARNING: SQLite mode is deprecated. "
+                "Please migrate to PostgreSQL (use_postgres=True)."
+            )
+
+            # Enforce PostgreSQL if environment variable is set
+            if force_postgres:
+                raise RuntimeError(
+                    "SQLite mode is disabled in this environment. "
+                    "SYNAPSE_FORCE_POSTGRES=true requires use_postgres=True. "
+                    "Please update your configuration to use PostgreSQL."
+                )
 
         # Initialize CRM service with environment-based configuration
         if use_postgres:
@@ -108,18 +146,36 @@ class SalesAutomationEngine:
                 )
                 self.crm_service = CRMService(db_config=db_config, use_async=False)
                 logger.info(
-                    f"CRM service initialized: {db_config.database}@{db_config.host}:{db_config.port}"
+                    f"✅ CRM service initialized: {db_config.database}@{db_config.host}:{db_config.port}"
                 )
         else:
             self.crm_service = None
-            logger.warning("Running in SQLite-only mode (legacy)")
+            logger.warning("⚠️  Running in DEPRECATED SQLite-only mode (legacy)")
             self._init_database()  # Legacy SQLite initialization
+            self._init_proposal_templates()  # Legacy SQLite proposal templates
 
-        self._init_proposal_templates()
         self.linkedin_automation = None  # Will be initialized when needed
-        
+
+    def _log_sqlite_operation(self, operation: str, db_path: str):
+        """Log SQLite operations with deprecation warning
+
+        Args:
+            operation: Description of the SQLite operation
+            db_path: Path to the SQLite database being accessed
+        """
+        logger.warning(
+            f"⚠️  DEPRECATED SQLite operation: {operation} "
+            f"(database: {db_path}). "
+            "Please migrate to PostgreSQL for production use."
+        )
+
     def _init_database(self):
-        """Initialize Epic 7 sales automation database"""
+        """Initialize Epic 7 sales automation database
+
+        DEPRECATED: This method uses SQLite and should only be used for legacy compatibility.
+        For production, use PostgreSQL via the CRM service layer.
+        """
+        self._log_sqlite_operation("Database initialization", self.db_path)
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
@@ -531,9 +587,14 @@ class SalesAutomationEngine:
         return synthetic_inquiries[:count]
         
     def populate_synthetic_consultation_data(self, count: int = 15):
-        """Populate consultation database with synthetic data for testing"""
+        """Populate consultation database with synthetic data for testing
+
+        DEPRECATED: This method uses SQLite and should only be used for legacy compatibility.
+        For production, use PostgreSQL via the CRM service layer.
+        """
         synthetic_data = self.generate_synthetic_consultation_data(count)
-        
+
+        self._log_sqlite_operation(f"Populating {count} synthetic consultation records", self.consultation_db_path)
         conn = sqlite3.connect(self.consultation_db_path)
         cursor = conn.cursor()
         
@@ -554,12 +615,17 @@ class SalesAutomationEngine:
         logger.info(f"Populated consultation database with {len(synthetic_data)} synthetic inquiries")
         
     def import_consultation_inquiries(self, include_synthetic: bool = True) -> List[CRMContact]:
-        """Import existing consultation inquiries into CRM system"""
+        """Import existing consultation inquiries into CRM system
+
+        DEPRECATED: This method uses SQLite and should only be used for legacy compatibility.
+        For production, use PostgreSQL via the CRM service layer.
+        """
         # Generate synthetic data if needed for full pipeline demonstration
         if include_synthetic:
             self.populate_synthetic_consultation_data()
-            
+
         # Read from existing consultation database
+        self._log_sqlite_operation("Importing consultation inquiries", self.consultation_db_path)
         conn = sqlite3.connect(self.consultation_db_path)
         cursor = conn.cursor()
         
@@ -762,6 +828,7 @@ class SalesAutomationEngine:
             logger.info(f"Saved {len(contacts)} contacts to PostgreSQL CRM")
         else:
             # Legacy SQLite path (kept for backward compatibility)
+            self._log_sqlite_operation(f"Saving {len(contacts)} contacts", self.db_path)
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
@@ -785,11 +852,29 @@ class SalesAutomationEngine:
             logger.info(f"Saved {len(contacts)} contacts to SQLite (legacy mode)")
         
     def generate_automated_proposal(self, contact_id: str, inquiry_type: str = None) -> Dict:
-        """Generate automated proposal with ROI calculator"""
-        # Get contact information
+        """Generate automated proposal with ROI calculator
+
+        DEPRECATED: This method uses SQLite and should only be used for legacy compatibility.
+        For production, use PostgreSQL via the CRM service layer.
+
+        Raises:
+            NotImplementedError: When use_postgres=True (PostgreSQL proposal generation not yet implemented)
+        """
+        # PostgreSQL mode: Proposal generation needs to be implemented via CRM service
+        if self.use_postgres:
+            raise NotImplementedError(
+                "Automated proposal generation is not yet implemented for PostgreSQL mode. "
+                "This legacy method uses SQLite tables (crm_contacts, roi_templates, generated_proposals) "
+                "which are not available when use_postgres=True. "
+                "Future enhancement: Implement proposal generation using CRMService.create_proposal() "
+                "and migrate ROI templates to PostgreSQL."
+            )
+
+        # Get contact information (SQLite legacy path)
+        self._log_sqlite_operation(f"Generating proposal for contact {contact_id}", self.db_path)
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('SELECT * FROM crm_contacts WHERE contact_id = ?', (contact_id,))
         contact_data = cursor.fetchone()
         
@@ -1209,11 +1294,16 @@ class SalesAutomationEngine:
         total_conversion = base_conversion * multiplier + score_bonus
         return min(total_conversion, 0.85)  # Cap at 85% conversion
         
-    def create_ab_test_campaign(self, test_name: str, variant_a_description: str, 
+    def create_ab_test_campaign(self, test_name: str, variant_a_description: str,
                                variant_b_description: str, target_segment: Dict = None) -> str:
-        """Create A/B testing campaign for LinkedIn content optimization"""
+        """Create A/B testing campaign for LinkedIn content optimization
+
+        DEPRECATED: This method uses SQLite and should only be used for legacy compatibility.
+        For production, use PostgreSQL via the CRM service layer.
+        """
         campaign_id = f"ab-test-{uuid.uuid4().hex[:8]}"
-        
+
+        self._log_sqlite_operation(f"Creating A/B test campaign: {test_name}", self.db_path)
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
@@ -1234,10 +1324,15 @@ class SalesAutomationEngine:
         return campaign_id
         
     def assign_ab_test_variant(self, campaign_id: str, contact_id: str) -> str:
-        """Assign contact to A/B test variant"""
+        """Assign contact to A/B test variant
+
+        DEPRECATED: This method uses SQLite and should only be used for legacy compatibility.
+        For production, use PostgreSQL via the CRM service layer.
+        """
         # Use contact_id hash to ensure consistent assignment
         variant = 'a' if hash(contact_id) % 2 == 0 else 'b'
-        
+
+        self._log_sqlite_operation(f"Assigning A/B test variant for contact {contact_id}", self.db_path)
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
@@ -1252,7 +1347,12 @@ class SalesAutomationEngine:
         return variant
         
     def analyze_ab_test_results(self, campaign_id: str) -> Dict:
-        """Analyze A/B test results with statistical significance"""
+        """Analyze A/B test results with statistical significance
+
+        DEPRECATED: This method uses SQLite and should only be used for legacy compatibility.
+        For production, use PostgreSQL via the CRM service layer.
+        """
+        self._log_sqlite_operation(f"Analyzing A/B test results for campaign {campaign_id}", self.db_path)
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
@@ -1576,6 +1676,7 @@ class SalesAutomationEngine:
                 raise
         else:
             # Legacy SQLite path (kept for backward compatibility)
+            self._log_sqlite_operation("Getting pipeline summary statistics", self.db_path)
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
@@ -1665,7 +1766,12 @@ class SalesAutomationEngine:
         return int(annual_projection)
         
     def create_referral_automation_system(self, satisfied_client_threshold: float = 0.8) -> Dict:
-        """Create automated referral system leveraging satisfied consultation clients"""
+        """Create automated referral system leveraging satisfied consultation clients
+
+        DEPRECATED: This method uses SQLite and should only be used for legacy compatibility.
+        For production, use PostgreSQL via the CRM service layer.
+        """
+        self._log_sqlite_operation("Creating referral automation system", self.db_path)
         conn = sqlite3.connect(self.db_path) 
         cursor = conn.cursor()
         
@@ -1729,10 +1835,15 @@ class SalesAutomationEngine:
         }
         
     def get_unified_dashboard_data(self) -> Dict:
-        """Get comprehensive dashboard data for unified platform integration"""
+        """Get comprehensive dashboard data for unified platform integration
+
+        DEPRECATED: This method uses SQLite and should only be used for legacy compatibility.
+        For production, use PostgreSQL via the CRM service layer.
+        """
+        self._log_sqlite_operation("Getting unified dashboard data", self.db_path)
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Core pipeline metrics
         pipeline_summary = self.get_sales_pipeline_summary()
         
