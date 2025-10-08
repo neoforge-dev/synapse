@@ -1,25 +1,85 @@
 """
 SQLAlchemy models for CRM entities in the consolidated PostgreSQL database.
 These models provide the database schema and ORM mappings.
+
+Note: Uses JSON type adapter for cross-database compatibility (PostgreSQL JSONB, SQLite JSON)
 """
 
 from datetime import datetime
 from decimal import Decimal
 from typing import Dict, Any
+import uuid
 
-from sqlalchemy import Column, String, Integer, DECIMAL, TIMESTAMP, Text, ForeignKey, Index
+from sqlalchemy import Column, String, Integer, DECIMAL, TIMESTAMP, Text, ForeignKey, Index, JSON
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from sqlalchemy.types import TypeDecorator, CHAR
 
 from graph_rag.infrastructure.persistence.models.base import Base
+
+
+class GUID(TypeDecorator):
+    """Platform-independent GUID type.
+
+    Uses PostgreSQL's UUID type when available, otherwise uses CHAR(36) for SQLite.
+    """
+    impl = CHAR
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(UUID(as_uuid=True))
+        else:
+            return dialect.type_descriptor(CHAR(36))
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        elif dialect.name == 'postgresql':
+            return value
+        else:
+            if isinstance(value, uuid.UUID):
+                return str(value)
+            return value
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        elif dialect.name == 'postgresql':
+            return value
+        else:
+            if isinstance(value, str):
+                return uuid.UUID(value)
+            return value
+
+
+class JSONType(TypeDecorator):
+    """Platform-independent JSON type.
+
+    Uses PostgreSQL's JSONB type when available, otherwise uses JSON for SQLite.
+    """
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(JSONB())
+        else:
+            return dialect.type_descriptor(JSON())
+
+    def process_bind_param(self, value, dialect):
+        return value
+
+    def process_result_value(self, value, dialect):
+        return value
 
 
 class ContactModel(Base):
     """SQLAlchemy model for contacts table"""
     __tablename__ = "crm_contacts"
 
-    contact_id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
+    contact_id = Column(GUID, primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
     company = Column(String(255))
     title = Column(String(255))
@@ -55,8 +115,8 @@ class SalesPipelineModel(Base):
     """SQLAlchemy model for sales pipeline table"""
     __tablename__ = "sales_pipeline"
 
-    pipeline_id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
-    contact_id = Column(UUID(as_uuid=True), ForeignKey('crm_contacts.contact_id'), nullable=False)
+    pipeline_id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    contact_id = Column(GUID, ForeignKey('crm_contacts.contact_id'), nullable=False)
     stage = Column(String(20), nullable=False)
     probability = Column(DECIMAL(3, 2), nullable=False)  # 0.00 to 1.00
     expected_close_date = Column(TIMESTAMP(timezone=True))
@@ -81,10 +141,10 @@ class LeadQualificationModel(Base):
     """SQLAlchemy model for lead qualification history"""
     __tablename__ = "lead_qualifications"
 
-    qualification_id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
-    contact_id = Column(UUID(as_uuid=True), ForeignKey('crm_contacts.contact_id'), nullable=False)
+    qualification_id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    contact_id = Column(GUID, ForeignKey('crm_contacts.contact_id'), nullable=False)
     qualification_date = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    qualification_criteria = Column(JSONB, default=dict)
+    qualification_criteria = Column(JSONType, default=dict)
     calculated_score = Column(Integer, nullable=False)
     qualification_notes = Column(Text, default='')
     qualified_by = Column(String(255), nullable=False)
@@ -105,12 +165,12 @@ class ProposalModel(Base):
     """SQLAlchemy model for sales proposals"""
     __tablename__ = "proposals"
 
-    proposal_id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
-    contact_id = Column(UUID(as_uuid=True), ForeignKey('crm_contacts.contact_id'), nullable=False)
+    proposal_id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    contact_id = Column(GUID, ForeignKey('crm_contacts.contact_id'), nullable=False)
     template_used = Column(String(255), nullable=False)
     proposal_value = Column(DECIMAL(12, 2), nullable=False)
     estimated_close_probability = Column(DECIMAL(3, 2), nullable=False)
-    roi_analysis = Column(JSONB, default=dict)
+    roi_analysis = Column(JSONType, default=dict)
     custom_requirements = Column(Text, default='')
     status = Column(String(20), nullable=False, default='draft')
     generated_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
@@ -118,7 +178,7 @@ class ProposalModel(Base):
     responded_at = Column(TIMESTAMP(timezone=True))
 
     # Relationships
-    contact = relationship("ProposalModel", back_populates="proposals")
+    contact = relationship("ContactModel", back_populates="proposals")
 
     # Indexes
     __table_args__ = (
@@ -133,7 +193,7 @@ class ABTestCampaignModel(Base):
     """SQLAlchemy model for A/B testing campaigns"""
     __tablename__ = "ab_test_campaigns"
 
-    campaign_id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
+    campaign_id = Column(GUID, primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
     description = Column(Text)
     test_type = Column(String(50), nullable=False)  # linkedin_post, email_subject, etc.
@@ -141,8 +201,8 @@ class ABTestCampaignModel(Base):
     start_date = Column(TIMESTAMP(timezone=True))
     end_date = Column(TIMESTAMP(timezone=True))
     target_metric = Column(String(100), nullable=False)
-    variants = Column(JSONB, nullable=False)  # Array of variant definitions
-    results = Column(JSONB, default=dict)
+    variants = Column(JSONType, nullable=False)  # Array of variant definitions
+    results = Column(JSONType, default=dict)
     winner_variant = Column(String(100))
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -159,14 +219,14 @@ class RevenueForecastModel(Base):
     """SQLAlchemy model for revenue forecasting"""
     __tablename__ = "revenue_forecasts"
 
-    forecast_id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
-    contact_id = Column(UUID(as_uuid=True), ForeignKey('crm_contacts.contact_id'))
+    forecast_id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    contact_id = Column(GUID, ForeignKey('crm_contacts.contact_id'))
     forecast_period = Column(String(20), nullable=False)  # monthly, quarterly, annual
     forecast_date = Column(TIMESTAMP(timezone=True), server_default=func.now())
     predicted_revenue = Column(DECIMAL(12, 2), nullable=False)
     confidence_level = Column(DECIMAL(3, 2), nullable=False)  # 0.00 to 1.00
     forecast_model = Column(String(100), nullable=False)
-    input_parameters = Column(JSONB, default=dict)
+    input_parameters = Column(JSONType, default=dict)
     actual_revenue = Column(DECIMAL(12, 2))
     accuracy_score = Column(DECIMAL(5, 4))  # Prediction accuracy
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
