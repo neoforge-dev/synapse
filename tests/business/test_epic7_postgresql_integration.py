@@ -37,7 +37,7 @@ from typing import List, Generator
 from uuid import UUID, uuid4
 import time
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
@@ -133,6 +133,7 @@ def test_db_engine():
     # Create all tables
     try:
         Base.metadata.create_all(engine)
+        print(f"✓ Created tables: {inspect(engine).get_table_names()}\n")
     except Exception as e:
         print(f"\nERROR creating database tables: {e}")
         pytest.fail(f"Database schema creation failed: {e}")
@@ -145,42 +146,30 @@ def test_db_engine():
 
 
 @pytest.fixture(scope="function")
-def db_session(test_db_engine) -> Generator[Session, None, None]:
-    """
-    Provide a transactional database session for each test.
-    Automatically rolls back after each test for isolation.
-    """
-    connection = test_db_engine.connect()
-    transaction = connection.begin()
-
-    SessionLocal = sessionmaker(bind=connection)
-    session = SessionLocal()
-
-    yield session
-
-    # Rollback transaction to ensure test isolation
-    session.close()
-    transaction.rollback()
-    connection.close()
-
-
-@pytest.fixture(scope="function")
-def crm_service(test_db_engine, db_session) -> CRMService:
-    """Provide CRM service with test database configuration"""
+def crm_service(test_db_engine) -> Generator[CRMService, None, None]:
+    """Provide CRM service with test database engine"""
     service = CRMService(db_config=TEST_DB_CONFIG, use_async=False)
 
-    # Replace the service's engine with test engine
+    # Replace the service's engine with test engine (shared session-scoped engine)
+    print(f"📦 CRM service using test engine: {test_db_engine}")
     service.engine = test_db_engine
-    service.SessionLocal = sessionmaker(bind=test_db_engine)
+    service.SessionLocal = sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=test_db_engine,
+    )
 
-    # Override session to use test transaction
-    original_get_session = service.get_session
-    service.get_session = lambda: db_session
+    # Verify tables exist in the engine
+    tables = inspect(test_db_engine).get_table_names()
+    print(f"📋 Tables available in test engine: {tables}")
 
     yield service
 
-    # Restore original session getter
-    service.get_session = original_get_session
+    # Cleanup: Close any open connections
+    try:
+        service.close()
+    except:
+        pass
 
 
 @pytest.fixture
