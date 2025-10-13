@@ -53,7 +53,8 @@ make up
 
 - **[📖 Installation Guide](docs/guides/installation.md)** - Complete installation instructions
 - **[🚀 Quick Start](docs/QUICKSTART.md)** - Get up and running in minutes
-- **[🍺 Homebrew Setup](docs/guides/HOMEBREW_TAP_GUIDE.md)** - Install via Homebrew
+- **[🍺 Homebrew (local formula)](docs/HOMEBREW.md)** - Install via Homebrew
+- **[📚 Documentation Overview](docs/README.md)** - Map of guides & references
 - **[🏗️ Architecture](docs/ARCHITECTURE.md)** - System design and components
 - **[🔧 Development](CONTRIBUTING.md)** - Development setup and contribution guide
 
