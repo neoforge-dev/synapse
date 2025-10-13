@@ -596,9 +596,11 @@ spec:
 
 ### **Local Development Environment**
 
+> **Experimental:** The following commands reference XP 2025 prototype tooling and are not part of the main Synapse distribution.
+
 #### **1. CLI Setup**
 ```bash
-# Install XP 2025 CLI
+# Install XP 2025 CLI (prototype)
 npm install -g @xp-2025/cli
 
 # Initialize development environment
@@ -617,8 +619,8 @@ cd mobile-pwa
 # Install dependencies
 npm install
 
-# Start development server with CLI integration
-npm run dev:integrated --cli-endpoint localhost:8000
+# Start development server with CLI integration (prototype)
+npm run dev:integrated --cli-endpoint localhost:18888
 ```
 
 #### **3. Integration Testing**

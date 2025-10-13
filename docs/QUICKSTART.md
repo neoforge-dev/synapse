@@ -82,7 +82,7 @@ The `up` command:
 synapse mcp health
 
 # Test API connectivity
-curl http://localhost:8000/health
+curl http://localhost:18888/health
 ```
 
 **You should see:**
@@ -277,10 +277,12 @@ synapse compose status
 synapse mcp health
 
 # API health
-curl http://localhost:8000/health
+curl http://localhost:18888/health
 
 # Detailed status  
 synapse compose status
+
+> Ready to swap the mock services for production backends? Follow `docs/guides/PRODUCTION_BACKENDS.md` after this quick start.
 ```
 
 ### Log Management
@@ -336,7 +338,7 @@ synapse admin integrity-check
 4. **"No search results"**:
    ```bash
    # Check if documents are ingested
-   curl http://localhost:8000/api/v1/admin/stats
+   curl http://localhost:18888/api/v1/admin/stats
    
    # Re-ingest documents
    synapse ingest /path/to/docs --replace
@@ -367,7 +369,7 @@ SYNAPSE_LOG_LEVEL=DEBUG synapse mcp test
 
 Now that you have Synapse GraphRAG running:
 
-1. **Explore the API**: Visit http://localhost:8000/docs
+1. **Explore the API**: Visit http://localhost:18888/docs
 2. **Try advanced queries**: Use graph-enhanced search
 3. **Integrate with your workflow**: Set up automated ingestion
 4. **Scale up**: Deploy to production with Docker Compose

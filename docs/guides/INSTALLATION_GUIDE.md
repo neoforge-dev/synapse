@@ -1,298 +1,118 @@
 # 🚀 Synapse Installation Guide
 
-## **🎯 Goal: Make Synapse as Easy to Install as `brew install synapse`**
-
-This guide shows you multiple ways to install Synapse, from the simplest one-liner to advanced development setups.
+This guide covers the supported ways to install and run Synapse, from the fastest CLI setup to a fully reproducible Docker development environment.
 
 ---
 
-## **🔥 Super Easy Installation (Recommended)**
+## Quick CLI Installation
 
-### **One Command - Works Everywhere**
+Synapse is published on PyPI as `synapse-graph-rag`. The recommended installer is [uv](https://docs.astral.sh/uv/) because it is fast and reproducible.
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/neoforge-dev/synapse/main/install.sh | bash
-```
-
-**What this does:**
-- ✅ Auto-detects your OS and best installation method
-- ✅ Installs all prerequisites automatically
-- ✅ Installs Synapse with proper PATH configuration
-- ✅ Creates configuration files
-- ✅ Verifies everything works
-
-**Perfect for:** New users, quick setup, any system
-
----
-
-## **🍺 Homebrew Installation (macOS/Linux)**
-
-### **Option 1: Install from Local Formula**
-```bash
-# Clone the repository first
-git clone https://github.com/neoforge-dev/synapse.git
-cd synapse
-
-# Install using the local formula
-brew install ./Formula/synapse.rb
-```
-
-### **Option 2: Install from GitHub Tap (Future)**
-```bash
-# When we publish the tap
-brew tap neoforge-dev/synapse
-brew install synapse
-```
-
-**What this gives you:**
-- ✅ System-wide installation
-- ✅ Automatic PATH configuration
-- ✅ Easy updates with `brew upgrade synapse`
-- ✅ Shell completions
-- ✅ Professional installation experience
-
-**Perfect for:** macOS/Linux users who prefer Homebrew
-
----
-
-## **🐍 Python Package Managers**
-
-### **Option 1: pipx (Recommended for Python users)**
-```bash
-# Install pipx if you don't have it
-pip install --user pipx
-export PATH="$HOME/.local/bin:$PATH"
-
-# Install Synapse
-pipx install synapse
-```
-
-### **Option 2: uv (Fastest Python package manager)**
-```bash
-# Install uv
+# Install uv if you do not already have it
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install Synapse
-uv pip install synapse
-```
+# Install Synapse with MCP tooling enabled
+uv pip install synapse-graph-rag[mcp]
 
-### **Option 3: pip (Simple but less isolated)**
-```bash
-pip install synapse
-```
-
-**What this gives you:**
-- ✅ Cross-platform compatibility
-- ✅ Isolated installations (pipx)
-- ✅ Fast installation (uv)
-- ✅ Easy updates
-
-**Perfect for:** Python developers, cross-platform users
-
----
-
-## **🔧 Development Installation**
-
-### **Option 1: Makefile (Recommended for developers)**
-```bash
-# Clone and setup
-git clone https://github.com/neoforge-dev/synapse.git
-cd synapse
-
-# Install development environment
-make install-dev
-
-# Start services
-make up
-```
-
-### **Option 2: Python setup script**
-```bash
-# Clone and setup
-git clone https://github.com/neoforge-dev/synapse.git
-cd synapse
-
-# Run the modern uv-based installer
-python3 install-local.py
-```
-
-### **Option 3: Manual uv install**
-```bash
-# Clone and setup
-git clone https://github.com/neoforge-dev/synapse.git
-cd synapse
-
-# Install in development mode using uv
-uv pip install -e .[dev]
-```
-
-**What this gives you:**
-- ✅ Full development environment
-- ✅ All dependencies and tools
-- ✅ Easy debugging and testing
-- ✅ Local development setup
-
-**Perfect for:** Developers, contributors, advanced users
-
----
-
-## **📱 Platform-Specific Instructions**
-
-### **macOS**
-```bash
-# Option 1: Homebrew (recommended)
-brew install ./Formula/synapse.rb
-
-# Option 2: One-liner installer
-curl -fsSL https://raw.githubusercontent.com/neoforge-dev/synapse/main/install.sh | bash
-
-# Option 3: pipx
-pipx install synapse
-```
-
-### **Linux**
-```bash
-# Option 1: One-liner installer
-curl -fsSL https://raw.githubusercontent.com/neoforge-dev/synapse/main/install.sh | bash
-
-# Option 2: pipx
-pip install --user pipx
-export PATH="$HOME/.local/bin:$PATH"
-pipx install synapse
-
-# Option 3: Homebrew (if you have it)
-brew install ./Formula/synapse.rb
-```
-
-### **Windows (WSL)**
-```bash
-# Option 1: One-liner installer (in WSL)
-curl -fsSL https://raw.githubusercontent.com/neoforge-dev/synapse/main/install.sh | bash
-
-# Option 2: pipx
-pip install --user pipx
-export PATH="$HOME/.local/bin:$PATH"
-pipx install synapse
-```
-
----
-
-## **🧪 Testing Your Installation**
-
-After installation, verify everything works:
-
-```bash
-# Check if synapse is available
-which synapse
-
-# Check version
+# Confirm it is available
 synapse --version
-
-# See help
 synapse --help
-
-# Test basic functionality
-synapse init check
 ```
+
+> **Tip:** Prefer `pipx install synapse-graph-rag[mcp]` if you want the CLI isolated from your global Python.
 
 ---
 
-## **🚀 Quick Start After Installation**
+## Development Setup (recommended)
 
-### **Vector-Only Mode (No Docker Required)**
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/neoforge-ai/synapse-graph-rag.git
+   cd synapse-graph-rag
+   ```
+
+2. **Install dependencies**
+   ```bash
+   make install-dev          # uses uv under the hood
+   make download-nlp-data    # installs spaCy + NLTK data
+   ```
+
+3. **Start the stack with Docker**
+   ```bash
+   synapse up
+   # or: make up
+   ```
+
+   The Docker compose stack exposes non-standard ports so it can run alongside other services:
+
+   | Service            | Host Port | Notes                                  |
+   |--------------------|-----------|----------------------------------------|
+   | Synapse API (FastAPI) | 18888    | Container still listens on 8000        |
+   | Memgraph (Bolt)       | 17687    | Graph database for knowledge graph     |
+   | Memgraph (HTTP)       | 17444    | Memgraph Lab / REST access             |
+   | Postgres              | 15432    | Optional analytics database            |
+
+4. **Verify the deployment**
+   ```bash
+   curl http://localhost:18888/health
+   synapse mcp health
+   ```
+
+   You should see healthy responses for the API and MCP tooling.
+
+5. **Stop the stack**
+   ```bash
+   synapse down
+   # or: make down
+   ```
+
+> **Need to enable production backends (Memgraph, FAISS, real LLM providers, Postgres analytics)?**  
+> See `docs/guides/PRODUCTION_BACKENDS.md` for the environment variables and validation steps.
+
+---
+
+## Homebrew (local formula)
+
+The repository ships a tap under `homebrew-tap/`. You can install Synapse via Homebrew without waiting for a public tap.
+
 ```bash
-# Quick setup wizard
-synapse init wizard --quick --vector-only
+git clone https://github.com/neoforge-ai/synapse-graph-rag.git
+cd synapse-graph-rag
+brew install ./homebrew-tap/Formula/synapse.rb
 
-# Ingest your first document
-echo "Hello World" | synapse ingest test.md --stdin
-
-# Ask questions
-synapse query ask "What did I just write?"
+# Optional: manage as a service
+brew services start synapse
 ```
 
-### **Full Mode (Docker Required)**
+Uninstall with `brew uninstall synapse`.
+
+---
+
+## Verifying Your Environment
+
+After any installation method:
+
 ```bash
-# Start all services
-synapse up
+synapse config show --json | head -n 20
+synapse init wizard --quiet --vector-only
 
-# Ingest documents
-synapse ingest ~/Documents
-
-# Query with full graph features
-synapse query ask "What are the main themes in my documents?"
+# With Docker running
+curl http://localhost:18888/api/v1/health
+synapse search "graph rag architecture" --api http://localhost:18888/api/v1
 ```
 
----
-
-## **🔧 Troubleshooting**
-
-### **Installation Issues**
-```bash
-# Check Python version (need 3.10+)
-python3 --version
-
-# Check if command exists
-which synapse
-
-# Check PATH
-echo $PATH
-
-# Try manual installation
-pip install synapse
-```
-
-### **Command Not Found**
-```bash
-# Add to PATH manually
-export PATH="$HOME/.local/bin:$PATH"
-
-# Or restart terminal
-# The installer should do this automatically
-```
-
-### **Permission Issues**
-```bash
-# Make script executable
-chmod +x install.sh
-
-# Or use sudo (if needed)
-sudo ./install.sh
-```
+If you see successful responses, Synapse is ready to ingest documents and serve graph-enhanced RAG queries.
 
 ---
 
-## **📊 Installation Method Comparison**
+## Troubleshooting Checklist
 
-| Method | Ease | Isolation | Updates | Cross-Platform | Best For |
-|--------|------|-----------|---------|----------------|----------|
-| **One-liner** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | New users, quick setup |
-| **Homebrew** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | macOS/Linux users |
-| **pipx** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | Python developers |
-| **uv** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | Fast development |
-| **Development** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | Contributors, debugging |
+- **`synapse` not on PATH:** ensure the location reported by `uv tool path` or `pipx environment` is added to your shell profile.
+- **spaCy model missing:** run `make download-nlp-data` or install `python -m spacy download en_core_web_sm`.
+- **Docker ports in use:** update `docker-compose.yml` host ports (18888/17687/17444/15432) if they collide with local services.
+- **Memgraph not reachable:** confirm Docker Desktop is running and retry `synapse up`.
 
 ---
 
-## **🎯 Next Steps**
-
-1. **Choose your installation method** from above
-2. **Run the installation command**
-3. **Verify installation** with `synapse --version`
-4. **Quick start** with `synapse init wizard --quick --vector-only`
-5. **Explore features** with `synapse --help`
-
----
-
-## **💡 Pro Tips**
-
-- **For new users**: Use the one-liner installer
-- **For macOS users**: Homebrew gives the best experience
-- **For developers**: Use the development setup
-- **For production**: Use pipx or Homebrew for isolation
-- **For testing**: Vector-only mode works without Docker
-
----
-
-🎉 **Goal achieved**: Synapse is now as easy to install as any other popular tool!
-
-💬 **Need help?** Open an issue on GitHub or check the [documentation](https://github.com/neoforge-dev/synapse).
+Need help or want to contribute? See `CONTRIBUTING.md` for coding standards and `docs/HOMEBREW.md` for advanced packaging instructions.
