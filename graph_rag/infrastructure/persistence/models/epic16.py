@@ -8,16 +8,24 @@ These models provide the database schema and ORM mappings for:
 Database: synapse_business_core (PostgreSQL)
 """
 
-from datetime import datetime
-from decimal import Decimal
-from typing import Dict, Any, List
 import uuid
+from decimal import Decimal
 
-from sqlalchemy import Column, String, Integer, DECIMAL, TIMESTAMP, Text, ForeignKey, Index, JSON, ARRAY
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import (
+    DECIMAL,
+    JSON,
+    TIMESTAMP,
+    Column,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from sqlalchemy.types import TypeDecorator, CHAR
+from sqlalchemy.types import CHAR, TypeDecorator
 
 from graph_rag.infrastructure.persistence.models.base import Base
 
@@ -331,6 +339,7 @@ class ABMContentAssetModel(Base):
 
 # Association table for many-to-many relationship between campaigns and content assets
 from sqlalchemy import Table
+
 abm_campaign_assets = Table(
     'abm_campaign_assets_assoc',
     Base.metadata,

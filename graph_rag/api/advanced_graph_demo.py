@@ -5,25 +5,18 @@ Premium client presentations showcasing advanced capabilities beyond standard RA
 Enables $100K+ consultation justification through interactive technical demonstrations
 """
 
-import asyncio
-import json
-import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from fastapi import APIRouter, HTTPException, Depends, Query
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
-from graph_rag.api.dependencies import get_graph_intelligence_engine, get_unified_analytics
+from graph_rag.api.dependencies import get_graph_intelligence_engine
 from graph_rag.core.advanced_graph_intelligence import (
-    AdvancedGraphIntelligenceEngine, 
-    GraphCommunity, 
-    ContentRecommendation, 
-    GraphInsight,
-    MultiHopResult
+    AdvancedGraphIntelligenceEngine,
 )
-from graph_rag.observability import get_component_logger, ComponentType
+from graph_rag.observability import ComponentType, get_component_logger
 
 logger = get_component_logger(ComponentType.API, "advanced_graph_demo")
 
@@ -32,33 +25,33 @@ router = APIRouter(prefix="/api/v1/advanced-graph", tags=["Advanced Graph Demo"]
 # Response models for the demo API
 class DemoAnalysisRequest(BaseModel):
     analysis_type: str  # "communities", "recommendations", "multi_hop", "gaps", "temporal"
-    parameters: Dict[str, Any] = {}
+    parameters: dict[str, Any] = {}
 
 class DemoAnalysisResponse(BaseModel):
     analysis_type: str
-    results: List[Dict[str, Any]]
+    results: list[dict[str, Any]]
     insights_count: int
     business_value: float
-    technical_advantage: List[str]
+    technical_advantage: list[str]
     execution_time_ms: float
 
 class InteractiveDemoSession(BaseModel):
     session_id: str
     client_name: str
-    demo_scenarios: List[str]
+    demo_scenarios: list[str]
     current_scenario: int
-    results: List[DemoAnalysisResponse]
+    results: list[DemoAnalysisResponse]
     started_at: datetime
-    competitive_advantages: List[str]
+    competitive_advantages: list[str]
 
 class GraphVisualizationData(BaseModel):
-    nodes: List[Dict[str, Any]]
-    edges: List[Dict[str, Any]]
-    communities: List[Dict[str, Any]]
-    metrics: Dict[str, Any]
+    nodes: list[dict[str, Any]]
+    edges: list[dict[str, Any]]
+    communities: list[dict[str, Any]]
+    metrics: dict[str, Any]
 
 # In-memory session storage for demo purposes
-demo_sessions: Dict[str, InteractiveDemoSession] = {}
+demo_sessions: dict[str, InteractiveDemoSession] = {}
 
 @router.get("/demo-interface", response_class=HTMLResponse)
 async def get_demo_interface():
@@ -435,21 +428,21 @@ async def run_advanced_analysis(
     Showcases premium Graph-RAG capabilities
     """
     start_time = datetime.now()
-    
+
     try:
         logger.info(f"Running advanced graph analysis: {request.analysis_type}")
-        
+
         results = []
         insights_count = 0
         business_value = 0.0
         technical_advantage = []
-        
+
         if request.analysis_type == "communities":
             communities = await graph_intelligence.detect_graph_communities(
                 min_size=request.parameters.get("min_size", 3),
                 max_communities=request.parameters.get("max_communities", 10)
             )
-            
+
             results = [
                 {
                     "community_id": community.community_id,
@@ -462,7 +455,7 @@ async def run_advanced_analysis(
                 }
                 for community in communities
             ]
-            
+
             insights_count = len(communities)
             business_value = sum(c.business_relevance * 5000 for c in communities)
             technical_advantage = [
@@ -470,13 +463,13 @@ async def run_advanced_analysis(
                 "Advanced centrality measures",
                 "Business relevance scoring"
             ]
-            
+
         elif request.analysis_type == "recommendations":
             recommendations = await graph_intelligence.generate_content_recommendations(
                 target_topics=request.parameters.get("target_topics"),
                 audience_segments=request.parameters.get("audience_segments")
             )
-            
+
             results = [
                 {
                     "recommendation_id": rec.recommendation_id,
@@ -489,7 +482,7 @@ async def run_advanced_analysis(
                 }
                 for rec in recommendations
             ]
-            
+
             insights_count = len(recommendations)
             business_value = sum(r.business_value_score * 500 for r in recommendations)
             technical_advantage = [
@@ -497,18 +490,18 @@ async def run_advanced_analysis(
                 "AI-powered content generation",
                 "Engagement prediction modeling"
             ]
-            
+
         elif request.analysis_type == "multi_hop":
             # For demo purposes, use placeholder entities
             source_entity = request.parameters.get("source_entity", "AI")
             target_entity = request.parameters.get("target_entity", "Business Strategy")
-            
+
             multi_hop_results = await graph_intelligence.perform_multi_hop_analysis(
                 source_entity=source_entity,
                 target_entity=target_entity,
                 max_hops=request.parameters.get("max_hops", 4)
             )
-            
+
             results = [
                 {
                     "source_entity": result.source_entity,
@@ -520,7 +513,7 @@ async def run_advanced_analysis(
                 }
                 for result in multi_hop_results
             ]
-            
+
             insights_count = len(multi_hop_results)
             business_value = sum(r.path_strength * 8000 for r in multi_hop_results)
             technical_advantage = [
@@ -528,12 +521,12 @@ async def run_advanced_analysis(
                 "Path significance scoring",
                 "Complex relationship discovery"
             ]
-            
+
         elif request.analysis_type == "gaps":
             gap_insights = await graph_intelligence.identify_content_gaps(
                 competitor_topics=request.parameters.get("competitor_topics")
             )
-            
+
             results = [
                 {
                     "insight_id": insight.insight_id,
@@ -546,7 +539,7 @@ async def run_advanced_analysis(
                 }
                 for insight in gap_insights
             ]
-            
+
             insights_count = len(gap_insights)
             business_value = sum(i.projected_value for i in gap_insights)
             technical_advantage = [
@@ -554,12 +547,12 @@ async def run_advanced_analysis(
                 "Competitive gap identification",
                 "Strategic opportunity scoring"
             ]
-            
+
         elif request.analysis_type == "temporal":
             temporal_insights = await graph_intelligence.analyze_temporal_patterns(
                 time_window_days=request.parameters.get("time_window_days", 90)
             )
-            
+
             results = [
                 {
                     "insight_id": insight.insight_id,
@@ -572,7 +565,7 @@ async def run_advanced_analysis(
                 }
                 for insight in temporal_insights
             ]
-            
+
             insights_count = len(temporal_insights)
             business_value = sum(abs(i.projected_value) for i in temporal_insights)
             technical_advantage = [
@@ -580,13 +573,13 @@ async def run_advanced_analysis(
                 "Trend prediction algorithms",
                 "Pattern recognition ML"
             ]
-            
+
         elif request.analysis_type == "influence":
             influence_scores = await graph_intelligence.calculate_entity_influence_scores()
-            
+
             # Convert to sorted results
             top_influencers = sorted(influence_scores.items(), key=lambda x: x[1], reverse=True)[:10]
-            
+
             results = [
                 {
                     "entity_id": entity_id,
@@ -595,7 +588,7 @@ async def run_advanced_analysis(
                 }
                 for entity_id, score in top_influencers
             ]
-            
+
             insights_count = len(top_influencers)
             business_value = sum(score * 3000 for _, score in top_influencers)
             technical_advantage = [
@@ -603,9 +596,9 @@ async def run_advanced_analysis(
                 "Betweenness centrality analysis",
                 "Multi-dimensional influence scoring"
             ]
-        
+
         execution_time_ms = (datetime.now() - start_time).total_seconds() * 1000
-        
+
         response = DemoAnalysisResponse(
             analysis_type=request.analysis_type,
             results=results,
@@ -614,10 +607,10 @@ async def run_advanced_analysis(
             technical_advantage=technical_advantage,
             execution_time_ms=execution_time_ms
         )
-        
+
         logger.info(f"Analysis completed: {insights_count} insights, ${business_value:.0f} value, {execution_time_ms:.1f}ms")
         return response
-        
+
     except Exception as e:
         logger.error(f"Error in advanced analysis: {e}")
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
@@ -631,32 +624,32 @@ async def get_graph_visualization(
     Generate graph visualization data for interactive demonstrations
     """
     logger.info(f"Generating graph visualization for: {analysis_type}")
-    
+
     try:
         # This would generate actual visualization data based on the analysis type
         # For demo purposes, return structured sample data
-        
+
         sample_nodes = [
             {"id": "AI", "label": "Artificial Intelligence", "size": 20, "color": "#667eea", "type": "technology"},
-            {"id": "ML", "label": "Machine Learning", "size": 15, "color": "#764ba2", "type": "technology"}, 
+            {"id": "ML", "label": "Machine Learning", "size": 15, "color": "#764ba2", "type": "technology"},
             {"id": "Architecture", "label": "Enterprise Architecture", "size": 18, "color": "#f093fb", "type": "business"},
             {"id": "DevOps", "label": "DevOps", "size": 12, "color": "#f5576c", "type": "process"},
             {"id": "Cloud", "label": "Cloud Computing", "size": 16, "color": "#4facfe", "type": "infrastructure"}
         ]
-        
+
         sample_edges = [
             {"source": "AI", "target": "ML", "weight": 0.9, "type": "enables"},
             {"source": "ML", "target": "Architecture", "weight": 0.7, "type": "influences"},
             {"source": "Architecture", "target": "DevOps", "weight": 0.8, "type": "guides"},
             {"source": "DevOps", "target": "Cloud", "weight": 0.6, "type": "deploys_to"}
         ]
-        
+
         sample_communities = [
             {"id": "tech_cluster", "nodes": ["AI", "ML"], "color": "#667eea"},
             {"id": "business_cluster", "nodes": ["Architecture", "DevOps"], "color": "#f093fb"},
             {"id": "infra_cluster", "nodes": ["Cloud"], "color": "#4facfe"}
         ]
-        
+
         metrics = {
             "total_nodes": len(sample_nodes),
             "total_edges": len(sample_edges),
@@ -664,14 +657,14 @@ async def get_graph_visualization(
             "average_clustering": 0.74,
             "network_density": 0.65
         }
-        
+
         return GraphVisualizationData(
             nodes=sample_nodes,
             edges=sample_edges,
             communities=sample_communities,
             metrics=metrics
         )
-        
+
     except Exception as e:
         logger.error(f"Error generating visualization: {e}")
         raise HTTPException(status_code=500, detail=f"Visualization failed: {str(e)}")
@@ -679,13 +672,13 @@ async def get_graph_visualization(
 @router.post("/demo-session")
 async def create_demo_session(
     client_name: str = Query(..., description="Client name for demo session"),
-    scenarios: List[str] = Query(default=["communities", "recommendations", "multi_hop"], description="Demo scenarios")
+    scenarios: list[str] = Query(default=["communities", "recommendations", "multi_hop"], description="Demo scenarios")
 ) -> InteractiveDemoSession:
     """
     Create interactive demo session for client presentations
     """
     session_id = str(uuid.uuid4())
-    
+
     session = InteractiveDemoSession(
         session_id=session_id,
         client_name=client_name,
@@ -701,9 +694,9 @@ async def create_demo_session(
             "Premium consultation justification"
         ]
     )
-    
+
     demo_sessions[session_id] = session
-    
+
     logger.info(f"Created demo session {session_id} for client: {client_name}")
     return session
 
@@ -714,11 +707,11 @@ async def get_demo_session(session_id: str) -> InteractiveDemoSession:
     """
     if session_id not in demo_sessions:
         raise HTTPException(status_code=404, detail="Demo session not found")
-    
+
     return demo_sessions[session_id]
 
 @router.get("/capabilities-summary")
-async def get_capabilities_summary() -> Dict[str, Any]:
+async def get_capabilities_summary() -> dict[str, Any]:
     """
     Get comprehensive capabilities summary for premium positioning
     """
@@ -731,7 +724,7 @@ async def get_capabilities_summary() -> Dict[str, Any]:
                 "technical_advantage": "BFS optimization with path significance scoring"
             },
             {
-                "name": "Graph Community Detection", 
+                "name": "Graph Community Detection",
                 "description": "Identify topic clusters using spectral clustering algorithms",
                 "business_value": "Strategic content planning and gap identification",
                 "technical_advantage": "Advanced clustering with business relevance weighting"
@@ -744,7 +737,7 @@ async def get_capabilities_summary() -> Dict[str, Any]:
             },
             {
                 "name": "Temporal Pattern Analysis",
-                "description": "Predict emerging trends through graph evolution analysis", 
+                "description": "Predict emerging trends through graph evolution analysis",
                 "business_value": "3-6 month lead time on market trends",
                 "technical_advantage": "Time-series analysis with predictive modeling"
             },

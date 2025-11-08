@@ -4,20 +4,18 @@ Epic 7 Week 1 Sales Automation Web Interface
 Professional CRM and proposal generation interface for systematic sales conversion
 """
 
-import logging
-from datetime import datetime
-from typing import Dict, List, Optional
 import json
+import logging
 import sqlite3
+from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+import uvicorn
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-import uvicorn
 
-from .epic7_sales_automation import SalesAutomationEngine, CRMContact
+from .epic7_sales_automation import SalesAutomationEngine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -34,26 +32,26 @@ sales_engine = SalesAutomationEngine()
 
 # Pydantic models
 class ContactUpdate(BaseModel):
-    name: Optional[str] = None
-    company: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    notes: Optional[str] = None
+    name: str | None = None
+    company: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    notes: str | None = None
 
 class ProposalRequest(BaseModel):
     contact_id: str
-    inquiry_type: Optional[str] = None
+    inquiry_type: str | None = None
 
 # API Routes
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
     """Sales automation dashboard"""
     summary = sales_engine.get_sales_pipeline_summary()
-    
+
     # Get recent contacts
     conn = sqlite3.connect(sales_engine.db_path)
     cursor = conn.cursor()
-    
+
     cursor.execute('''
         SELECT contact_id, name, company, lead_score, priority_tier, qualification_status, estimated_value, created_at
         FROM crm_contacts 
@@ -61,7 +59,7 @@ async def dashboard(request: Request):
         LIMIT 10
     ''')
     recent_contacts = cursor.fetchall()
-    
+
     # Get recent proposals
     cursor.execute('''
         SELECT p.proposal_id, c.name, c.company, p.proposal_value, p.estimated_close_probability, p.status, p.generated_at
@@ -71,9 +69,9 @@ async def dashboard(request: Request):
         LIMIT 5
     ''')
     recent_proposals = cursor.fetchall()
-    
+
     conn.close()
-    
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "summary": summary,
@@ -86,7 +84,7 @@ async def contacts_page(request: Request):
     """CRM contacts management page"""
     conn = sqlite3.connect(sales_engine.db_path)
     cursor = conn.cursor()
-    
+
     cursor.execute('''
         SELECT contact_id, name, company, company_size, lead_score, qualification_status, 
                priority_tier, estimated_value, next_action, next_action_date, created_at
@@ -95,7 +93,7 @@ async def contacts_page(request: Request):
     ''')
     contacts = cursor.fetchall()
     conn.close()
-    
+
     return templates.TemplateResponse("contacts.html", {
         "request": request,
         "contacts": contacts
@@ -106,17 +104,17 @@ async def contact_detail(request: Request, contact_id: str):
     """Individual contact detail page"""
     conn = sqlite3.connect(sales_engine.db_path)
     cursor = conn.cursor()
-    
+
     # Get contact details
     cursor.execute('SELECT * FROM crm_contacts WHERE contact_id = ?', (contact_id,))
     contact_data = cursor.fetchone()
-    
+
     if not contact_data:
         raise HTTPException(status_code=404, detail="Contact not found")
-    
+
     columns = [description[0] for description in cursor.description]
     contact = dict(zip(columns, contact_data, strict=False))
-    
+
     # Get proposals for this contact
     cursor.execute('''
         SELECT proposal_id, template_used, proposal_value, estimated_close_probability, 
@@ -126,7 +124,7 @@ async def contact_detail(request: Request, contact_id: str):
         ORDER BY generated_at DESC
     ''', (contact_id,))
     proposals = cursor.fetchall()
-    
+
     # Get lead scoring history
     cursor.execute('''
         SELECT previous_score, new_score, scoring_factors, scored_at
@@ -136,9 +134,9 @@ async def contact_detail(request: Request, contact_id: str):
         LIMIT 10
     ''', (contact_id,))
     scoring_history = cursor.fetchall()
-    
+
     conn.close()
-    
+
     return templates.TemplateResponse("contact_detail.html", {
         "request": request,
         "contact": contact,
@@ -151,7 +149,7 @@ async def proposals_page(request: Request):
     """Proposal management page"""
     conn = sqlite3.connect(sales_engine.db_path)
     cursor = conn.cursor()
-    
+
     cursor.execute('''
         SELECT p.proposal_id, c.name, c.company, c.priority_tier, p.template_used,
                p.proposal_value, p.estimated_close_probability, p.status, p.generated_at, p.sent_at
@@ -161,7 +159,7 @@ async def proposals_page(request: Request):
     ''')
     proposals = cursor.fetchall()
     conn.close()
-    
+
     return templates.TemplateResponse("proposals.html", {
         "request": request,
         "proposals": proposals
@@ -172,28 +170,28 @@ async def proposal_detail(request: Request, proposal_id: str):
     """Individual proposal detail page"""
     conn = sqlite3.connect(sales_engine.db_path)
     cursor = conn.cursor()
-    
+
     cursor.execute('''
         SELECT p.*, c.name, c.company, c.company_size, c.priority_tier
         FROM generated_proposals p
         JOIN crm_contacts c ON p.contact_id = c.contact_id
         WHERE p.proposal_id = ?
     ''', (proposal_id,))
-    
+
     proposal_data = cursor.fetchone()
-    
+
     if not proposal_data:
         raise HTTPException(status_code=404, detail="Proposal not found")
-    
+
     columns = [description[0] for description in cursor.description]
     proposal = dict(zip(columns, proposal_data, strict=False))
-    
+
     # Parse JSON content
     proposal['content'] = json.loads(proposal['proposal_content'])
     proposal['roi'] = json.loads(proposal['roi_calculation'])
-    
+
     conn.close()
-    
+
     return templates.TemplateResponse("proposal_detail.html", {
         "request": request,
         "proposal": proposal
@@ -203,10 +201,10 @@ async def proposal_detail(request: Request, proposal_id: str):
 async def analytics_page(request: Request):
     """Sales analytics and insights page"""
     summary = sales_engine.get_sales_pipeline_summary()
-    
+
     conn = sqlite3.connect(sales_engine.db_path)
     cursor = conn.cursor()
-    
+
     # Lead score distribution
     cursor.execute('''
         SELECT 
@@ -221,7 +219,7 @@ async def analytics_page(request: Request):
         GROUP BY score_range
     ''')
     score_distribution = cursor.fetchall()
-    
+
     # Company size distribution
     cursor.execute('''
         SELECT company_size, COUNT(*) as count, SUM(estimated_value) as total_value
@@ -230,7 +228,7 @@ async def analytics_page(request: Request):
         ORDER BY total_value DESC
     ''')
     company_distribution = cursor.fetchall()
-    
+
     # Inquiry type performance
     cursor.execute('''
         SELECT 
@@ -245,9 +243,9 @@ async def analytics_page(request: Request):
         LIMIT 10
     ''')
     inquiry_performance = cursor.fetchall()
-    
+
     conn.close()
-    
+
     return templates.TemplateResponse("analytics.html", {
         "request": request,
         "summary": summary,
@@ -285,27 +283,27 @@ async def update_contact(contact_id: str, contact_update: ContactUpdate):
     try:
         conn = sqlite3.connect(sales_engine.db_path)
         cursor = conn.cursor()
-        
+
         # Build update query
         updates = []
         values = []
-        
+
         for field, value in contact_update.dict(exclude_unset=True).items():
             if value is not None:
                 updates.append(f"{field} = ?")
                 values.append(value)
-        
+
         if updates:
             updates.append("updated_at = ?")
             values.append(datetime.now().isoformat())
             values.append(contact_id)
-            
+
             query = f"UPDATE crm_contacts SET {', '.join(updates)} WHERE contact_id = ?"
             cursor.execute(query, values)
             conn.commit()
-        
+
         conn.close()
-        
+
         return {"success": True, "updated_fields": list(contact_update.dict(exclude_unset=True).keys())}
     except Exception as e:
         logger.error(f"Failed to update contact: {e}")
@@ -317,16 +315,16 @@ async def send_proposal(proposal_id: str):
     try:
         conn = sqlite3.connect(sales_engine.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             UPDATE generated_proposals 
             SET status = 'sent', sent_at = ?
             WHERE proposal_id = ?
         ''', (datetime.now().isoformat(), proposal_id))
-        
+
         conn.commit()
         conn.close()
-        
+
         return {"success": True, "message": "Proposal marked as sent"}
     except Exception as e:
         logger.error(f"Failed to send proposal: {e}")
@@ -346,10 +344,10 @@ async def pipeline_summary():
 def create_templates():
     """Create HTML templates for the web interface"""
     import os
-    
+
     template_dir = "business_development/templates"
     os.makedirs(template_dir, exist_ok=True)
-    
+
     # Dashboard template
     dashboard_html = '''<!DOCTYPE html>
 <html lang="en">
@@ -478,10 +476,10 @@ def create_templates():
     </div>
 </body>
 </html>'''
-    
+
     with open(f"{template_dir}/dashboard.html", "w") as f:
         f.write(dashboard_html)
-    
+
     # Contacts template
     contacts_html = '''<!DOCTYPE html>
 <html lang="en">
@@ -585,7 +583,7 @@ def create_templates():
     </script>
 </body>
 </html>'''
-    
+
     with open(f"{template_dir}/contacts.html", "w") as f:
         f.write(contacts_html)
 
@@ -596,12 +594,12 @@ if __name__ == "__main__":
     print("🚀 Starting Epic 7 Sales Automation Web Interface")
     print("🔗 Access dashboard at: http://localhost:8001")
     print("📊 CRM system ready for systematic lead conversion")
-    
+
     # Import inquiries on startup
     try:
         contacts = sales_engine.import_consultation_inquiries()
         print(f"✅ Imported {len(contacts)} consultation inquiries into CRM")
     except Exception as e:
         print(f"⚠️  Import warning: {e}")
-    
+
     uvicorn.run(app, host="0.0.0.0", port=8001)

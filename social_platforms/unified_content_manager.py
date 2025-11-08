@@ -8,11 +8,11 @@ import json
 import logging
 import sqlite3
 import sys
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 # Add project paths
 sys.path.insert(0, str(Path(__file__).parent.parent / 'business_development'))
@@ -35,7 +35,7 @@ class Platform(Enum):
 class ContentStatus(Enum):
     """Content status tracking"""
     DRAFT = "draft"
-    SCHEDULED = "scheduled" 
+    SCHEDULED = "scheduled"
     POSTED = "posted"
     FAILED = "failed"
 
@@ -44,11 +44,11 @@ class ContentPiece:
     """Unified content structure for cross-platform publishing"""
     content_id: str
     original_content: str
-    platform_adaptations: Dict[Platform, str]
-    scheduled_times: Dict[Platform, str]
-    post_ids: Dict[Platform, str]
-    status: Dict[Platform, ContentStatus]
-    performance_metrics: Dict[Platform, Dict[str, Any]]
+    platform_adaptations: dict[Platform, str]
+    scheduled_times: dict[Platform, str]
+    post_ids: dict[Platform, str]
+    status: dict[Platform, ContentStatus]
+    performance_metrics: dict[Platform, dict[str, Any]]
     business_objective: str
     target_audience: str
     created_at: str
@@ -58,9 +58,9 @@ class ContentPiece:
 class CrossPlatformStrategy:
     """Cross-platform posting strategy"""
     primary_platform: Platform
-    secondary_platforms: List[Platform]
-    timing_delays: Dict[Platform, int]  # Minutes after primary
-    content_adaptations: Dict[Platform, str]  # Adaptation instructions
+    secondary_platforms: list[Platform]
+    timing_delays: dict[Platform, int]  # Minutes after primary
+    content_adaptations: dict[Platform, str]  # Adaptation instructions
     cross_promotion: bool = True
 
 class UnifiedContentManager:
@@ -71,7 +71,7 @@ class UnifiedContentManager:
         self.twitter_client = TwitterAPIClient()
         self.db_path = "unified_content_management.db"
         self._init_database()
-        
+
         # Platform-specific optimal posting times (24-hour format)
         self.optimal_times = {
             Platform.LINKEDIN: {
@@ -79,14 +79,14 @@ class UnifiedContentManager:
                 'Thursday': '09:00', 'Friday': '09:30'
             },
             Platform.TWITTER: {
-                'Monday': '09:00', 'Tuesday': '09:30', 'Wednesday': '10:00', 
+                'Monday': '09:00', 'Tuesday': '09:30', 'Wednesday': '10:00',
                 'Thursday': '10:30', 'Friday': '11:00'
             },
             Platform.NEWSLETTER: {
                 'Sunday': '18:00', 'Wednesday': '19:00'
             }
         }
-        
+
         logger.info("Unified Content Manager initialized")
 
     def _init_database(self):
@@ -170,64 +170,64 @@ class UnifiedContentManager:
         conn.close()
         logger.info("Unified content management database initialized")
 
-    def create_content_piece(self, original_content: str, business_objective: str, 
+    def create_content_piece(self, original_content: str, business_objective: str,
                            target_audience: str) -> str:
         """Create new content piece for cross-platform distribution"""
         content_id = f"content_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT INTO content_pieces 
             (content_id, original_content, business_objective, target_audience)
             VALUES (?, ?, ?, ?)
         ''', (content_id, original_content, business_objective, target_audience))
-        
+
         conn.commit()
         conn.close()
-        
+
         logger.info(f"Created content piece: {content_id}")
         return content_id
 
-    def adapt_content_for_platforms(self, content_id: str, 
-                                  target_platforms: List[Platform]) -> Dict[Platform, str]:
+    def adapt_content_for_platforms(self, content_id: str,
+                                  target_platforms: list[Platform]) -> dict[Platform, str]:
         """Adapt content for multiple platforms"""
         # Get original content
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('SELECT original_content FROM content_pieces WHERE content_id = ?', (content_id,))
         result = cursor.fetchone()
         conn.close()
-        
+
         if not result:
             raise ValueError(f"Content {content_id} not found")
-        
+
         original_content = result[0]
         adaptations = {}
-        
+
         for platform in target_platforms:
             if platform == Platform.LINKEDIN:
                 # LinkedIn content remains largely unchanged (already optimized)
                 adaptations[platform] = original_content
-                
+
             elif platform == Platform.TWITTER:
                 # Convert to Twitter thread
                 tweets = self.twitter_client.convert_linkedin_to_twitter_thread(original_content, content_id)
                 adaptations[platform] = json.dumps([tweet.content for tweet in tweets])
-                
+
             elif platform == Platform.NEWSLETTER:
                 # Newsletter format with more context
                 adaptations[platform] = self._adapt_for_newsletter(original_content)
-                
+
             elif platform == Platform.BLOG:
                 # Long-form blog content
                 adaptations[platform] = self._adapt_for_blog(original_content)
-        
+
         # Save adaptations to database
         self._save_platform_adaptations(content_id, adaptations)
-        
+
         return adaptations
 
     def _adapt_for_newsletter(self, content: str) -> str:
@@ -263,7 +263,7 @@ Consider how you can apply this in your current role:
 
 **P.S.** If you're looking for personalized guidance on building high-performance engineering teams, I offer consultation sessions. Reply "CONSULT" to learn more.
         """.strip()
-        
+
         return newsletter_content
 
     def _adapt_for_blog(self, content: str) -> str:
@@ -320,40 +320,40 @@ If you're ready to transform your engineering team performance:
 
 *Need help implementing these strategies in your organization? I work with technical leaders to build high-performance engineering teams. [Book a consultation](link) to discuss your specific challenges.*
         """.strip()
-        
+
         return blog_content
 
-    def _save_platform_adaptations(self, content_id: str, adaptations: Dict[Platform, str]):
+    def _save_platform_adaptations(self, content_id: str, adaptations: dict[Platform, str]):
         """Save platform adaptations to database"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         for platform, adapted_content in adaptations.items():
             adaptation_id = f"{content_id}_{platform.value}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            
+
             cursor.execute('''
                 INSERT OR REPLACE INTO platform_adaptations 
                 (adaptation_id, content_id, platform, adapted_content)
                 VALUES (?, ?, ?, ?)
             ''', (adaptation_id, content_id, platform.value, adapted_content))
-        
+
         conn.commit()
         conn.close()
 
-    def schedule_cross_platform_posting(self, content_id: str, 
+    def schedule_cross_platform_posting(self, content_id: str,
                                       strategy: CrossPlatformStrategy,
-                                      base_date: datetime) -> Dict[Platform, str]:
+                                      base_date: datetime) -> dict[Platform, str]:
         """Schedule content across multiple platforms with optimal timing"""
         scheduled_times = {}
-        
+
         # Get base posting time for primary platform
         day_name = base_date.strftime('%A')
         base_time_str = self.optimal_times.get(strategy.primary_platform, {}).get(day_name, '09:00')
         base_hour, base_minute = map(int, base_time_str.split(':'))
-        
+
         primary_time = base_date.replace(hour=base_hour, minute=base_minute, second=0, microsecond=0)
         scheduled_times[strategy.primary_platform] = primary_time.isoformat()
-        
+
         # Schedule secondary platforms with delays
         for platform in strategy.secondary_platforms:
             if platform in strategy.timing_delays:
@@ -362,45 +362,45 @@ If you're ready to transform your engineering team performance:
             else:
                 # Default 2-hour delay for cross-platform posting
                 platform_time = primary_time + timedelta(hours=2)
-            
+
             scheduled_times[platform] = platform_time.isoformat()
-        
+
         # Update database with scheduled times
         self._update_scheduled_times(content_id, scheduled_times)
-        
+
         # Save strategy
         self._save_content_strategy(content_id, strategy)
-        
+
         logger.info(f"Scheduled cross-platform posting for content {content_id}")
         logger.info(f"Primary: {strategy.primary_platform.value} at {scheduled_times[strategy.primary_platform]}")
-        
+
         return scheduled_times
 
-    def _update_scheduled_times(self, content_id: str, scheduled_times: Dict[Platform, str]):
+    def _update_scheduled_times(self, content_id: str, scheduled_times: dict[Platform, str]):
         """Update scheduled times in database"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         for platform, scheduled_time in scheduled_times.items():
             cursor.execute('''
                 UPDATE platform_adaptations 
                 SET scheduled_time = ?, status = 'scheduled'
                 WHERE content_id = ? AND platform = ?
             ''', (scheduled_time, content_id, platform.value))
-        
+
         conn.commit()
         conn.close()
 
     def _save_content_strategy(self, content_id: str, strategy: CrossPlatformStrategy):
         """Save content strategy to database"""
         strategy_id = f"strategy_{content_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Convert Platform keys to strings for JSON serialization
         timing_delays_serializable = {p.value: delay for p, delay in strategy.timing_delays.items()}
-        
+
         cursor.execute('''
             INSERT OR REPLACE INTO content_strategies 
             (strategy_id, content_id, primary_platform, secondary_platforms, 
@@ -412,16 +412,16 @@ If you're ready to transform your engineering team performance:
             json.dumps(timing_delays_serializable),
             strategy.cross_promotion
         ))
-        
+
         conn.commit()
         conn.close()
 
-    def execute_scheduled_posting(self, content_id: str) -> Dict[Platform, str]:
+    def execute_scheduled_posting(self, content_id: str) -> dict[Platform, str]:
         """Execute scheduled posting across all platforms"""
         # Get scheduled adaptations
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT platform, adapted_content, scheduled_time 
             FROM platform_adaptations 
@@ -429,15 +429,15 @@ If you're ready to transform your engineering team performance:
             AND datetime(scheduled_time) <= datetime('now')
             ORDER BY scheduled_time
         ''', (content_id,))
-        
+
         scheduled_posts = cursor.fetchall()
         conn.close()
-        
+
         posted_ids = {}
-        
+
         for platform_str, adapted_content, scheduled_time in scheduled_posts:
             platform = Platform(platform_str)
-            
+
             try:
                 if platform == Platform.LINKEDIN:
                     post_id = self.linkedin_client.post_to_linkedin(adapted_content, content_id)
@@ -445,7 +445,7 @@ If you're ready to transform your engineering team performance:
                         posted_ids[platform] = post_id
                         self._update_posting_status(content_id, platform, 'posted', post_id)
                         logger.info(f"Posted to LinkedIn: {post_id}")
-                
+
                 elif platform == Platform.TWITTER:
                     # Parse Twitter thread content
                     thread_contents = json.loads(adapted_content)
@@ -455,7 +455,7 @@ If you're ready to transform your engineering team performance:
                         posted_ids[platform] = tweet_ids[0]  # First tweet ID
                         self._update_posting_status(content_id, platform, 'posted', tweet_ids[0])
                         logger.info(f"Posted Twitter thread: {len(tweet_ids)} tweets")
-                
+
                 elif platform == Platform.NEWSLETTER:
                     # Newsletter posting would integrate with email service
                     newsletter_id = self._post_to_newsletter(adapted_content, content_id)
@@ -463,25 +463,25 @@ If you're ready to transform your engineering team performance:
                         posted_ids[platform] = newsletter_id
                         self._update_posting_status(content_id, platform, 'posted', newsletter_id)
                         logger.info(f"Published to newsletter: {newsletter_id}")
-                
+
             except Exception as e:
                 logger.error(f"Failed to post to {platform_str}: {e}")
                 self._update_posting_status(content_id, platform, 'failed', None)
-        
+
         return posted_ids
 
-    def _update_posting_status(self, content_id: str, platform: Platform, 
-                              status: str, post_id: Optional[str]):
+    def _update_posting_status(self, content_id: str, platform: Platform,
+                              status: str, post_id: str | None):
         """Update posting status in database"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             UPDATE platform_adaptations 
             SET status = ?, post_id = ?
             WHERE content_id = ? AND platform = ?
         ''', (status, post_id, content_id, platform.value))
-        
+
         conn.commit()
         conn.close()
 
@@ -491,28 +491,28 @@ If you're ready to transform your engineering team performance:
         logger.info("Newsletter posting requires manual publication for now")
         return f"newsletter_{content_id}_{datetime.now().strftime('%Y%m%d')}"
 
-    def collect_cross_platform_analytics(self, content_id: str) -> Dict[str, Any]:
+    def collect_cross_platform_analytics(self, content_id: str) -> dict[str, Any]:
         """Collect and analyze performance across all platforms"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Get all posted adaptations
         cursor.execute('''
             SELECT platform, post_id 
             FROM platform_adaptations 
             WHERE content_id = ? AND status = 'posted' AND post_id IS NOT NULL
         ''', (content_id,))
-        
+
         posted_content = cursor.fetchall()
         conn.close()
-        
+
         platform_metrics = {}
         total_impressions = 0
         total_engagement = 0
-        
+
         for platform_str, post_id in posted_content:
             platform = Platform(platform_str)
-            
+
             try:
                 if platform == Platform.LINKEDIN:
                     metrics = self.linkedin_client.get_post_analytics(post_id)
@@ -521,10 +521,10 @@ If you're ready to transform your engineering team performance:
                             'impressions': metrics.get('impressions', 0),
                             'engagement': metrics.get('clicks', 0) + metrics.get('likes', 0),
                             'clicks': metrics.get('clicks', 0),
-                            'engagement_rate': metrics.get('impressions', 0) > 0 and 
+                            'engagement_rate': metrics.get('impressions', 0) > 0 and
                                              (metrics.get('clicks', 0) + metrics.get('likes', 0)) / metrics.get('impressions', 1)
                         }
-                
+
                 elif platform == Platform.TWITTER:
                     twitter_metrics = self.twitter_client.get_twitter_analytics(post_id)
                     if twitter_metrics:
@@ -534,15 +534,15 @@ If you're ready to transform your engineering team performance:
                             'clicks': twitter_metrics.clicks,
                             'engagement_rate': twitter_metrics.engagement_rate
                         }
-                
+
                 # Add to totals
                 if platform_str in platform_metrics:
                     total_impressions += platform_metrics[platform_str]['impressions']
                     total_engagement += platform_metrics[platform_str]['engagement']
-                    
+
             except Exception as e:
                 logger.error(f"Error collecting analytics for {platform_str}: {e}")
-        
+
         # Calculate cross-platform metrics
         overall_metrics = {
             'content_id': content_id,
@@ -553,20 +553,20 @@ If you're ready to transform your engineering team performance:
             'platforms_count': len(platform_metrics),
             'collected_at': datetime.now().isoformat()
         }
-        
+
         # Save aggregated metrics
         self._save_cross_platform_metrics(content_id, overall_metrics)
-        
+
         return overall_metrics
 
-    def _save_cross_platform_metrics(self, content_id: str, metrics: Dict[str, Any]):
+    def _save_cross_platform_metrics(self, content_id: str, metrics: dict[str, Any]):
         """Save cross-platform metrics to database"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         for platform_str, platform_metrics in metrics['platform_breakdown'].items():
             metric_id = f"metric_{content_id}_{platform_str}_{datetime.now().strftime('%Y%m%d')}"
-            
+
             cursor.execute('''
                 INSERT OR REPLACE INTO cross_platform_metrics 
                 (metric_id, content_id, platform, impressions, engagement, 
@@ -579,15 +579,15 @@ If you're ready to transform your engineering team performance:
                 platform_metrics.get('clicks', 0),
                 platform_metrics.get('engagement_rate', 0.0)
             ))
-        
+
         conn.commit()
         conn.close()
 
-    def get_unified_dashboard_data(self) -> Dict[str, Any]:
+    def get_unified_dashboard_data(self) -> dict[str, Any]:
         """Get unified dashboard data for all platforms"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Get recent content performance
         cursor.execute('''
             SELECT 
@@ -605,9 +605,9 @@ If you're ready to transform your engineering team performance:
             ORDER BY cp.created_at DESC
             LIMIT 10
         ''')
-        
+
         recent_content = cursor.fetchall()
-        
+
         # Get platform performance comparison
         cursor.execute('''
             SELECT 
@@ -621,11 +621,11 @@ If you're ready to transform your engineering team performance:
             WHERE recorded_at >= date('now', '-30 days')
             GROUP BY platform
         ''')
-        
+
         platform_comparison = cursor.fetchall()
-        
+
         conn.close()
-        
+
         return {
             'recent_content': [
                 {
@@ -656,10 +656,10 @@ def main():
     """Demonstrate unified content management system"""
     print("🚀 Unified Cross-Platform Content Management System")
     print("=" * 60)
-    
+
     # Initialize unified manager
     manager = UnifiedContentManager()
-    
+
     # Demo content creation and adaptation
     sample_content = """
     ## Final Optimized Post
@@ -676,27 +676,27 @@ def main():
     
     What made your best engineering team special? Share the secret sauce.
     """
-    
+
     print("📝 Creating content piece...")
     content_id = manager.create_content_piece(
         sample_content,
         "Generate team building consultation inquiries",
         "CTOs, Engineering Managers, Technical Leaders"
     )
-    
+
     print(f"✅ Created content: {content_id}")
-    
+
     # Test platform adaptation
     target_platforms = [Platform.LINKEDIN, Platform.TWITTER, Platform.NEWSLETTER]
     print(f"\n🔄 Adapting content for {len(target_platforms)} platforms...")
-    
+
     adaptations = manager.adapt_content_for_platforms(content_id, target_platforms)
-    
+
     for platform, adaptation in adaptations.items():
         print(f"\n📱 {platform.value.upper()}:")
         preview = adaptation[:150] + "..." if len(adaptation) > 150 else adaptation
         print(f"   {preview}")
-    
+
     # Test scheduling strategy
     strategy = CrossPlatformStrategy(
         primary_platform=Platform.LINKEDIN,
@@ -705,20 +705,20 @@ def main():
         content_adaptations={},
         cross_promotion=True
     )
-    
-    print(f"\n📅 Scheduling cross-platform posting...")
+
+    print("\n📅 Scheduling cross-platform posting...")
     base_date = datetime.now().replace(hour=8, minute=0, second=0, microsecond=0)
     scheduled_times = manager.schedule_cross_platform_posting(content_id, strategy, base_date)
-    
+
     for platform, scheduled_time in scheduled_times.items():
         print(f"   {platform.value}: {scheduled_time}")
-    
+
     # Get dashboard data
-    print(f"\n📊 Unified Dashboard Data:")
+    print("\n📊 Unified Dashboard Data:")
     dashboard = manager.get_unified_dashboard_data()
     print(f"   Recent content pieces: {len(dashboard['recent_content'])}")
     print(f"   Platform performance tracking: {len(dashboard['platform_comparison'])} platforms")
-    
+
     print("\n💡 Available Features:")
     print("• Unified content creation and cross-platform adaptation")
     print("• Intelligent scheduling with platform-optimized timing")
@@ -727,7 +727,7 @@ def main():
     print("• Cross-platform analytics aggregation")
     print("• Unified performance dashboard")
     print("• Manual posting workflow fallbacks")
-    
+
     print("\n✅ Unified content management system ready!")
     print("Ready for 3x reach through coordinated multi-platform posting")
 

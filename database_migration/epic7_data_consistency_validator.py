@@ -5,13 +5,13 @@ Continuous validation comparing SQLite vs PostgreSQL data
 Run this every hour during the 1-week dual-write validation period
 """
 
-import os
-import sys
-import sqlite3
-import psycopg2
 import logging
+import os
+import sqlite3
+import sys
 from datetime import datetime
-from typing import Dict, Tuple
+
+import psycopg2
 
 logging.basicConfig(
     level=logging.INFO,
@@ -45,7 +45,7 @@ class Epic7ConsistencyValidator:
             'revenue_forecasts'
         ]
 
-    def validate_row_counts(self) -> Dict[str, Tuple[int, int, bool]]:
+    def validate_row_counts(self) -> dict[str, tuple[int, int, bool]]:
         """Validate row counts for all tables"""
         logger.info("Validating row counts across all tables...")
 
@@ -76,7 +76,7 @@ class Epic7ConsistencyValidator:
 
         return results
 
-    def validate_pipeline_value(self) -> Tuple[float, float, bool]:
+    def validate_pipeline_value(self) -> tuple[float, float, bool]:
         """Validate $1.158M pipeline value preservation"""
         logger.info("Validating critical $1.158M pipeline value...")
 
@@ -133,7 +133,7 @@ class Epic7ConsistencyValidator:
             return False
 
         mismatches = 0
-        for i, (sqlite_contact, pg_contact) in enumerate(zip(sqlite_contacts, pg_contacts)):
+        for i, (sqlite_contact, pg_contact) in enumerate(zip(sqlite_contacts, pg_contacts, strict=False)):
             if sqlite_contact != pg_contact:
                 logger.error(f"❌ Contact mismatch at index {i}: SQLite={sqlite_contact}, PostgreSQL={pg_contact}")
                 mismatches += 1
@@ -173,12 +173,12 @@ class Epic7ConsistencyValidator:
             overall_success = row_counts_match and pipeline_match and contacts_integrity
 
             if overall_success:
-                logger.info(f"\n✅ VALIDATION PASSED: 100% data consistency")
-                logger.info(f"   SQLite and PostgreSQL are perfectly synchronized")
-                logger.info(f"   $1.158M pipeline fully protected")
+                logger.info("\n✅ VALIDATION PASSED: 100% data consistency")
+                logger.info("   SQLite and PostgreSQL are perfectly synchronized")
+                logger.info("   $1.158M pipeline fully protected")
             else:
-                logger.error(f"\n❌ VALIDATION FAILED: Data inconsistencies detected")
-                logger.error(f"   Manual review required before cutover")
+                logger.error("\n❌ VALIDATION FAILED: Data inconsistencies detected")
+                logger.error("   Manual review required before cutover")
 
             return overall_success
 

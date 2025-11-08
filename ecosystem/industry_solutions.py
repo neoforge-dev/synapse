@@ -8,16 +8,15 @@ and manufacturing industries with compliance, regulatory, and domain-specific fe
 """
 
 import asyncio
+import json
 import logging
-from abc import ABC, abstractmethod
+import uuid
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol, Union
-import json
-import uuid
+from typing import Any
 
-from pydantic import BaseModel, Field, validator
-from sqlalchemy import Column, DateTime, String, Text, Boolean, JSON
+from pydantic import BaseModel
+from sqlalchemy import JSON, Boolean, Column, DateTime, String
 from sqlalchemy.ext.declarative import declarative_base
 
 logger = logging.getLogger(__name__)
@@ -69,7 +68,7 @@ class DataClassification(str, Enum):
 class IndustryConfiguration(Base):
     """Database model for industry-specific configurations"""
     __tablename__ = "industry_configurations"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     industry = Column(String(50), nullable=False)
     client_id = Column(String, nullable=False)
@@ -93,18 +92,18 @@ class ComplianceRule(BaseModel):
     rule_name: str
     description: str
     severity: str  # critical, high, medium, low
-    validation_logic: Dict[str, Any]
-    remediation_steps: List[str]
+    validation_logic: dict[str, Any]
+    remediation_steps: list[str]
 
 class DataGovernancePolicy(BaseModel):
     """Data governance policy for industry solutions"""
     policy_id: str
     industry: Industry
-    data_types: List[str]
+    data_types: list[str]
     classification: DataClassification
     retention_period_days: int
     encryption_required: bool
-    access_controls: Dict[str, List[str]]  # role -> permissions
+    access_controls: dict[str, list[str]]  # role -> permissions
     audit_required: bool
     cross_border_transfer_allowed: bool
     anonymization_required: bool
@@ -112,19 +111,19 @@ class DataGovernancePolicy(BaseModel):
 class IndustrySpecialization(BaseModel):
     """Industry-specific configuration model"""
     industry: Industry
-    compliance_frameworks: List[ComplianceFramework]
-    data_governance: List[DataGovernancePolicy]
-    specialized_entities: List[str]  # Industry-specific entity types
-    document_types: List[str]  # Supported document types
-    integration_points: List[str]  # External systems to integrate
-    ui_customizations: Dict[str, Any]
-    workflow_templates: List[Dict[str, Any]]
+    compliance_frameworks: list[ComplianceFramework]
+    data_governance: list[DataGovernancePolicy]
+    specialized_entities: list[str]  # Industry-specific entity types
+    document_types: list[str]  # Supported document types
+    integration_points: list[str]  # External systems to integrate
+    ui_customizations: dict[str, Any]
+    workflow_templates: list[dict[str, Any]]
 
 # ===== HEALTHCARE SOLUTION =====
 
 class HealthcareComplianceFramework:
     """HIPAA-optimized compliance framework for healthcare"""
-    
+
     def __init__(self):
         self.phi_entities = [
             "patient_name", "patient_id", "ssn", "date_of_birth",
@@ -133,10 +132,10 @@ class HealthcareComplianceFramework:
             "device_identifiers", "biometric_identifiers", "photographs",
             "diagnosis", "treatment", "medication"
         ]
-        
+
         self.compliance_rules = self._initialize_hipaa_rules()
-    
-    def _initialize_hipaa_rules(self) -> List[ComplianceRule]:
+
+    def _initialize_hipaa_rules(self) -> list[ComplianceRule]:
         """Initialize HIPAA compliance rules"""
         return [
             ComplianceRule(
@@ -174,16 +173,16 @@ class HealthcareComplianceFramework:
                 ]
             )
         ]
-    
-    async def validate_phi_processing(self, document_content: str) -> Dict[str, Any]:
+
+    async def validate_phi_processing(self, document_content: str) -> dict[str, Any]:
         """Validate PHI processing compliance"""
         phi_detected = []
-        
+
         # Simple PHI detection (in real implementation, use advanced NLP)
         for entity_type in self.phi_entities:
             if entity_type.replace("_", " ") in document_content.lower():
                 phi_detected.append(entity_type)
-        
+
         return {
             "phi_detected": phi_detected,
             "requires_encryption": len(phi_detected) > 0,
@@ -194,7 +193,7 @@ class HealthcareComplianceFramework:
 
 class HealthcareSolution:
     """Comprehensive healthcare AI solution with HIPAA compliance"""
-    
+
     def __init__(self):
         self.compliance = HealthcareComplianceFramework()
         self.specialization = IndustrySpecialization(
@@ -263,18 +262,18 @@ class HealthcareSolution:
                 }
             ]
         )
-    
-    async def process_clinical_document(self, document: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def process_clinical_document(self, document: dict[str, Any]) -> dict[str, Any]:
         """Process clinical document with HIPAA compliance"""
         # Validate PHI compliance
         phi_validation = await self.compliance.validate_phi_processing(document["content"])
-        
+
         # Apply data governance
         classification = DataClassification.PHI if phi_validation["phi_detected"] else DataClassification.INTERNAL
-        
+
         # Extract medical entities
         medical_entities = await self._extract_medical_entities(document["content"])
-        
+
         return {
             "document_id": document.get("id"),
             "classification": classification,
@@ -287,15 +286,15 @@ class HealthcareSolution:
                 "processed_at": datetime.utcnow().isoformat()
             }
         }
-    
-    async def _extract_medical_entities(self, content: str) -> List[Dict[str, Any]]:
+
+    async def _extract_medical_entities(self, content: str) -> list[dict[str, Any]]:
         """Extract medical entities from document content"""
         # Simplified medical entity extraction (in real implementation, use medical NLP models)
         medical_terms = [
             "hypertension", "diabetes", "pneumonia", "cardiac", "pulmonary",
             "oncology", "radiology", "pathology", "surgery", "medication"
         ]
-        
+
         entities = []
         for term in medical_terms:
             if term in content.lower():
@@ -304,19 +303,19 @@ class HealthcareSolution:
                     "label": "MEDICAL_CONDITION" if term in ["hypertension", "diabetes", "pneumonia"] else "MEDICAL_TERM",
                     "confidence": 0.85
                 })
-        
+
         return entities
 
 # ===== FINANCIAL SERVICES SOLUTION =====
 
 class FinancialComplianceFramework:
     """Comprehensive compliance framework for financial services"""
-    
+
     def __init__(self):
         self.pci_data_types = ["credit_card", "debit_card", "account_number", "routing_number"]
         self.compliance_rules = self._initialize_financial_rules()
-    
-    def _initialize_financial_rules(self) -> List[ComplianceRule]:
+
+    def _initialize_financial_rules(self) -> list[ComplianceRule]:
         """Initialize financial compliance rules"""
         return [
             ComplianceRule(
@@ -354,16 +353,16 @@ class FinancialComplianceFramework:
                 ]
             )
         ]
-    
-    async def validate_financial_data_processing(self, document_content: str) -> Dict[str, Any]:
+
+    async def validate_financial_data_processing(self, document_content: str) -> dict[str, Any]:
         """Validate financial data processing compliance"""
         pci_data_detected = []
-        
+
         # Simple PCI data detection
         for data_type in self.pci_data_types:
             if data_type.replace("_", " ") in document_content.lower():
                 pci_data_detected.append(data_type)
-        
+
         return {
             "pci_data_detected": pci_data_detected,
             "requires_tokenization": len(pci_data_detected) > 0,
@@ -373,7 +372,7 @@ class FinancialComplianceFramework:
 
 class FinancialServicesSolution:
     """Regulatory intelligence platform for financial services"""
-    
+
     def __init__(self):
         self.compliance = FinancialComplianceFramework()
         self.specialization = IndustrySpecialization(
@@ -448,25 +447,25 @@ class FinancialServicesSolution:
 
 class ManufacturingIoTIntegration:
     """IoT integration framework for manufacturing"""
-    
+
     def __init__(self):
         self.supported_protocols = ["MQTT", "OPC-UA", "Modbus", "HTTP/REST"]
         self.sensor_types = [
             "temperature", "pressure", "vibration", "flow", "level",
             "current", "voltage", "speed", "position", "quality"
         ]
-    
-    async def process_sensor_data(self, sensor_data: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def process_sensor_data(self, sensor_data: dict[str, Any]) -> dict[str, Any]:
         """Process IoT sensor data for predictive maintenance"""
         # Simulate sensor data processing
         anomalies = []
-        
+
         if sensor_data.get("temperature", 0) > 80:
             anomalies.append({"type": "high_temperature", "severity": "warning"})
-        
+
         if sensor_data.get("vibration", 0) > 5.0:
             anomalies.append({"type": "excessive_vibration", "severity": "critical"})
-        
+
         return {
             "sensor_id": sensor_data.get("sensor_id"),
             "timestamp": datetime.utcnow().isoformat(),
@@ -477,7 +476,7 @@ class ManufacturingIoTIntegration:
 
 class ManufacturingSolution:
     """Predictive maintenance and optimization system for manufacturing"""
-    
+
     def __init__(self):
         self.iot_integration = ManufacturingIoTIntegration()
         self.specialization = IndustrySpecialization(
@@ -550,7 +549,7 @@ class ManufacturingSolution:
 
 class IndustrySolutionFactory:
     """Factory for creating industry-specific solutions"""
-    
+
     @staticmethod
     def create_solution(industry: Industry):
         """Create an industry-specific solution"""
@@ -562,9 +561,9 @@ class IndustrySolutionFactory:
             return ManufacturingSolution()
         else:
             raise ValueError(f"Unsupported industry: {industry}")
-    
+
     @staticmethod
-    def get_supported_industries() -> List[Industry]:
+    def get_supported_industries() -> list[Industry]:
         """Get list of supported industries"""
         return [Industry.HEALTHCARE, Industry.FINANCIAL_SERVICES, Industry.MANUFACTURING]
 
@@ -573,10 +572,11 @@ class IndustrySolutionFactory:
 async def create_industry_solutions_router():
     """Create FastAPI router for industry-specific solutions"""
     from fastapi import APIRouter, Depends, HTTPException
+
     from graph_rag.api.auth.dependencies import get_current_user
-    
+
     router = APIRouter(prefix="/industry-solutions", tags=["Industry Solutions"])
-    
+
     @router.get("/supported-industries")
     async def get_supported_industries():
         """Get list of supported industry verticals"""
@@ -584,7 +584,7 @@ async def create_industry_solutions_router():
             "industries": [industry.value for industry in IndustrySolutionFactory.get_supported_industries()],
             "total_count": len(IndustrySolutionFactory.get_supported_industries())
         }
-    
+
     @router.get("/{industry}/specification")
     async def get_industry_specification(industry: str):
         """Get detailed specification for an industry vertical"""
@@ -594,18 +594,18 @@ async def create_industry_solutions_router():
             return solution.specialization.dict()
         except ValueError:
             raise HTTPException(status_code=404, detail=f"Industry '{industry}' not supported")
-    
+
     @router.post("/{industry}/process-document")
     async def process_industry_document(
         industry: str,
-        document: Dict[str, Any],
+        document: dict[str, Any],
         current_user = Depends(get_current_user)
     ):
         """Process a document using industry-specific solution"""
         try:
             industry_enum = Industry(industry)
             solution = IndustrySolutionFactory.create_solution(industry_enum)
-            
+
             if industry_enum == Industry.HEALTHCARE:
                 return await solution.process_clinical_document(document)
             else:
@@ -618,7 +618,7 @@ async def create_industry_solutions_router():
                 }
         except ValueError:
             raise HTTPException(status_code=404, detail=f"Industry '{industry}' not supported")
-    
+
     @router.get("/{industry}/compliance-status")
     async def get_compliance_status(
         industry: str,
@@ -628,7 +628,7 @@ async def create_industry_solutions_router():
         try:
             industry_enum = Industry(industry)
             solution = IndustrySolutionFactory.create_solution(industry_enum)
-            
+
             return {
                 "industry": industry,
                 "compliance_frameworks": solution.specialization.compliance_frameworks,
@@ -638,7 +638,7 @@ async def create_industry_solutions_router():
             }
         except ValueError:
             raise HTTPException(status_code=404, detail=f"Industry '{industry}' not supported")
-    
+
     return router
 
 if __name__ == "__main__":
@@ -647,24 +647,24 @@ if __name__ == "__main__":
         # Create healthcare solution
         healthcare_solution = IndustrySolutionFactory.create_solution(Industry.HEALTHCARE)
         print(f"Healthcare solution created with {len(healthcare_solution.specialization.compliance_frameworks)} compliance frameworks")
-        
+
         # Process a sample clinical document
         sample_document = {
             "id": "clinical-note-001",
             "content": "Patient John Doe, DOB 01/01/1980, presents with hypertension and diabetes. Prescribed medication A."
         }
-        
+
         result = await healthcare_solution.process_clinical_document(sample_document)
         print(f"Processed clinical document: {json.dumps(result, indent=2, default=str)}")
-        
+
         # Create financial services solution
         financial_solution = IndustrySolutionFactory.create_solution(Industry.FINANCIAL_SERVICES)
         print(f"Financial solution created with {len(financial_solution.specialization.compliance_frameworks)} compliance frameworks")
-        
-        # Create manufacturing solution  
+
+        # Create manufacturing solution
         manufacturing_solution = IndustrySolutionFactory.create_solution(Industry.MANUFACTURING)
         print(f"Manufacturing solution created with {len(manufacturing_solution.specialization.compliance_frameworks)} compliance frameworks")
-        
+
         # Process IoT sensor data
         sensor_data = {
             "sensor_id": "temp_sensor_001",
@@ -672,9 +672,9 @@ if __name__ == "__main__":
             "vibration": 3.2,
             "pressure": 45.5
         }
-        
+
         iot_result = await manufacturing_solution.iot_integration.process_sensor_data(sensor_data)
         print(f"Processed IoT data: {json.dumps(iot_result, indent=2, default=str)}")
-    
+
     # Run example
     asyncio.run(main())

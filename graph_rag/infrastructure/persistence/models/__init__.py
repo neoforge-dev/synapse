@@ -7,12 +7,12 @@ Database Organization:
 
 from graph_rag.infrastructure.persistence.models.base import Base
 from graph_rag.infrastructure.persistence.models.crm import (
+    ABTestCampaignModel,
     ContactModel,
     LeadQualificationModel,
     ProposalModel,
-    SalesPipelineModel,
-    ABTestCampaignModel,
     RevenueForecastModel,
+    SalesPipelineModel,
 )
 
 __all__ = [

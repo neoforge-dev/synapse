@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -79,12 +79,12 @@ class Tenant(BaseModel):
     domain: str = Field(..., pattern=r'^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.[a-zA-Z]{2,}$')
     subdomain: str = Field(..., pattern=r'^[a-z0-9][a-z0-9-]*[a-z0-9]$')
     is_active: bool = Field(default=True)
-    compliance_frameworks: List[ComplianceFramework] = Field(default_factory=list)
+    compliance_frameworks: list[ComplianceFramework] = Field(default_factory=list)
     data_region: str = Field(default="us-east-1")  # For data residency requirements
     encryption_key_id: str | None = None  # Customer-managed encryption key
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime | None = None
-    settings: Dict[str, Any] = Field(default_factory=dict)  # Tenant-specific configuration
+    settings: dict[str, Any] = Field(default_factory=dict)  # Tenant-specific configuration
 
     class Config:
         json_encoders = {
@@ -102,7 +102,7 @@ class TenantUser(BaseModel):
     is_active: bool = Field(default=True)
     joined_at: datetime = Field(default_factory=datetime.utcnow)
     last_access: datetime | None = None
-    permissions: List[str] = Field(default_factory=list)  # Tenant-specific permissions
+    permissions: list[str] = Field(default_factory=list)  # Tenant-specific permissions
 
     class Config:
         json_encoders = {
@@ -120,7 +120,7 @@ class SAMLConfiguration(BaseModel):
     sso_url: str  # Identity Provider SSO URL
     slo_url: str | None = None  # Single Logout URL
     x509_cert: str  # X.509 certificate for signature verification
-    attribute_mapping: Dict[str, str] = Field(default_factory=dict)  # SAML attributes to user fields
+    attribute_mapping: dict[str, str] = Field(default_factory=dict)  # SAML attributes to user fields
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -143,8 +143,8 @@ class OAuthConfiguration(BaseModel):
     token_url: str
     userinfo_url: str | None = None
     jwks_url: str | None = None  # For JWT verification
-    scopes: List[str] = Field(default_factory=lambda: ["openid", "profile", "email"])
-    attribute_mapping: Dict[str, str] = Field(default_factory=dict)
+    scopes: list[str] = Field(default_factory=lambda: ["openid", "profile", "email"])
+    attribute_mapping: dict[str, str] = Field(default_factory=dict)
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -167,7 +167,7 @@ class LDAPConfiguration(BaseModel):
     user_search_filter: str = Field(default="(uid={username})")
     group_search_base: str | None = None
     group_search_filter: str | None = None
-    attribute_mapping: Dict[str, str] = Field(default_factory=dict)
+    attribute_mapping: dict[str, str] = Field(default_factory=dict)
     use_ssl: bool = Field(default=True)
     verify_cert: bool = Field(default=True)
     is_active: bool = Field(default=True)
@@ -191,7 +191,7 @@ class MFAConfiguration(BaseModel):
     phone_number: str | None = None  # For SMS
     email: str | None = None  # For email-based MFA
     device_id: str | None = None  # For hardware tokens or biometrics
-    backup_codes: List[str] = Field(default_factory=list)  # Emergency backup codes
+    backup_codes: list[str] = Field(default_factory=list)  # Emergency backup codes
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_used: datetime | None = None
 
@@ -215,12 +215,12 @@ class AuditEvent(BaseModel):
     resource_id: str | None = None
     action: str
     result: str  # "success", "failure", "error"
-    details: Dict[str, Any] = Field(default_factory=dict)
+    details: dict[str, Any] = Field(default_factory=dict)
     risk_score: int = Field(default=0, ge=0, le=100)  # Security risk assessment
-    compliance_tags: List[ComplianceFramework] = Field(default_factory=list)
+    compliance_tags: list[ComplianceFramework] = Field(default_factory=list)
     retention_period_days: int = Field(default=2555)  # 7 years for compliance
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    
+
     # Digital signature for tamper-evidence
     signature: str | None = None
     signature_algorithm: str = Field(default="SHA256-RSA")
@@ -237,7 +237,7 @@ class SecurityPolicy(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     tenant_id: UUID
     policy_name: str
-    
+
     # Password policy
     min_password_length: int = Field(default=12)
     require_uppercase: bool = Field(default=True)
@@ -246,24 +246,24 @@ class SecurityPolicy(BaseModel):
     require_special_chars: bool = Field(default=True)
     password_history_count: int = Field(default=12)
     password_max_age_days: int = Field(default=90)
-    
+
     # Session policy
     session_timeout_minutes: int = Field(default=30)
     max_concurrent_sessions: int = Field(default=5)
     require_mfa: bool = Field(default=True)
     mfa_required_for_admin: bool = Field(default=True)
-    
+
     # Access policy
-    ip_whitelist: List[str] = Field(default_factory=list)
-    ip_blacklist: List[str] = Field(default_factory=list)
-    allowed_countries: List[str] = Field(default_factory=list)
-    blocked_countries: List[str] = Field(default_factory=list)
-    
+    ip_whitelist: list[str] = Field(default_factory=list)
+    ip_blacklist: list[str] = Field(default_factory=list)
+    allowed_countries: list[str] = Field(default_factory=list)
+    blocked_countries: list[str] = Field(default_factory=list)
+
     # Rate limiting
     api_rate_limit_per_minute: int = Field(default=1000)
     login_attempt_limit: int = Field(default=5)
     lockout_duration_minutes: int = Field(default=30)
-    
+
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime | None = None
@@ -282,28 +282,28 @@ class ComplianceReport(BaseModel):
     framework: ComplianceFramework
     report_period_start: datetime
     report_period_end: datetime
-    
+
     # Compliance metrics
     total_audit_events: int
     security_violations: int
     data_access_events: int
     user_management_events: int
     system_configuration_changes: int
-    
+
     # Risk assessment
     overall_risk_score: float = Field(ge=0.0, le=100.0)
     high_risk_events: int
     medium_risk_events: int
     low_risk_events: int
-    
+
     # Data protection metrics
     data_encryption_percentage: float = Field(ge=0.0, le=100.0)
     backup_success_rate: float = Field(ge=0.0, le=100.0)
     access_control_compliance: float = Field(ge=0.0, le=100.0)
-    
-    findings: List[Dict[str, Any]] = Field(default_factory=list)
-    recommendations: List[str] = Field(default_factory=list)
-    
+
+    findings: list[dict[str, Any]] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+
     generated_at: datetime = Field(default_factory=datetime.utcnow)
     generated_by: UUID  # User who generated the report
 
@@ -321,7 +321,7 @@ class TenantCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     domain: str = Field(..., pattern=r'^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.[a-zA-Z]{2,}$')
     subdomain: str = Field(..., pattern=r'^[a-z0-9][a-z0-9-]*[a-z0-9]$')
-    compliance_frameworks: List[ComplianceFramework] = Field(default_factory=list)
+    compliance_frameworks: list[ComplianceFramework] = Field(default_factory=list)
     data_region: str = Field(default="us-east-1")
     admin_email: str = Field(..., pattern=r'^[^@]+@[^@]+\.[^@]+$')
     admin_username: str = Field(..., min_length=3, max_length=50)

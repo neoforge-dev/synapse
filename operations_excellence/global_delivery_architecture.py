@@ -11,14 +11,11 @@ This module defines the comprehensive global delivery model with:
 - Regional expertise and specialization
 """
 
-import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from enum import Enum
-import json
-import pytz
+from typing import Any
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -35,7 +32,7 @@ class SupportTier(Enum):
 class EscalationLevel(Enum):
     """Incident escalation levels"""
     L1_STANDARD = "l1_standard"
-    L2_ADVANCED = "l2_advanced"  
+    L2_ADVANCED = "l2_advanced"
     L3_EXPERT = "l3_expert"
     L4_CRITICAL = "l4_critical"
 
@@ -55,9 +52,9 @@ class ComplianceFramework(Enum):
 class RegionalCompliance:
     """Regional compliance requirements and certifications"""
     region: str
-    frameworks: List[ComplianceFramework]
+    frameworks: list[ComplianceFramework]
     data_residency_required: bool
-    encryption_standards: List[str]
+    encryption_standards: list[str]
     audit_frequency: str
     local_representative_required: bool
     privacy_officer_required: bool
@@ -67,13 +64,13 @@ class RegionalCompliance:
 class CulturalLocalization:
     """Cultural adaptation and localization settings"""
     region: str
-    primary_languages: List[str]
+    primary_languages: list[str]
     business_hours_local: str
     holiday_calendar: str
     communication_style: str  # direct, formal, relationship-based
     decision_making_process: str
     meeting_preferences: str
-    cultural_considerations: List[str]
+    cultural_considerations: list[str]
 
 
 @dataclass
@@ -85,35 +82,35 @@ class DeliveryCenter:
     region: str
     capacity: int
     current_utilization: float
-    
+
     # Operational capabilities
     operational_hours: str
-    languages_supported: List[str]
-    specializations: List[str]
-    certification_levels: List[ComplianceFramework]
-    
+    languages_supported: list[str]
+    specializations: list[str]
+    certification_levels: list[ComplianceFramework]
+
     # Infrastructure
     has_innovation_lab: bool
     customer_briefing_center: bool
     disaster_recovery_site: bool
     staff_count: int
-    
+
     # Service levels
-    supported_tiers: List[SupportTier]
-    escalation_capabilities: List[EscalationLevel]
-    sla_targets: Dict[str, float]
-    
+    supported_tiers: list[SupportTier]
+    escalation_capabilities: list[EscalationLevel]
+    sla_targets: dict[str, float]
+
     # Cultural and compliance
     compliance_profile: RegionalCompliance
     localization_profile: CulturalLocalization
 
 
-@dataclass 
+@dataclass
 class FollowTheSunSchedule:
     """24/7 follow-the-sun support schedule"""
     schedule_name: str
     coverage_hours: int  # 24 for full coverage
-    handoff_times: List[Tuple[str, str, str]]  # (from_center, to_center, utc_time)
+    handoff_times: list[tuple[str, str, str]]  # (from_center, to_center, utc_time)
     overlap_duration: int  # minutes of overlap for handoffs
     weekend_coverage: bool
     holiday_coverage_strategy: str
@@ -123,14 +120,14 @@ class GlobalDeliveryOrchestrator:
     """
     Orchestrates global delivery operations across all regions
     """
-    
+
     def __init__(self):
         self.delivery_centers = self._initialize_delivery_centers()
         self.follow_the_sun_schedule = self._initialize_follow_the_sun()
         self.compliance_matrix = self._initialize_compliance_matrix()
         self.cultural_profiles = self._initialize_cultural_profiles()
-        
-    def _initialize_delivery_centers(self) -> List[DeliveryCenter]:
+
+    def _initialize_delivery_centers(self) -> list[DeliveryCenter]:
         """Initialize all global delivery centers"""
         return [
             # North America - Austin Hub
@@ -161,7 +158,7 @@ class GlobalDeliveryOrchestrator:
                 disaster_recovery_site=True,
                 staff_count=85,
                 supported_tiers=[SupportTier.PLATINUM, SupportTier.GOLD, SupportTier.SILVER, SupportTier.BRONZE],
-                escalation_capabilities=[EscalationLevel.L1_STANDARD, EscalationLevel.L2_ADVANCED, 
+                escalation_capabilities=[EscalationLevel.L1_STANDARD, EscalationLevel.L2_ADVANCED,
                                        EscalationLevel.L3_EXPERT, EscalationLevel.L4_CRITICAL],
                 sla_targets={
                     "response_time_minutes": 5,
@@ -171,7 +168,7 @@ class GlobalDeliveryOrchestrator:
                 },
                 compliance_profile=RegionalCompliance(
                     region="North America",
-                    frameworks=[ComplianceFramework.SOC2, ComplianceFramework.HIPAA, 
+                    frameworks=[ComplianceFramework.SOC2, ComplianceFramework.HIPAA,
                                ComplianceFramework.FEDRAMP, ComplianceFramework.CCPA],
                     data_residency_required=True,
                     encryption_standards=["AES-256", "RSA-4096", "FIPS 140-2"],
@@ -195,12 +192,12 @@ class GlobalDeliveryOrchestrator:
                     ]
                 )
             ),
-            
+
             # Europe - Dublin Hub
             DeliveryCenter(
                 name="Dublin European Hub",
                 location="Dublin, Ireland",
-                timezone="Europe/Dublin", 
+                timezone="Europe/Dublin",
                 region="Europe",
                 capacity=125,
                 current_utilization=0.0,  # Not yet operational
@@ -222,7 +219,7 @@ class GlobalDeliveryOrchestrator:
                 disaster_recovery_site=False,
                 staff_count=0,  # To be hired
                 supported_tiers=[SupportTier.PLATINUM, SupportTier.GOLD, SupportTier.SILVER],
-                escalation_capabilities=[EscalationLevel.L1_STANDARD, EscalationLevel.L2_ADVANCED, 
+                escalation_capabilities=[EscalationLevel.L1_STANDARD, EscalationLevel.L2_ADVANCED,
                                        EscalationLevel.L3_EXPERT],
                 sla_targets={
                     "response_time_minutes": 10,
@@ -249,13 +246,13 @@ class GlobalDeliveryOrchestrator:
                     meeting_preferences="In-person preferred, formal structure",
                     cultural_considerations=[
                         "Strong emphasis on privacy and data protection",
-                        "Thorough documentation and process adherence", 
+                        "Thorough documentation and process adherence",
                         "Long-term relationship building",
                         "Multi-cultural team dynamics"
                     ]
                 )
             ),
-            
+
             # Asia Pacific - Singapore Hub
             DeliveryCenter(
                 name="Singapore Asia-Pacific Hub",
@@ -282,7 +279,7 @@ class GlobalDeliveryOrchestrator:
                 disaster_recovery_site=False,
                 staff_count=0,  # To be hired
                 supported_tiers=[SupportTier.PLATINUM, SupportTier.GOLD, SupportTier.SILVER],
-                escalation_capabilities=[EscalationLevel.L1_STANDARD, EscalationLevel.L2_ADVANCED, 
+                escalation_capabilities=[EscalationLevel.L1_STANDARD, EscalationLevel.L2_ADVANCED,
                                        EscalationLevel.L3_EXPERT],
                 sla_targets={
                     "response_time_minutes": 15,
@@ -315,7 +312,7 @@ class GlobalDeliveryOrchestrator:
                     ]
                 )
             ),
-            
+
             # Latin America - São Paulo Hub
             DeliveryCenter(
                 name="São Paulo Latin America Hub",
@@ -374,13 +371,13 @@ class GlobalDeliveryOrchestrator:
                     ]
                 )
             ),
-            
+
             # Middle East & Africa - Dubai Hub
             DeliveryCenter(
                 name="Dubai Middle East & Africa Hub",
                 location="Dubai, UAE",
                 timezone="Asia/Dubai",
-                region="Middle East & Africa", 
+                region="Middle East & Africa",
                 capacity=25,
                 current_utilization=0.0,  # Not yet operational
                 operational_hours="12/7",  # Daytime coverage
@@ -433,7 +430,7 @@ class GlobalDeliveryOrchestrator:
                 )
             )
         ]
-    
+
     def _initialize_follow_the_sun(self) -> FollowTheSunSchedule:
         """Initialize 24/7 follow-the-sun support schedule"""
         return FollowTheSunSchedule(
@@ -448,8 +445,8 @@ class GlobalDeliveryOrchestrator:
             weekend_coverage=True,
             holiday_coverage_strategy="Regional backup with escalation to available centers"
         )
-    
-    def _initialize_compliance_matrix(self) -> Dict[str, Any]:
+
+    def _initialize_compliance_matrix(self) -> dict[str, Any]:
         """Initialize comprehensive compliance requirements matrix"""
         return {
             "regional_requirements": {
@@ -501,8 +498,8 @@ class GlobalDeliveryOrchestrator:
                 "transfer_impact_assessments": "Required for high-risk transfers"
             }
         }
-    
-    def _initialize_cultural_profiles(self) -> Dict[str, Any]:
+
+    def _initialize_cultural_profiles(self) -> dict[str, Any]:
         """Initialize detailed cultural profiles for each region"""
         return {
             "communication_guidelines": {
@@ -513,7 +510,7 @@ class GlobalDeliveryOrchestrator:
                     "presentation_style": "Data-driven with clear ROI"
                 },
                 "Europe": {
-                    "style": "Formal, relationship-building, process-oriented", 
+                    "style": "Formal, relationship-building, process-oriented",
                     "meeting_etiquette": "Punctuality important, formal address, thorough discussion",
                     "email_tone": "Formal and detailed",
                     "presentation_style": "Comprehensive analysis with regulatory context"
@@ -554,25 +551,25 @@ class GlobalDeliveryOrchestrator:
                 }
             }
         }
-    
+
     def get_current_primary_center(self) -> DeliveryCenter:
         """Determine which delivery center should handle new requests based on current UTC time"""
         utc_now = datetime.now(timezone.utc)
         current_hour = utc_now.hour
-        
+
         # Follow-the-sun logic based on UTC time
         if 6 <= current_hour < 14:  # 6 AM - 2 PM UTC (Austin prime time)
             return self.delivery_centers[0]  # Austin
-        elif 14 <= current_hour < 22:  # 2 PM - 10 PM UTC (Dublin prime time) 
+        elif 14 <= current_hour < 22:  # 2 PM - 10 PM UTC (Dublin prime time)
             return self.delivery_centers[1] if self.delivery_centers[1].current_utilization > 0 else self.delivery_centers[0]
         else:  # 10 PM - 6 AM UTC (Singapore prime time)
             return self.delivery_centers[2] if self.delivery_centers[2].current_utilization > 0 else self.delivery_centers[0]
-    
-    def calculate_regional_capacity(self) -> Dict[str, Any]:
+
+    def calculate_regional_capacity(self) -> dict[str, Any]:
         """Calculate capacity and utilization across all regions"""
         total_capacity = sum(center.capacity for center in self.delivery_centers)
         total_current_load = sum(center.capacity * center.current_utilization for center in self.delivery_centers)
-        
+
         regional_breakdown = {}
         for center in self.delivery_centers:
             regional_breakdown[center.region] = {
@@ -584,7 +581,7 @@ class GlobalDeliveryOrchestrator:
                 "specializations": center.specializations,
                 "operational_status": "Operational" if center.current_utilization > 0 else "Planned"
             }
-        
+
         return {
             "total_global_capacity": total_capacity,
             "total_current_load": int(total_current_load),
@@ -593,11 +590,11 @@ class GlobalDeliveryOrchestrator:
             "regional_breakdown": regional_breakdown,
             "scaling_recommendations": self._generate_scaling_recommendations(regional_breakdown)
         }
-    
-    def _generate_scaling_recommendations(self, regional_breakdown: Dict) -> List[Dict]:
+
+    def _generate_scaling_recommendations(self, regional_breakdown: dict) -> list[dict]:
         """Generate scaling recommendations based on capacity analysis"""
         recommendations = []
-        
+
         for region, data in regional_breakdown.items():
             if data["operational_status"] == "Planned":
                 recommendations.append({
@@ -609,16 +606,16 @@ class GlobalDeliveryOrchestrator:
                 })
             elif data["current_utilization"] > 0.8:
                 recommendations.append({
-                    "region": region, 
+                    "region": region,
                     "priority": "Medium",
                     "recommendation": f"Expand {region} capacity by 25-50%",
                     "justification": "High utilization may impact service quality",
                     "timeline": "Next 6-12 months"
                 })
-        
+
         return recommendations
-    
-    def generate_service_level_matrix(self) -> Dict[str, Any]:
+
+    def generate_service_level_matrix(self) -> dict[str, Any]:
         """Generate comprehensive service level agreement matrix"""
         return {
             "service_tiers": {
@@ -635,7 +632,7 @@ class GlobalDeliveryOrchestrator:
                 "Gold": {
                     "target_clients": "Fortune 500",
                     "response_time": "< 15 minutes",
-                    "resolution_time": "< 4 hours", 
+                    "resolution_time": "< 4 hours",
                     "availability": "99.95%",
                     "dedicated_support": False,
                     "escalation_path": "L1 → L2 → L3",
@@ -672,7 +669,7 @@ class GlobalDeliveryOrchestrator:
             }
         }
 
-    def generate_implementation_roadmap(self) -> Dict[str, Any]:
+    def generate_implementation_roadmap(self) -> dict[str, Any]:
         """Generate detailed implementation roadmap for global delivery model"""
         return {
             "roadmap_overview": {
@@ -764,57 +761,57 @@ def main():
     """Main execution function for global delivery architecture"""
     print("🌍 Global Delivery Excellence Model")
     print("=" * 60)
-    
+
     # Initialize global delivery orchestrator
     orchestrator = GlobalDeliveryOrchestrator()
-    
+
     # Generate capacity analysis
     capacity_analysis = orchestrator.calculate_regional_capacity()
-    
-    print(f"\n📊 GLOBAL CAPACITY ANALYSIS")
+
+    print("\n📊 GLOBAL CAPACITY ANALYSIS")
     print(f"Total Global Capacity: {capacity_analysis['total_global_capacity']} clients")
     print(f"Current Utilization: {capacity_analysis['global_utilization_percentage']:.1f}%")
     print(f"Available Capacity: {capacity_analysis['total_available_capacity']} clients")
-    
-    print(f"\n🌐 REGIONAL BREAKDOWN:")
+
+    print("\n🌐 REGIONAL BREAKDOWN:")
     for region, data in capacity_analysis['regional_breakdown'].items():
         status_emoji = "✅" if data['operational_status'] == "Operational" else "🔄"
         print(f"  {status_emoji} {region}: {data['capacity']} capacity ({data['current_utilization']*100:.0f}% utilized)")
         print(f"    Languages: {', '.join(data['languages'][:3])}...")
         print(f"    Specializations: {len(data['specializations'])} areas")
-    
+
     # Generate service level matrix
     sla_matrix = orchestrator.generate_service_level_matrix()
-    
-    print(f"\n🎯 SERVICE LEVEL TIERS:")
+
+    print("\n🎯 SERVICE LEVEL TIERS:")
     for tier, details in sla_matrix['service_tiers'].items():
         print(f"  • {tier}: {details['target_clients']}")
         print(f"    Response: {details['response_time']}, Resolution: {details['resolution_time']}")
         print(f"    Availability: {details['availability']}, Coverage: {details['coverage']}")
-    
+
     # Show follow-the-sun schedule
     schedule = orchestrator.follow_the_sun_schedule
-    print(f"\n🌅 FOLLOW-THE-SUN SCHEDULE:")
+    print("\n🌅 FOLLOW-THE-SUN SCHEDULE:")
     print(f"Coverage: {schedule.coverage_hours}/7 ({schedule.coverage_hours} hours per day)")
-    print(f"Handoff Schedule:")
+    print("Handoff Schedule:")
     for from_center, to_center, utc_time in schedule.handoff_times:
         print(f"  • {utc_time} UTC: {from_center} → {to_center}")
-    
+
     # Generate implementation roadmap
     roadmap = orchestrator.generate_implementation_roadmap()
-    
-    print(f"\n🚀 IMPLEMENTATION ROADMAP:")
+
+    print("\n🚀 IMPLEMENTATION ROADMAP:")
     print(f"Timeline: {roadmap['roadmap_overview']['timeline']}")
     print(f"Investment: {roadmap['roadmap_overview']['total_investment']}")
-    
+
     for phase in roadmap['implementation_phases']:
         print(f"\n  📅 {phase['phase']}")
         print(f"    Focus: {phase['primary_focus']}")
         print(f"    Investment: ${phase['investment']:,}")
         print(f"    Key Metrics: {list(phase['success_metrics'].keys())[:2]}...")
-    
-    print(f"\n✨ GLOBAL DELIVERY EXCELLENCE MODEL READY")
-    print(f"Ready to provide 24/7 follow-the-sun support for 500+ Fortune 500 clients!")
+
+    print("\n✨ GLOBAL DELIVERY EXCELLENCE MODEL READY")
+    print("Ready to provide 24/7 follow-the-sun support for 500+ Fortune 500 clients!")
 
 
 if __name__ == "__main__":

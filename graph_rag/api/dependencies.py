@@ -9,6 +9,7 @@ from fastapi import Depends, HTTPException, Request
 # from fastapi.security import APIKeyHeader
 # Configuration
 from graph_rag.config import Settings, get_settings
+from graph_rag.core.advanced_graph_intelligence import AdvancedGraphIntelligenceEngine
 
 # Import MockEntityExtractor if needed for fallback
 # Corrected import path for CacheService Protocol
@@ -32,7 +33,6 @@ from graph_rag.core.interfaces import (
     GraphRepository,
     VectorStore,
 )
-from graph_rag.core.advanced_graph_intelligence import AdvancedGraphIntelligenceEngine
 from graph_rag.core.knowledge_graph_builder import (
     SimpleKnowledgeGraphBuilder,
 )
@@ -70,6 +70,7 @@ from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVec
 # Import MockLLMService
 from graph_rag.llm import MockLLMService
 from graph_rag.llm.protocols import LLMService
+from graph_rag.services.advanced_features import AdvancedFeaturesService
 
 # from graph_rag.infrastructure.entity_extractors.spacy_entity_extractor import SpacyEntityExtractor # Remove this line
 # NOTE: Avoid importing SentenceTransformerEmbeddingService at module import time
@@ -79,7 +80,6 @@ from graph_rag.llm.protocols import LLMService
 # from graph_rag.core.persistent_kg_builder import PersistentKnowledgeGraphBuilder
 # Service Import
 from graph_rag.services.ingestion import IngestionService
-from graph_rag.services.advanced_features import AdvancedFeaturesService
 from graph_rag.services.search import SearchService
 
 # Removed incorrect import for SpacyEntityExtractor
@@ -172,7 +172,7 @@ def create_graph_repository(settings: Settings) -> GraphRepository:
     if getattr(settings, 'disable_graph', False):
         logger.info("Graph functionality disabled via settings, using MockGraphRepository")
         return MockGraphRepository()
-        
+
     # Check if auto-fallback is disabled
     auto_fallback = getattr(settings, 'auto_fallback_vector_mode', True)
 
@@ -784,13 +784,15 @@ async def get_unified_analytics() -> Any:
     cache_key = "unified_analytics"
     if cache_key not in _singletons:
         try:
-            from business_development.unified_analytics_integration import UnifiedAnalyticsIntegration
+            from business_development.unified_analytics_integration import (
+                UnifiedAnalyticsIntegration,
+            )
             _singletons[cache_key] = UnifiedAnalyticsIntegration()
             logger.debug("Created UnifiedAnalyticsIntegration instance")
         except ImportError:
             logger.warning("UnifiedAnalyticsIntegration not available, using mock")
             _singletons[cache_key] = None
-    
+
     return _singletons[cache_key]
 
 

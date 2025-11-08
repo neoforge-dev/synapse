@@ -4,11 +4,9 @@ Validates the $1.158M sales pipeline data integrity during consolidation.
 """
 
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
-from typing import Dict, List, Optional
-from dataclasses import field
 
 
 @dataclass
@@ -17,7 +15,7 @@ class ValidationResult:
     contact_count: int
     total_value: Decimal
     is_valid: bool
-    errors: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
 
 class PipelineValidator:
@@ -100,7 +98,7 @@ class PipelineValidator:
                 errors=[f"Database error: {str(e)}"]
             )
 
-    def get_pipeline_summary(self) -> Dict:
+    def get_pipeline_summary(self) -> dict:
         """Get detailed pipeline summary for reporting"""
         try:
             with sqlite3.connect(str(self.epic7_db_path)) as conn:

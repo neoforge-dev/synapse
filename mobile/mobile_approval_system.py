@@ -4,18 +4,16 @@ Mobile-Optimized Content Approval System
 Quick approval workflows for content publishing on mobile devices
 """
 
-import json
 import logging
-import qrcode
 import sqlite3
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from io import BytesIO
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-from flask import Flask, jsonify, render_template_string, request
+import qrcode
+from flask import Flask, jsonify, request
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -40,8 +38,8 @@ class ApprovalAction:
     approval_id: str
     action: str  # approve, reject, reschedule
     approved_by: str
-    notes: Optional[str]
-    new_schedule: Optional[str]
+    notes: str | None
+    new_schedule: str | None
     timestamp: str
 
 class MobileApprovalSystem:
@@ -123,7 +121,7 @@ class MobileApprovalSystem:
         def approve_content(approval_id):
             data = request.get_json() or {}
             return jsonify(self.approve_content(
-                approval_id, 
+                approval_id,
                 data.get('approved_by', 'mobile_user'),
                 data.get('notes')
             ))
@@ -156,7 +154,7 @@ class MobileApprovalSystem:
     def _render_mobile_dashboard(self) -> str:
         """Render mobile-optimized dashboard HTML"""
         pending = self.get_pending_approvals()
-        
+
         html_template = '''
 <!DOCTYPE html>
 <html lang="en">
@@ -370,13 +368,13 @@ class MobileApprovalSystem:
 </body>
 </html>
         '''
-        
+
         # Calculate stats
         total_pending = len(pending)
         high_urgency = sum(1 for a in pending if a['urgency'] == 'high')
-        expiring_soon = sum(1 for a in pending 
+        expiring_soon = sum(1 for a in pending
                           if datetime.fromisoformat(a['expires_at']) < datetime.now() + timedelta(hours=2))
-        
+
         from jinja2 import Template
         template = Template(html_template)
         return template.render(
@@ -392,10 +390,10 @@ class MobileApprovalSystem:
         """Create new approval request"""
         approval_id = str(uuid.uuid4())
         expires_at = datetime.now() + timedelta(hours=24)  # 24-hour approval window
-        
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT INTO pending_approvals 
             (approval_id, content_id, content_preview, platform, scheduled_time,
@@ -403,18 +401,18 @@ class MobileApprovalSystem:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (approval_id, content_id, content_preview, platform, scheduled_time,
               business_objective, urgency, expires_at.isoformat()))
-        
+
         conn.commit()
         conn.close()
-        
+
         logger.info(f"Created approval request: {approval_id} for {platform}")
         return approval_id
 
-    def get_pending_approvals(self) -> List[Dict[str, Any]]:
+    def get_pending_approvals(self) -> list[dict[str, Any]]:
         """Get all pending approvals"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT approval_id, content_id, content_preview, platform, 
                    scheduled_time, business_objective, urgency, created_at, expires_at
@@ -422,7 +420,7 @@ class MobileApprovalSystem:
             WHERE status = 'pending' AND datetime(expires_at) > datetime('now')
             ORDER BY urgency DESC, created_at ASC
         ''')
-        
+
         approvals = []
         for row in cursor.fetchall():
             approvals.append({
@@ -436,45 +434,45 @@ class MobileApprovalSystem:
                 'created_at': row[7],
                 'expires_at': row[8]
             })
-        
+
         conn.close()
         return approvals
 
-    def approve_content(self, approval_id: str, approved_by: str, 
-                       notes: Optional[str] = None) -> Dict[str, Any]:
+    def approve_content(self, approval_id: str, approved_by: str,
+                       notes: str | None = None) -> dict[str, Any]:
         """Approve content for posting"""
         return self._process_approval(approval_id, 'approve', approved_by, notes)
 
     def reject_content(self, approval_id: str, approved_by: str,
-                      notes: Optional[str] = None) -> Dict[str, Any]:
+                      notes: str | None = None) -> dict[str, Any]:
         """Reject content"""
         return self._process_approval(approval_id, 'reject', approved_by, notes)
 
     def reschedule_content(self, approval_id: str, new_schedule: str,
-                          approved_by: str, notes: Optional[str] = None) -> Dict[str, Any]:
+                          approved_by: str, notes: str | None = None) -> dict[str, Any]:
         """Reschedule content"""
         return self._process_approval(approval_id, 'reschedule', approved_by, notes, new_schedule)
 
     def _process_approval(self, approval_id: str, action: str, approved_by: str,
-                         notes: Optional[str] = None, new_schedule: Optional[str] = None) -> Dict[str, Any]:
+                         notes: str | None = None, new_schedule: str | None = None) -> dict[str, Any]:
         """Process approval action"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Check if approval exists and is pending
         cursor.execute('''
             SELECT content_id, platform, scheduled_time 
             FROM pending_approvals 
             WHERE approval_id = ? AND status = 'pending'
         ''', (approval_id,))
-        
+
         result = cursor.fetchone()
         if not result:
             conn.close()
             return {'success': False, 'error': 'Approval not found or already processed'}
-        
+
         content_id, platform, scheduled_time = result
-        
+
         # Update approval status
         new_status = 'approved' if action == 'approve' else 'rejected' if action == 'reject' else 'rescheduled'
         cursor.execute('''
@@ -482,7 +480,7 @@ class MobileApprovalSystem:
             SET status = ? 
             WHERE approval_id = ?
         ''', (new_status, approval_id))
-        
+
         # Record action
         action_id = str(uuid.uuid4())
         cursor.execute('''
@@ -490,12 +488,12 @@ class MobileApprovalSystem:
             (action_id, approval_id, action, approved_by, notes, new_schedule)
             VALUES (?, ?, ?, ?, ?, ?)
         ''', (action_id, approval_id, action, approved_by, notes, new_schedule))
-        
+
         conn.commit()
         conn.close()
-        
+
         logger.info(f"Processed approval {approval_id}: {action} by {approved_by}")
-        
+
         return {
             'success': True,
             'action': action,
@@ -508,7 +506,7 @@ class MobileApprovalSystem:
     def generate_mobile_access_qr(self) -> str:
         """Generate QR code for mobile access"""
         mobile_url = f"http://{self.host}:{self.port}/"
-        
+
         qr = qrcode.QRCode(
             version=1,
             error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -517,24 +515,24 @@ class MobileApprovalSystem:
         )
         qr.add_data(mobile_url)
         qr.make(fit=True)
-        
+
         # Create QR code image
         qr_img = qr.make_image(fill_color="black", back_color="white")
-        
+
         # Save QR code
         qr_path = Path("mobile_access_qr.png")
         qr_img.save(qr_path)
-        
+
         logger.info(f"Generated mobile access QR code: {qr_path}")
         logger.info(f"Mobile URL: {mobile_url}")
-        
+
         return str(qr_path)
 
-    def get_approval_stats(self) -> Dict[str, Any]:
+    def get_approval_stats(self) -> dict[str, Any]:
         """Get approval system statistics"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Get pending stats
         cursor.execute('''
             SELECT COUNT(*), urgency 
@@ -543,7 +541,7 @@ class MobileApprovalSystem:
             GROUP BY urgency
         ''')
         urgency_stats = dict(cursor.fetchall())
-        
+
         # Get action stats
         cursor.execute('''
             SELECT COUNT(*), action 
@@ -552,7 +550,7 @@ class MobileApprovalSystem:
             GROUP BY action
         ''')
         action_stats = dict(cursor.fetchall())
-        
+
         # Get response time stats
         cursor.execute('''
             SELECT AVG(julianday(aa.timestamp) - julianday(pa.created_at)) * 24 * 60 as avg_minutes
@@ -561,9 +559,9 @@ class MobileApprovalSystem:
             WHERE aa.timestamp >= date('now', '-7 days')
         ''')
         avg_response_time = cursor.fetchone()[0] or 0
-        
+
         conn.close()
-        
+
         return {
             'pending_by_urgency': urgency_stats,
             'actions_last_7_days': action_stats,
@@ -575,14 +573,14 @@ class MobileApprovalSystem:
     def run_mobile_server(self):
         """Start mobile approval server"""
         logger.info(f"Starting mobile approval server on {self.host}:{self.port}")
-        print(f"\n🚀 Mobile Content Approval System")
+        print("\n🚀 Mobile Content Approval System")
         print(f"📱 Access URL: http://{self.host}:{self.port}/")
         print(f"📊 API Health: http://{self.host}:{self.port}/health")
-        
+
         # Generate QR code for easy mobile access
         qr_path = self.generate_mobile_access_qr()
         print(f"📱 QR Code saved: {qr_path}")
-        
+
         try:
             self.app.run(host=self.host, port=self.port, debug=False)
         except KeyboardInterrupt:
@@ -592,10 +590,10 @@ def main():
     """Demonstrate mobile approval system"""
     print("🚀 Mobile Content Approval System")
     print("=" * 50)
-    
+
     # Initialize mobile approval system
     mobile_system = MobileApprovalSystem()
-    
+
     # Create test approval requests
     test_approvals = [
         {
@@ -607,7 +605,7 @@ def main():
             'urgency': 'high'
         },
         {
-            'content_id': 'content_002', 
+            'content_id': 'content_002',
             'content_preview': 'Thread: 10x teams vs 10x developers - what actually makes the difference in engineering performance...',
             'platform': 'twitter',
             'scheduled_time': (datetime.now() + timedelta(hours=4)).strftime('%Y-%m-%d %H:%M'),
@@ -623,41 +621,41 @@ def main():
             'urgency': 'low'
         }
     ]
-    
+
     print("📝 Creating test approval requests...")
     for approval_data in test_approvals:
         approval_id = mobile_system.create_approval_request(**approval_data)
         print(f"   ✅ Created {approval_data['platform']} approval: {approval_id}")
-    
+
     # Get pending approvals
     pending = mobile_system.get_pending_approvals()
     print(f"\n📋 Pending approvals: {len(pending)}")
-    
+
     # Get system stats
     stats = mobile_system.get_approval_stats()
-    print(f"📊 System stats:")
+    print("📊 System stats:")
     print(f"   Total pending: {stats['total_pending']}")
     print(f"   Average response time: {stats['avg_response_time_minutes']:.1f} minutes")
-    
-    print(f"\n💡 Mobile Features:")
-    print(f"• One-tap approval/rejection workflow")
-    print(f"• QR code for instant mobile access")
-    print(f"• Urgency-based prioritization")
-    print(f"• Real-time dashboard updates")
-    print(f"• Cross-platform content preview")
-    print(f"• Rescheduling with calendar integration")
-    print(f"• Offline-capable progressive web app")
-    
-    print(f"\n🔧 API Endpoints:")
-    print(f"• GET  /           - Mobile dashboard")
-    print(f"• GET  /api/pending - List pending approvals")
-    print(f"• POST /api/approve/<id> - Approve content")
-    print(f"• POST /api/reject/<id>  - Reject content")
-    print(f"• POST /api/reschedule/<id> - Reschedule content")
-    
-    print(f"\n🎯 Ready for 60% faster approval workflows!")
-    print(f"Starting mobile server... (Ctrl+C to stop)")
-    
+
+    print("\n💡 Mobile Features:")
+    print("• One-tap approval/rejection workflow")
+    print("• QR code for instant mobile access")
+    print("• Urgency-based prioritization")
+    print("• Real-time dashboard updates")
+    print("• Cross-platform content preview")
+    print("• Rescheduling with calendar integration")
+    print("• Offline-capable progressive web app")
+
+    print("\n🔧 API Endpoints:")
+    print("• GET  /           - Mobile dashboard")
+    print("• GET  /api/pending - List pending approvals")
+    print("• POST /api/approve/<id> - Approve content")
+    print("• POST /api/reject/<id>  - Reject content")
+    print("• POST /api/reschedule/<id> - Reschedule content")
+
+    print("\n🎯 Ready for 60% faster approval workflows!")
+    print("Starting mobile server... (Ctrl+C to stop)")
+
     # Start mobile server
     mobile_system.run_mobile_server()
 

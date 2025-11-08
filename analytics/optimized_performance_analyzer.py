@@ -4,7 +4,6 @@ Optimized Performance Analytics Enhancement System
 10x faster analytics with connection pooling, bulk operations, and materialized views
 """
 
-import json
 import logging
 import re
 import sys
@@ -12,7 +11,7 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -39,17 +38,17 @@ class ContentPattern:
     sample_size: int
     confidence_score: float
     recommendation: str
-    performance_trend: Optional[str] = None
-    last_updated: Optional[str] = None
+    performance_trend: str | None = None
+    last_updated: str | None = None
 
 @dataclass
 class PerformancePrediction:
     """Enhanced performance prediction with confidence metrics"""
     predicted_engagement_rate: float
     predicted_consultation_requests: int
-    confidence_interval: Tuple[float, float]
-    key_success_factors: List[str]
-    optimization_recommendations: List[str]
+    confidence_interval: tuple[float, float]
+    key_success_factors: list[str]
+    optimization_recommendations: list[str]
     prediction_confidence: float
     baseline_comparison: float
 
@@ -60,18 +59,18 @@ class OptimizedPerformanceAnalyzer:
         self.business_engine = LinkedInBusinessDevelopmentEngine()
         self.inquiry_detector = ConsultationInquiryDetector()
         self.db = OptimizedAnalyticsDatabase("optimized_performance_analytics.db")
-        
+
         # Cache for frequently accessed data
         self._pattern_cache = {}
         self._cache_expiry = None
-        
+
         logger.info("Optimized Performance Analyzer initialized with database optimization")
 
     @monitor_query_performance
-    def analyze_all_content_optimized(self) -> List[ContentPattern]:
+    def analyze_all_content_optimized(self) -> list[ContentPattern]:
         """Optimized bulk analysis of all content with 10x performance improvement"""
         start_time = datetime.now()
-        
+
         # Get all posts with performance data in single query
         import sqlite3
         business_conn = sqlite3.connect(self.business_engine.db_path)
@@ -120,7 +119,7 @@ class OptimizedPerformanceAnalyzer:
 
         # Identify and save patterns in batch
         identified_patterns = self._identify_performance_patterns_optimized(patterns_data)
-        
+
         if identified_patterns:
             pattern_dicts = [asdict(pattern) for pattern in identified_patterns]
             self.db.bulk_insert_patterns(pattern_dicts)
@@ -134,7 +133,7 @@ class OptimizedPerformanceAnalyzer:
 
         return identified_patterns
 
-    def _identify_performance_patterns_optimized(self, patterns_data: Dict) -> List[ContentPattern]:
+    def _identify_performance_patterns_optimized(self, patterns_data: dict) -> list[ContentPattern]:
         """Optimized pattern identification with statistical significance testing"""
         identified_patterns = []
 
@@ -159,7 +158,7 @@ class OptimizedPerformanceAnalyzer:
 
                 weighted_engagement = sum(p[0] * p[2] for p in performances if p[0] is not None) / total_impressions
                 weighted_consultation = sum(p[1] * p[2] for p in performances if p[1] is not None) / total_impressions
-                
+
                 sample_size = len(performances)
 
                 # Enhanced confidence calculation with statistical significance
@@ -167,7 +166,7 @@ class OptimizedPerformanceAnalyzer:
                 confidence_base = min(sample_size / 10, 1.0)
                 performance_factor = (weighted_engagement + weighted_consultation * 10)  # Weight consultations 10x
                 variance_penalty = max(0.1, 1.0 - engagement_variance)  # Penalize high variance
-                
+
                 confidence = confidence_base * performance_factor * variance_penalty
 
                 # Only include statistically significant patterns
@@ -199,24 +198,24 @@ class OptimizedPerformanceAnalyzer:
 
         # Sort by confidence and business impact
         identified_patterns.sort(
-            key=lambda x: x.confidence_score * (x.avg_consultation_conversion * 100 + x.avg_engagement_rate), 
+            key=lambda x: x.confidence_score * (x.avg_consultation_conversion * 100 + x.avg_engagement_rate),
             reverse=True
         )
 
         return identified_patterns[:50]  # Top 50 patterns
 
-    def _calculate_performance_trend(self, performances: List[Tuple]) -> str:
+    def _calculate_performance_trend(self, performances: list[tuple]) -> str:
         """Calculate performance trend over time"""
         if len(performances) < 3:
             return "insufficient_data"
-        
+
         # Simple trend calculation based on recent vs older performance
         recent = performances[-len(performances)//2:]
         older = performances[:len(performances)//2]
-        
+
         recent_avg = np.mean([p[0] for p in recent if p[0] is not None])
         older_avg = np.mean([p[0] for p in older if p[0] is not None])
-        
+
         if recent_avg > older_avg * 1.1:
             return "improving"
         elif recent_avg < older_avg * 0.9:
@@ -227,13 +226,13 @@ class OptimizedPerformanceAnalyzer:
     def _generate_enhanced_recommendation(self, pattern_type: str, pattern_value: str,
                                         engagement: float, consultation: float, confidence: float) -> str:
         """Generate enhanced actionable recommendations with business impact"""
-        
+
         # Calculate business impact
         monthly_impressions = 5000  # Estimated monthly impressions
         monthly_consultations = consultation * monthly_impressions
         consultation_value = 2500  # Average consultation value
         monthly_revenue_potential = monthly_consultations * consultation_value
-        
+
         base_rec = ""
         if pattern_type == 'hook_type':
             if pattern_value == 'controversial' and engagement > 0.08:
@@ -357,7 +356,7 @@ class OptimizedPerformanceAnalyzer:
         if engagement_predictions:
             predicted_engagement = baseline_engagement + sum(engagement_predictions)
             prediction_confidence = np.mean(confidence_scores) if confidence_scores else 0.3
-            
+
             # Calculate confidence interval based on prediction confidence
             ci_range = (1 - prediction_confidence) * 0.5  # Lower confidence = wider interval
             engagement_ci = (
@@ -389,7 +388,7 @@ class OptimizedPerformanceAnalyzer:
             baseline_comparison=baseline_comparison
         )
 
-    def _analyze_content_characteristics(self, post_id: str, content: str) -> Dict[str, Any]:
+    def _analyze_content_characteristics(self, post_id: str, content: str) -> dict[str, Any]:
         """Enhanced content analysis with additional characteristics"""
         post_content = self._extract_post_content(content)
 
@@ -444,33 +443,33 @@ class OptimizedPerformanceAnalyzer:
         # Controversial hooks
         if any(word in first_line for word in ['wrong', 'myth', 'mistake', 'truth', 'shocking', 'unpopular']):
             return 'controversial'
-        
+
         # Question hooks
         if first_line.endswith('?'):
             return 'question'
-        
+
         # Personal story hooks
         if any(phrase in first_line for phrase in ['i worked', 'i helped', 'i saw', 'i learned', 'my experience']):
             return 'personal_story'
-        
+
         # Data-driven hooks
         if re.search(r'\d+%|\$\d+|\d+x|\d+[Kk]', first_line):
             return 'data_driven'
-        
+
         # Instructional hooks
         if any(word in first_line for word in ['how to', 'guide', 'step', 'tutorial', 'learn']):
             return 'instructional'
-        
+
         # List hooks
         if re.search(r'\d+\s+(ways|tips|secrets|mistakes|reasons)', first_line):
             return 'list_format'
-        
+
         return 'general'
 
     def _identify_cta_type(self, content: str) -> str:
         """Enhanced CTA type identification"""
         content_lower = content.lower()
-        
+
         if 'dm me' in content_lower or 'send me a message' in content_lower:
             return 'direct_dm'
         elif 'comment' in content_lower and ('experience' in content_lower or 'thoughts' in content_lower):
@@ -487,31 +486,31 @@ class OptimizedPerformanceAnalyzer:
     def _identify_topic_category(self, content: str) -> str:
         """Enhanced topic categorization"""
         content_lower = content.lower()
-        
+
         # Technical leadership
         if any(term in content_lower for term in ['cto', 'technical leadership', 'engineering manager', 'tech lead']):
             return 'technical_leadership'
-        
+
         # Team building
         if any(term in content_lower for term in ['team', 'culture', 'hiring', 'management', 'leadership']):
             return 'team_building'
-        
+
         # Architecture and scaling
         if any(term in content_lower for term in ['architecture', 'scaling', 'system design', 'performance']):
             return 'architecture_scaling'
-        
+
         # Career development
         if any(term in content_lower for term in ['career', 'growth', 'promotion', 'skills', 'learning']):
             return 'career_development'
-        
+
         # Business strategy
         if any(term in content_lower for term in ['business', 'strategy', 'startup', 'revenue', 'product']):
             return 'business_strategy'
-        
+
         # Technical skills
         if any(term in content_lower for term in ['python', 'javascript', 'coding', 'programming', 'development']):
             return 'technical_skills'
-        
+
         return 'general'
 
     def _score_technical_depth(self, content: str) -> int:
@@ -522,17 +521,17 @@ class OptimizedPerformanceAnalyzer:
             'optimization', 'performance', 'scaling', 'infrastructure',
             'microservices', 'kubernetes', 'docker', 'ci/cd'
         ]
-        
+
         technical_score = sum(1 for term in technical_terms if term in content_lower)
-        
+
         # Boost for code snippets
         if '```' in content or 'python' in content_lower:
             technical_score += 2
-        
+
         # Boost for specific technologies
         if any(tech in content_lower for tech in ['react', 'node.js', 'aws', 'gcp', 'azure']):
             technical_score += 1
-            
+
         return min(technical_score, 5)
 
     def _score_business_focus(self, content: str) -> int:
@@ -542,13 +541,13 @@ class OptimizedPerformanceAnalyzer:
             'revenue', 'profit', 'growth', 'roi', 'customer', 'market',
             'business', 'strategy', 'value', 'cost', 'efficiency'
         ]
-        
+
         business_score = sum(1 for term in business_terms if term in content_lower)
-        
+
         # Boost for business metrics
         if any(symbol in content for symbol in ['$', '%', 'ROI', 'revenue']):
             business_score += 1
-            
+
         return min(business_score, 5)
 
     def _score_controversy_level(self, content: str) -> int:
@@ -559,12 +558,12 @@ class OptimizedPerformanceAnalyzer:
             'brutal truth', 'harsh reality', 'shocking', 'surprising',
             'disagree', 'against', 'challenge'
         ]
-        
+
         controversy_score = sum(1 for term in controversy_indicators if term in content_lower)
-        
+
         if '🔥' in content or 'hot take' in content_lower:
             controversy_score += 1
-            
+
         return min(controversy_score, 5)
 
     def _has_personal_story(self, content: str) -> bool:
@@ -575,10 +574,10 @@ class OptimizedPerformanceAnalyzer:
             'last year', 'recently', 'story:', 'when i', 'i remember',
             'i once', 'my team', 'we built', 'i discovered'
         ]
-        
+
         return any(indicator in content_lower for indicator in story_indicators)
 
-    def get_real_time_analytics(self) -> Dict[str, Any]:
+    def get_real_time_analytics(self) -> dict[str, Any]:
         """Get real-time analytics dashboard data"""
         return {
             'performance_trends': self.db.get_performance_trends(days=30),
@@ -607,9 +606,9 @@ def main():
         # Run optimized analysis
         print("🔍 Running optimized content analysis...")
         patterns = analyzer.analyze_all_content_optimized()
-        
+
         print(f"✅ Identified {len(patterns)} high-confidence patterns")
-        
+
         if patterns:
             print("\n📊 Top 5 Performance Patterns:")
             for i, pattern in enumerate(patterns[:5], 1):
@@ -626,11 +625,11 @@ def main():
         
         Team performance multiplies when you focus on systems over individuals.
         """
-        
+
         print("🎯 Testing performance prediction...")
         prediction = analyzer.predict_content_performance_optimized(test_content, "Tuesday")
-        
-        print(f"📈 Predicted Performance:")
+
+        print("📈 Predicted Performance:")
         print(f"   Engagement Rate: {prediction.predicted_engagement_rate*100:.1f}%")
         print(f"   Consultation Requests: {prediction.predicted_consultation_requests}")
         print(f"   Confidence: {prediction.prediction_confidence:.2f}")
@@ -639,16 +638,16 @@ def main():
 
         # Get real-time analytics
         analytics = analyzer.get_real_time_analytics()
-        print(f"\n📊 Database Statistics:")
+        print("\n📊 Database Statistics:")
         for key, value in analytics['database_stats'].items():
             print(f"   {key}: {value}")
 
         print("\n✅ Optimized analytics demonstration completed")
-        
+
     except Exception as e:
         logger.error(f"Error in optimized analytics: {e}")
         print(f"❌ Error: {e}")
-    
+
     finally:
         if 'analyzer' in locals():
             analyzer.close()

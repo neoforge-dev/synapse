@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -165,8 +165,8 @@ class DocumentResponse(BaseModel):
     title: str
     content: str
     metadata: dict[str, Any] = Field(default_factory=dict)
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class ChunkResponse(BaseModel):
@@ -175,22 +175,22 @@ class ChunkResponse(BaseModel):
     text: str
     document_id: str
     metadata: dict[str, Any] = Field(default_factory=dict)
-    created_at: Optional[datetime] = None
+    created_at: datetime | None = None
 
 
 class DocumentIngestionRequest(BaseModel):
     """Request schema for unified document ingestion."""
     title: str = Field(..., min_length=1, description="Document title")
     content: str = Field(..., min_length=1, description="Document content")
-    metadata: Optional[dict[str, Any]] = Field(default_factory=dict, description="Document metadata")
-    source_type: Optional[str] = Field(default="api", description="Source type (api, file_upload, batch_api)")
+    metadata: dict[str, Any] | None = Field(default_factory=dict, description="Document metadata")
+    source_type: str | None = Field(default="api", description="Source type (api, file_upload, batch_api)")
 
 
 class IngestionResponse(BaseModel):
     """Response schema for unified document ingestion."""
     document_id: str
     chunks_created: int
-    chunk_ids: List[str]
+    chunk_ids: list[str]
     processing_time_ms: float
     message: str
 
@@ -203,7 +203,7 @@ class ContentAnalyticsSummary(BaseModel):
     total_content_size_bytes: int
     average_chunks_per_document: float
     system_health: str = "healthy"
-    last_updated: Optional[datetime] = Field(default_factory=datetime.now)
+    last_updated: datetime | None = Field(default_factory=datetime.now)
 
 
 # --- Unified Retrieval Router Schemas (Epic 2) ---
@@ -211,25 +211,25 @@ class ContentAnalyticsSummary(BaseModel):
 class QueryRequest(BaseModel):
     """Request schema for unified query processing."""
     query: str = Field(..., min_length=1, description="Query text")
-    top_k: Optional[int] = Field(default=5, description="Number of results to return")
-    search_type: Optional[str] = Field(default="hybrid", description="Search type: vector, keyword, hybrid, graph, auto")
-    include_embeddings: Optional[bool] = Field(default=False, description="Include embeddings in response")
-    context_limit: Optional[int] = Field(default=8, description="Maximum context sources")
-    graph_depth: Optional[int] = Field(default=2, description="Maximum graph traversal depth")
+    top_k: int | None = Field(default=5, description="Number of results to return")
+    search_type: str | None = Field(default="hybrid", description="Search type: vector, keyword, hybrid, graph, auto")
+    include_embeddings: bool | None = Field(default=False, description="Include embeddings in response")
+    context_limit: int | None = Field(default=8, description="Maximum context sources")
+    graph_depth: int | None = Field(default=2, description="Maximum graph traversal depth")
 
 
 class ReasoningRequest(BaseModel):
     """Request schema for unified reasoning analysis."""
     prompt: str = Field(..., min_length=1, description="Reasoning prompt")
-    reasoning_type: Optional[str] = Field(default="analytical", description="Type of reasoning: analytical, logical, creative")
-    use_context_expansion: Optional[bool] = Field(default=True, description="Use context expansion via entity relationships")
-    context_limit: Optional[int] = Field(default=8, description="Maximum context sources")
-    relationship_types: Optional[List[str]] = Field(default_factory=lambda: ["RELATES_TO", "MENTIONS"], description="Relationship types for context expansion")
+    reasoning_type: str | None = Field(default="analytical", description="Type of reasoning: analytical, logical, creative")
+    use_context_expansion: bool | None = Field(default=True, description="Use context expansion via entity relationships")
+    context_limit: int | None = Field(default=8, description="Maximum context sources")
+    relationship_types: list[str] | None = Field(default_factory=lambda: ["RELATES_TO", "MENTIONS"], description="Relationship types for context expansion")
 
 
 class SearchQueryResponse(BaseModel):
     """Response schema for unified search operations."""
-    results: List[SearchResultSchema]
+    results: list[SearchResultSchema]
     query: str
     search_type: str
     total_results: int
@@ -240,7 +240,7 @@ class QueryResponse(BaseModel):
     """Response schema for unified query operations."""
     query: str
     answer: str
-    sources: List[dict]
+    sources: list[dict]
     metadata: dict
 
 
@@ -248,6 +248,6 @@ class ReasoningResponse(BaseModel):
     """Response schema for unified reasoning operations."""
     prompt: str
     reasoning: str
-    context_sources: List[dict]
-    related_context: List[dict]
+    context_sources: list[dict]
+    related_context: list[dict]
     analysis_metadata: dict

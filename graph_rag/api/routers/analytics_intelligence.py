@@ -13,9 +13,9 @@ This router consolidates:
 
 import logging
 from datetime import datetime
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
@@ -56,16 +56,16 @@ logger = logging.getLogger(__name__)
 # Dashboard Models
 class ExecutiveDashboardResponse(BaseModel):
     """Executive dashboard metrics response"""
-    kpi_metrics: Dict[str, Any]
-    strategic_insights: List[str]
-    performance_trends: Dict[str, Any]
+    kpi_metrics: dict[str, Any]
+    strategic_insights: list[str]
+    performance_trends: dict[str, Any]
     timeframe: str
 
 class OperationalDashboardResponse(BaseModel):
     """Operational dashboard metrics response"""
-    efficiency_metrics: Dict[str, Any]
-    quality_metrics: Dict[str, Any]
-    process_metrics: Dict[str, Any]
+    efficiency_metrics: dict[str, Any]
+    quality_metrics: dict[str, Any]
+    process_metrics: dict[str, Any]
     focus_area: str
 
 # Audience Analysis Models
@@ -78,26 +78,26 @@ class AudienceAnalysisRequest(BaseModel):
 class ResonanceAnalysisRequest(BaseModel):
     """Request model for audience resonance analysis."""
     content: str = Field(..., description="Content to analyze")
-    target_segments: List[str] = Field(..., description="Target audience segments")
+    target_segments: list[str] = Field(..., description="Target audience segments")
     platform: str = Field(default="linkedin", description="Platform context")
 
 class AudienceAnalysisResponse(BaseModel):
     """Response model for audience analysis."""
-    target_audience: Dict[str, Any] = Field(..., description="Target audience analysis")
-    engagement_predictions: Dict[str, Any] = Field(..., description="Predicted engagement by segment")
-    demographic_insights: Dict[str, Any] = Field(..., description="Demographic breakdown")
+    target_audience: dict[str, Any] = Field(..., description="Target audience analysis")
+    engagement_predictions: dict[str, Any] = Field(..., description="Predicted engagement by segment")
+    demographic_insights: dict[str, Any] = Field(..., description="Demographic breakdown")
 
 class ResonanceAnalysisResponse(BaseModel):
     """Response model for resonance analysis."""
-    resonance_scores: Dict[str, float] = Field(..., description="Resonance scores by segment")
-    segment_analysis: Dict[str, Any] = Field(..., description="Detailed segment analysis")
-    optimization_suggestions: List[str] = Field(..., description="Optimization recommendations")
+    resonance_scores: dict[str, float] = Field(..., description="Resonance scores by segment")
+    segment_analysis: dict[str, Any] = Field(..., description="Detailed segment analysis")
+    optimization_suggestions: list[str] = Field(..., description="Optimization recommendations")
 
 class AudienceSegmentsResponse(BaseModel):
     """Response model for audience segments."""
-    segments: List[Dict[str, Any]] = Field(..., description="Available audience segments")
-    segment_characteristics: Dict[str, Any] = Field(..., description="Characteristics of each segment")
-    targeting_recommendations: List[str] = Field(..., description="Targeting recommendations")
+    segments: list[dict[str, Any]] = Field(..., description="Available audience segments")
+    segment_characteristics: dict[str, Any] = Field(..., description="Characteristics of each segment")
+    targeting_recommendations: list[str] = Field(..., description="Targeting recommendations")
 
 # Concept Analysis Models
 class ConceptExtractionRequest(BaseModel):
@@ -108,39 +108,39 @@ class ConceptExtractionRequest(BaseModel):
 
 class ConceptAnalysisResponse(BaseModel):
     """Response model for concept analysis."""
-    concepts: List[Dict[str, Any]]
-    concept_relationships: List[Dict[str, Any]]
-    semantic_themes: List[str]
-    confidence_scores: Dict[str, float]
+    concepts: list[dict[str, Any]]
+    concept_relationships: list[dict[str, Any]]
+    semantic_themes: list[str]
+    confidence_scores: dict[str, float]
 
 class ConceptTrendsResponse(BaseModel):
     """Response model for concept trends."""
-    trending_concepts: List[Dict[str, Any]]
-    concept_evolution: Dict[str, Any]
-    trend_analysis: Dict[str, Any]
+    trending_concepts: list[dict[str, Any]]
+    concept_evolution: dict[str, Any]
+    trend_analysis: dict[str, Any]
     timeframe: str
 
 # Content Strategy Models
 class ContentStrategyRequest(BaseModel):
     """Request for content strategy recommendations."""
     target_audience: str = Field(..., description="Target audience description")
-    content_goals: List[str] = Field(..., description="Content marketing goals")
+    content_goals: list[str] = Field(..., description="Content marketing goals")
     platform: str = Field(default="linkedin", description="Target platform")
-    industry: Optional[str] = Field(None, description="Industry context")
+    industry: str | None = Field(None, description="Industry context")
 
 class ContentStrategyResponse(BaseModel):
     """Response model for content strategy."""
-    strategy_recommendations: List[Dict[str, Any]]
-    content_pillars: List[str]
-    optimal_posting_schedule: Dict[str, Any]
-    engagement_optimization: Dict[str, Any]
+    strategy_recommendations: list[dict[str, Any]]
+    content_pillars: list[str]
+    optimal_posting_schedule: dict[str, Any]
+    engagement_optimization: dict[str, Any]
 
 class ContentPerformanceResponse(BaseModel):
     """Response model for content performance analysis."""
-    performance_metrics: Dict[str, Any]
-    top_performing_content: List[Dict[str, Any]]
-    engagement_insights: Dict[str, Any]
-    optimization_opportunities: List[str]
+    performance_metrics: dict[str, Any]
+    top_performing_content: list[dict[str, Any]]
+    engagement_insights: dict[str, Any]
+    optimization_opportunities: list[str]
 
 
 def create_analytics_intelligence_router() -> APIRouter:
@@ -154,7 +154,7 @@ def create_analytics_intelligence_router() -> APIRouter:
     @router.get("/dashboard/executive", response_model=ExecutiveDashboardResponse, tags=["Business Intelligence"])
     async def get_executive_dashboard(
         timeframe: str = Query("30d", description="Timeframe: 7d, 30d, 90d, 1y"),
-        current_user: Optional[User] = Depends(get_current_user_optional)
+        current_user: User | None = Depends(get_current_user_optional)
     ) -> ExecutiveDashboardResponse:
         """Executive dashboard with high-level KPIs and strategic insights."""
         try:
@@ -170,7 +170,7 @@ def create_analytics_intelligence_router() -> APIRouter:
                 "database_optimization": "75%",
                 "cost_reduction": "32%"
             }
-            
+
             strategic_insights = [
                 "API consolidation reduced complexity by 65% (33→10 routers)",
                 "Epic 7 sales pipeline maintains $1.158M value with zero disruption",
@@ -178,14 +178,14 @@ def create_analytics_intelligence_router() -> APIRouter:
                 "Database optimization reduced storage by 75%",
                 "Enterprise platform readiness achieved for Fortune 500 scaling"
             ]
-            
+
             performance_trends = {
                 "user_engagement": {"trend": "increasing", "change": 15.2},
                 "system_efficiency": {"trend": "increasing", "change": 23.1},
                 "cost_optimization": {"trend": "decreasing", "change": -18.5},
                 "consolidation_progress": {"trend": "increasing", "change": 65.0}
             }
-            
+
             return ExecutiveDashboardResponse(
                 kpi_metrics=kpi_metrics,
                 strategic_insights=strategic_insights,
@@ -406,7 +406,7 @@ def create_analytics_intelligence_router() -> APIRouter:
 
     @router.get("/dashboard/business-metrics", tags=["Business Intelligence"])
     async def get_business_metrics(
-        current_user: Optional[User] = Depends(get_current_user_optional)
+        current_user: User | None = Depends(get_current_user_optional)
     ):
         """Get comprehensive business intelligence metrics."""
         try:

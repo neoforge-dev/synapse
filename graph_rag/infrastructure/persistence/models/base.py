@@ -16,4 +16,5 @@ DATABASE_URLS = {
 
 # Metadata for Alembic migrations
 from sqlalchemy import MetaData
+
 metadata = MetaData()

@@ -12,32 +12,23 @@ This router consolidates:
 """
 
 import logging
-import time
 from datetime import datetime
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from pydantic import BaseModel
 
 # Auth and security imports
 from graph_rag.api.auth.dependencies import (
     get_auth_provider,
     get_current_user,
-    get_current_user_optional,
     get_jwt_handler,
     require_admin_role,
 )
 from graph_rag.api.auth.enterprise_models import (
     AuditEventType,
-    ComplianceFramework,
-    ComplianceReportRequest,
-    LDAPAuthRequest,
-    LDAPConfiguration,
-    MFAChallengeRequest,
     MFAType,
-    OAuthAuthRequest,
     OAuthConfiguration,
     SAMLAuthRequest,
     SAMLConfiguration,
@@ -70,15 +61,7 @@ from graph_rag.api.health import (
     check_llm_service,
     check_vector_store,
 )
-from graph_rag.api.performance_optimization import (
-    get_advanced_performance_stats,
-    get_optimization_recommendations,
-    get_performance_monitor,
-    get_query_optimizer,
-)
 from graph_rag.api.system_metrics import (
-    assess_system_health,
-    get_application_metrics,
     get_platform_info,
     get_system_metrics,
 )
@@ -86,10 +69,8 @@ from graph_rag.core.interfaces import GraphRepository, VectorStore
 from graph_rag.llm.protocols import LLMService
 from graph_rag.observability import (
     ComponentType,
-    LogContext,
     get_component_logger,
 )
-from graph_rag.services.maintenance import IntegrityCheckJob
 
 # Compliance imports
 try:
@@ -337,7 +318,7 @@ def create_enterprise_platform_router() -> APIRouter:
         """Create a new enterprise tenant."""
         try:
             tenant = await auth_provider.create_tenant(tenant_data)
-            
+
             # Log audit event
             await auth_provider.log_audit_event(
                 tenant_id=tenant.id,
@@ -352,7 +333,7 @@ def create_enterprise_platform_router() -> APIRouter:
                     "compliance_frameworks": [f.value for f in tenant.compliance_frameworks]
                 }
             )
-            
+
             return {
                 "tenant_id": tenant.id,
                 "name": tenant.name,
@@ -399,7 +380,7 @@ def create_enterprise_platform_router() -> APIRouter:
         """Configure SAML identity provider for a tenant."""
         try:
             config = await auth_provider.configure_saml(saml_config.tenant_id, saml_config)
-            
+
             await auth_provider.log_audit_event(
                 tenant_id=config.tenant_id,
                 event_type=AuditEventType.CONFIGURATION_CHANGED,
@@ -409,7 +390,7 @@ def create_enterprise_platform_router() -> APIRouter:
                 result="success",
                 details={"provider_name": config.name, "entity_id": config.entity_id}
             )
-            
+
             return {"message": "SAML configuration created", "config_id": config.id}
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -426,7 +407,7 @@ def create_enterprise_platform_router() -> APIRouter:
                 saml_request.saml_response,
                 saml_request.relay_state
             )
-            
+
             if not user:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -435,16 +416,16 @@ def create_enterprise_platform_router() -> APIRouter:
 
             # Generate access token
             access_token = auth_provider.jwt_handler.create_access_token(user)
-            
+
             # Update last login
             await auth_provider.update_last_login(user.id)
-            
+
             return TokenResponse(
                 access_token=access_token,
                 expires_in=auth_provider.jwt_handler.settings.access_token_expire_minutes * 60,
                 user=user
             )
-            
+
         except HTTPException:
             raise
         except Exception as e:
@@ -465,7 +446,7 @@ def create_enterprise_platform_router() -> APIRouter:
         """Configure OAuth identity provider for a tenant."""
         try:
             config = await auth_provider.configure_oauth(oauth_config.tenant_id, oauth_config)
-            
+
             await auth_provider.log_audit_event(
                 tenant_id=config.tenant_id,
                 event_type=AuditEventType.CONFIGURATION_CHANGED,
@@ -475,7 +456,7 @@ def create_enterprise_platform_router() -> APIRouter:
                 result="success",
                 details={"provider": config.provider.value, "name": config.name}
             )
-            
+
             return {"message": "OAuth configuration created", "config_id": config.id}
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -498,20 +479,20 @@ def create_enterprise_platform_router() -> APIRouter:
                 phone_number=phone_number,
                 email=email
             )
-            
+
             response = {
                 "mfa_id": mfa_config.id,
                 "mfa_type": mfa_config.mfa_type,
                 "setup_complete": True
             }
-            
+
             if mfa_type == MFAType.TOTP:
                 # Return QR code data for TOTP setup
                 response["totp_secret"] = mfa_config.secret_key
                 response["backup_codes"] = mfa_config.backup_codes
-            
+
             return response
-            
+
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -534,12 +515,12 @@ def create_enterprise_platform_router() -> APIRouter:
                 status_code=status.HTTP_501_NOT_IMPLEMENTED,
                 detail="GDPR compliance module not available"
             )
-        
+
         try:
             gdpr_request = await gdpr_processor.submit_data_subject_request(
                 request_type, user_id, tenant_id, email
             )
-            
+
             return {
                 "request_id": gdpr_request.id,
                 "request_type": gdpr_request.request_type,
@@ -561,7 +542,7 @@ def create_enterprise_platform_router() -> APIRouter:
         control_id: str,
         tester: str,
         test_description: str,
-        test_results: Dict[str, Any],
+        test_results: dict[str, Any],
         current_user: User = Depends(require_admin_role)
     ):
         """Perform and record a SOC 2 control test."""
@@ -570,12 +551,12 @@ def create_enterprise_platform_router() -> APIRouter:
                 status_code=status.HTTP_501_NOT_IMPLEMENTED,
                 detail="SOC 2 compliance module not available"
             )
-        
+
         try:
             test_id = soc2_framework.perform_control_test(
                 control_id, tester, test_description, test_results
             )
-            
+
             return {
                 "test_id": test_id,
                 "control_id": control_id,
@@ -604,10 +585,10 @@ def create_enterprise_platform_router() -> APIRouter:
                 status_code=status.HTTP_501_NOT_IMPLEMENTED,
                 detail="HIPAA compliance module not available"
             )
-        
+
         try:
             assessment_id = hipaa_framework.conduct_risk_assessment(assessment_scope, assessor)
-            
+
             return {
                 "assessment_id": assessment_id,
                 "assessment_date": datetime.utcnow().isoformat(),
@@ -630,19 +611,19 @@ def create_enterprise_platform_router() -> APIRouter:
         try:
             # Basic framework status when modules are available
             frameworks_status = {}
-            
+
             if gdpr_processor:
                 frameworks_status["gdpr"] = {
                     "status": "operational",
                     "description": "GDPR data protection compliance active"
                 }
-            
+
             if soc2_framework:
                 frameworks_status["soc2"] = {
-                    "status": "operational", 
+                    "status": "operational",
                     "description": "SOC 2 security controls active"
                 }
-            
+
             if hipaa_framework:
                 frameworks_status["hipaa"] = {
                     "status": "operational",
@@ -880,7 +861,7 @@ def create_enterprise_platform_router() -> APIRouter:
 
     @router.get("/health/enterprise", tags=["Health Check"])
     async def enterprise_health_check(
-        auth_provider: Optional[EnterpriseAuthProvider] = Depends(get_auth_provider)
+        auth_provider: EnterpriseAuthProvider | None = Depends(get_auth_provider)
     ):
         """Enterprise platform health check."""
         enterprise_features = {
@@ -888,7 +869,7 @@ def create_enterprise_platform_router() -> APIRouter:
             "api_keys": True,
             "user_management": True
         }
-        
+
         if hasattr(auth_provider, '_saml_configs'):
             enterprise_features.update({
                 "saml_enabled": len(getattr(auth_provider, '_saml_configs', {})) > 0,

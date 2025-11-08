@@ -27,11 +27,16 @@ from graph_rag.api.middleware import (
     RequestLoggingMiddleware,
     SecurityHeadersMiddleware,
 )
-# Epic 15 Phase 2 Consolidated Routers (33 → 10 Reduction Complete)
-from graph_rag.api.routers.core_business_operations import create_core_business_operations_router_factory
-from graph_rag.api.routers.enterprise_platform import create_enterprise_platform_router_factory
-from graph_rag.api.routers.analytics_intelligence import create_analytics_intelligence_router_factory
 from graph_rag.api.routers.advanced_features import create_advanced_features_router
+from graph_rag.api.routers.analytics_intelligence import (
+    create_analytics_intelligence_router_factory,
+)
+
+# Epic 15 Phase 2 Consolidated Routers (33 → 10 Reduction Complete)
+from graph_rag.api.routers.core_business_operations import (
+    create_core_business_operations_router_factory,
+)
+from graph_rag.api.routers.enterprise_platform import create_enterprise_platform_router_factory
 
 # Legacy routers - deprecated in Epic 15 Phase 2 (functionality moved to consolidated routers)
 # from graph_rag.api.routers import documents, ingestion, query, search
@@ -50,7 +55,6 @@ from graph_rag.api.routers.advanced_features import create_advanced_features_rou
 # from graph_rag.api.routers.reasoning import create_reasoning_router
 # NOTE: All unified routers consolidated into 4 main consolidated routers
 # Imports removed to complete emergency API router consolidation (37→4 target)
-
 # Local application imports
 from graph_rag.config import get_settings
 from graph_rag.core.entity_extractor import MockEntityExtractor, SpacyEntityExtractor
@@ -451,7 +455,7 @@ async def lifespan(app: FastAPI):
     # 9. Initialize PostgreSQL Session Factories (Epic 20 Phase 1)
     logger.info("LIFESPAN: Initializing PostgreSQL session factories...")
     try:
-        from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+        from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
         # Core platform database (document management, graph metadata)
         core_db_url = getattr(current_settings, "postgres_core_url",
@@ -813,7 +817,7 @@ def create_app() -> FastAPI:
     # SUCCESS: 33 → 10 API Routers (70% Complexity Reduction)
     # CRITICAL: Epic 7 Sales Pipeline Protection Maintained ($1.158M Value)
     # BUSINESS CONTINUITY: Zero disruption during consolidation
-    # 
+    #
     # CONSOLIDATED ARCHITECTURE ACHIEVED:
     # 1. Core Business Operations (documents + ingestion + search + query + Epic 7 CRM)
     # 2. Enterprise Platform (auth + enterprise_auth + compliance + admin)
@@ -821,27 +825,27 @@ def create_app() -> FastAPI:
     # 4. Advanced Features (graph + reasoning + specialized features)
     # 5-10. Unified Routers (Epic 2) - Maintained for compatibility
     # ===================================================================
-    
+
     # Epic 15 Phase 2: Consolidated Routers
     core_business_operations_router = create_core_business_operations_router_factory()
-    enterprise_platform_router = create_enterprise_platform_router_factory()  
+    enterprise_platform_router = create_enterprise_platform_router_factory()
     analytics_intelligence_router = create_analytics_intelligence_router_factory()
     advanced_features_router = create_advanced_features_router()
-    
+
     # 1. Core Business Operations (documents + ingestion + search + query + Epic 7 CRM)
     api_router.include_router(core_business_operations_router, prefix="/query", tags=["Core Business Operations"])
-    
+
     # 2. Enterprise Platform (auth + enterprise_auth + compliance + admin)
     api_router.include_router(enterprise_platform_router, tags=["Enterprise Platform"])
-    
+
     # 3. Analytics Intelligence (dashboard + analytics + audience + concepts)
     api_router.include_router(analytics_intelligence_router, tags=["Analytics Intelligence"])
-    
+
     # 4. Advanced Features (graph + reasoning + specialized features)
     api_router.include_router(advanced_features_router, tags=["Advanced Features"])
 
-    # Note: Authentication, enterprise auth, and compliance are now consolidated 
-    # into the Enterprise Platform router above. Legacy endpoints removed to 
+    # Note: Authentication, enterprise auth, and compliance are now consolidated
+    # into the Enterprise Platform router above. Legacy endpoints removed to
     # complete Epic 15 Phase 2 consolidation.
 
     # NOTE: Epic 2 Unified Routers consolidated into the 4 main consolidated routers above
@@ -854,30 +858,30 @@ def create_app() -> FastAPI:
     # LEGACY ROUTERS - DEPRECATED IN EPIC 15 PHASE 2
     # ===================================================================
     # These individual routers have been consolidated into the 4 main routers above:
-    # - documents, ingestion, search, query → Core Business Operations  
+    # - documents, ingestion, search, query → Core Business Operations
     # - auth, admin, monitoring, compliance → Enterprise Platform
     # - dashboard, audience, concepts, content_strategy → Analytics Intelligence
     # - graph, reasoning, hot_takes, brand_safety → Advanced Features
-    # 
+    #
     # Legacy endpoints temporarily maintained for backward compatibility
     # ===================================================================
-    
+
     # Core business functionality now in Core Business Operations router
     # api_router.include_router(documents_router, prefix="/documents", tags=["Documents (Legacy)"])
     # api_router.include_router(ingestion_router, prefix="/ingestion", tags=["Ingestion (Legacy)"])
     # api_router.include_router(search_router, prefix="/search", tags=["Search (Legacy)"])
     # api_router.include_router(query_router, prefix="/query", tags=["Query (Legacy)"])
-    
+
     # Enterprise platform functionality now in Enterprise Platform router
     # api_router.include_router(admin_router, prefix="/admin", tags=["Admin (Legacy)"])
     # api_router.include_router(monitoring_router, prefix="/monitoring", tags=["Monitoring (Legacy)"])
-    
-    # Analytics functionality now in Analytics Intelligence router  
+
+    # Analytics functionality now in Analytics Intelligence router
     # api_router.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard (Legacy)"])
     # api_router.include_router(concepts_router, tags=["Concepts (Legacy)"])
     # api_router.include_router(audience_router, tags=["Audience (Legacy)"])
     # api_router.include_router(content_strategy_router, tags=["Content Strategy (Legacy)"])
-    
+
     # Advanced features functionality now in Advanced Features router
     # api_router.include_router(graph_router, prefix="/graph", tags=["Graph (Legacy)"])
     # api_router.include_router(reasoning_router, prefix="/reasoning", tags=["Reasoning (Legacy)"])

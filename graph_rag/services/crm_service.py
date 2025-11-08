@@ -18,25 +18,24 @@ Pipeline Value: $1.158M across 16 qualified contacts
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
-from typing import Dict, List, Optional, Any
-from uuid import UUID, uuid4
+from typing import Any
+from uuid import UUID
 
-from sqlalchemy import create_engine, select, func, and_, or_, desc
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy import create_engine, desc, func, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from graph_rag.infrastructure.persistence.models.crm import (
+    ABTestCampaignModel,
     ContactModel,
-    SalesPipelineModel,
     LeadQualificationModel,
     ProposalModel,
-    ABTestCampaignModel,
     RevenueForecastModel,
+    SalesPipelineModel,
 )
-from graph_rag.infrastructure.persistence.models.base import Base
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +115,7 @@ class CRMService:
 
     def __init__(
         self,
-        db_config: Optional[DatabaseConfig] = None,
+        db_config: DatabaseConfig | None = None,
         use_async: bool = False,
     ):
         """
@@ -199,16 +198,16 @@ class CRMService:
         self,
         name: str,
         email: str,
-        company: Optional[str] = None,
-        title: Optional[str] = None,
-        phone: Optional[str] = None,
-        linkedin_profile: Optional[str] = None,
+        company: str | None = None,
+        title: str | None = None,
+        phone: str | None = None,
+        linkedin_profile: str | None = None,
         lead_score: int = 0,
         estimated_value: Decimal = Decimal("0.00"),
         priority_tier: str = "bronze",
         qualification_status: str = "prospect",
-        next_action: Optional[str] = None,
-        next_action_date: Optional[datetime] = None,
+        next_action: str | None = None,
+        next_action_date: datetime | None = None,
         notes: str = "",
     ) -> ContactModel:
         """
@@ -268,7 +267,7 @@ class CRMService:
         finally:
             session.close()
 
-    def get_contact(self, contact_id: UUID) -> Optional[ContactModel]:
+    def get_contact(self, contact_id: UUID) -> ContactModel | None:
         """
         Get contact by ID
 
@@ -285,7 +284,7 @@ class CRMService:
         finally:
             session.close()
 
-    def get_contact_by_email(self, email: str) -> Optional[ContactModel]:
+    def get_contact_by_email(self, email: str) -> ContactModel | None:
         """
         Get contact by email address
 
@@ -380,12 +379,12 @@ class CRMService:
 
     def list_contacts(
         self,
-        qualification_status: Optional[str] = None,
-        priority_tier: Optional[str] = None,
-        min_lead_score: Optional[int] = None,
+        qualification_status: str | None = None,
+        priority_tier: str | None = None,
+        min_lead_score: int | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[ContactModel]:
+    ) -> list[ContactModel]:
         """
         List contacts with optional filters
 
@@ -428,7 +427,7 @@ class CRMService:
         self,
         contact_id: UUID,
         new_score: int,
-        qualification_criteria: Optional[Dict[str, Any]] = None,
+        qualification_criteria: dict[str, Any] | None = None,
         qualification_notes: str = "",
         qualified_by: str = "system",
     ) -> LeadQualificationModel:
@@ -497,7 +496,7 @@ class CRMService:
         self,
         contact_id: UUID,
         limit: int = 10,
-    ) -> List[LeadQualificationModel]:
+    ) -> list[LeadQualificationModel]:
         """
         Get qualification history for a contact
 
@@ -531,7 +530,7 @@ class CRMService:
         stage: str,
         probability: Decimal,
         deal_value: Decimal,
-        expected_close_date: Optional[datetime] = None,
+        expected_close_date: datetime | None = None,
         notes: str = "",
     ) -> SalesPipelineModel:
         """
@@ -589,7 +588,7 @@ class CRMService:
         self,
         pipeline_id: UUID,
         stage: str,
-        probability: Optional[Decimal] = None,
+        probability: Decimal | None = None,
         notes: str = "",
     ) -> SalesPipelineModel:
         """
@@ -631,7 +630,7 @@ class CRMService:
         finally:
             session.close()
 
-    def get_pipeline_summary(self) -> Dict[str, Any]:
+    def get_pipeline_summary(self) -> dict[str, Any]:
         """
         Get comprehensive pipeline summary with metrics
 
@@ -719,7 +718,7 @@ class CRMService:
         template_used: str,
         proposal_value: Decimal,
         estimated_close_probability: Decimal,
-        roi_analysis: Optional[Dict[str, Any]] = None,
+        roi_analysis: dict[str, Any] | None = None,
         custom_requirements: str = "",
         status: str = "draft",
     ) -> ProposalModel:
@@ -780,8 +779,8 @@ class CRMService:
         self,
         proposal_id: UUID,
         status: str,
-        sent_at: Optional[datetime] = None,
-        responded_at: Optional[datetime] = None,
+        sent_at: datetime | None = None,
+        responded_at: datetime | None = None,
     ) -> ProposalModel:
         """
         Update proposal status
@@ -825,8 +824,8 @@ class CRMService:
     def get_proposals_for_contact(
         self,
         contact_id: UUID,
-        status: Optional[str] = None,
-    ) -> List[ProposalModel]:
+        status: str | None = None,
+    ) -> list[ProposalModel]:
         """
         Get all proposals for a contact
 
@@ -861,8 +860,8 @@ class CRMService:
         predicted_revenue: Decimal,
         confidence_level: Decimal,
         forecast_model: str = "tier_based",
-        input_parameters: Optional[Dict[str, Any]] = None,
-        contact_id: Optional[UUID] = None,
+        input_parameters: dict[str, Any] | None = None,
+        contact_id: UUID | None = None,
     ) -> RevenueForecastModel:
         """
         Create revenue forecast
@@ -910,7 +909,7 @@ class CRMService:
     def calculate_pipeline_forecast(
         self,
         forecast_period: str = "annual",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Calculate revenue forecast based on current pipeline
 
@@ -1021,7 +1020,7 @@ class CRMService:
         name: str,
         test_type: str,
         target_metric: str,
-        variants: Dict[str, Any],
+        variants: dict[str, Any],
         description: str = "",
         status: str = "draft",
     ) -> ABTestCampaignModel:
@@ -1068,8 +1067,8 @@ class CRMService:
     def update_ab_test_results(
         self,
         campaign_id: UUID,
-        results: Dict[str, Any],
-        winner_variant: Optional[str] = None,
+        results: dict[str, Any],
+        winner_variant: str | None = None,
     ) -> ABTestCampaignModel:
         """
         Update A/B test campaign results
@@ -1111,7 +1110,7 @@ class CRMService:
     # Health and Maintenance
     # ========================================================================
 
-    def health_check(self) -> Dict[str, Any]:
+    def health_check(self) -> dict[str, Any]:
         """
         Check database connection health
 

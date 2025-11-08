@@ -4,20 +4,18 @@ Production Web API for LinkedIn Automation
 Monitoring, control, and metrics endpoints
 """
 
-import json
 import logging
 import os
 import sqlite3
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, Depends, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import PlainTextResponse
-from prometheus_client import Counter, Histogram, Gauge, generate_latest
-from pydantic import BaseModel
 import uvicorn
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.responses import PlainTextResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from prometheus_client import Counter, Gauge, Histogram, generate_latest
+from pydantic import BaseModel
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -51,7 +49,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Verify API token for authentication"""
     token = credentials.credentials
     expected_token = os.getenv('API_SECRET_KEY', 'dev-token-change-in-production')
-    
+
     if token != expected_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -65,15 +63,15 @@ class SystemHealthResponse(BaseModel):
     timestamp: str
     uptime_seconds: float
     version: str
-    services: Dict[str, bool]
-    metrics: Dict[str, float]
+    services: dict[str, bool]
+    metrics: dict[str, float]
 
 class ContentQueueStatus(BaseModel):
     total_items: int
     queued: int
     posted: int
     failed: int
-    next_scheduled: Optional[str]
+    next_scheduled: str | None
 
 class BusinessMetrics(BaseModel):
     pipeline_value: float
@@ -87,7 +85,7 @@ class AlertConfig(BaseModel):
     alert_type: str
     threshold: float
     enabled: bool
-    notification_channels: List[str]
+    notification_channels: list[str]
 
 # Store startup time for uptime calculation
 STARTUP_TIME = time.time()
@@ -96,13 +94,13 @@ STARTUP_TIME = time.time()
 async def metrics_middleware(request, call_next):
     """Collect HTTP request metrics"""
     start_time = time.time()
-    
+
     response = await call_next(request)
-    
+
     duration = time.time() - start_time
     REQUEST_COUNT.labels(method=request.method, endpoint=request.url.path).inc()
     REQUEST_DURATION.observe(duration)
-    
+
     return response
 
 @app.get("/health", response_model=SystemHealthResponse)
@@ -111,14 +109,14 @@ async def health_check():
     try:
         # Test database connectivity
         db_healthy = test_database_connection()
-        
+
         # Check content queue status
         queue_status = get_content_queue_status()
-        
+
         # Calculate system health score
         health_score = calculate_system_health_score(db_healthy, queue_status)
         SYSTEM_HEALTH_SCORE.set(health_score)
-        
+
         return SystemHealthResponse(
             status="healthy" if health_score > 80 else "degraded" if health_score > 50 else "unhealthy",
             timestamp=datetime.now().isoformat(),
@@ -146,7 +144,7 @@ async def metrics_endpoint():
     try:
         # Update dynamic metrics before serving
         update_dynamic_metrics()
-        
+
         # Generate Prometheus format metrics
         return PlainTextResponse(
             generate_latest(),
@@ -156,13 +154,13 @@ async def metrics_endpoint():
         logger.error(f"Metrics generation failed: {e}")
         raise HTTPException(status_code=500, detail="Metrics generation failed")
 
-@app.get("/api/v1/status", response_model=Dict)
+@app.get("/api/v1/status", response_model=dict)
 async def get_system_status(token: str = Depends(verify_token)):
     """Get detailed system status"""
     try:
         queue_status = get_content_queue_status()
         business_metrics = get_business_metrics()
-        
+
         return {
             "timestamp": datetime.now().isoformat(),
             "system_health": calculate_system_health_score(True, queue_status),
@@ -196,7 +194,7 @@ async def generate_content(
     try:
         # This would integrate with the content generation system
         # For now, return success confirmation
-        
+
         return {
             "status": "success",
             "message": f"Generated {weeks} weeks of {content_type} content for {audience}",
@@ -213,10 +211,10 @@ async def trigger_maintenance(
 ):
     """Trigger system maintenance actions"""
     allowed_actions = ["backup", "cleanup", "queue_refill", "health_check"]
-    
+
     if action not in allowed_actions:
         raise HTTPException(status_code=400, detail=f"Invalid action. Allowed: {allowed_actions}")
-    
+
     try:
         result = execute_maintenance_action(action)
         return {
@@ -250,7 +248,7 @@ async def configure_alert(
     try:
         # Store alert configuration
         save_alert_config(alert_config)
-        
+
         return {
             "status": "success",
             "message": f"Alert configuration saved for {alert_config.alert_type}",
@@ -278,7 +276,7 @@ def get_content_queue_status() -> ContentQueueStatus:
     try:
         conn = sqlite3.connect('content_queue.db')
         cursor = conn.cursor()
-        
+
         # Get queue statistics
         cursor.execute('''
             SELECT 
@@ -287,9 +285,9 @@ def get_content_queue_status() -> ContentQueueStatus:
             FROM content_queue 
             GROUP BY status
         ''')
-        
+
         status_counts = {row[0]: row[1] for row in cursor.fetchall()}
-        
+
         # Get next scheduled post
         cursor.execute('''
             SELECT scheduled_time 
@@ -298,16 +296,16 @@ def get_content_queue_status() -> ContentQueueStatus:
             ORDER BY scheduled_time ASC 
             LIMIT 1
         ''')
-        
+
         next_scheduled = cursor.fetchone()
         next_scheduled = next_scheduled[0] if next_scheduled else None
-        
+
         conn.close()
-        
+
         # Update Prometheus metrics
         for status in ['queued', 'posted', 'failed']:
             CONTENT_QUEUE_ITEMS.labels(status=status).set(status_counts.get(status, 0))
-        
+
         return ContentQueueStatus(
             total_items=sum(status_counts.values()),
             queued=status_counts.get('queued', 0),
@@ -326,7 +324,7 @@ def get_business_metrics() -> BusinessMetrics:
     try:
         conn = sqlite3.connect('linkedin_business_development.db')
         cursor = conn.cursor()
-        
+
         # Get consultation pipeline metrics
         cursor.execute('''
             SELECT 
@@ -336,9 +334,9 @@ def get_business_metrics() -> BusinessMetrics:
                 SUM(CASE WHEN status = 'closed_won' THEN estimated_value ELSE 0 END) as revenue
             FROM consultation_inquiries
         ''')
-        
+
         inquiry_data = cursor.fetchone()
-        
+
         # Get post performance metrics
         cursor.execute('''
             SELECT 
@@ -347,24 +345,24 @@ def get_business_metrics() -> BusinessMetrics:
             FROM linkedin_posts 
             WHERE impressions > 0
         ''')
-        
+
         post_data = cursor.fetchone()
-        
+
         conn.close()
-        
+
         total_inquiries = inquiry_data[0] or 0
         pipeline_value = inquiry_data[1] or 0
         won_deals = inquiry_data[2] or 0
         revenue = inquiry_data[3] or 0
         posts_published = post_data[0] or 0
         engagement_rate = post_data[1] or 0
-        
+
         conversion_rate = (won_deals / total_inquiries) if total_inquiries > 0 else 0
-        
+
         # Update Prometheus metrics
         CONSULTATION_PIPELINE_VALUE.set(pipeline_value)
         LINKEDIN_ENGAGEMENT_RATE.set(engagement_rate)
-        
+
         return BusinessMetrics(
             pipeline_value=pipeline_value,
             total_inquiries=total_inquiries,
@@ -389,25 +387,25 @@ def check_linkedin_api_health() -> bool:
 def calculate_system_health_score(db_healthy: bool, queue_status: ContentQueueStatus) -> float:
     """Calculate overall system health score (0-100)"""
     score = 0
-    
+
     # Database health (30 points)
     if db_healthy:
         score += 30
-    
+
     # Content queue health (25 points)
     if queue_status.queued > 5:
         score += 25
     elif queue_status.queued > 0:
         score += 15
-    
+
     # API health (25 points)
     if check_linkedin_api_health():
         score += 25
-    
+
     # Recent activity (20 points)
     if queue_status.posted > 0:
         score += 20
-    
+
     return float(score)
 
 def update_dynamic_metrics():
@@ -415,22 +413,22 @@ def update_dynamic_metrics():
     try:
         # Update content queue metrics
         queue_status = get_content_queue_status()
-        
+
         # Update business metrics
         business_metrics = get_business_metrics()
-        
+
         # Update database connection count (mock)
         DATABASE_CONNECTIONS.set(1)
-        
+
     except Exception as e:
         logger.error(f"Failed to update dynamic metrics: {e}")
 
-def get_recent_activity() -> List[Dict]:
+def get_recent_activity() -> list[dict]:
     """Get recent system activity"""
     try:
         conn = sqlite3.connect('linkedin_business_development.db')
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT 
                 'post' as type,
@@ -441,7 +439,7 @@ def get_recent_activity() -> List[Dict]:
             ORDER BY posted_at DESC 
             LIMIT 10
         ''')
-        
+
         activities = []
         for row in cursor.fetchall():
             activities.append({
@@ -449,13 +447,13 @@ def get_recent_activity() -> List[Dict]:
                 'description': row[1],
                 'timestamp': row[2]
             })
-        
+
         conn.close()
         return activities
     except Exception:
         return []
 
-def get_active_alerts() -> List[Dict]:
+def get_active_alerts() -> list[dict]:
     """Get active system alerts"""
     # This would integrate with the alerting system
     # For now, return empty list
@@ -474,15 +472,15 @@ def execute_maintenance_action(action: str) -> str:
     else:
         return "Unknown action"
 
-def get_performance_data(days: int) -> Dict:
+def get_performance_data(days: int) -> dict:
     """Get performance analytics data"""
     try:
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
-        
+
         conn = sqlite3.connect('linkedin_business_development.db')
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT 
                 DATE(posted_at) as date,
@@ -495,7 +493,7 @@ def get_performance_data(days: int) -> Dict:
             GROUP BY DATE(posted_at)
             ORDER BY date DESC
         ''', (start_date.isoformat(), end_date.isoformat()))
-        
+
         daily_data = []
         for row in cursor.fetchall():
             daily_data.append({
@@ -504,9 +502,9 @@ def get_performance_data(days: int) -> Dict:
                 'engagement_rate': row[2] or 0,
                 'inquiries': row[3] or 0
             })
-        
+
         conn.close()
-        
+
         return {
             'period_days': days,
             'start_date': start_date.isoformat(),
@@ -532,7 +530,7 @@ if __name__ == "__main__":
     # Production configuration
     port = int(os.getenv('API_PORT', '8000'))
     host = os.getenv('API_HOST', '0.0.0.0')
-    
+
     uvicorn.run(
         app,
         host=host,

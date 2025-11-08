@@ -4,20 +4,14 @@ Epic 16 Phase 1: Fortune 500 Client Acquisition Platform
 Leverages Gold-standard enterprise certification (92.3/100 score) for $5M+ ARR growth
 """
 
+import json
 import logging
 import sqlite3
-import json
-import requests
-import time
-from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
-from typing import Dict, List, Optional, Tuple, Any
-import pandas as pd
-import numpy as np
-from pathlib import Path
 import uuid
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -37,13 +31,13 @@ class Fortune500Prospect:
     ceo_name: str
     cto_name: str
     engineering_headcount: int
-    tech_stack: List[str]
+    tech_stack: list[str]
     digital_transformation_score: float
     acquisition_score: float
     contact_priority: str  # platinum, gold, silver
     estimated_contract_value: int
-    pain_points: List[str]
-    decision_makers: List[Dict]
+    pain_points: list[str]
+    decision_makers: list[dict]
     created_at: str
     last_updated: str
 
@@ -59,34 +53,34 @@ class EnterpriseLeadScore:
     competitive_landscape: float
     final_score: float
     confidence_level: float
-    scoring_rationale: List[str]
+    scoring_rationale: list[str]
 
 @dataclass
 class BusinessCaseComponents:
     """Business case builder components"""
-    problem_quantification: Dict[str, float]
-    solution_benefits: Dict[str, float]
-    roi_calculation: Dict[str, float]
-    risk_assessment: Dict[str, float]
-    implementation_timeline: Dict[str, str]
-    investment_options: Dict[str, Dict]
+    problem_quantification: dict[str, float]
+    solution_benefits: dict[str, float]
+    roi_calculation: dict[str, float]
+    risk_assessment: dict[str, float]
+    implementation_timeline: dict[str, str]
+    investment_options: dict[str, dict]
 
 class Fortune500ProspectDatabase:
     """Fortune 500 prospect identification and enrichment system"""
-    
+
     def __init__(self):
         self.db_path = 'business_development/epic16_fortune500_acquisition.db'
         self.epic7_db_path = 'business_development/epic7_sales_automation.db'
         self._init_database()
-        
+
         # Fortune 500 data sources (would integrate with real APIs in production)
         self.fortune500_companies = self._load_fortune500_dataset()
-        
+
     def _init_database(self):
         """Initialize Fortune 500 acquisition database"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Fortune 500 prospects table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS fortune500_prospects (
@@ -112,7 +106,7 @@ class Fortune500ProspectDatabase:
                 last_updated TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # Lead scoring history table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS enterprise_lead_scoring (
@@ -132,7 +126,7 @@ class Fortune500ProspectDatabase:
                 FOREIGN KEY (prospect_id) REFERENCES fortune500_prospects (prospect_id)
             )
         ''')
-        
+
         # Business case templates table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS enterprise_business_cases (
@@ -151,7 +145,7 @@ class Fortune500ProspectDatabase:
                 FOREIGN KEY (prospect_id) REFERENCES fortune500_prospects (prospect_id)
             )
         ''')
-        
+
         # Enterprise sales sequences table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS enterprise_sales_sequences (
@@ -169,7 +163,7 @@ class Fortune500ProspectDatabase:
                 FOREIGN KEY (prospect_id) REFERENCES fortune500_prospects (prospect_id)
             )
         ''')
-        
+
         # Account-based marketing campaigns table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS abm_campaigns (
@@ -189,7 +183,7 @@ class Fortune500ProspectDatabase:
                 status TEXT DEFAULT 'planning' -- planning, active, completed, paused
             )
         ''')
-        
+
         # Enterprise ROI tracking table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS enterprise_roi_tracking (
@@ -207,16 +201,16 @@ class Fortune500ProspectDatabase:
                 FOREIGN KEY (prospect_id) REFERENCES fortune500_prospects (prospect_id)
             )
         ''')
-        
+
         conn.commit()
         conn.close()
         logger.info("Epic 16 Fortune 500 acquisition database initialized")
-        
-    def _load_fortune500_dataset(self) -> List[Dict]:
+
+    def _load_fortune500_dataset(self) -> list[dict]:
         """Load Fortune 500 dataset with enhanced enterprise data"""
         # In production, this would integrate with real Fortune 500 APIs, LinkedIn Sales Navigator, etc.
         # For now, creating comprehensive synthetic dataset based on actual Fortune 500 characteristics
-        
+
         fortune500_data = [
             {
                 "company_name": "Apple Inc.",
@@ -236,7 +230,7 @@ class Fortune500ProspectDatabase:
             {
                 "company_name": "Microsoft Corporation",
                 "revenue_billions": 211.9,
-                "industry": "Technology", 
+                "industry": "Technology",
                 "headquarters": "Redmond, WA",
                 "employees": 221000,
                 "stock_symbol": "MSFT",
@@ -252,7 +246,7 @@ class Fortune500ProspectDatabase:
                 "company_name": "Amazon.com Inc.",
                 "revenue_billions": 469.8,
                 "industry": "E-commerce/Cloud",
-                "headquarters": "Seattle, WA", 
+                "headquarters": "Seattle, WA",
                 "employees": 1540000,
                 "stock_symbol": "AMZN",
                 "market_cap_billions": 1500.0,
@@ -279,7 +273,7 @@ class Fortune500ProspectDatabase:
                 "pain_points": ["digital transformation", "modernizing legacy systems", "fintech innovation"]
             },
             {
-                "company_name": "UnitedHealth Group Incorporated", 
+                "company_name": "UnitedHealth Group Incorporated",
                 "revenue_billions": 324.2,
                 "industry": "Healthcare",
                 "headquarters": "Minnetonka, MN",
@@ -314,7 +308,7 @@ class Fortune500ProspectDatabase:
                 "industry": "Retail",
                 "headquarters": "Bentonville, AR",
                 "employees": 2100000,
-                "stock_symbol": "WMT", 
+                "stock_symbol": "WMT",
                 "market_cap_billions": 430.0,
                 "ceo_name": "Doug McMillon",
                 "cto_name": "Suresh Kumar",
@@ -361,7 +355,7 @@ class Fortune500ProspectDatabase:
                 "employees": 152700,
                 "stock_symbol": "JNJ",
                 "market_cap_billions": 400.0,
-                "ceo_name": "Joaquin Duato", 
+                "ceo_name": "Joaquin Duato",
                 "cto_name": "Unknown",
                 "engineering_headcount": 8000,
                 "tech_stack": ["Java", "Python", "R", "Azure", "AWS", "Life Sciences Software"],
@@ -369,18 +363,18 @@ class Fortune500ProspectDatabase:
                 "pain_points": ["drug discovery acceleration", "clinical trial optimization", "regulatory compliance"]
             }
         ]
-        
+
         # Add decision maker information and additional enterprise context
         for company in fortune500_data:
             company["decision_makers"] = self._generate_decision_makers(company)
             company["estimated_contract_value"] = self._estimate_contract_value(company)
-            
+
         return fortune500_data
-        
-    def _generate_decision_makers(self, company: Dict) -> List[Dict]:
+
+    def _generate_decision_makers(self, company: dict) -> list[dict]:
         """Generate decision maker profiles for enterprise sales"""
         decision_makers = []
-        
+
         # CEO - Strategic decision maker
         decision_makers.append({
             "role": "CEO",
@@ -391,7 +385,7 @@ class Fortune500ProspectDatabase:
             "accessibility": 2,  # Very low accessibility
             "preferred_approach": "executive_briefing"
         })
-        
+
         # CTO/Chief Technology Officer
         if company.get("cto_name") and company["cto_name"] != "Unknown":
             decision_makers.append({
@@ -403,7 +397,7 @@ class Fortune500ProspectDatabase:
                 "accessibility": 4,  # Low accessibility
                 "preferred_approach": "technical_deep_dive"
             })
-        
+
         # VP Engineering (inferred)
         decision_makers.append({
             "role": "VP Engineering",
@@ -414,7 +408,7 @@ class Fortune500ProspectDatabase:
             "accessibility": 6,  # Medium accessibility
             "preferred_approach": "technical_consultation"
         })
-        
+
         # Head of Digital Transformation (for traditional companies)
         if company["digital_transformation_score"] < 8.0:
             decision_makers.append({
@@ -426,46 +420,46 @@ class Fortune500ProspectDatabase:
                 "accessibility": 7,  # Higher accessibility
                 "preferred_approach": "transformation_case_study"
             })
-            
+
         return decision_makers
-        
-    def _estimate_contract_value(self, company: Dict) -> int:
+
+    def _estimate_contract_value(self, company: dict) -> int:
         """Estimate potential contract value based on company characteristics"""
         base_value = 250000  # Base enterprise consulting value
-        
+
         # Revenue multiplier
         revenue_multiplier = min(company["revenue_billions"] * 0.001, 3.0)  # Max 3x
-        
-        # Employee count multiplier  
+
+        # Employee count multiplier
         employee_multiplier = min(company["employees"] / 100000, 2.0)  # Max 2x
-        
+
         # Digital transformation opportunity multiplier
         dt_gap = 10.0 - company["digital_transformation_score"]
         dt_multiplier = 1.0 + (dt_gap * 0.1)  # Higher value for transformation needed
-        
+
         # Engineering headcount multiplier
         eng_multiplier = min(company["engineering_headcount"] / 10000, 2.5)  # Max 2.5x
-        
+
         total_multiplier = revenue_multiplier * employee_multiplier * dt_multiplier * eng_multiplier
         estimated_value = int(base_value * total_multiplier)
-        
+
         # Cap at reasonable maximums
         return min(estimated_value, 5000000)  # Max $5M contract
-        
-    def load_and_score_prospects(self) -> List[Fortune500Prospect]:
+
+    def load_and_score_prospects(self) -> list[Fortune500Prospect]:
         """Load and score Fortune 500 prospects using AI-powered scoring"""
         prospects = []
-        
+
         for company_data in self.fortune500_companies:
             # Generate prospect ID
             prospect_id = f"f500-{company_data['company_name'].lower().replace(' ', '-').replace('.', '').replace(',', '')}"
-            
+
             # Calculate acquisition score using enterprise AI scoring
             lead_score = self._calculate_enterprise_lead_score(company_data)
-            
+
             # Determine contact priority based on score
             contact_priority = self._determine_contact_priority(lead_score)
-            
+
             # Create prospect object
             prospect = Fortune500Prospect(
                 prospect_id=prospect_id,
@@ -489,24 +483,24 @@ class Fortune500ProspectDatabase:
                 created_at=datetime.now().isoformat(),
                 last_updated=datetime.now().isoformat()
             )
-            
+
             prospects.append(prospect)
-            
+
         # Save prospects to database
         self._save_prospects(prospects)
-        
+
         logger.info(f"Loaded and scored {len(prospects)} Fortune 500 prospects")
         return prospects
-        
-    def _calculate_enterprise_lead_score(self, company_data: Dict) -> EnterpriseLeadScore:
+
+    def _calculate_enterprise_lead_score(self, company_data: dict) -> EnterpriseLeadScore:
         """Calculate comprehensive enterprise lead score using AI-powered methodology"""
-        
+
         # Base score factors
         base_score = 40.0  # Starting score for Fortune 500 company
-        
+
         # Revenue impact multiplier (25% of score)
         revenue_score = min(company_data["revenue_billions"] * 0.05, 25.0)
-        
+
         # Industry fit assessment (20% of score)
         industry_scores = {
             "Technology": 20.0,
@@ -519,24 +513,24 @@ class Fortune500ProspectDatabase:
             "Healthcare/Pharmaceuticals": 16.0
         }
         industry_fit_score = industry_scores.get(company_data["industry"], 10.0)
-        
+
         # Technology readiness assessment (20% of score)
         dt_score = company_data["digital_transformation_score"]
         # Inverse relationship - more transformation needed = higher consulting value
         technology_readiness = 20.0 - (dt_score * 1.5)
         technology_readiness = max(technology_readiness, 5.0)  # Minimum 5 points
-        
+
         # Decision maker accessibility (15% of score)
         decision_makers = company_data["decision_makers"]
         cto_accessible = any(dm["role"] == "CTO" and dm["accessibility"] >= 4 for dm in decision_makers)
         vp_eng_accessible = any(dm["role"] == "VP Engineering" for dm in decision_makers)
-        
+
         accessibility_score = 0.0
         if cto_accessible:
             accessibility_score += 10.0
         if vp_eng_accessible:
             accessibility_score += 5.0
-            
+
         # Timing signals assessment (10% of score)
         timing_signals = 0.0
         if company_data["digital_transformation_score"] < 7.0:  # Needs transformation
@@ -545,14 +539,14 @@ class Fortune500ProspectDatabase:
             timing_signals += 3.0
         if "modernization" in str(company_data["pain_points"]).lower():
             timing_signals += 2.0
-            
+
         # Competitive landscape assessment (10% of score)
         competitive_score = 10.0  # Default - would be enhanced with competitive intelligence
-        
+
         # Calculate final score
-        final_score = (base_score + revenue_score + industry_fit_score + 
+        final_score = (base_score + revenue_score + industry_fit_score +
                       technology_readiness + accessibility_score + timing_signals + competitive_score)
-        
+
         # Confidence level based on data completeness
         confidence_factors = [
             company_data["cto_name"] != "Unknown",  # CTO identified
@@ -561,7 +555,7 @@ class Fortune500ProspectDatabase:
             company_data["engineering_headcount"] > 1000  # Substantial eng org
         ]
         confidence_level = sum(confidence_factors) / len(confidence_factors)
-        
+
         # Generate scoring rationale
         rationale = []
         if revenue_score >= 15:
@@ -574,7 +568,7 @@ class Fortune500ProspectDatabase:
             rationale.append("CTO/technical leadership accessible")
         if timing_signals >= 5:
             rationale.append("Strong timing signals for engagement")
-            
+
         return EnterpriseLeadScore(
             base_score=base_score,
             revenue_multiplier=revenue_score,
@@ -587,23 +581,23 @@ class Fortune500ProspectDatabase:
             confidence_level=round(confidence_level, 2),
             scoring_rationale=rationale
         )
-        
+
     def _determine_contact_priority(self, lead_score: EnterpriseLeadScore) -> str:
         """Determine contact priority tier based on lead score"""
         score = lead_score.final_score
-        
+
         if score >= 80.0:
             return "platinum"
         elif score >= 65.0:
             return "gold"
         else:
             return "silver"
-            
-    def _save_prospects(self, prospects: List[Fortune500Prospect]):
+
+    def _save_prospects(self, prospects: list[Fortune500Prospect]):
         """Save prospects to database"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         for prospect in prospects:
             cursor.execute('''
                 INSERT OR REPLACE INTO fortune500_prospects 
@@ -622,24 +616,24 @@ class Fortune500ProspectDatabase:
                 json.dumps(prospect.pain_points), json.dumps(prospect.decision_makers),
                 prospect.created_at, prospect.last_updated
             ))
-            
+
         conn.commit()
         conn.close()
-        
-    def get_prioritized_prospects(self, limit: int = 20) -> List[Fortune500Prospect]:
+
+    def get_prioritized_prospects(self, limit: int = 20) -> list[Fortune500Prospect]:
         """Get prioritized list of Fortune 500 prospects"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT * FROM fortune500_prospects 
             ORDER BY acquisition_score DESC, estimated_contract_value DESC
             LIMIT ?
         ''', (limit,))
-        
+
         rows = cursor.fetchall()
         columns = [description[0] for description in cursor.description]
-        
+
         prospects = []
         for row in rows:
             data = dict(zip(columns, row, strict=False))
@@ -647,40 +641,40 @@ class Fortune500ProspectDatabase:
             data['tech_stack'] = json.loads(data['tech_stack'] or '[]')
             data['pain_points'] = json.loads(data['pain_points'] or '[]')
             data['decision_makers'] = json.loads(data['decision_makers'] or '[]')
-            
+
             prospect = Fortune500Prospect(**data)
             prospects.append(prospect)
-            
+
         conn.close()
         return prospects
 
 class EnterpriseBusinessCaseBuilder:
     """AI-powered business case builder for Fortune 500 prospects"""
-    
+
     def __init__(self, prospect_db: Fortune500ProspectDatabase):
         self.prospect_db = prospect_db
-        
+
     def build_business_case(self, prospect: Fortune500Prospect) -> BusinessCaseComponents:
         """Build comprehensive business case for Fortune 500 prospect"""
-        
+
         # Problem quantification based on company characteristics
         problem_quantification = self._quantify_problems(prospect)
-        
+
         # Solution benefits calculation
         solution_benefits = self._calculate_solution_benefits(prospect, problem_quantification)
-        
+
         # ROI calculation with enterprise-grade methodology
         roi_calculation = self._calculate_enterprise_roi(prospect, problem_quantification, solution_benefits)
-        
+
         # Risk assessment
         risk_assessment = self._assess_risks(prospect)
-        
+
         # Implementation timeline
         implementation_timeline = self._generate_implementation_timeline(prospect)
-        
+
         # Investment options (tiered approach)
         investment_options = self._create_investment_options(prospect, roi_calculation)
-        
+
         business_case = BusinessCaseComponents(
             problem_quantification=problem_quantification,
             solution_benefits=solution_benefits,
@@ -689,103 +683,103 @@ class EnterpriseBusinessCaseBuilder:
             implementation_timeline=implementation_timeline,
             investment_options=investment_options
         )
-        
+
         # Save business case to database
         self._save_business_case(prospect, business_case)
-        
+
         return business_case
-        
-    def _quantify_problems(self, prospect: Fortune500Prospect) -> Dict[str, float]:
+
+    def _quantify_problems(self, prospect: Fortune500Prospect) -> dict[str, float]:
         """Quantify business problems in financial terms"""
         problems = {}
-        
+
         # Base calculations on company size and characteristics
         annual_eng_cost = prospect.engineering_headcount * 150000  # $150K avg eng salary
-        
+
         # Inefficiency costs based on digital transformation score
         dt_gap = (10.0 - prospect.digital_transformation_score) / 10.0
-        
+
         # Problem 1: Engineering inefficiency
         eng_inefficiency_cost = annual_eng_cost * dt_gap * 0.25  # 25% inefficiency
         problems["engineering_inefficiency"] = eng_inefficiency_cost
-        
+
         # Problem 2: Technical debt
         tech_debt_cost = annual_eng_cost * dt_gap * 0.15  # 15% overhead
         problems["technical_debt"] = tech_debt_cost
-        
+
         # Problem 3: Delivery velocity
         delivery_impact = prospect.revenue_billions * 1000000000 * dt_gap * 0.05  # 5% revenue impact
         problems["delivery_velocity"] = delivery_impact
-        
+
         # Problem 4: Scaling challenges
         if prospect.employees > 100000:
             scaling_cost = annual_eng_cost * 0.20  # 20% scaling overhead
             problems["scaling_challenges"] = scaling_cost
         else:
             problems["scaling_challenges"] = annual_eng_cost * 0.10  # 10% for smaller orgs
-            
+
         # Problem 5: Innovation bottlenecks
         innovation_opportunity_cost = prospect.market_cap_billions * 1000000000 * dt_gap * 0.02  # 2% of market cap
         problems["innovation_bottlenecks"] = min(innovation_opportunity_cost, 500000000)  # Cap at $500M
-        
+
         return problems
-        
-    def _calculate_solution_benefits(self, prospect: Fortune500Prospect, problems: Dict[str, float]) -> Dict[str, float]:
+
+    def _calculate_solution_benefits(self, prospect: Fortune500Prospect, problems: dict[str, float]) -> dict[str, float]:
         """Calculate quantified solution benefits"""
         benefits = {}
-        
+
         # Engineering efficiency improvement
         eng_efficiency_gain = problems["engineering_inefficiency"] * 0.70  # 70% improvement
         benefits["engineering_efficiency_improvement"] = eng_efficiency_gain
-        
+
         # Technical debt reduction
         tech_debt_reduction = problems["technical_debt"] * 0.60  # 60% reduction
         benefits["technical_debt_reduction"] = tech_debt_reduction
-        
-        # Delivery velocity acceleration  
+
+        # Delivery velocity acceleration
         delivery_acceleration = problems["delivery_velocity"] * 0.40  # 40% improvement
         benefits["delivery_velocity_acceleration"] = delivery_acceleration
-        
+
         # Scaling optimization
         scaling_optimization = problems["scaling_challenges"] * 0.50  # 50% improvement
         benefits["scaling_optimization"] = scaling_optimization
-        
+
         # Innovation enablement
         innovation_enablement = problems["innovation_bottlenecks"] * 0.30  # 30% improvement
         benefits["innovation_enablement"] = innovation_enablement
-        
+
         # Additional strategic benefits
         risk_reduction_value = prospect.estimated_contract_value * 5  # Risk mitigation value
         benefits["risk_reduction"] = risk_reduction_value
-        
+
         competitive_advantage = prospect.revenue_billions * 1000000000 * 0.01  # 1% competitive advantage
         benefits["competitive_advantage"] = competitive_advantage
-        
+
         return benefits
-        
-    def _calculate_enterprise_roi(self, prospect: Fortune500Prospect, problems: Dict[str, float], benefits: Dict[str, float]) -> Dict[str, float]:
+
+    def _calculate_enterprise_roi(self, prospect: Fortune500Prospect, problems: dict[str, float], benefits: dict[str, float]) -> dict[str, float]:
         """Calculate enterprise-grade ROI with multiple metrics"""
-        
+
         # Total annual benefits
         total_annual_benefits = sum(benefits.values())
-        
+
         # Investment cost (our engagement)
         investment_cost = prospect.estimated_contract_value
-        
+
         # ROI calculations
         roi_percentage = ((total_annual_benefits - investment_cost) / investment_cost) * 100
         payback_months = (investment_cost / (total_annual_benefits / 12)) if total_annual_benefits > 0 else 36
-        
+
         # Net Present Value (3-year, 10% discount rate)
         discount_rate = 0.10
         npv = sum(total_annual_benefits / ((1 + discount_rate) ** year) for year in range(1, 4)) - investment_cost
-        
+
         # Internal Rate of Return (simplified calculation)
         irr = (total_annual_benefits / investment_cost) * 100 if investment_cost > 0 else 0
-        
+
         # Total Economic Impact (5-year)
         five_year_impact = (total_annual_benefits * 5) - investment_cost
-        
+
         return {
             "total_annual_benefits": total_annual_benefits,
             "investment_cost": investment_cost,
@@ -796,49 +790,49 @@ class EnterpriseBusinessCaseBuilder:
             "five_year_impact": five_year_impact,
             "benefit_cost_ratio": round(total_annual_benefits / investment_cost, 2)
         }
-        
-    def _assess_risks(self, prospect: Fortune500Prospect) -> Dict[str, float]:
+
+    def _assess_risks(self, prospect: Fortune500Prospect) -> dict[str, float]:
         """Assess implementation and business risks"""
         risks = {}
-        
+
         # Implementation risk (scale-based)
         if prospect.employees > 500000:
             implementation_risk = 0.6  # Higher risk for very large orgs
         elif prospect.employees > 100000:
-            implementation_risk = 0.4  # Medium risk for large orgs  
+            implementation_risk = 0.4  # Medium risk for large orgs
         else:
             implementation_risk = 0.2  # Lower risk for smaller (but still large) orgs
-            
+
         risks["implementation_complexity"] = implementation_risk
-        
+
         # Change management risk
         change_risk = max(0.1, (10.0 - prospect.digital_transformation_score) / 20.0)
         risks["change_management"] = change_risk
-        
+
         # Technology integration risk
         tech_stack_complexity = len(prospect.tech_stack) / 10.0  # Normalized
         tech_risk = min(tech_stack_complexity, 0.5)  # Cap at 50%
         risks["technology_integration"] = tech_risk
-        
+
         # Timeline risk
         timeline_risk = 0.3 if prospect.contact_priority == "platinum" else 0.4
         risks["timeline_delivery"] = timeline_risk
-        
+
         # Budget risk
         budget_risk = 0.2 if prospect.estimated_contract_value < 1000000 else 0.3
         risks["budget_constraints"] = budget_risk
-        
+
         return risks
-        
-    def _generate_implementation_timeline(self, prospect: Fortune500Prospect) -> Dict[str, str]:
+
+    def _generate_implementation_timeline(self, prospect: Fortune500Prospect) -> dict[str, str]:
         """Generate implementation timeline based on company characteristics"""
-        
+
         # Adjust timeline based on company size and complexity
         if prospect.employees > 500000:
             # Very large enterprise
             timeline = {
                 "discovery_assessment": "6-8 weeks",
-                "strategy_development": "8-10 weeks", 
+                "strategy_development": "8-10 weeks",
                 "pilot_implementation": "12-16 weeks",
                 "full_deployment": "20-26 weeks",
                 "optimization_phase": "12-16 weeks",
@@ -849,7 +843,7 @@ class EnterpriseBusinessCaseBuilder:
             timeline = {
                 "discovery_assessment": "4-6 weeks",
                 "strategy_development": "6-8 weeks",
-                "pilot_implementation": "8-12 weeks", 
+                "pilot_implementation": "8-12 weeks",
                 "full_deployment": "16-20 weeks",
                 "optimization_phase": "8-12 weeks",
                 "total_duration": "42-58 weeks (10-14 months)"
@@ -860,18 +854,18 @@ class EnterpriseBusinessCaseBuilder:
                 "discovery_assessment": "3-4 weeks",
                 "strategy_development": "4-6 weeks",
                 "pilot_implementation": "6-8 weeks",
-                "full_deployment": "12-16 weeks", 
+                "full_deployment": "12-16 weeks",
                 "optimization_phase": "6-8 weeks",
                 "total_duration": "31-42 weeks (8-10 months)"
             }
-            
+
         return timeline
-        
-    def _create_investment_options(self, prospect: Fortune500Prospect, roi_calc: Dict[str, float]) -> Dict[str, Dict]:
+
+    def _create_investment_options(self, prospect: Fortune500Prospect, roi_calc: dict[str, float]) -> dict[str, dict]:
         """Create tiered investment options for enterprise prospect"""
-        
+
         base_investment = prospect.estimated_contract_value
-        
+
         options = {
             "strategic_assessment": {
                 "investment": int(base_investment * 0.3),
@@ -879,7 +873,7 @@ class EnterpriseBusinessCaseBuilder:
                 "duration": "8-12 weeks",
                 "deliverables": [
                     "Current state assessment",
-                    "Strategic transformation roadmap", 
+                    "Strategic transformation roadmap",
                     "ROI analysis and business case",
                     "Implementation recommendations"
                 ],
@@ -928,18 +922,18 @@ class EnterpriseBusinessCaseBuilder:
                 "projected_roi": f"{roi_calc.get('irr', 400):.0f}% IRR"
             }
         }
-        
+
         return options
-        
+
     def _save_business_case(self, prospect: Fortune500Prospect, business_case: BusinessCaseComponents):
         """Save business case to database"""
         conn = sqlite3.connect(self.prospect_db.db_path)
         cursor = conn.cursor()
-        
+
         # Calculate summary metrics
         projected_savings = sum(business_case.solution_benefits.values())
         payback_months = business_case.roi_calculation.get("payback_months", 24)
-        
+
         cursor.execute('''
             INSERT OR REPLACE INTO enterprise_business_cases 
             (prospect_id, problem_quantification, solution_benefits, roi_calculation, 
@@ -958,28 +952,28 @@ class EnterpriseBusinessCaseBuilder:
             int(payback_months),
             0.85  # Confidence score based on Fortune 500 data quality
         ))
-        
+
         conn.commit()
         conn.close()
 
 class EnterpriseSalesSequenceEngine:
     """Multi-touch enterprise sales sequences for Fortune 500 prospects"""
-    
+
     def __init__(self, prospect_db: Fortune500ProspectDatabase):
         self.prospect_db = prospect_db
-        
-    def create_enterprise_sales_sequence(self, prospect: Fortune500Prospect) -> Dict[str, Any]:
+
+    def create_enterprise_sales_sequence(self, prospect: Fortune500Prospect) -> dict[str, Any]:
         """Create multi-touch sales sequence for Fortune 500 prospect"""
-        
+
         # Determine sequence type based on prospect characteristics
         sequence_type = self._determine_sequence_type(prospect)
-        
+
         # Create personalized touch points
         touch_points = self._create_touch_points(prospect, sequence_type)
-        
+
         # Calculate conversion probability
         conversion_probability = self._calculate_conversion_probability(prospect, sequence_type)
-        
+
         # Create engagement metrics tracking
         engagement_metrics = {
             "emails_sent": 0,
@@ -989,10 +983,10 @@ class EnterpriseSalesSequenceEngine:
             "meetings_scheduled": 0,
             "proposals_delivered": 0
         }
-        
+
         # Personalization data
         personalization_data = self._generate_personalization_data(prospect)
-        
+
         sequence_data = {
             "sequence_type": sequence_type,
             "touch_points": touch_points,
@@ -1002,41 +996,41 @@ class EnterpriseSalesSequenceEngine:
             "current_step": 0,
             "status": "active"
         }
-        
+
         # Save sequence to database
         sequence_id = self._save_sales_sequence(prospect, sequence_data)
         sequence_data["sequence_id"] = sequence_id
-        
+
         logger.info(f"Created {sequence_type} sequence for {prospect.company_name} (ID: {sequence_id})")
         return sequence_data
-        
+
     def _determine_sequence_type(self, prospect: Fortune500Prospect) -> str:
         """Determine appropriate sequence type based on prospect characteristics"""
-        
+
         # C-Level approach for platinum prospects with accessible executives
-        if (prospect.contact_priority == "platinum" and 
+        if (prospect.contact_priority == "platinum" and
             any(dm["role"] in ["CEO", "CTO"] and dm["accessibility"] >= 4 for dm in prospect.decision_makers)):
             return "c_level_approach"
-            
+
         # Technical decision maker approach for prospects with accessible CTOs/VPs
         elif any(dm["role"] in ["CTO", "VP Engineering"] and dm["accessibility"] >= 6 for dm in prospect.decision_makers):
             return "technical_decision_maker"
-            
-        # Digital transformation approach for low DT score companies  
+
+        # Digital transformation approach for low DT score companies
         elif prospect.digital_transformation_score < 7.0:
             return "digital_transformation_focus"
-            
+
         # Industry-specific approach for high-value verticals
         elif prospect.industry in ["Financial Services", "Healthcare", "Technology"]:
             return "industry_specialist"
-            
+
         # Default to influencer nurture for complex/uncertain access
         else:
             return "influencer_nurture"
-            
-    def _create_touch_points(self, prospect: Fortune500Prospect, sequence_type: str) -> List[Dict]:
+
+    def _create_touch_points(self, prospect: Fortune500Prospect, sequence_type: str) -> list[dict]:
         """Create sequence touch points based on type and prospect characteristics"""
-        
+
         touch_point_templates = {
             "c_level_approach": [
                 {
@@ -1052,7 +1046,7 @@ class EnterpriseSalesSequenceEngine:
                     "type": "thought_leadership",
                     "title": "Industry Insight: Fortune 500 Engineering Transformation",
                     "approach": "value_demonstration",
-                    "content_theme": "peer_success_stories", 
+                    "content_theme": "peer_success_stories",
                     "cta": "Download case study"
                 },
                 {
@@ -1069,7 +1063,7 @@ class EnterpriseSalesSequenceEngine:
                     "day": 1,
                     "type": "technical_email",
                     "title": "Engineering Velocity Optimization Framework",
-                    "approach": "technical_consultation", 
+                    "approach": "technical_consultation",
                     "content_theme": "methodology_overview",
                     "cta": "30-minute technical discussion"
                 },
@@ -1102,7 +1096,7 @@ class EnterpriseSalesSequenceEngine:
                 {
                     "day": 1,
                     "type": "transformation_email",
-                    "title": "Digital Transformation Acceleration Strategies", 
+                    "title": "Digital Transformation Acceleration Strategies",
                     "approach": "transformation_consultation",
                     "content_theme": "transformation_frameworks",
                     "cta": "Transformation strategy discussion"
@@ -1125,22 +1119,22 @@ class EnterpriseSalesSequenceEngine:
                 }
             ]
         }
-        
+
         # Get base template
         base_sequence = touch_point_templates.get(sequence_type, touch_point_templates["technical_decision_maker"])
-        
+
         # Personalize each touch point
         personalized_sequence = []
         for touch_point in base_sequence:
             personalized_touch = touch_point.copy()
             personalized_touch["personalization"] = self._personalize_touch_point(touch_point, prospect)
             personalized_sequence.append(personalized_touch)
-            
+
         return personalized_sequence
-        
-    def _personalize_touch_point(self, touch_point: Dict, prospect: Fortune500Prospect) -> Dict[str, str]:
+
+    def _personalize_touch_point(self, touch_point: dict, prospect: Fortune500Prospect) -> dict[str, str]:
         """Personalize touch point with prospect-specific information"""
-        
+
         personalization = {
             "company_name": prospect.company_name,
             "industry": prospect.industry,
@@ -1149,19 +1143,19 @@ class EnterpriseSalesSequenceEngine:
             "engineering_size": f"{prospect.engineering_headcount:,}",
             "headquarters": prospect.headquarters
         }
-        
+
         # Add pain point relevance
         if prospect.pain_points:
             relevant_pain_points = [pp for pp in prospect.pain_points if "transformation" in pp or "modernization" in pp]
             if relevant_pain_points:
                 personalization["primary_pain_point"] = relevant_pain_points[0]
-                
+
         # Add technology context
         if len(prospect.tech_stack) >= 3:
             personalization["tech_stack_complexity"] = f"complex {len(prospect.tech_stack)}-technology stack"
         else:
             personalization["tech_stack_complexity"] = "evolving technology portfolio"
-            
+
         # Add digital transformation context
         if prospect.digital_transformation_score < 6.0:
             personalization["transformation_stage"] = "early digital transformation phase"
@@ -1169,14 +1163,14 @@ class EnterpriseSalesSequenceEngine:
             personalization["transformation_stage"] = "active digital transformation"
         else:
             personalization["transformation_stage"] = "advanced digital capabilities"
-            
+
         return personalization
-        
+
     def _calculate_conversion_probability(self, prospect: Fortune500Prospect, sequence_type: str) -> float:
         """Calculate conversion probability based on prospect and sequence characteristics"""
-        
+
         base_probability = 0.15  # 15% base for Fortune 500 prospects
-        
+
         # Sequence type multiplier
         sequence_multipliers = {
             "c_level_approach": 1.8,  # Highest conversion but hardest access
@@ -1185,36 +1179,36 @@ class EnterpriseSalesSequenceEngine:
             "industry_specialist": 1.2,
             "influencer_nurture": 0.8
         }
-        
+
         sequence_multiplier = sequence_multipliers.get(sequence_type, 1.0)
-        
+
         # Priority multiplier
         priority_multipliers = {
             "platinum": 1.6,
             "gold": 1.3,
             "silver": 1.0
         }
-        
+
         priority_multiplier = priority_multipliers.get(prospect.contact_priority, 1.0)
-        
+
         # Digital transformation opportunity multiplier
         dt_gap = 10.0 - prospect.digital_transformation_score
         dt_multiplier = 1.0 + (dt_gap * 0.05)  # 5% boost per point of transformation needed
-        
+
         # Decision maker accessibility factor
         max_accessibility = max([dm["accessibility"] for dm in prospect.decision_makers] or [3])
         accessibility_multiplier = 1.0 + (max_accessibility * 0.05)  # 5% boost per accessibility point
-        
+
         # Calculate final probability
-        final_probability = (base_probability * sequence_multiplier * priority_multiplier * 
+        final_probability = (base_probability * sequence_multiplier * priority_multiplier *
                            dt_multiplier * accessibility_multiplier)
-        
+
         # Cap at realistic maximum
         return min(final_probability, 0.75)  # Max 75% conversion probability
-        
-    def _generate_personalization_data(self, prospect: Fortune500Prospect) -> Dict[str, Any]:
+
+    def _generate_personalization_data(self, prospect: Fortune500Prospect) -> dict[str, Any]:
         """Generate comprehensive personalization data for sequences"""
-        
+
         return {
             "company_profile": {
                 "name": prospect.company_name,
@@ -1242,8 +1236,8 @@ class EnterpriseSalesSequenceEngine:
                 "transformation_urgency": "high" if prospect.digital_transformation_score < 7.0 else "medium"
             }
         }
-        
-    def _get_industry_leaders(self, industry: str) -> List[str]:
+
+    def _get_industry_leaders(self, industry: str) -> list[str]:
         """Get industry leaders for competitive context"""
         industry_leaders = {
             "Technology": ["Microsoft", "Apple", "Amazon", "Google"],
@@ -1255,16 +1249,16 @@ class EnterpriseSalesSequenceEngine:
             "Retail": ["Amazon", "Walmart", "Target", "Home Depot"],
             "Healthcare/Pharmaceuticals": ["Johnson & Johnson", "Pfizer", "Moderna", "AbbVie"]
         }
-        
+
         return industry_leaders.get(industry, ["Industry leaders"])
-        
-    def _save_sales_sequence(self, prospect: Fortune500Prospect, sequence_data: Dict[str, Any]) -> str:
+
+    def _save_sales_sequence(self, prospect: Fortune500Prospect, sequence_data: dict[str, Any]) -> str:
         """Save sales sequence to database"""
         conn = sqlite3.connect(self.prospect_db.db_path)
         cursor = conn.cursor()
-        
+
         sequence_id = f"seq-{prospect.prospect_id}-{uuid.uuid4().hex[:8]}"
-        
+
         cursor.execute('''
             INSERT INTO enterprise_sales_sequences
             (sequence_id, prospect_id, sequence_type, touch_points, current_step, status,
@@ -1276,24 +1270,24 @@ class EnterpriseSalesSequenceEngine:
             sequence_data["status"], json.dumps(sequence_data["personalization_data"]),
             json.dumps(sequence_data["engagement_metrics"]), sequence_data["conversion_probability"]
         ))
-        
+
         conn.commit()
         conn.close()
-        
+
         return sequence_id
 
 class Fortune500AcquisitionEngine:
     """Master orchestrator for Fortune 500 client acquisition platform"""
-    
+
     def __init__(self):
         self.prospect_db = Fortune500ProspectDatabase()
         self.business_case_builder = EnterpriseBusinessCaseBuilder(self.prospect_db)
         self.sales_sequence_engine = EnterpriseSalesSequenceEngine(self.prospect_db)
-        
+
         # Integration with existing Epic 7 CRM
         self.epic7_integration = self._init_epic7_integration()
-        
-    def _init_epic7_integration(self) -> Dict[str, Any]:
+
+    def _init_epic7_integration(self) -> dict[str, Any]:
         """Initialize integration with existing Epic 7 CRM system"""
         try:
             epic7_db_path = 'business_development/epic7_sales_automation.db'
@@ -1318,19 +1312,19 @@ class Fortune500AcquisitionEngine:
                 "integration_active": False,
                 "error": str(e)
             }
-            
-    def execute_fortune500_acquisition_platform(self) -> Dict[str, Any]:
+
+    def execute_fortune500_acquisition_platform(self) -> dict[str, Any]:
         """Execute complete Fortune 500 client acquisition platform"""
-        
+
         logger.info("🚀 Epic 16 Phase 1: Fortune 500 Client Acquisition Platform")
-        
+
         # Step 1: Load and score Fortune 500 prospects
         logger.info("📊 Step 1: AI-powered Fortune 500 prospect identification and scoring")
         prospects = self.prospect_db.load_and_score_prospects()
-        
+
         # Step 2: Get prioritized prospect list
         priority_prospects = self.prospect_db.get_prioritized_prospects(limit=15)
-        
+
         # Step 3: Generate business cases for top prospects
         logger.info("💼 Step 2: Enterprise business case generation")
         business_cases = {}
@@ -1340,7 +1334,7 @@ class Fortune500AcquisitionEngine:
                 business_cases[prospect.prospect_id] = business_case
             except Exception as e:
                 logger.error(f"Business case generation failed for {prospect.company_name}: {e}")
-                
+
         # Step 4: Create enterprise sales sequences
         logger.info("🎯 Step 3: Multi-touch enterprise sales sequence creation")
         sales_sequences = {}
@@ -1350,16 +1344,16 @@ class Fortune500AcquisitionEngine:
                 sales_sequences[prospect.prospect_id] = sequence
             except Exception as e:
                 logger.error(f"Sales sequence creation failed for {prospect.company_name}: {e}")
-                
+
         # Step 5: Integration with Epic 7 CRM protection
         epic7_integration_status = self._protect_epic7_pipeline()
-        
+
         # Step 6: Calculate platform metrics
         platform_metrics = self._calculate_platform_metrics(prospects, priority_prospects, business_cases, sales_sequences)
-        
+
         # Step 7: Generate unified dashboard data
         dashboard_data = self._generate_unified_dashboard(platform_metrics, priority_prospects, business_cases)
-        
+
         return {
             "platform_execution": {
                 "total_prospects_loaded": len(prospects),
@@ -1375,22 +1369,22 @@ class Fortune500AcquisitionEngine:
             "dashboard_data": dashboard_data,
             "execution_timestamp": datetime.now().isoformat()
         }
-        
-    def _protect_epic7_pipeline(self) -> Dict[str, Any]:
+
+    def _protect_epic7_pipeline(self) -> dict[str, Any]:
         """Ensure Epic 7 pipeline protection during Fortune 500 integration"""
-        
+
         if not self.epic7_integration["integration_active"]:
             return {
                 "status": "standalone_mode",
                 "pipeline_protection": "not_applicable",
                 "message": "Operating in standalone mode - no Epic 7 integration"
             }
-            
+
         try:
             # Connect to Epic 7 database
             conn = sqlite3.connect(self.epic7_integration["database"])
             cursor = conn.cursor()
-            
+
             # Check Epic 7 pipeline status
             cursor.execute('''
                 SELECT 
@@ -1399,17 +1393,17 @@ class Fortune500AcquisitionEngine:
                     COUNT(CASE WHEN qualification_status = 'qualified' THEN 1 END) as qualified_leads
                 FROM crm_contacts
             ''')
-            
+
             pipeline_stats = cursor.fetchone()
             total_contacts = pipeline_stats[0] or 0
             total_pipeline_value = pipeline_stats[1] or 0
             qualified_leads = pipeline_stats[2] or 0
-            
+
             conn.close()
-            
+
             # Validate pipeline protection threshold
             protection_threshold = 1158000  # $1.158M target
-            
+
             if total_pipeline_value >= protection_threshold:
                 return {
                     "status": "protected",
@@ -1429,7 +1423,7 @@ class Fortune500AcquisitionEngine:
                     "gap": protection_threshold - total_pipeline_value,
                     "message": f"Epic 7 pipeline below threshold: ${total_pipeline_value:,} (Gap: ${protection_threshold - total_pipeline_value:,})"
                 }
-                
+
         except Exception as e:
             logger.error(f"Epic 7 pipeline protection check failed: {e}")
             return {
@@ -1437,23 +1431,23 @@ class Fortune500AcquisitionEngine:
                 "error": str(e),
                 "message": "Unable to verify Epic 7 pipeline protection"
             }
-            
-    def _calculate_platform_metrics(self, all_prospects: List[Fortune500Prospect], 
-                                  priority_prospects: List[Fortune500Prospect],
-                                  business_cases: Dict[str, BusinessCaseComponents],
-                                  sales_sequences: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _calculate_platform_metrics(self, all_prospects: list[Fortune500Prospect],
+                                  priority_prospects: list[Fortune500Prospect],
+                                  business_cases: dict[str, BusinessCaseComponents],
+                                  sales_sequences: dict[str, Any]) -> dict[str, Any]:
         """Calculate comprehensive platform performance metrics"""
-        
+
         # Prospect metrics
         total_addressable_market = sum(p.estimated_contract_value for p in all_prospects)
         priority_market_value = sum(p.estimated_contract_value for p in priority_prospects)
-        
+
         # Priority distribution
         priority_distribution = {}
         for prospect in all_prospects:
             priority = prospect.contact_priority
             priority_distribution[priority] = priority_distribution.get(priority, 0) + 1
-            
+
         # Average scores by priority
         priority_scores = {}
         for priority in ["platinum", "gold", "silver"]:
@@ -1461,7 +1455,7 @@ class Fortune500AcquisitionEngine:
             if priority_prospects_filtered:
                 avg_score = sum(p.acquisition_score for p in priority_prospects_filtered) / len(priority_prospects_filtered)
                 priority_scores[priority] = round(avg_score, 1)
-                
+
         # Business case metrics
         if business_cases:
             avg_roi = sum(bc.roi_calculation.get("roi_percentage", 0) for bc in business_cases.values()) / len(business_cases)
@@ -1471,8 +1465,8 @@ class Fortune500AcquisitionEngine:
             avg_roi = 0
             avg_payback = 24
             total_projected_benefits = 0
-            
-        # Sales sequence metrics  
+
+        # Sales sequence metrics
         if sales_sequences:
             avg_conversion_prob = sum(seq["conversion_probability"] for seq in sales_sequences.values()) / len(sales_sequences)
             sequence_types = {}
@@ -1482,7 +1476,7 @@ class Fortune500AcquisitionEngine:
         else:
             avg_conversion_prob = 0
             sequence_types = {}
-            
+
         # Revenue projection
         projected_annual_revenue = 0
         for prospect in priority_prospects:
@@ -1490,7 +1484,7 @@ class Fortune500AcquisitionEngine:
             if prospect.prospect_id in sales_sequences:
                 conversion_prob = sales_sequences[prospect.prospect_id]["conversion_probability"]
             projected_annual_revenue += prospect.estimated_contract_value * conversion_prob
-            
+
         return {
             "market_analysis": {
                 "total_prospects": len(all_prospects),
@@ -1525,12 +1519,12 @@ class Fortune500AcquisitionEngine:
                 "revenue_gap": max(5000000 - int(projected_annual_revenue), 0)
             }
         }
-        
-    def _generate_unified_dashboard(self, metrics: Dict[str, Any], 
-                                  priority_prospects: List[Fortune500Prospect],
-                                  business_cases: Dict[str, BusinessCaseComponents]) -> Dict[str, Any]:
+
+    def _generate_unified_dashboard(self, metrics: dict[str, Any],
+                                  priority_prospects: list[Fortune500Prospect],
+                                  business_cases: dict[str, BusinessCaseComponents]) -> dict[str, Any]:
         """Generate unified dashboard data for Epic 16"""
-        
+
         return {
             "executive_summary": {
                 "total_fortune500_prospects": metrics["market_analysis"]["total_prospects"],
@@ -1573,47 +1567,47 @@ class Fortune500AcquisitionEngine:
             ],
             "last_updated": datetime.now().isoformat()
         }
-        
-    def get_platform_status(self) -> Dict[str, Any]:
+
+    def get_platform_status(self) -> dict[str, Any]:
         """Get current platform status and health metrics"""
-        
+
         # Database health check
         try:
             conn = sqlite3.connect(self.prospect_db.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute("SELECT COUNT(*) FROM fortune500_prospects")
             total_prospects = cursor.fetchone()[0]
-            
+
             cursor.execute("SELECT COUNT(*) FROM enterprise_business_cases")
             total_business_cases = cursor.fetchone()[0]
-            
+
             cursor.execute("SELECT COUNT(*) FROM enterprise_sales_sequences WHERE status = 'active'")
             active_sequences = cursor.fetchone()[0]
-            
+
             conn.close()
-            
+
             database_health = "operational"
-            
+
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
             total_prospects = 0
             total_business_cases = 0
             active_sequences = 0
             database_health = "error"
-            
+
         # Epic 7 integration health
         epic7_health = "operational" if self.epic7_integration["integration_active"] else "standalone"
-        
+
         # Overall platform health
         health_scores = []
         health_scores.append(1.0 if database_health == "operational" else 0.0)
         health_scores.append(1.0 if total_prospects >= 10 else total_prospects / 10.0)
         health_scores.append(1.0 if total_business_cases >= 5 else total_business_cases / 5.0)
         health_scores.append(1.0 if active_sequences >= 3 else active_sequences / 3.0)
-        
+
         overall_health = sum(health_scores) / len(health_scores)
-        
+
         return {
             "platform_status": "operational" if overall_health >= 0.8 else "degraded" if overall_health >= 0.5 else "critical",
             "overall_health_score": round(overall_health * 100, 1),
@@ -1636,44 +1630,44 @@ def run_epic16_phase1_demo():
     """Run Epic 16 Phase 1 demonstration"""
     print("🚀 Epic 16 Phase 1: Fortune 500 Client Acquisition Platform")
     print("Leveraging Gold-standard enterprise readiness for $5M+ ARR growth\n")
-    
+
     # Initialize Fortune 500 acquisition engine
     acquisition_engine = Fortune500AcquisitionEngine()
-    
+
     # Execute complete platform
     print("🎯 Executing Fortune 500 Client Acquisition Platform...")
     results = acquisition_engine.execute_fortune500_acquisition_platform()
-    
+
     # Display results
     platform_execution = results["platform_execution"]
     platform_metrics = results["platform_metrics"]
     dashboard_data = results["dashboard_data"]
-    
-    print(f"\n📊 Platform Execution Results:")
+
+    print("\n📊 Platform Execution Results:")
     print(f"  🏢 Fortune 500 Prospects Loaded: {platform_execution['total_prospects_loaded']}")
     print(f"  🎯 Priority Prospects Identified: {platform_execution['priority_prospects_identified']}")
     print(f"  💼 Business Cases Generated: {platform_execution['business_cases_generated']}")
     print(f"  🤖 Sales Sequences Created: {platform_execution['sales_sequences_created']}")
     print(f"  🔗 Epic 7 Integration: {platform_execution['epic7_integration']['status']}")
-    
-    print(f"\n💰 Revenue Projections:")
+
+    print("\n💰 Revenue Projections:")
     revenue_metrics = platform_metrics["revenue_projections"]
     print(f"  📈 Projected Annual Revenue: ${revenue_metrics['projected_annual_revenue']:,}")
     print(f"  🎯 ARR Target Achievement: {revenue_metrics['target_achievement_percentage']:.1f}% of $5M")
     print(f"  💵 Total Addressable Market: ${platform_metrics['market_analysis']['total_addressable_market']:,}")
-    
-    print(f"\n🏆 Top Fortune 500 Prospects:")
+
+    print("\n🏆 Top Fortune 500 Prospects:")
     for i, prospect in enumerate(dashboard_data["top_prospects"][:5], 1):
         print(f"  {i}. {prospect['company_name']} ({prospect['industry']})")
         print(f"     Revenue: ${prospect['revenue_billions']:.1f}B | Score: {prospect['acquisition_score']:.1f} | Value: ${prospect['estimated_contract_value']:,}")
-    
-    print(f"\n🎯 Platform Performance Metrics:")
+
+    print("\n🎯 Platform Performance Metrics:")
     print(f"  🥇 Platinum Prospects: {dashboard_data['prospect_pipeline']['platinum_prospects']}")
     print(f"  🥈 Gold Prospects: {dashboard_data['prospect_pipeline']['gold_prospects']}")
     print(f"  🥉 Silver Prospects: {dashboard_data['prospect_pipeline']['silver_prospects']}")
     print(f"  📊 Average ROI: {dashboard_data['roi_analytics']['average_roi_percentage']:.1f}%")
     print(f"  ⏱️  Average Payback: {dashboard_data['roi_analytics']['average_payback_months']:.1f} months")
-    
+
     # Success criteria assessment
     success_metrics = {
         "prospect_identification": platform_execution['total_prospects_loaded'] >= 10,
@@ -1683,31 +1677,31 @@ def run_epic16_phase1_demo():
         "epic7_integration": platform_execution['epic7_integration']['status'] in ['protected', 'standalone_mode'],
         "platform_operational": dashboard_data["executive_summary"]["platform_status"] == "operational"
     }
-    
+
     success_count = sum(success_metrics.values())
     total_criteria = len(success_metrics)
-    
-    print(f"\n🎯 Epic 16 Phase 1 Success Criteria:")
+
+    print("\n🎯 Epic 16 Phase 1 Success Criteria:")
     for criterion, achieved in success_metrics.items():
         status = "✅" if achieved else "❌"
         print(f"  {status} {criterion.replace('_', ' ').title()}")
-    
+
     print(f"\n📋 Phase 1 Success Rate: {success_count}/{total_criteria} ({success_count/total_criteria*100:.0f}%)")
-    
+
     if success_count >= total_criteria * 0.85:  # 85% success threshold
-        print(f"\n🏆 EPIC 16 PHASE 1 SUCCESSFULLY COMPLETED!")
-        print(f"   Fortune 500 client acquisition platform operational")
-        print(f"   Ready for Phase 2: Enterprise Sales Automation Implementation")
+        print("\n🏆 EPIC 16 PHASE 1 SUCCESSFULLY COMPLETED!")
+        print("   Fortune 500 client acquisition platform operational")
+        print("   Ready for Phase 2: Enterprise Sales Automation Implementation")
     else:
         print(f"\n⚠️  Epic 16 Phase 1 partially completed ({success_count}/{total_criteria} criteria met)")
-        print(f"   Additional optimization required for full Fortune 500 acquisition capability")
-    
+        print("   Additional optimization required for full Fortune 500 acquisition capability")
+
     # Platform status check
     platform_status = acquisition_engine.get_platform_status()
-    print(f"\n🔍 Platform Health Check:")
+    print("\n🔍 Platform Health Check:")
     print(f"  🏥 Overall Health: {platform_status['overall_health_score']:.1f}/100")
     print(f"  📊 Status: {platform_status['platform_status']}")
-    
+
     return {
         "execution_results": results,
         "success_metrics": success_metrics,
@@ -1718,22 +1712,22 @@ def run_epic16_phase1_demo():
 def main():
     """Main execution for Epic 16 Phase 1"""
     results = run_epic16_phase1_demo()
-    
+
     execution_results = results["execution_results"]
     platform_metrics = execution_results["platform_metrics"]
-    
-    print(f"\n📊 Epic 16 Phase 1 Summary:")
+
+    print("\n📊 Epic 16 Phase 1 Summary:")
     print(f"  🏢 Fortune 500 Companies: {platform_metrics['market_analysis']['total_prospects']}")
     print(f"  🎯 Priority Targets: {platform_metrics['market_analysis']['priority_prospects']}")
     print(f"  💰 Market Value: ${platform_metrics['market_analysis']['total_addressable_market']:,}")
     print(f"  📈 Revenue Projection: ${platform_metrics['revenue_projections']['projected_annual_revenue']:,}")
     print(f"  🎯 ARR Progress: {platform_metrics['revenue_projections']['target_achievement_percentage']:.1f}%")
-    
+
     if results["success_rate"] >= 0.85:
-        print(f"\n🎉 EPIC 16 PHASE 1 COMPLETE - FORTUNE 500 ACQUISITION PLATFORM OPERATIONAL!")
-        print(f"   Enterprise client acquisition engine ready for $5M+ ARR growth")
-        print(f"   Leveraging Gold-standard enterprise certification for premium market penetration")
-    
+        print("\n🎉 EPIC 16 PHASE 1 COMPLETE - FORTUNE 500 ACQUISITION PLATFORM OPERATIONAL!")
+        print("   Enterprise client acquisition engine ready for $5M+ ARR growth")
+        print("   Leveraging Gold-standard enterprise certification for premium market penetration")
+
     return results
 
 if __name__ == "__main__":

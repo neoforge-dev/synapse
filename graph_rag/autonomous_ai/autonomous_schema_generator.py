@@ -5,16 +5,19 @@ Generates and evolves graph schemas automatically based on discovered data patte
 Core component of self-configuring knowledge graphs.
 """
 
-import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Set, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 import numpy as np
 
-from graph_rag.autonomous_ai.ai_pattern_analyzer import DataPatterns, EntityPattern, RelationshipPattern
+from graph_rag.autonomous_ai.ai_pattern_analyzer import (
+    DataPatterns,
+    EntityPattern,
+    RelationshipPattern,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,22 +36,22 @@ class SchemaElement:
     """Individual element of a graph schema."""
     element_type: SchemaElementType
     name: str
-    properties: Dict[str, Any] = field(default_factory=dict)
-    constraints: List[str] = field(default_factory=list)
-    indexes: List[str] = field(default_factory=list)
+    properties: dict[str, Any] = field(default_factory=dict)
+    constraints: list[str] = field(default_factory=list)
+    indexes: list[str] = field(default_factory=list)
     confidence_score: float = 0.0
-    source_pattern: Optional[str] = None
+    source_pattern: str | None = None
 
 
 @dataclass
 class GraphSchema:
     """Complete graph schema definition."""
-    node_types: List[SchemaElement]
-    relationship_types: List[SchemaElement]
-    properties: List[SchemaElement]
-    indexes: List[SchemaElement]
-    constraints: List[SchemaElement]
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    node_types: list[SchemaElement]
+    relationship_types: list[SchemaElement]
+    properties: list[SchemaElement]
+    indexes: list[SchemaElement]
+    constraints: list[SchemaElement]
+    metadata: dict[str, Any] = field(default_factory=dict)
     version: str = "1.0.0"
     created_at: datetime = field(default_factory=datetime.utcnow)
     confidence_score: float = 0.0
@@ -57,22 +60,22 @@ class GraphSchema:
 @dataclass
 class SchemaEvolution:
     """Schema evolution changes and improvements."""
-    added_elements: List[SchemaElement]
-    modified_elements: List[Tuple[SchemaElement, SchemaElement]]  # (old, new)
-    removed_elements: List[SchemaElement]
-    performance_improvements: Dict[str, float]
+    added_elements: list[SchemaElement]
+    modified_elements: list[tuple[SchemaElement, SchemaElement]]  # (old, new)
+    removed_elements: list[SchemaElement]
+    performance_improvements: dict[str, float]
     confidence_score: float
     reasoning: str
-    impact_assessment: Dict[str, Any]
+    impact_assessment: dict[str, Any]
 
 
 @dataclass
 class UsageFeedback:
     """Feedback from schema usage for continuous improvement."""
-    query_patterns: List[Dict[str, Any]]
-    performance_metrics: Dict[str, float]
-    error_patterns: List[Dict[str, Any]]
-    user_feedback: List[Dict[str, Any]]
+    query_patterns: list[dict[str, Any]]
+    performance_metrics: dict[str, float]
+    error_patterns: list[dict[str, Any]]
+    user_feedback: list[dict[str, Any]]
     timestamp: datetime = field(default_factory=datetime.utcnow)
 
 
@@ -86,12 +89,12 @@ class AdaptiveSchemaGenerator:
     - Optimize for performance and accuracy
     - Maintain backward compatibility
     """
-    
+
     def __init__(self, min_confidence: float = 0.7):
         self.min_confidence = min_confidence
-        self.schema_history: List[GraphSchema] = []
-        self.evolution_history: List[SchemaEvolution] = []
-        
+        self.schema_history: list[GraphSchema] = []
+        self.evolution_history: list[SchemaEvolution] = []
+
     async def generate_initial_schema(self, patterns: DataPatterns) -> GraphSchema:
         """
         Generate initial graph schema from discovered data patterns.
@@ -103,38 +106,38 @@ class AdaptiveSchemaGenerator:
             Generated graph schema with confidence scores
         """
         logger.info("Generating initial graph schema from data patterns")
-        
+
         # Generate node types from entity patterns
         node_types = await self._generate_node_types(patterns.entity_patterns)
-        
-        # Generate relationship types from relationship patterns  
+
+        # Generate relationship types from relationship patterns
         relationship_types = await self._generate_relationship_types(patterns.relationship_patterns)
-        
+
         # Generate properties based on patterns
         properties = await self._generate_properties(
-            patterns.entity_patterns, 
+            patterns.entity_patterns,
             patterns.relationship_patterns
         )
-        
+
         # Generate recommended indexes
         indexes = await self._generate_indexes(
-            node_types, 
+            node_types,
             relationship_types,
             patterns.document_patterns
         )
-        
+
         # Generate constraints
         constraints = await self._generate_constraints(
             node_types,
             relationship_types,
             patterns
         )
-        
+
         # Calculate overall schema confidence
         confidence_score = await self._calculate_schema_confidence(
             node_types, relationship_types, patterns.quality_metrics
         )
-        
+
         schema = GraphSchema(
             node_types=node_types,
             relationship_types=relationship_types,
@@ -152,19 +155,19 @@ class AdaptiveSchemaGenerator:
             },
             confidence_score=confidence_score
         )
-        
+
         self.schema_history.append(schema)
         logger.info(f"Generated schema with confidence {confidence_score:.2f}")
         return schema
-    
-    async def _generate_node_types(self, entity_patterns: List[EntityPattern]) -> List[SchemaElement]:
+
+    async def _generate_node_types(self, entity_patterns: list[EntityPattern]) -> list[SchemaElement]:
         """Generate node types from entity patterns."""
         node_types = []
-        
+
         for pattern in entity_patterns:
             if pattern.confidence_score < self.min_confidence:
                 continue
-                
+
             # Map entity pattern to node type
             node_type = SchemaElement(
                 element_type=SchemaElementType.NODE_TYPE,
@@ -178,23 +181,23 @@ class AdaptiveSchemaGenerator:
                 confidence_score=pattern.confidence_score,
                 source_pattern=f"entity_pattern_{pattern.entity_type}"
             )
-            
+
             node_types.append(node_type)
-        
+
         logger.info(f"Generated {len(node_types)} node types")
         return node_types
-    
+
     async def _generate_relationship_types(
-        self, 
-        relationship_patterns: List[RelationshipPattern]
-    ) -> List[SchemaElement]:
+        self,
+        relationship_patterns: list[RelationshipPattern]
+    ) -> list[SchemaElement]:
         """Generate relationship types from relationship patterns."""
         relationship_types = []
-        
+
         for pattern in relationship_patterns:
             if pattern.confidence_score < self.min_confidence:
                 continue
-                
+
             # Map relationship pattern to relationship type
             rel_type = SchemaElement(
                 element_type=SchemaElementType.RELATIONSHIP_TYPE,
@@ -210,20 +213,20 @@ class AdaptiveSchemaGenerator:
                 confidence_score=pattern.confidence_score,
                 source_pattern=f"relationship_pattern_{pattern.relationship_type}"
             )
-            
+
             relationship_types.append(rel_type)
-        
+
         logger.info(f"Generated {len(relationship_types)} relationship types")
         return relationship_types
-    
+
     async def _generate_properties(
         self,
-        entity_patterns: List[EntityPattern],
-        relationship_patterns: List[RelationshipPattern]
-    ) -> List[SchemaElement]:
+        entity_patterns: list[EntityPattern],
+        relationship_patterns: list[RelationshipPattern]
+    ) -> list[SchemaElement]:
         """Generate property definitions from patterns."""
         properties = []
-        
+
         # Standard properties for all nodes
         base_properties = [
             SchemaElement(
@@ -245,9 +248,9 @@ class AdaptiveSchemaGenerator:
                 confidence_score=1.0
             )
         ]
-        
+
         properties.extend(base_properties)
-        
+
         # Generate entity-specific properties
         for pattern in entity_patterns:
             for feature in pattern.characteristic_features[:5]:  # Top 5 features
@@ -262,18 +265,18 @@ class AdaptiveSchemaGenerator:
                     confidence_score=pattern.confidence_score * 0.8  # Slightly lower confidence
                 )
                 properties.append(prop)
-        
+
         return properties
-    
+
     async def _generate_indexes(
         self,
-        node_types: List[SchemaElement],
-        relationship_types: List[SchemaElement],
-        document_patterns: Dict[str, Any]
-    ) -> List[SchemaElement]:
+        node_types: list[SchemaElement],
+        relationship_types: list[SchemaElement],
+        document_patterns: dict[str, Any]
+    ) -> list[SchemaElement]:
         """Generate recommended indexes based on patterns."""
         indexes = []
-        
+
         # Always index on ID for all node types
         for node_type in node_types:
             index = SchemaElement(
@@ -287,7 +290,7 @@ class AdaptiveSchemaGenerator:
                 confidence_score=1.0
             )
             indexes.append(index)
-        
+
         # Index on text for full-text search
         text_index = SchemaElement(
             element_type=SchemaElementType.INDEX,
@@ -299,7 +302,7 @@ class AdaptiveSchemaGenerator:
             confidence_score=0.9
         )
         indexes.append(text_index)
-        
+
         # Index on relationship types for frequent traversals
         for rel_type in relationship_types:
             if rel_type.properties.get("frequency", 0) > 10:  # Only for frequent relationships
@@ -313,18 +316,18 @@ class AdaptiveSchemaGenerator:
                     confidence_score=rel_type.confidence_score
                 )
                 indexes.append(index)
-        
+
         return indexes
-    
+
     async def _generate_constraints(
         self,
-        node_types: List[SchemaElement],
-        relationship_types: List[SchemaElement],
+        node_types: list[SchemaElement],
+        relationship_types: list[SchemaElement],
         patterns: DataPatterns
-    ) -> List[SchemaElement]:
+    ) -> list[SchemaElement]:
         """Generate schema constraints based on patterns."""
         constraints = []
-        
+
         # Unique constraints on ID
         for node_type in node_types:
             constraint = SchemaElement(
@@ -338,7 +341,7 @@ class AdaptiveSchemaGenerator:
                 confidence_score=1.0
             )
             constraints.append(constraint)
-        
+
         # Existence constraints for required properties
         for node_type in node_types:
             constraint = SchemaElement(
@@ -352,37 +355,37 @@ class AdaptiveSchemaGenerator:
                 confidence_score=0.9
             )
             constraints.append(constraint)
-        
+
         return constraints
-    
+
     async def _calculate_schema_confidence(
         self,
-        node_types: List[SchemaElement],
-        relationship_types: List[SchemaElement],
-        quality_metrics: Dict[str, float]
+        node_types: list[SchemaElement],
+        relationship_types: list[SchemaElement],
+        quality_metrics: dict[str, float]
     ) -> float:
         """Calculate overall confidence score for the schema."""
         if not node_types and not relationship_types:
             return 0.0
-        
+
         # Component confidence scores
         node_confidences = [nt.confidence_score for nt in node_types]
         rel_confidences = [rt.confidence_score for rt in relationship_types]
-        
+
         component_scores = []
         if node_confidences:
             component_scores.append(np.mean(node_confidences))
         if rel_confidences:
             component_scores.append(np.mean(rel_confidences))
-        
+
         schema_confidence = np.mean(component_scores) if component_scores else 0.0
-        
+
         # Adjust based on quality metrics
         overall_quality = quality_metrics.get("overall_quality", 0.0)
         adjusted_confidence = (schema_confidence + overall_quality) / 2.0
-        
+
         return min(1.0, max(0.0, adjusted_confidence))
-    
+
     def _normalize_type_name(self, name: str) -> str:
         """Normalize type names for consistency."""
         # Convert to uppercase and replace spaces/special chars with underscores
@@ -390,7 +393,7 @@ class AdaptiveSchemaGenerator:
         # Remove special characters except underscores
         normalized = "".join(c for c in normalized if c.isalnum() or c == "_")
         return normalized
-    
+
     async def evolve_schema(self, usage_feedback: UsageFeedback) -> SchemaEvolution:
         """
         Evolve schema based on usage feedback and performance metrics.
@@ -402,39 +405,39 @@ class AdaptiveSchemaGenerator:
             Schema evolution changes and improvements
         """
         logger.info("Evolving schema based on usage feedback")
-        
+
         if not self.schema_history:
             raise ValueError("No existing schema to evolve")
-        
+
         current_schema = self.schema_history[-1]
-        
+
         # Analyze feedback to identify improvements
         improvements = await self._analyze_improvement_opportunities(
             current_schema, usage_feedback
         )
-        
+
         # Generate schema evolution
         evolution = await self._generate_schema_evolution(
             current_schema, improvements, usage_feedback
         )
-        
+
         # Apply evolution if confidence is sufficient
         if evolution.confidence_score >= self.min_confidence:
             new_schema = await self._apply_schema_evolution(current_schema, evolution)
             self.schema_history.append(new_schema)
             self.evolution_history.append(evolution)
-            
+
             logger.info(f"Schema evolved with confidence {evolution.confidence_score:.2f}")
         else:
             logger.info(f"Schema evolution confidence too low: {evolution.confidence_score:.2f}")
-        
+
         return evolution
-    
+
     async def _analyze_improvement_opportunities(
         self,
         schema: GraphSchema,
         feedback: UsageFeedback
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Analyze feedback to identify improvement opportunities."""
         opportunities = {
             "performance_improvements": [],
@@ -443,32 +446,32 @@ class AdaptiveSchemaGenerator:
             "new_patterns": [],
             "constraint_violations": []
         }
-        
+
         # Analyze query patterns for missing indexes
         for query_pattern in feedback.query_patterns:
             query_type = query_pattern.get("type", "")
             frequency = query_pattern.get("frequency", 0)
             performance = query_pattern.get("avg_duration", 0)
-            
+
             if frequency > 100 and performance > 1000:  # ms
                 # Frequent slow query - needs index
                 opportunities["missing_indexes"].append({
                     "query_pattern": query_pattern,
                     "suggested_index": self._suggest_index_for_query(query_pattern)
                 })
-        
+
         # Analyze performance metrics for bottlenecks
         slow_operations = []
         for metric_name, value in feedback.performance_metrics.items():
             if "duration" in metric_name.lower() and value > 5000:  # 5+ seconds
                 slow_operations.append(metric_name)
-        
+
         if slow_operations:
             opportunities["performance_improvements"].extend(slow_operations)
-        
+
         return opportunities
-    
-    def _suggest_index_for_query(self, query_pattern: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _suggest_index_for_query(self, query_pattern: dict[str, Any]) -> dict[str, Any]:
         """Suggest an index to improve query performance."""
         # Placeholder implementation
         return {
@@ -476,18 +479,18 @@ class AdaptiveSchemaGenerator:
             "properties": ["id"],  # Default suggestion
             "estimated_improvement": 0.5
         }
-    
+
     async def _generate_schema_evolution(
         self,
         current_schema: GraphSchema,
-        improvements: Dict[str, Any],
+        improvements: dict[str, Any],
         feedback: UsageFeedback
     ) -> SchemaEvolution:
         """Generate schema evolution based on improvements."""
         added_elements = []
         modified_elements = []
         removed_elements = []
-        
+
         # Add missing indexes
         for missing_index in improvements["missing_indexes"]:
             suggested = missing_index["suggested_index"]
@@ -498,24 +501,24 @@ class AdaptiveSchemaGenerator:
                 confidence_score=0.8
             )
             added_elements.append(index_element)
-        
+
         # Calculate performance improvements (estimated)
         performance_improvements = {}
         if added_elements:
             performance_improvements["query_performance"] = 0.3  # 30% improvement estimate
-        
+
         # Calculate confidence based on feedback quality
         feedback_quality = self._assess_feedback_quality(feedback)
         confidence_score = min(1.0, feedback_quality * 0.9)
-        
+
         reasoning = f"Added {len(added_elements)} indexes based on query performance analysis"
-        
+
         impact_assessment = {
             "performance_impact": "positive",
             "compatibility_impact": "none",
             "maintenance_impact": "low"
         }
-        
+
         return SchemaEvolution(
             added_elements=added_elements,
             modified_elements=modified_elements,
@@ -525,28 +528,28 @@ class AdaptiveSchemaGenerator:
             reasoning=reasoning,
             impact_assessment=impact_assessment
         )
-    
+
     def _assess_feedback_quality(self, feedback: UsageFeedback) -> float:
         """Assess the quality of usage feedback."""
         quality_factors = []
-        
+
         # Query pattern richness
         if feedback.query_patterns:
             query_richness = min(1.0, len(feedback.query_patterns) / 50.0)
             quality_factors.append(query_richness)
-        
+
         # Performance metrics availability
         if feedback.performance_metrics:
             metric_coverage = min(1.0, len(feedback.performance_metrics) / 10.0)
             quality_factors.append(metric_coverage)
-        
+
         # Error pattern analysis
         if feedback.error_patterns:
-            error_richness = min(1.0, len(feedback.error_patterns) / 10.0)  
+            error_richness = min(1.0, len(feedback.error_patterns) / 10.0)
             quality_factors.append(error_richness)
-        
+
         return np.mean(quality_factors) if quality_factors else 0.0
-    
+
     async def _apply_schema_evolution(
         self,
         current_schema: GraphSchema,
@@ -555,11 +558,11 @@ class AdaptiveSchemaGenerator:
         """Apply evolution to create new schema version."""
         # Create new schema based on current + evolution
         new_node_types = current_schema.node_types.copy()
-        new_relationship_types = current_schema.relationship_types.copy() 
+        new_relationship_types = current_schema.relationship_types.copy()
         new_properties = current_schema.properties.copy()
         new_indexes = current_schema.indexes.copy()
         new_constraints = current_schema.constraints.copy()
-        
+
         # Apply additions
         for element in evolution.added_elements:
             if element.element_type == SchemaElementType.NODE_TYPE:
@@ -572,22 +575,22 @@ class AdaptiveSchemaGenerator:
                 new_indexes.append(element)
             elif element.element_type == SchemaElementType.CONSTRAINT:
                 new_constraints.append(element)
-        
+
         # Apply modifications (placeholder)
         for old_element, new_element in evolution.modified_elements:
             # Implementation would update existing elements
             pass
-        
+
         # Apply removals (placeholder)
         for element in evolution.removed_elements:
             # Implementation would remove elements
             pass
-        
+
         # Increment version
         current_version = current_schema.version
         major, minor, patch = map(int, current_version.split('.'))
         new_version = f"{major}.{minor}.{patch + 1}"
-        
+
         return GraphSchema(
             node_types=new_node_types,
             relationship_types=new_relationship_types,

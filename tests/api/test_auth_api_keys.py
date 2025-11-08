@@ -258,7 +258,7 @@ class TestAPIKeyProvider:
         # Create auth provider with fixed time service
         settings = JWTSettings(secret_key="test-secret-key-32-chars-minimum")
         jwt_handler = JWTHandler(settings)
-        
+
         # Set initial time
         start_time = datetime(2024, 1, 1)
         time_service = FixedTimeService(start_time)
@@ -275,7 +275,7 @@ class TestAPIKeyProvider:
 
         # Advance time past expiration (10 days later)
         time_service.advance_days(10)
-        
+
         # Key should now be expired
         user = await auth_provider.get_user_by_api_key(actual_key)
         assert user is None
@@ -308,7 +308,7 @@ class TestAPIKeyProvider:
         # Create auth provider with fixed time service
         settings = JWTSettings(secret_key="test-secret-key-32-chars-minimum")
         jwt_handler = JWTHandler(settings)
-        
+
         # Set fixed time
         fixed_time = datetime(2024, 1, 1, 12, 0, 0)
         time_service = FixedTimeService(fixed_time)

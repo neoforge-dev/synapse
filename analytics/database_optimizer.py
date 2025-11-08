@@ -7,11 +7,12 @@ Implements connection pooling, indexing, and query optimization
 import logging
 import sqlite3
 import threading
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from queue import Queue
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,17 +25,17 @@ class DatabaseConfig:
     journal_mode: str = "WAL"  # Write-Ahead Logging for better concurrency
     synchronous: str = "NORMAL"  # Balance safety and performance
     temp_store: str = "MEMORY"  # Store temporary tables in memory
-    
+
 class ConnectionPool:
     """Thread-safe SQLite connection pool"""
-    
+
     def __init__(self, db_path: str, config: DatabaseConfig):
         self.db_path = db_path
         self.config = config
         self._pool = Queue(maxsize=config.max_connections)
         self._lock = threading.Lock()
         self._initialized = False
-        
+
     def _create_connection(self) -> sqlite3.Connection:
         """Create optimized database connection"""
         conn = sqlite3.connect(
@@ -42,19 +43,19 @@ class ConnectionPool:
             timeout=self.config.timeout,
             check_same_thread=False
         )
-        
+
         # Apply performance optimizations
         conn.execute(f"PRAGMA cache_size = {self.config.cache_size}")
         conn.execute(f"PRAGMA journal_mode = {self.config.journal_mode}")
         conn.execute(f"PRAGMA synchronous = {self.config.synchronous}")
         conn.execute(f"PRAGMA temp_store = {self.config.temp_store}")
         conn.execute("PRAGMA foreign_keys = ON")
-        
+
         # Enable query planner for optimization analysis
         conn.execute("PRAGMA optimize")
-        
+
         return conn
-    
+
     def _initialize_pool(self):
         """Initialize connection pool"""
         with self._lock:
@@ -64,19 +65,19 @@ class ConnectionPool:
                     self._pool.put(conn)
                 self._initialized = True
                 logger.info(f"Initialized connection pool with {self.config.max_connections} connections")
-    
+
     @contextmanager
     def get_connection(self) -> Generator[sqlite3.Connection, None, None]:
         """Get connection from pool with context manager"""
         if not self._initialized:
             self._initialize_pool()
-            
+
         conn = self._pool.get(timeout=self.config.timeout)
         try:
             yield conn
         finally:
             self._pool.put(conn)
-    
+
     def close_all(self):
         """Close all connections in pool"""
         with self._lock:
@@ -87,34 +88,34 @@ class ConnectionPool:
 
 class OptimizedAnalyticsDatabase:
     """Optimized database interface for analytics operations"""
-    
+
     def __init__(self, db_path: str = "performance_analytics.db"):
         self.db_path = db_path
         self.config = DatabaseConfig()
         self.pool = ConnectionPool(db_path, self.config)
         self._prepared_statements = {}
         self.init_optimized_database()
-    
+
     def init_optimized_database(self):
         """Initialize database with optimized schema and indexes"""
         with self.pool.get_connection() as conn:
             cursor = conn.cursor()
-            
+
             # Create tables with optimized schema
             self._create_optimized_tables(cursor)
-            
+
             # Create performance indexes
             self._create_performance_indexes(cursor)
-            
+
             # Analyze tables for query planner
             cursor.execute("ANALYZE")
-            
+
             conn.commit()
             logger.info("Optimized analytics database initialized")
-    
+
     def _create_optimized_tables(self, cursor: sqlite3.Cursor):
         """Create tables with optimized schema"""
-        
+
         # Content patterns table with partitioning support
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS content_patterns (
@@ -130,7 +131,7 @@ class OptimizedAnalyticsDatabase:
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # Performance predictions with denormalized data for fast queries
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS performance_predictions (
@@ -149,7 +150,7 @@ class OptimizedAnalyticsDatabase:
                 validated_at TIMESTAMP DEFAULT NULL
             )
         ''')
-        
+
         # Content analysis with materialized aggregations
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS content_analysis (
@@ -171,7 +172,7 @@ class OptimizedAnalyticsDatabase:
                 analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # Aggregated performance metrics table (materialized view equivalent)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS performance_metrics_agg (
@@ -185,48 +186,48 @@ class OptimizedAnalyticsDatabase:
                 calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-    
+
     def _create_performance_indexes(self, cursor: sqlite3.Cursor):
         """Create indexes for optimal query performance"""
-        
+
         indexes = [
             # Content patterns indexes
             "CREATE INDEX IF NOT EXISTS idx_patterns_type_confidence ON content_patterns (pattern_type, confidence_score DESC)",
             "CREATE INDEX IF NOT EXISTS idx_patterns_engagement ON content_patterns (avg_engagement_rate DESC)",
             "CREATE INDEX IF NOT EXISTS idx_patterns_consultation ON content_patterns (avg_consultation_conversion DESC)",
             "CREATE INDEX IF NOT EXISTS idx_patterns_identified ON content_patterns (identified_at DESC)",
-            
+
             # Performance predictions indexes
             "CREATE INDEX IF NOT EXISTS idx_predictions_post ON performance_predictions (post_id)",
             "CREATE INDEX IF NOT EXISTS idx_predictions_accuracy ON performance_predictions (prediction_accuracy DESC)",
             "CREATE INDEX IF NOT EXISTS idx_predictions_created ON performance_predictions (created_at DESC)",
-            
+
             # Content analysis indexes
             "CREATE INDEX IF NOT EXISTS idx_analysis_post ON content_analysis (post_id)",
             "CREATE INDEX IF NOT EXISTS idx_analysis_hook_topic ON content_analysis (hook_type, topic_category)",
             "CREATE INDEX IF NOT EXISTS idx_analysis_technical ON content_analysis (technical_depth, business_focus)",
             "CREATE INDEX IF NOT EXISTS idx_analysis_date ON content_analysis (analyzed_at DESC)",
-            
+
             # Performance metrics aggregation indexes
             "CREATE INDEX IF NOT EXISTS idx_metrics_type_date ON performance_metrics_agg (metric_type, metric_date DESC)",
             "CREATE INDEX IF NOT EXISTS idx_metrics_engagement ON performance_metrics_agg (avg_engagement_rate DESC)",
-            
+
             # Composite indexes for common queries
             "CREATE INDEX IF NOT EXISTS idx_patterns_composite ON content_patterns (pattern_type, avg_engagement_rate DESC, sample_size)",
             "CREATE INDEX IF NOT EXISTS idx_analysis_composite ON content_analysis (hook_type, cta_type, topic_category)"
         ]
-        
+
         for index_sql in indexes:
             cursor.execute(index_sql)
-    
-    def bulk_insert_patterns(self, patterns: List[Dict[str, Any]]) -> int:
+
+    def bulk_insert_patterns(self, patterns: list[dict[str, Any]]) -> int:
         """Optimized bulk insert for content patterns"""
         if not patterns:
             return 0
-            
+
         with self.pool.get_connection() as conn:
             cursor = conn.cursor()
-            
+
             # Use executemany for bulk operations
             cursor.executemany('''
                 INSERT OR REPLACE INTO content_patterns 
@@ -234,24 +235,24 @@ class OptimizedAnalyticsDatabase:
                  avg_consultation_conversion, sample_size, confidence_score, recommendation)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', [
-                (p['pattern_id'], p['pattern_type'], p['pattern_value'], 
+                (p['pattern_id'], p['pattern_type'], p['pattern_value'],
                  p['avg_engagement_rate'], p['avg_consultation_conversion'],
                  p['sample_size'], p['confidence_score'], p['recommendation'])
                 for p in patterns
             ])
-            
+
             conn.commit()
             logger.info(f"Bulk inserted {len(patterns)} content patterns")
             return len(patterns)
-    
-    def bulk_insert_analysis(self, analyses: List[Dict[str, Any]]) -> int:
+
+    def bulk_insert_analysis(self, analyses: list[dict[str, Any]]) -> int:
         """Optimized bulk insert for content analysis"""
         if not analyses:
             return 0
-            
+
         with self.pool.get_connection() as conn:
             cursor = conn.cursor()
-            
+
             cursor.executemany('''
                 INSERT OR REPLACE INTO content_analysis 
                 (analysis_id, post_id, word_count, hook_type, cta_type, topic_category,
@@ -266,18 +267,18 @@ class OptimizedAnalyticsDatabase:
                  a['data_points'], a['code_snippets'])
                 for a in analyses
             ])
-            
+
             conn.commit()
             logger.info(f"Bulk inserted {len(analyses)} content analyses")
             return len(analyses)
-    
-    def get_top_patterns_optimized(self, 
-                                 pattern_type: Optional[str] = None, 
-                                 limit: int = 50) -> List[Tuple]:
+
+    def get_top_patterns_optimized(self,
+                                 pattern_type: str | None = None,
+                                 limit: int = 50) -> list[tuple]:
         """Optimized query for top performing patterns"""
         with self.pool.get_connection() as conn:
             cursor = conn.cursor()
-            
+
             if pattern_type:
                 # Use parameterized query with index optimization
                 cursor.execute('''
@@ -299,37 +300,37 @@ class OptimizedAnalyticsDatabase:
                     ORDER BY confidence_score DESC, avg_engagement_rate DESC
                     LIMIT ?
                 ''', (limit,))
-            
+
             return cursor.fetchall()
-    
-    def get_performance_trends(self, days: int = 30) -> Dict[str, Any]:
+
+    def get_performance_trends(self, days: int = 30) -> dict[str, Any]:
         """Get aggregated performance trends with optimized queries"""
         with self.pool.get_connection() as conn:
             cursor = conn.cursor()
-            
+
             # Use aggregated metrics table if available
-            cursor.execute('''
+            cursor.execute(f'''
                 SELECT metric_date, avg_engagement_rate, total_consultations, total_posts
                 FROM performance_metrics_agg 
                 WHERE metric_type = 'daily' 
-                  AND metric_date >= date('now', '-{} days')
+                  AND metric_date >= date('now', '-{days} days')
                 ORDER BY metric_date DESC
-            '''.format(days))
-            
+            ''')
+
             daily_metrics = cursor.fetchall()
-            
+
             if not daily_metrics:
                 # Fallback to real-time calculation if aggregated data not available
                 logger.warning("No aggregated metrics found, calculating real-time trends")
                 return self._calculate_realtime_trends(cursor, days)
-            
+
             return {
                 'daily_metrics': daily_metrics,
                 'trend_calculated_at': datetime.now().isoformat(),
                 'data_source': 'aggregated'
             }
-    
-    def _calculate_realtime_trends(self, cursor: sqlite3.Cursor, days: int) -> Dict[str, Any]:
+
+    def _calculate_realtime_trends(self, cursor: sqlite3.Cursor, days: int) -> dict[str, Any]:
         """Calculate trends in real-time when aggregated data unavailable"""
         # This would contain the fallback real-time calculation logic
         # For brevity, returning placeholder
@@ -339,12 +340,12 @@ class OptimizedAnalyticsDatabase:
             'data_source': 'realtime',
             'note': 'Aggregated metrics not available, real-time calculation needed'
         }
-    
+
     def update_aggregated_metrics(self):
         """Update materialized aggregated metrics for fast queries"""
         with self.pool.get_connection() as conn:
             cursor = conn.cursor()
-            
+
             # Calculate daily aggregates
             cursor.execute('''
                 INSERT OR REPLACE INTO performance_metrics_agg 
@@ -365,32 +366,32 @@ class OptimizedAnalyticsDatabase:
                 WHERE analyzed_at >= date('now', '-30 days')
                 GROUP BY date(analyzed_at)
             ''')
-            
+
             conn.commit()
             logger.info("Updated aggregated performance metrics")
-    
-    def get_database_stats(self) -> Dict[str, Any]:
+
+    def get_database_stats(self) -> dict[str, Any]:
         """Get database performance statistics"""
         with self.pool.get_connection() as conn:
             cursor = conn.cursor()
-            
+
             stats = {}
-            
+
             # Table sizes
             for table in ['content_patterns', 'performance_predictions', 'content_analysis']:
                 cursor.execute(f"SELECT COUNT(*) FROM {table}")
                 stats[f"{table}_count"] = cursor.fetchone()[0]
-            
+
             # Database size
             cursor.execute("SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()")
             stats['database_size_bytes'] = cursor.fetchone()[0]
-            
+
             # Index usage
             cursor.execute("SELECT name FROM sqlite_master WHERE type='index' AND sql IS NOT NULL")
             stats['index_count'] = len(cursor.fetchall())
-            
+
             return stats
-    
+
     def close(self):
         """Close connection pool"""
         self.pool.close_all()
@@ -403,10 +404,10 @@ def monitor_query_performance(func):
         start_time = datetime.now()
         result = func(*args, **kwargs)
         execution_time = (datetime.now() - start_time).total_seconds()
-        
+
         if execution_time > 1.0:  # Log slow queries
             logger.warning(f"Slow query detected: {func.__name__} took {execution_time:.2f}s")
-        
+
         return result
     return wrapper
 
@@ -414,16 +415,16 @@ def main():
     """Test the optimized database system"""
     print("🚀 Database Performance Optimizer")
     print("=" * 50)
-    
+
     # Initialize optimized database
     db = OptimizedAnalyticsDatabase()
-    
+
     # Get database statistics
     stats = db.get_database_stats()
-    print(f"📊 Database Statistics:")
+    print("📊 Database Statistics:")
     for key, value in stats.items():
         print(f"   {key}: {value}")
-    
+
     # Test bulk operations
     test_patterns = [
         {
@@ -438,18 +439,18 @@ def main():
         }
         for i in range(5)
     ]
-    
+
     inserted = db.bulk_insert_patterns(test_patterns)
     print(f"✅ Bulk inserted {inserted} test patterns")
-    
+
     # Test optimized queries
     top_patterns = db.get_top_patterns_optimized(limit=3)
     print(f"🎯 Top 3 patterns: {len(top_patterns)} found")
-    
+
     # Update aggregated metrics
     db.update_aggregated_metrics()
     print("📈 Updated aggregated performance metrics")
-    
+
     # Close database
     db.close()
     print("✅ Database optimization test completed")

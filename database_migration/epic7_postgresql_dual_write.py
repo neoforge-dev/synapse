@@ -6,13 +6,13 @@ This module provides a context manager that monitors SQLite changes
 and replicates them to PostgreSQL in real-time for the dual-write period.
 """
 
-import os
-import logging
-import sqlite3
-import psycopg2
 import json
-from typing import Optional, Any
+import logging
+import os
+import sqlite3
 from contextlib import contextmanager
+
+import psycopg2
 
 logging.basicConfig(
     level=logging.INFO,
@@ -32,7 +32,7 @@ class PostgreSQLReplicator:
             'user': os.getenv('POSTGRES_USER', 'synapse'),
             'password': os.getenv('POSTGRES_PASSWORD', 'synapse_password')
         }
-        self.pg_conn: Optional[psycopg2.extensions.connection] = None
+        self.pg_conn: psycopg2.extensions.connection | None = None
 
     def connect(self):
         """Connect to PostgreSQL"""
@@ -192,7 +192,7 @@ class PostgreSQLReplicator:
 
 
 # Global replicator instance
-_replicator: Optional[PostgreSQLReplicator] = None
+_replicator: PostgreSQLReplicator | None = None
 
 
 def enable_dual_write():
@@ -228,7 +228,6 @@ def dual_write_context(sqlite_db_path: str):
 
 if __name__ == "__main__":
     # Test dual-write functionality
-    import sys
 
     sqlite_path = "business_development/epic7_sales_automation.db"
 

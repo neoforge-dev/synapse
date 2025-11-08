@@ -7,12 +7,12 @@ This module provides next-generation AI capabilities for competitive differentia
 - Advanced knowledge synthesis and strategic insights
 """
 
-from .semantic_reasoning_engine import SemanticReasoningEngine
 from .contextual_synthesizer import ContextualSynthesizer
 from .executive_intelligence import ExecutiveIntelligenceDashboard
+from .semantic_reasoning_engine import SemanticReasoningEngine
 
 __all__ = [
     "SemanticReasoningEngine",
-    "ContextualSynthesizer", 
+    "ContextualSynthesizer",
     "ExecutiveIntelligenceDashboard"
 ]

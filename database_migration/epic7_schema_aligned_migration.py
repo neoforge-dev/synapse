@@ -5,16 +5,14 @@ Migrates all Epic 7 data with SQLite-to-PostgreSQL schema mapping
 Business Critical: $1.158M Sales Pipeline + Supporting Data
 """
 
-import os
-import sys
+import json
 import logging
+import os
 import sqlite3
+import sys
+
 import psycopg2
 import psycopg2.extras
-import json
-from datetime import datetime
-from pathlib import Path
-from typing import Dict, List, Any, Optional
 
 # Configure logging
 logging.basicConfig(

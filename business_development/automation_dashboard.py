@@ -8,7 +8,6 @@ import logging
 import sqlite3
 import sys
 from datetime import datetime
-from pathlib import Path
 
 try:
     from .consultation_inquiry_detector import ConsultationInquiryDetector

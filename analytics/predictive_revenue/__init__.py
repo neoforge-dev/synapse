@@ -7,8 +7,8 @@ This module provides ML-driven revenue intelligence and optimization:
 - Revenue acceleration through AI insights
 """
 
-from .clv_predictor import CLVPredictor
 from .churn_prevention import ChurnPreventionEngine
+from .clv_predictor import CLVPredictor
 from .market_timing import MarketTimingEngine
 
 __all__ = [

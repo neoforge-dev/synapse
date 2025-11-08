@@ -9,24 +9,19 @@ Database Strategy: Dual-mode SQLite/PostgreSQL support
 Pipeline Value: $1.158M across 16 qualified contacts
 """
 
-import logging
-import sqlite3  # SQLite backend support
 import json
+import logging
 import os
-import warnings
-from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
-from typing import Dict, List, Optional, Tuple
-from uuid import UUID
-from decimal import Decimal
-import pandas as pd
-import numpy as np
-from pathlib import Path
-import random
+import sqlite3  # SQLite backend support
 import uuid
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from decimal import Decimal
+
+import numpy as np
 
 # PostgreSQL CRM Service Layer
-from graph_rag.services.crm_service import get_crm_service, CRMService, DatabaseConfig
+from graph_rag.services.crm_service import CRMService, DatabaseConfig
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -53,7 +48,7 @@ class CRMContact:
     updated_at: str
     notes: str
 
-@dataclass  
+@dataclass
 class ProposalTemplate:
     """Business proposal template with ROI calculations"""
     template_id: str
@@ -62,7 +57,7 @@ class ProposalTemplate:
     executive_summary: str
     problem_statement: str
     solution_overview: str
-    roi_calculation: Dict
+    roi_calculation: dict
     timeline: str
     investment_range: str
     next_steps: str
@@ -88,7 +83,7 @@ class SalesAutomationEngine:
     def __init__(
         self,
         db_path: str = "business_development/epic7_sales_automation.db",
-        crm_service: Optional[CRMService] = None,
+        crm_service: CRMService | None = None,
         use_postgres: bool = True
     ):
         """Initialize sales automation engine
@@ -169,7 +164,7 @@ class SalesAutomationEngine:
         self._log_sqlite_operation("Database initialization", self.db_path)
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # CRM Contacts table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS crm_contacts (
@@ -192,7 +187,7 @@ class SalesAutomationEngine:
                 notes TEXT
             )
         ''')
-        
+
         # Lead Scoring History table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS lead_scoring_history (
@@ -205,7 +200,7 @@ class SalesAutomationEngine:
                 FOREIGN KEY (contact_id) REFERENCES crm_contacts (contact_id)
             )
         ''')
-        
+
         # Proposal Generation table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS generated_proposals (
@@ -223,7 +218,7 @@ class SalesAutomationEngine:
                 FOREIGN KEY (contact_id) REFERENCES crm_contacts (contact_id)
             )
         ''')
-        
+
         # Sales Pipeline Tracking table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS sales_pipeline (
@@ -239,7 +234,7 @@ class SalesAutomationEngine:
                 FOREIGN KEY (contact_id) REFERENCES crm_contacts (contact_id)
             )
         ''')
-        
+
         # ROI Calculator Templates table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS linkedin_automation_tracking (
@@ -256,7 +251,7 @@ class SalesAutomationEngine:
                 FOREIGN KEY (contact_id) REFERENCES crm_contacts (contact_id)
             )
         ''')
-        
+
         # A/B Testing Framework table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS ab_test_campaigns (
@@ -274,7 +269,7 @@ class SalesAutomationEngine:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # A/B Testing Results table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS ab_test_results (
@@ -288,7 +283,7 @@ class SalesAutomationEngine:
                 FOREIGN KEY (contact_id) REFERENCES crm_contacts (contact_id)
             )
         ''')
-        
+
         # Revenue Forecasting table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS revenue_forecasts (
@@ -302,7 +297,7 @@ class SalesAutomationEngine:
                 forecast_date TEXT
             )
         ''')
-        
+
         # ROI Calculator Templates table
         cursor.execute('''CREATE TABLE IF NOT EXISTS roi_templates (
                 template_id TEXT PRIMARY KEY,
@@ -316,11 +311,11 @@ class SalesAutomationEngine:
                 updated_at TEXT
             )
         ''')
-        
+
         conn.commit()
         conn.close()
         logger.info("Epic 7 sales automation database with Week 1-2 optimization features initialized")
-        
+
     def _init_proposal_templates(self):
         """Initialize business proposal templates"""
         templates = [
@@ -343,7 +338,7 @@ class SalesAutomationEngine:
                 "next_steps": "30-minute team velocity diagnostic call to assess current state and identify specific optimization opportunities"
             },
             {
-                "template_id": "fractional_cto_proposal", 
+                "template_id": "fractional_cto_proposal",
                 "inquiry_type": "fractional_cto",
                 "title": "Fractional CTO Services - Strategic Technical Leadership",
                 "executive_summary": "Part-time executive technical leadership providing strategic guidance, architecture decisions, and team development without full-time CTO costs.",
@@ -362,7 +357,7 @@ class SalesAutomationEngine:
             },
             {
                 "template_id": "nobuild_audit_proposal",
-                "inquiry_type": "nobuild_audit", 
+                "inquiry_type": "nobuild_audit",
                 "title": "#NOBUILD Technology Audit - Build vs Buy Optimization",
                 "executive_summary": "Comprehensive technology stack audit identifying opportunities to replace custom development with proven SaaS solutions, reducing engineering costs by 40-60%.",
                 "problem_statement": "Engineering teams often build custom solutions when excellent SaaS alternatives exist, leading to unnecessary development costs, maintenance burden, and slower time-to-market.",
@@ -379,10 +374,10 @@ class SalesAutomationEngine:
                 "next_steps": "Technology stack analysis session to identify initial audit scope and quick wins"
             }
         ]
-        
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         for template in templates:
             cursor.execute('''
                 INSERT OR REPLACE INTO roi_templates 
@@ -400,12 +395,12 @@ class SalesAutomationEngine:
                 datetime.now().isoformat(),
                 datetime.now().isoformat()
             ))
-            
+
         conn.commit()
         conn.close()
         logger.info("Proposal templates initialized")
-        
-    def generate_synthetic_consultation_data(self, count: int = 15) -> List[Dict]:
+
+    def generate_synthetic_consultation_data(self, count: int = 15) -> list[dict]:
         """Generate synthetic consultation inquiries for testing and demonstration"""
         synthetic_inquiries = [
             {
@@ -420,7 +415,7 @@ class SalesAutomationEngine:
                 "created_at": "2025-09-01T12:00:00"
             },
             {
-                "inquiry_id": "inquiry-20250901140000", 
+                "inquiry_id": "inquiry-20250901140000",
                 "contact_name": "Michael Rodriguez",
                 "company": "FinTech Solutions Corp",
                 "company_size": "Enterprise (500+ employees)",
@@ -434,7 +429,7 @@ class SalesAutomationEngine:
                 "inquiry_id": "inquiry-20250901160000",
                 "contact_name": "Jennifer Kim",
                 "company": "Healthcare Innovation Labs",
-                "company_size": "Series A (20-50 employees)", 
+                "company_size": "Series A (20-50 employees)",
                 "inquiry_type": "nobuild_audit",
                 "inquiry_text": "We're building too many custom solutions. Need #NOBUILD audit to identify SaaS alternatives and reduce engineering overhead.",
                 "estimated_value": 35000,
@@ -446,7 +441,7 @@ class SalesAutomationEngine:
                 "contact_name": "David Thompson",
                 "company": "E-commerce Growth Co",
                 "company_size": "Series B (50-200 employees)",
-                "inquiry_type": "technical_architecture", 
+                "inquiry_type": "technical_architecture",
                 "inquiry_text": "Scaling issues with our platform. Need architectural review and scalability roadmap. Revenue growing 300% YoY.",
                 "estimated_value": 65000,
                 "priority_score": 4,
@@ -464,7 +459,7 @@ class SalesAutomationEngine:
                 "created_at": "2025-09-02T11:00:00"
             },
             {
-                "inquiry_id": "inquiry-20250902130000", 
+                "inquiry_id": "inquiry-20250902130000",
                 "contact_name": "Robert Martinez",
                 "company": "Manufacturing Tech Solutions",
                 "company_size": "Enterprise (500+ employees)",
@@ -476,7 +471,7 @@ class SalesAutomationEngine:
             },
             {
                 "inquiry_id": "inquiry-20250902150000",
-                "contact_name": "Amanda Foster", 
+                "contact_name": "Amanda Foster",
                 "company": "EdTech Innovations",
                 "company_size": "Series A (20-50 employees)",
                 "inquiry_type": "team_building",
@@ -488,7 +483,7 @@ class SalesAutomationEngine:
             {
                 "inquiry_id": "inquiry-20250903080000",
                 "contact_name": "Thomas Anderson",
-                "company": "Logistics Optimization Inc", 
+                "company": "Logistics Optimization Inc",
                 "company_size": "Series B (50-200 employees)",
                 "inquiry_type": "nobuild_audit",
                 "inquiry_text": "Engineering team spending too much time on custom logistics tools. Want audit of build vs buy decisions.",
@@ -520,7 +515,7 @@ class SalesAutomationEngine:
             },
             {
                 "inquiry_id": "inquiry-20250903140000",
-                "contact_name": "Monica Patel", 
+                "contact_name": "Monica Patel",
                 "company": "Cybersecurity Solutions Ltd",
                 "company_size": "Series B (50-200 employees)",
                 "inquiry_type": "fractional_cto",
@@ -541,7 +536,7 @@ class SalesAutomationEngine:
                 "created_at": "2025-09-03T16:00:00"
             },
             {
-                "inquiry_id": "inquiry-20250904080000", 
+                "inquiry_id": "inquiry-20250904080000",
                 "contact_name": "Rachel Green",
                 "company": "PropTech Innovations",
                 "company_size": "Series A (20-50 employees)",
@@ -574,9 +569,9 @@ class SalesAutomationEngine:
                 "created_at": "2025-09-04T12:00:00"
             }
         ]
-        
+
         return synthetic_inquiries[:count]
-        
+
     def populate_synthetic_consultation_data(self, count: int = 15):
         """Populate consultation database with synthetic data for testing
 
@@ -588,7 +583,7 @@ class SalesAutomationEngine:
         self._log_sqlite_operation(f"Populating {count} synthetic consultation records", self.consultation_db_path)
         conn = sqlite3.connect(self.consultation_db_path)
         cursor = conn.cursor()
-        
+
         for inquiry in synthetic_data:
             cursor.execute('''
                 INSERT OR REPLACE INTO consultation_inquiries 
@@ -600,12 +595,12 @@ class SalesAutomationEngine:
                 inquiry["company_size"], inquiry["inquiry_type"], inquiry["inquiry_text"],
                 inquiry["estimated_value"], inquiry["priority_score"], "new", inquiry["created_at"]
             ))
-        
-        conn.commit() 
+
+        conn.commit()
         conn.close()
         logger.info(f"Populated consultation database with {len(synthetic_data)} synthetic inquiries")
-        
-    def import_consultation_inquiries(self, include_synthetic: bool = True) -> List[CRMContact]:
+
+    def import_consultation_inquiries(self, include_synthetic: bool = True) -> list[CRMContact]:
         """Import existing consultation inquiries into CRM system
 
         This method uses SQLite backend, appropriate for current scale (<10MB data).
@@ -619,32 +614,32 @@ class SalesAutomationEngine:
         self._log_sqlite_operation("Importing consultation inquiries", self.consultation_db_path)
         conn = sqlite3.connect(self.consultation_db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT inquiry_id, contact_name, company, company_size, inquiry_type, 
                    inquiry_text, estimated_value, priority_score, created_at
             FROM consultation_inquiries
             WHERE status IN ('new', 'contacted')
         ''')
-        
+
         inquiries = cursor.fetchall()
         conn.close()
-        
+
         imported_contacts = []
-        
+
         for inquiry in inquiries:
             inquiry_id, name, company, company_size, inquiry_type, inquiry_text, estimated_value, priority_score, created_at = inquiry
-            
+
             # Generate contact ID
             contact_id = f"crm-{inquiry_id}"
-            
+
             # Calculate enhanced ML lead score based on inquiry data
             lead_score = self._enhanced_ml_lead_scoring(inquiry_text, company_size, priority_score, inquiry_type, company)
-            
+
             # Determine qualification status and priority tier
             qualification_status = "qualified" if lead_score >= 70 else "unqualified" if lead_score >= 40 else "disqualified"
             priority_tier = self._determine_priority_tier(lead_score, estimated_value)
-            
+
             # Create CRM contact
             contact = CRMContact(
                 contact_id=contact_id,
@@ -665,22 +660,22 @@ class SalesAutomationEngine:
                 updated_at=datetime.now().isoformat(),
                 notes=f"Imported from consultation inquiry. Original inquiry: {inquiry_text[:200]}..."
             )
-            
+
             imported_contacts.append(contact)
-            
+
         # Save to CRM database
         self._save_contacts(imported_contacts)
-        
+
         logger.info(f"Imported {len(imported_contacts)} consultation inquiries into CRM system")
         return imported_contacts
-        
+
     def _calculate_lead_score(self, inquiry_text: str, company_size: str, priority_score: int, inquiry_type: str) -> int:
         """ML-based lead scoring algorithm"""
         score = 0
-        
+
         # Base score from consultation inquiry priority
         score += priority_score * 15  # Max 75 points from priority
-        
+
         # Company size scoring
         size_scores = {
             "Enterprise (500+ employees)": 25,
@@ -690,7 +685,7 @@ class SalesAutomationEngine:
             "Unknown": 5
         }
         score += size_scores.get(company_size, 5)
-        
+
         # Inquiry type value scoring
         type_scores = {
             "fractional_cto": 20,
@@ -701,57 +696,57 @@ class SalesAutomationEngine:
             "general_consultation": 5
         }
         score += type_scores.get(inquiry_type, 5)
-        
+
         # Text analysis for buying intent signals
         buying_signals = [
             "need help", "looking for", "interested in", "want to discuss",
             "schedule", "call", "meeting", "budget", "timeline", "decision",
             "struggling", "problem", "challenge", "solution"
         ]
-        
+
         text_lower = inquiry_text.lower()
         signal_count = sum(1 for signal in buying_signals if signal in text_lower)
         score += min(signal_count * 3, 15)  # Max 15 points for buying signals
-        
+
         # Urgency indicators
         urgency_signals = ["asap", "urgent", "immediately", "this week", "next week", "soon"]
         if any(signal in text_lower for signal in urgency_signals):
             score += 10
-            
+
         # Company maturity indicators
         maturity_signals = ["funded", "series", "revenue", "customers", "scaling", "growth"]
         if any(signal in text_lower for signal in maturity_signals):
             score += 5
-            
+
         return min(score, 100)  # Cap at 100
-        
+
     def _enhanced_ml_lead_scoring(self, inquiry_text: str, company_size: str, priority_score: int, inquiry_type: str, company: str) -> int:
         """Enhanced ML-based lead scoring with additional signals"""
         base_score = self._calculate_lead_score(inquiry_text, company_size, priority_score, inquiry_type)
-        
+
         # Company reputation and funding signals
         funding_indicators = ["series a", "series b", "series c", "funded", "raised", "venture", "vc"]
         if any(indicator in company.lower() for indicator in funding_indicators):
             base_score += 15
-            
+
         # Urgency and decision-making signals
         decision_signals = ["budget", "approved", "decision", "timeline", "asap", "priority", "immediate"]
         text_lower = inquiry_text.lower()
         decision_count = sum(1 for signal in decision_signals if signal in text_lower)
         base_score += min(decision_count * 5, 20)
-        
+
         # Technical sophistication signals
         tech_signals = ["architecture", "scalability", "microservices", "kubernetes", "aws", "cloud", "api", "data"]
         tech_count = sum(1 for signal in tech_signals if signal in text_lower)
         base_score += min(tech_count * 3, 15)
-        
+
         # Pain point intensity signals
         pain_signals = ["struggling", "critical", "urgent", "failing", "blocked", "crisis", "emergency"]
         pain_count = sum(1 for signal in pain_signals if signal in text_lower)
         base_score += min(pain_count * 7, 25)
-        
+
         return min(base_score, 100)
-        
+
     def _determine_priority_tier(self, lead_score: int, estimated_value: int) -> str:
         """Determine priority tier based on lead score and estimated value"""
         if lead_score >= 80 and estimated_value >= 50000:
@@ -762,8 +757,8 @@ class SalesAutomationEngine:
             return "silver"
         else:
             return "bronze"
-            
-    def _save_contacts(self, contacts: List[CRMContact]):
+
+    def _save_contacts(self, contacts: list[CRMContact]):
         """Save contacts to CRM database
 
         Uses PostgreSQL CRM service when available, falls back to SQLite.
@@ -841,8 +836,8 @@ class SalesAutomationEngine:
             conn.commit()
             conn.close()
             logger.info(f"Saved {len(contacts)} contacts to SQLite mode")
-        
-    def generate_automated_proposal(self, contact_id: str, inquiry_type: str = None) -> Dict:
+
+    def generate_automated_proposal(self, contact_id: str, inquiry_type: str = None) -> dict:
         """Generate automated proposal with ROI calculator
 
         This method uses SQLite backend, appropriate for current scale (<10MB data).
@@ -868,31 +863,31 @@ class SalesAutomationEngine:
 
         cursor.execute('SELECT * FROM crm_contacts WHERE contact_id = ?', (contact_id,))
         contact_data = cursor.fetchone()
-        
+
         if not contact_data:
             return {"error": "Contact not found"}
-            
+
         # Convert to dict
         columns = [description[0] for description in cursor.description]
         contact = dict(zip(columns, contact_data, strict=False))
-        
+
         # Get appropriate template
         template_inquiry_type = inquiry_type or self._infer_inquiry_type_from_contact(contact)
-        
+
         cursor.execute('SELECT * FROM roi_templates WHERE inquiry_type = ?', (template_inquiry_type,))
         template_data = cursor.fetchone()
-        
+
         if not template_data:
             # Use general template
             cursor.execute('SELECT * FROM roi_templates LIMIT 1')
             template_data = cursor.fetchone()
-            
+
         template_columns = [description[0] for description in cursor.description]
         template = dict(zip(template_columns, template_data, strict=False))
-        
+
         # Calculate ROI specific to this client
         roi_calculation = self._calculate_client_roi(contact, json.loads(template['cost_factors']))
-        
+
         # Generate proposal content
         proposal_content = {
             "client_name": contact['name'],
@@ -907,10 +902,10 @@ class SalesAutomationEngine:
             "next_steps": self._generate_next_steps(contact),
             "close_probability": self._estimate_close_probability(contact, roi_calculation)
         }
-        
+
         # Save proposal
         proposal_id = f"prop-{contact_id}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-        
+
         cursor.execute('''
             INSERT INTO generated_proposals 
             (proposal_id, contact_id, inquiry_id, template_used, proposal_content,
@@ -922,14 +917,14 @@ class SalesAutomationEngine:
             proposal_content['close_probability'], contact['estimated_value'],
             'draft', datetime.now().isoformat()
         ))
-        
+
         conn.commit()
         conn.close()
-        
+
         logger.info(f"Generated automated proposal {proposal_id} for {contact['name']}")
         return {"proposal_id": proposal_id, "content": proposal_content}
-        
-    def _calculate_client_roi(self, contact: Dict, cost_factors: Dict) -> Dict:
+
+    def _calculate_client_roi(self, contact: dict, cost_factors: dict) -> dict:
         """Calculate ROI specific to client's situation"""
         # Extract company size for calculations
         company_size_map = {
@@ -938,56 +933,56 @@ class SalesAutomationEngine:
             "Series B (50-200 employees)": 125,
             "Enterprise (500+ employees)": 750
         }
-        
+
         team_size = company_size_map.get(contact['company_size'], 25)
-        
+
         # Calculate based on cost factors from template
         annual_cost_savings = 0
         productivity_gains = 0
-        
+
         if 'time_savings_per_developer' in cost_factors:
             # Team building ROI calculation
             hours_saved_per_week = cost_factors['time_savings_per_developer'] * team_size
             annual_hours_saved = hours_saved_per_week * 50  # 50 working weeks
             average_hourly_cost = cost_factors['average_developer_cost'] / (40 * 50)  # Annual to hourly
             annual_cost_savings = annual_hours_saved * average_hourly_cost
-            
+
             # Delivery acceleration value
             delivery_acceleration = cost_factors.get('delivery_acceleration', 1.5)
             productivity_gains = team_size * cost_factors['average_developer_cost'] * (delivery_acceleration - 1) * 0.3  # 30% of acceleration value
-            
+
         elif 'full_time_cto_cost' in cost_factors:
-            # Fractional CTO ROI calculation  
+            # Fractional CTO ROI calculation
             full_time_cost = cost_factors['full_time_cto_cost']
             fractional_cost = full_time_cost * (cost_factors['fractional_percentage'] / 100)
             annual_cost_savings = full_time_cost - fractional_cost
-            
+
             # Bad decision prevention value
             decisions_prevented = cost_factors.get('bad_technical_decisions_prevented', 1)
             decision_cost = cost_factors.get('cost_per_bad_decision', 100000)
             productivity_gains = decisions_prevented * decision_cost
-            
+
         elif 'custom_development_hours' in cost_factors:
             # NOBUILD audit ROI calculation
             dev_hours = cost_factors['custom_development_hours']
             hourly_cost = cost_factors['average_developer_hourly_cost']
             maintenance_multiplier = cost_factors.get('maintenance_multiplier', 1.5)
             annual_dev_cost = dev_hours * hourly_cost * maintenance_multiplier
-            
+
             savings_percentage = cost_factors.get('saas_replacement_savings', 40) / 100
             annual_cost_savings = annual_dev_cost * savings_percentage
-            
+
             # Time to market value
             time_acceleration = cost_factors.get('time_to_market_acceleration', 2)
             productivity_gains = annual_dev_cost * (time_acceleration - 1) * 0.4  # 40% of acceleration value
-            
+
         # Calculate total ROI
         total_annual_benefit = annual_cost_savings + productivity_gains
         investment_cost = contact['estimated_value']
-        
+
         roi_percentage = ((total_annual_benefit - investment_cost) / investment_cost) * 100 if investment_cost > 0 else 0
         payback_months = (investment_cost / (total_annual_benefit / 12)) if total_annual_benefit > 0 else 24
-        
+
         return {
             "team_size": team_size,
             "annual_cost_savings": int(annual_cost_savings),
@@ -998,11 +993,11 @@ class SalesAutomationEngine:
             "payback_months": round(payback_months, 1),
             "three_year_value": int(total_annual_benefit * 3 - investment_cost)
         }
-        
-    def _personalize_executive_summary(self, contact: Dict, template: Dict) -> str:
+
+    def _personalize_executive_summary(self, contact: dict, template: dict) -> str:
         """Personalize executive summary for client"""
         base_summary = "Transform your engineering capabilities and achieve measurable business results through proven methodologies."
-        
+
         if contact['company_size'] == "Enterprise (500+ employees)":
             return f"{base_summary} With your enterprise scale, we focus on systematic improvements that compound across large teams."
         elif "Series B" in contact['company_size']:
@@ -1011,34 +1006,34 @@ class SalesAutomationEngine:
             return f"{base_summary} As a Series A company, building scalable engineering processes now prevents future bottlenecks."
         else:
             return f"{base_summary} For early-stage companies, establishing strong engineering foundations accelerates growth."
-            
-    def _personalize_problem_statement(self, contact: Dict, template: Dict) -> str:
+
+    def _personalize_problem_statement(self, contact: dict, template: dict) -> str:
         """Personalize problem statement for client"""
         base_problems = {
             "team_building": "Growing engineering teams often experience decreased per-person productivity due to communication overhead and process inconsistencies.",
             "fractional_cto": "Companies need strategic technical leadership but face challenges with full-time CTO costs and finding the right fit.",
             "nobuild_audit": "Engineering teams frequently build custom solutions when superior SaaS alternatives exist, leading to unnecessary costs and maintenance burden."
         }
-        
+
         problem = base_problems.get(template.get('inquiry_type', 'general'), "Technical challenges are limiting business growth and efficiency.")
-        
+
         # Add company-specific context
         if "startup" in contact['company'].lower() or "Seed" in contact['company_size']:
             problem += " For startups, these inefficiencies can be especially costly as resources are limited and speed-to-market is critical."
-            
+
         return problem
-        
-    def _personalize_solution_overview(self, contact: Dict, template: Dict) -> str:
+
+    def _personalize_solution_overview(self, contact: dict, template: dict) -> str:
         """Personalize solution overview for client"""
         solutions = {
             "team_building": f"Comprehensive team transformation program tailored for {contact['company_size']} organizations, focusing on velocity optimization and scalable processes.",
             "fractional_cto": f"Strategic technical leadership engagement designed for {contact['company_size']} companies, providing executive-level technical guidance without full-time commitment.",
             "nobuild_audit": f"Technology stack optimization using #NOBUILD methodology, specifically calibrated for {contact['company_size']} operational complexity."
         }
-        
+
         return solutions.get(template.get('inquiry_type', 'general'), f"Customized technical consulting engagement designed for {contact['company_size']} organizations.")
-        
-    def _generate_timeline(self, contact: Dict, inquiry_type: str) -> str:
+
+    def _generate_timeline(self, contact: dict, inquiry_type: str) -> str:
         """Generate project timeline based on client and service type"""
         timelines = {
             "team_building": "90-day intensive program with 30-day velocity diagnostic, 45-day implementation, and 15-day optimization phase",
@@ -1046,21 +1041,21 @@ class SalesAutomationEngine:
             "nobuild_audit": "6-week comprehensive audit: Week 1-2 discovery, Week 3-4 analysis, Week 5-6 recommendations and roadmap",
             "general": "Customized timeline based on specific requirements and objectives"
         }
-        
+
         timeline = timelines.get(inquiry_type, timelines["general"])
-        
+
         # Adjust for company size
         if "Enterprise" in contact['company_size']:
             timeline += ". Extended timeline may be required for enterprise-scale implementations."
         elif "Seed" in contact['company_size']:
             timeline += ". Accelerated timeline possible for smaller teams with faster decision-making."
-            
+
         return timeline
-        
-    def _generate_investment_proposal(self, contact: Dict, roi_calculation: Dict) -> Dict:
+
+    def _generate_investment_proposal(self, contact: dict, roi_calculation: dict) -> dict:
         """Generate investment proposal with options"""
         base_investment = contact['estimated_value']
-        
+
         # Create tiered options
         options = {
             "essential": {
@@ -1082,15 +1077,15 @@ class SalesAutomationEngine:
                 "included": ["Full methodology", "Implementation support", "6-month advisory", "Team training", "Quarterly reviews"]
             }
         }
-        
+
         # Add ROI context
         annual_benefit = roi_calculation.get('total_annual_benefit', 0)
         for option in options.values():
             option['roi_multiple'] = round(annual_benefit / option['price'], 1) if option['price'] > 0 else 0
-            
+
         return options
-        
-    def _generate_next_steps(self, contact: Dict) -> List[str]:
+
+    def _generate_next_steps(self, contact: dict) -> list[str]:
         """Generate recommended next steps"""
         steps = [
             "30-minute discovery call to understand specific challenges and objectives",
@@ -1098,19 +1093,19 @@ class SalesAutomationEngine:
             "Customized proposal with detailed ROI analysis and timeline",
             "Pilot engagement or full program kickoff"
         ]
-        
+
         # Customize based on priority tier
         if contact['priority_tier'] == 'platinum':
             steps.insert(1, "Priority scheduling within 24-48 hours")
         elif contact['priority_tier'] == 'gold':
             steps.insert(1, "Expedited scheduling within 3-5 business days")
-            
+
         return steps
-        
-    def _estimate_close_probability(self, contact: Dict, roi_calculation: Dict) -> float:
+
+    def _estimate_close_probability(self, contact: dict, roi_calculation: dict) -> float:
         """Estimate probability of closing based on contact and ROI data"""
         probability = 0.3  # Base probability
-        
+
         # Lead score impact
         lead_score = contact.get('lead_score', 50)
         if lead_score >= 80:
@@ -1119,7 +1114,7 @@ class SalesAutomationEngine:
             probability += 0.2
         elif lead_score >= 40:
             probability += 0.1
-            
+
         # ROI impact
         roi_percentage = roi_calculation.get('roi_percentage', 0)
         if roi_percentage >= 300:
@@ -1128,25 +1123,25 @@ class SalesAutomationEngine:
             probability += 0.15
         elif roi_percentage >= 100:
             probability += 0.1
-            
+
         # Company size impact
         if "Enterprise" in contact['company_size'] or "Series B" in contact['company_size']:
             probability += 0.1
         elif "Series A" in contact['company_size']:
             probability += 0.05
-            
+
         # Priority tier impact
         tier_bonus = {
             'platinum': 0.15,
-            'gold': 0.1, 
+            'gold': 0.1,
             'silver': 0.05,
             'bronze': 0.0
         }
         probability += tier_bonus.get(contact['priority_tier'], 0)
-        
+
         return min(probability, 0.95)  # Cap at 95%
-        
-    def integrate_linkedin_automation(self, contact_id: str) -> Dict:
+
+    def integrate_linkedin_automation(self, contact_id: str) -> dict:
         """Integrate with LinkedIn automation for follow-up sequences"""
         try:
             # Import LinkedIn automation if not already done
@@ -1158,23 +1153,23 @@ class SalesAutomationEngine:
                     # Fallback for standalone execution
                     logger.warning("LinkedIn automation module not available, using mock automation")
                     self.linkedin_automation = "mock"
-            
+
             # Get contact information
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('SELECT * FROM crm_contacts WHERE contact_id = ?', (contact_id,))
             contact_data = cursor.fetchone()
-            
+
             if not contact_data:
                 return {"error": "Contact not found"}
-                
+
             columns = [description[0] for description in cursor.description]
             contact = dict(zip(columns, contact_data, strict=False))
-            
+
             # Create personalized LinkedIn follow-up sequence based on lead tier
             follow_up_sequence = self._generate_linkedin_follow_up_sequence(contact)
-            
+
             # Schedule LinkedIn automation
             automation_result = {
                 "contact_id": contact_id,
@@ -1183,7 +1178,7 @@ class SalesAutomationEngine:
                 "estimated_conversion_lift": self._calculate_automation_conversion_lift(contact),
                 "scheduled_at": datetime.now().isoformat()
             }
-            
+
             # Save automation tracking
             cursor.execute('''
                 INSERT OR REPLACE INTO linkedin_automation_tracking 
@@ -1193,22 +1188,22 @@ class SalesAutomationEngine:
                 contact_id, contact['priority_tier'], datetime.now().isoformat(),
                 json.dumps(follow_up_sequence), 'scheduled'
             ))
-            
+
             conn.commit()
             conn.close()
-            
+
             logger.info(f"LinkedIn automation scheduled for {contact['name']} ({contact['priority_tier']} tier)")
             return automation_result
-            
+
         except Exception as e:
             logger.error(f"LinkedIn automation integration failed: {e}")
             return {"error": f"LinkedIn automation failed: {e}"}
-            
-    def _generate_linkedin_follow_up_sequence(self, contact: Dict) -> List[Dict]:
+
+    def _generate_linkedin_follow_up_sequence(self, contact: dict) -> list[dict]:
         """Generate personalized LinkedIn follow-up sequence"""
         sequence = []
         priority_tier = contact.get('priority_tier', 'bronze')
-        
+
         if priority_tier == 'platinum':
             sequence = [
                 {
@@ -1219,7 +1214,7 @@ class SalesAutomationEngine:
                 },
                 {
                     "day": 3,
-                    "type": "connection_request", 
+                    "type": "connection_request",
                     "content": f"Following up on our discussion about {contact['company']}'s technical challenges. Happy to share some initial thoughts and strategic frameworks.",
                     "cta": "Connect to share insights"
                 },
@@ -1260,33 +1255,33 @@ class SalesAutomationEngine:
                     "cta": "Discuss technical approaches"
                 }
             ]
-            
+
         return sequence
-        
-    def _calculate_automation_conversion_lift(self, contact: Dict) -> float:
+
+    def _calculate_automation_conversion_lift(self, contact: dict) -> float:
         """Calculate expected conversion lift from LinkedIn automation"""
         base_conversion = 0.15  # 15% base conversion without automation
-        
+
         # Automation lift based on priority tier and lead score
         tier_multipliers = {
             'platinum': 2.5,  # 250% lift (37.5% total conversion)
             'gold': 2.0,      # 200% lift (30% total conversion)
-            'silver': 1.5,    # 150% lift (22.5% total conversion) 
+            'silver': 1.5,    # 150% lift (22.5% total conversion)
             'bronze': 1.2     # 120% lift (18% total conversion)
         }
-        
+
         tier = contact.get('priority_tier', 'bronze')
         multiplier = tier_multipliers.get(tier, 1.2)
-        
+
         # Additional lift from lead score
         lead_score = contact.get('lead_score', 50)
         score_bonus = min((lead_score - 50) * 0.01, 0.15)  # Up to 15% bonus for high scores
-        
+
         total_conversion = base_conversion * multiplier + score_bonus
         return min(total_conversion, 0.85)  # Cap at 85% conversion
-        
+
     def create_ab_test_campaign(self, test_name: str, variant_a_description: str,
-                               variant_b_description: str, target_segment: Dict = None) -> str:
+                               variant_b_description: str, target_segment: dict = None) -> str:
         """Create A/B testing campaign for LinkedIn content optimization
 
         This method uses SQLite backend, appropriate for current scale (<10MB data).
@@ -1297,7 +1292,7 @@ class SalesAutomationEngine:
         self._log_sqlite_operation(f"Creating A/B test campaign: {test_name}", self.db_path)
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT INTO ab_test_campaigns 
             (campaign_id, test_name, variant_a_description, variant_b_description, 
@@ -1307,13 +1302,13 @@ class SalesAutomationEngine:
             campaign_id, test_name, variant_a_description, variant_b_description,
             json.dumps(target_segment or {}), 'conversion_rate', datetime.now().isoformat(), 'active'
         ))
-        
+
         conn.commit()
         conn.close()
-        
+
         logger.info(f"Created A/B test campaign: {test_name} ({campaign_id})")
         return campaign_id
-        
+
     def assign_ab_test_variant(self, campaign_id: str, contact_id: str) -> str:
         """Assign contact to A/B test variant
 
@@ -1326,18 +1321,18 @@ class SalesAutomationEngine:
         self._log_sqlite_operation(f"Assigning A/B test variant for contact {contact_id}", self.db_path)
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT INTO ab_test_results (campaign_id, contact_id, variant, action_taken)
             VALUES (?, ?, ?, ?)
         ''', (campaign_id, contact_id, variant, 'assigned'))
-        
+
         conn.commit()
         conn.close()
-        
+
         return variant
-        
-    def analyze_ab_test_results(self, campaign_id: str) -> Dict:
+
+    def analyze_ab_test_results(self, campaign_id: str) -> dict:
         """Analyze A/B test results with statistical significance
 
         This method uses SQLite backend, appropriate for current scale (<10MB data).
@@ -1346,7 +1341,7 @@ class SalesAutomationEngine:
         self._log_sqlite_operation(f"Analyzing A/B test results for campaign {campaign_id}", self.db_path)
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Get conversion data by variant
         cursor.execute('''
             SELECT 
@@ -1357,42 +1352,42 @@ class SalesAutomationEngine:
             WHERE campaign_id = ?
             GROUP BY variant
         ''', (campaign_id,))
-        
+
         results = cursor.fetchall()
-        
+
         if len(results) < 2:
             return {"error": "Insufficient data for analysis"}
-            
+
         # Calculate conversion rates
         variant_a_data = next((r for r in results if r[0] == 'a'), (None, 0, 0))
         variant_b_data = next((r for r in results if r[0] == 'b'), (None, 0, 0))
-        
+
         conv_rate_a = variant_a_data[2] / max(variant_a_data[1], 1)
         conv_rate_b = variant_b_data[2] / max(variant_b_data[1], 1)
-        
+
         # Simple statistical significance calculation (z-test approximation)
         pooled_rate = (variant_a_data[2] + variant_b_data[2]) / (variant_a_data[1] + variant_b_data[1])
         se = np.sqrt(pooled_rate * (1 - pooled_rate) * (1/variant_a_data[1] + 1/variant_b_data[1]))
         z_score = abs(conv_rate_a - conv_rate_b) / se if se > 0 else 0
-        
+
         # P-value approximation (simplified)
         significance = min(2 * (1 - 0.5 * (1 + np.tanh(z_score / np.sqrt(2)))), 1.0)
         is_significant = significance < 0.05
-        
+
         winner = 'inconclusive'
         if is_significant:
             winner = 'variant_a' if conv_rate_a > conv_rate_b else 'variant_b'
-            
+
         # Update campaign with results
         cursor.execute('''
             UPDATE ab_test_campaigns 
             SET statistical_significance = ?, winner = ?
             WHERE campaign_id = ?
         ''', (significance, winner, campaign_id))
-        
+
         conn.commit()
         conn.close()
-        
+
         return {
             "campaign_id": campaign_id,
             "variant_a": {
@@ -1410,8 +1405,8 @@ class SalesAutomationEngine:
             "winner": winner,
             "lift": round(abs(conv_rate_a - conv_rate_b) * 100, 2)
         }
-        
-    def generate_revenue_forecast(self, forecast_period: str = "annual") -> Dict:
+
+    def generate_revenue_forecast(self, forecast_period: str = "annual") -> dict:
         """Generate revenue forecast based on current pipeline and conversion patterns
 
         Uses PostgreSQL CRM service for accurate forecasting with tier-based conversion rates.
@@ -1456,7 +1451,7 @@ class SalesAutomationEngine:
                 GROUP BY priority_tier
             ''')
             pipeline_data = cursor.fetchall()
-        
+
         # Get proposal conversion rates by tier
         cursor.execute('''
             SELECT 
@@ -1467,76 +1462,76 @@ class SalesAutomationEngine:
             GROUP BY c.priority_tier
         ''')
         conversion_data = cursor.fetchall()
-        
+
         # Build forecasting model
         tier_forecasts = {}
         total_projected_revenue = 0
-        
+
         # Tier-based conversion assumptions
         tier_conversions = {
             'platinum': 0.65,  # 65% conversion rate
-            'gold': 0.45,      # 45% conversion rate  
+            'gold': 0.45,      # 45% conversion rate
             'silver': 0.30,    # 30% conversion rate
             'bronze': 0.15     # 15% conversion rate
         }
-        
+
         for tier_data in pipeline_data:
             tier, count, avg_value, avg_score = tier_data
-            
+
             # Get actual conversion rate if available, otherwise use assumption
-            actual_conversion = next((c[1] for c in conversion_data if c[0] == tier), 
+            actual_conversion = next((c[1] for c in conversion_data if c[0] == tier),
                                    tier_conversions.get(tier, 0.25))
-            
+
             # Lead score adjustment
             score_adjustment = min((avg_score - 50) * 0.005, 0.15)  # Up to 15% bonus
             adjusted_conversion = min(actual_conversion + score_adjustment, 0.85)
-            
+
             # Calculate projected revenue for this tier
             tier_revenue = count * avg_value * adjusted_conversion
-            
+
             # Period adjustment
             if forecast_period == "monthly":
                 tier_revenue = tier_revenue / 12
             elif forecast_period == "quarterly":
                 tier_revenue = tier_revenue / 4
-                
+
             tier_forecasts[tier] = {
                 "contact_count": count,
                 "average_value": int(avg_value),
                 "conversion_rate": round(adjusted_conversion * 100, 1),
                 "projected_revenue": int(tier_revenue)
             }
-            
+
             total_projected_revenue += tier_revenue
-            
+
         # Add growth assumptions for new lead generation
         monthly_new_leads = {
             'platinum': 2,
-            'gold': 4, 
+            'gold': 4,
             'silver': 8,
             'bronze': 12
         }
-        
+
         growth_revenue = 0
         if forecast_period in ["quarterly", "annual"]:
             months = 3 if forecast_period == "quarterly" else 12
-            
+
             for tier, monthly_count in monthly_new_leads.items():
                 avg_tier_value = tier_forecasts.get(tier, {}).get('average_value', 25000)
                 tier_conversion = tier_conversions.get(tier, 0.25)
-                
+
                 # Assume 2-month average sales cycle
                 effective_months = max(months - 2, 1)
                 new_tier_revenue = monthly_count * effective_months * avg_tier_value * tier_conversion
                 growth_revenue += new_tier_revenue
-                
+
         total_with_growth = total_projected_revenue + growth_revenue
-        
+
         # Calculate confidence intervals (Monte Carlo simulation approximation)
         base_variance = 0.25  # 25% variance
         confidence_min = int(total_with_growth * (1 - base_variance))
         confidence_max = int(total_with_growth * (1 + base_variance))
-        
+
         forecast_data = {
             "forecast_period": forecast_period,
             "current_pipeline_revenue": int(total_projected_revenue),
@@ -1555,7 +1550,7 @@ class SalesAutomationEngine:
                 "gap": max(2000000 - int(total_with_growth), 0)
             }
         }
-        
+
         # Save forecast
         forecast_id = f"forecast-{uuid.uuid4().hex[:8]}"
         cursor.execute('''
@@ -1568,17 +1563,17 @@ class SalesAutomationEngine:
             json.dumps(tier_conversions), int(total_with_growth),
             json.dumps(forecast_data["confidence_interval"]), datetime.now().isoformat()
         ))
-        
+
         conn.commit()
         conn.close()
-        
+
         logger.info(f"Generated {forecast_period} revenue forecast: ${total_with_growth:,}")
         return forecast_data
-        
-    def _infer_inquiry_type_from_contact(self, contact: Dict) -> str:
+
+    def _infer_inquiry_type_from_contact(self, contact: dict) -> str:
         """Infer inquiry type from contact notes/data"""
         notes = contact.get('notes', '').lower()
-        
+
         if any(keyword in notes for keyword in ['fractional cto', 'cto services', 'technical leadership']):
             return 'fractional_cto'
         elif any(keyword in notes for keyword in ['team building', 'team velocity', 'team performance']):
@@ -1587,8 +1582,8 @@ class SalesAutomationEngine:
             return 'nobuild_audit'
         else:
             return 'team_building'  # Default
-            
-    def get_sales_pipeline_summary(self) -> Dict:
+
+    def get_sales_pipeline_summary(self) -> dict:
         """Get comprehensive sales pipeline summary
 
         Uses PostgreSQL CRM service when available for enterprise-grade analytics.
@@ -1605,8 +1600,9 @@ class SalesAutomationEngine:
 
                 session = self.crm_service.get_session()
                 try:
-                    from graph_rag.infrastructure.persistence.models.crm import ProposalModel
                     from sqlalchemy import func
+
+                    from graph_rag.infrastructure.persistence.models.crm import ProposalModel
 
                     proposal_query = session.query(
                         func.count(ProposalModel.proposal_id).label("total_proposals"),
@@ -1713,19 +1709,19 @@ class SalesAutomationEngine:
                 "pipeline_health_score": self._calculate_pipeline_health_score(stats, proposal_stats),
                 "projected_annual_revenue": self._project_annual_revenue(stats, proposal_stats)
             }
-        
+
     def _calculate_pipeline_health_score(self, stats, proposal_stats) -> float:
         """Calculate overall pipeline health score (0-100)"""
         score = 0
-        
+
         # Contact quality (40% of score)
         total_contacts = stats[0] or 1
         qualified_ratio = (stats[3] or 0) / total_contacts
         avg_score = stats[1] or 0
-        
+
         score += qualified_ratio * 20  # Up to 20 points for qualification ratio
         score += (avg_score / 100) * 20  # Up to 20 points for average lead score
-        
+
         # Pipeline value (30% of score)
         pipeline_value = stats[2] or 0
         if pipeline_value >= 1000000:  # $1M+ pipeline
@@ -1734,38 +1730,38 @@ class SalesAutomationEngine:
             score += 20
         elif pipeline_value >= 100000:  # $100K+ pipeline
             score += 10
-            
+
         # Proposal activity (30% of score)
         total_proposals = proposal_stats[0] or 0
         avg_close_prob = proposal_stats[1] or 0
-        
+
         if total_proposals > 0:
             score += min((total_proposals / total_contacts) * 15, 15)  # Up to 15 points for proposal ratio
             score += avg_close_prob * 15  # Up to 15 points for close probability
-            
+
         return min(score, 100)
-        
+
     def _project_annual_revenue(self, stats, proposal_stats) -> int:
         """Project annual revenue based on current pipeline"""
         total_pipeline_value = stats[2] or 0
         avg_close_probability = proposal_stats[1] or 0.3
-        
+
         # Assume current pipeline represents 3 months of activity
         quarterly_expected_revenue = total_pipeline_value * avg_close_probability
         annual_projection = quarterly_expected_revenue * 4
-        
+
         return int(annual_projection)
-        
-    def create_referral_automation_system(self, satisfied_client_threshold: float = 0.8) -> Dict:
+
+    def create_referral_automation_system(self, satisfied_client_threshold: float = 0.8) -> dict:
         """Create automated referral system leveraging satisfied consultation clients
 
         This method uses SQLite backend, appropriate for current scale (<10MB data).
         PostgreSQL mode is available via the CRM service layer for future scale requirements.
         """
         self._log_sqlite_operation("Creating referral automation system", self.db_path)
-        conn = sqlite3.connect(self.db_path) 
+        conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Identify satisfied clients (high close probability + completed proposals)
         cursor.execute('''
             SELECT c.contact_id, c.name, c.company, c.estimated_value, p.estimated_close_probability
@@ -1773,15 +1769,15 @@ class SalesAutomationEngine:
             JOIN generated_proposals p ON c.contact_id = p.contact_id
             WHERE p.estimated_close_probability >= ? AND p.status IN ('sent', 'accepted')
         ''', (satisfied_client_threshold,))
-        
+
         satisfied_clients = cursor.fetchall()
-        
+
         # Generate referral automation sequence
         referral_sequences = []
-        
+
         for client in satisfied_clients:
             contact_id, name, company, value, close_prob = client
-            
+
             referral_sequence = {
                 "client_contact_id": contact_id,
                 "client_name": name,
@@ -1800,7 +1796,7 @@ class SalesAutomationEngine:
                     },
                     {
                         "day": 60,
-                        "type": "case_study_request", 
+                        "type": "case_study_request",
                         "content": f"Would {company} be open to a brief case study showcasing your team's velocity improvements? It would be valuable for other {company} stage companies facing similar challenges.",
                         "cta": "Participate in case study"
                     }
@@ -1808,15 +1804,15 @@ class SalesAutomationEngine:
                 "estimated_referral_value": int(value * 0.8),  # 80% of original engagement value
                 "referral_probability": min(close_prob + 0.2, 0.9)  # 20% boost from satisfaction
             }
-            
+
             referral_sequences.append(referral_sequence)
-            
+
         # Calculate projected referral revenue
-        total_referral_potential = sum(seq["estimated_referral_value"] * seq["referral_probability"] 
+        total_referral_potential = sum(seq["estimated_referral_value"] * seq["referral_probability"]
                                      for seq in referral_sequences)
-        
+
         conn.close()
-        
+
         return {
             "satisfied_clients_count": len(satisfied_clients),
             "referral_sequences": referral_sequences,
@@ -1824,8 +1820,8 @@ class SalesAutomationEngine:
             "average_referral_value": int(total_referral_potential / max(len(referral_sequences), 1)),
             "system_activation_date": datetime.now().isoformat()
         }
-        
-    def get_unified_dashboard_data(self) -> Dict:
+
+    def get_unified_dashboard_data(self) -> dict:
         """Get comprehensive dashboard data for unified platform integration
 
         This method uses SQLite backend, appropriate for current scale (<10MB data).
@@ -1837,8 +1833,8 @@ class SalesAutomationEngine:
 
         # Core pipeline metrics
         pipeline_summary = self.get_sales_pipeline_summary()
-        
-        # LinkedIn automation metrics 
+
+        # LinkedIn automation metrics
         cursor.execute('''
             SELECT 
                 COUNT(*) as total_sequences,
@@ -1849,7 +1845,7 @@ class SalesAutomationEngine:
             FROM linkedin_automation_tracking
         ''')
         linkedin_stats = cursor.fetchone() or (0, 0, 0, 0, 0)
-        
+
         # A/B testing metrics
         cursor.execute('''
             SELECT 
@@ -1859,7 +1855,7 @@ class SalesAutomationEngine:
             FROM ab_test_campaigns
         ''')
         ab_test_stats = cursor.fetchone() or (0, 0, 0)
-        
+
         # Recent activity feed
         cursor.execute('''
             SELECT 
@@ -1881,7 +1877,7 @@ class SalesAutomationEngine:
             LIMIT 20
         ''')
         recent_activity = cursor.fetchall()
-        
+
         # Top performing content (simulate based on inquiry types)
         top_content = [
             {
@@ -1891,7 +1887,7 @@ class SalesAutomationEngine:
                 "avg_value": 120000
             },
             {
-                "content_type": "Team Building Optimization", 
+                "content_type": "Team Building Optimization",
                 "inquiries_generated": len([c for c in self.generate_synthetic_consultation_data() if 'team_building' in c.get('inquiry_type', '')]),
                 "conversion_rate": 0.45,
                 "avg_value": 45000
@@ -1903,10 +1899,10 @@ class SalesAutomationEngine:
                 "avg_value": 35000
             }
         ]
-        
+
         # Revenue forecasting data
         forecast = self.generate_revenue_forecast("annual")
-        
+
         # Client onboarding pipeline
         cursor.execute('''
             SELECT 
@@ -1919,9 +1915,9 @@ class SalesAutomationEngine:
             GROUP BY c.priority_tier
         ''')
         onboarding_pipeline = cursor.fetchall()
-        
+
         conn.close()
-        
+
         return {
             "pipeline_metrics": {
                 "total_contacts": pipeline_summary["total_contacts"],
@@ -1965,7 +1961,7 @@ class SalesAutomationEngine:
             "onboarding_pipeline": [
                 {
                     "tier": pipeline[0],
-                    "count": pipeline[1], 
+                    "count": pipeline[1],
                     "avg_close_probability": round((pipeline[2] or 0) * 100, 1)
                 } for pipeline in onboarding_pipeline
             ],
@@ -1976,15 +1972,15 @@ class SalesAutomationEngine:
                 "integration_status": "connected"
             }
         }
-        
-    def export_pipeline_data(self, format: str = "json") -> Dict:
+
+    def export_pipeline_data(self, format: str = "json") -> dict:
         """Export pipeline data for external integrations"""
         dashboard_data = self.get_unified_dashboard_data()
-        
+
         # Get detailed contact data
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT 
                 contact_id, name, company, company_size, title, email,
@@ -1993,7 +1989,7 @@ class SalesAutomationEngine:
             FROM crm_contacts
         ''')
         contacts = cursor.fetchall()
-        
+
         cursor.execute('''
             SELECT 
                 proposal_id, contact_id, proposal_value, estimated_close_probability,
@@ -2001,9 +1997,9 @@ class SalesAutomationEngine:
             FROM generated_proposals
         ''')
         proposals = cursor.fetchall()
-        
+
         conn.close()
-        
+
         export_data = {
             "export_timestamp": datetime.now().isoformat(),
             "format": format,
@@ -2025,33 +2021,33 @@ class SalesAutomationEngine:
                 } for p in proposals
             ]
         }
-        
+
         return export_data
 
 def run_epic7_optimization_demo():
     """Run Epic 7 Week 1-2 optimization demonstration"""
     print("🚀 Epic 7 Week 1-2 Sales Automation Optimization")
     print("Systematic $2M+ ARR conversion with advanced automation\n")
-    
+
     engine = SalesAutomationEngine()
-    
+
     # Import all 15 consultation inquiries
     print("📥 Week 1: Complete Lead Import Process")
     contacts = engine.import_consultation_inquiries(include_synthetic=True)
     print(f"✅ Imported {len(contacts)} consultation inquiries (Target: 15)")
-    
+
     # Generate proposals for all qualified leads
     qualified_contacts = [c for c in contacts if c.qualification_status == 'qualified']
     print(f"\n📋 Generating proposals for {len(qualified_contacts)} qualified leads...")
-    
+
     generated_count = 0
     linkedin_automation_count = 0
-    
+
     for contact in qualified_contacts:
         proposal = engine.generate_automated_proposal(contact.contact_id)
         if 'error' not in proposal:
             generated_count += 1
-            
+
             # LinkedIn automation for high-value leads
             if contact.priority_tier in ['platinum', 'gold']:
                 try:
@@ -2062,26 +2058,26 @@ def run_epic7_optimization_demo():
                     logger.warning(f"LinkedIn automation failed for {contact.name}: {e}")
                     # Count as scheduled anyway for demo purposes
                     linkedin_automation_count += 1
-    
+
     # Week 2 optimization features
-    print(f"\n🚀 Week 2: Conversion Rate Optimization")
-    
+    print("\n🚀 Week 2: Conversion Rate Optimization")
+
     # A/B testing
     ab_campaign = engine.create_ab_test_campaign(
         "LinkedIn Outreach Optimization",
         "Direct technical approach",
         "Value-first business approach"
     )
-    
+
     # Revenue forecasting
     forecast = engine.generate_revenue_forecast("annual")
-    
+
     # Referral system
     referral_system = engine.create_referral_automation_system()
-    
+
     # Get unified dashboard data
     dashboard_data = engine.get_unified_dashboard_data()
-    
+
     return {
         "contacts_imported": len(contacts),
         "qualified_leads": len(qualified_contacts),
@@ -2098,35 +2094,35 @@ def run_epic7_optimization_demo():
 def main():
     """Demonstrate Epic 7 Week 1-2 Sales Automation System"""
     results = run_epic7_optimization_demo()
-    
+
     # Display comprehensive results
-    print(f"\n📊 Epic 7 Week 1-2 Completion Results:")
+    print("\n📊 Epic 7 Week 1-2 Completion Results:")
     print(f"  📥 Lead Import: {results['contacts_imported']} inquiries processed")
     print(f"  🎯 Qualified Pipeline: {results['qualified_leads']} qualified leads")
     print(f"  📋 Automated Proposals: {results['proposals_generated']} generated")
     print(f"  📱 LinkedIn Automation: {results['linkedin_automation_active']} sequences active")
     print(f"  💰 Total Pipeline Value: ${results['pipeline_value']:,}")
     print(f"  🎲 A/B Testing: {'✅ Active' if results['ab_testing_active'] else '❌ Inactive'}")
-    
+
     forecast = results['revenue_forecast']
-    print(f"\n🔮 Revenue Forecasting Results:")
+    print("\n🔮 Revenue Forecasting Results:")
     print(f"  📈 Annual Projection: ${forecast['total_projected_revenue']:,}")
     print(f"  🏆 ARR Target Achievement: {results['arr_target_achievement']:.1f}% of $2M target")
     print(f"  📊 Current Pipeline: ${forecast['current_pipeline_revenue']:,}")
     print(f"  🌱 Growth Pipeline: ${forecast['growth_pipeline_revenue']:,}")
-    
+
     referral = results['referral_system']
-    print(f"\n🤝 Referral Automation System:")
+    print("\n🤝 Referral Automation System:")
     print(f"  👥 Satisfied Clients: {referral['satisfied_clients_count']}")
     print(f"  💎 Referral Potential: ${referral['total_referral_potential']:,}")
-    
+
     dashboard = results['dashboard_data']
     automation = dashboard['automation_metrics']
-    print(f"\n🤖 Automation Performance:")
+    print("\n🤖 Automation Performance:")
     print(f"  📱 LinkedIn Sequences: {automation['linkedin_sequences']['total']} total, {automation['linkedin_sequences']['active']} active")
     print(f"  📧 Response Rate: {automation['linkedin_sequences']['response_rate']}%")
     print(f"  🧪 A/B Campaigns: {automation['ab_testing']['total_campaigns']} total")
-    
+
     # Success criteria assessment
     success_metrics = {
         "lead_import_target": results['contacts_imported'] >= 15,
@@ -2136,30 +2132,30 @@ def main():
         "ab_testing_active": results['ab_testing_active'],
         "arr_target_progress": results['arr_target_achievement'] >= 75.0  # 75% minimum progress
     }
-    
+
     success_count = sum(success_metrics.values())
     total_criteria = len(success_metrics)
-    
-    print(f"\n🎯 Epic 7 Week 1-2 Success Criteria:")
+
+    print("\n🎯 Epic 7 Week 1-2 Success Criteria:")
     for criterion, achieved in success_metrics.items():
         status = "✅" if achieved else "❌"
         print(f"  {status} {criterion.replace('_', ' ').title()}")
-    
+
     print(f"\n📋 Overall Success Rate: {success_count}/{total_criteria} ({success_count/total_criteria*100:.0f}%)")
-    
+
     if success_count >= total_criteria * 0.8:  # 80% success threshold
         print("\n🏆 Epic 7 Week 1-2 SUCCESSFULLY COMPLETED!")
         print("   Systematic $2M+ ARR sales conversion engine operational")
     else:
         print(f"\n⚠️  Epic 7 Week 1-2 partially completed ({success_count}/{total_criteria} criteria met)")
         print("   Additional optimization required for full $2M+ ARR capability")
-    
-    # Export data for integration  
+
+    # Export data for integration
     engine = SalesAutomationEngine()
     export_data = engine.export_pipeline_data()
-    print(f"\n📤 Pipeline data exported for unified platform integration")
+    print("\n📤 Pipeline data exported for unified platform integration")
     print(f"   Export timestamp: {export_data['export_timestamp']}")
-    
+
     return results
 
 def legacy_main():
@@ -2174,33 +2170,33 @@ def legacy_main():
     print("📥 Importing consultation inquiries into CRM system...")
     contacts = engine.import_consultation_inquiries(include_synthetic=False)
     print(f"✅ Imported {len(contacts)} contacts into CRM system\n")
-    
+
     # Generate proposals for qualified leads
     print("📋 Generating automated proposals for qualified leads...")
     qualified_contacts = [c for c in contacts if c.qualification_status == 'qualified']
-    
+
     generated_proposals = 0
     for contact in qualified_contacts:  # Generate for ALL qualified leads
         proposal = engine.generate_automated_proposal(contact.contact_id)
         if 'error' not in proposal:
             generated_proposals += 1
             print(f"✅ Generated proposal for {contact.name} - Close probability: {proposal['content']['close_probability']:.1%}")
-            
+
             # Integrate LinkedIn automation for high-value leads
             if contact.priority_tier in ['platinum', 'gold']:
                 automation = engine.integrate_linkedin_automation(contact.contact_id)
                 if 'error' not in automation:
                     print(f"  📱 LinkedIn automation scheduled - Conversion lift: {automation['estimated_conversion_lift']:.1%}")
-    
-    print(f"\n📊 Week 1-2 Optimization Results:")
+
+    print("\n📊 Week 1-2 Optimization Results:")
     print(f"✅ Generated {generated_proposals} automated proposals")
-    
+
     print()
-    
+
     # Get pipeline summary
     print("📊 Sales Pipeline Summary:")
     summary = engine.get_sales_pipeline_summary()
-    
+
     print(f"📈 Total Contacts: {summary['total_contacts']}")
     print(f"🎯 Qualified Leads: {summary['qualified_leads']}")
     print(f"⭐ Platinum Leads: {summary['platinum_leads']}")
@@ -2210,10 +2206,10 @@ def legacy_main():
     print(f"🎲 Average Close Probability: {summary['avg_close_probability']}%")
     print(f"🏥 Pipeline Health Score: {summary['pipeline_health_score']:.1f}/100")
     print(f"📅 Projected Annual Revenue: ${summary['projected_annual_revenue']:,}")
-    
+
     # Week 2 Optimization Features
     print("\n🚀 Week 2 Optimization Features:")
-    
+
     # Create A/B test campaign
     ab_campaign = engine.create_ab_test_campaign(
         "LinkedIn Message Optimization",
@@ -2221,50 +2217,50 @@ def legacy_main():
         "Value-first approach: 'I have insights that might help optimize your engineering costs'"
     )
     print(f"📊 A/B test campaign created: {ab_campaign}")
-    
+
     # Generate revenue forecast
     forecast = engine.generate_revenue_forecast("annual")
     print(f"📈 Revenue Forecast: ${forecast['total_projected_revenue']:,} ({forecast['arr_target_achievement']['achievement_percentage']:.1f}% of $2M target)")
     print(f"  📊 Current Pipeline: ${forecast['current_pipeline_revenue']:,}")
     print(f"  🌱 Growth Pipeline: ${forecast['growth_pipeline_revenue']:,}")
-    
+
     # Referral automation system
     referral_system = engine.create_referral_automation_system()
     print(f"🤝 Referral System: {referral_system['satisfied_clients_count']} satisfied clients, ${referral_system['total_referral_potential']:,} potential")
-    
-    print(f"\n✅ Epic 7 Week 1-2 Sales Automation System Complete!")
+
+    print("\n✅ Epic 7 Week 1-2 Sales Automation System Complete!")
     print(f"🎯 Systematically managing {summary['qualified_leads']} qualified leads")
     print(f"💼 ${summary['total_pipeline_value']:,} current + ${forecast['growth_pipeline_revenue']:,} growth pipeline")
     print(f"🤖 LinkedIn automation active for {len([c for c in contacts if c.priority_tier in ['platinum', 'gold']])} high-value leads")
-    print(f"📊 A/B testing framework operational")
+    print("📊 A/B testing framework operational")
     print(f"🔮 Revenue forecasting: ${forecast['total_projected_revenue']:,} projected annual")
-    
+
     if forecast['arr_target_achievement']['projected'] >= 2000000:
         print("🎉 $2M+ ARR target ACHIEVED with systematic conversion!")
     else:
         gap = forecast['arr_target_achievement']['gap']
         print(f"📈 ${gap:,} gap to $2M ARR target - optimization opportunities identified")
-        
+
     return engine
 
     # System Performance Summary
-    print(f"\n📋 Epic 7 Week 1-2 Performance Summary:")
+    print("\n📋 Epic 7 Week 1-2 Performance Summary:")
     print(f"  📥 Lead Import: {len(contacts)} inquiries processed (vs 1 baseline)")
     print(f"  🧠 ML Scoring: Enhanced algorithm with {len([c for c in contacts if c.lead_score >= 80])} high-score leads")
     print(f"  📑 Proposals: {generated_proposals} automated proposals generated")
     print(f"  📱 LinkedIn: Automation sequences for {len([c for c in contacts if c.priority_tier in ['platinum', 'gold']])} priority leads")
-    print(f"  📊 A/B Testing: Campaign framework operational")
-    print(f"  🔮 Forecasting: Revenue projection system active")
+    print("  📊 A/B Testing: Campaign framework operational")
+    print("  🔮 Forecasting: Revenue projection system active")
     print(f"  🤝 Referrals: {referral_system['satisfied_clients_count']} client automation sequences")
-    
+
     manual_work_reduction = 1 - (0.15 * len(contacts))  # 85% automation rate
     print(f"  ⚡ Manual Work Reduction: {manual_work_reduction*100:.0f}% (Target: 50%)")
-    
+
     if forecast['arr_target_achievement']['achievement_percentage'] >= 100:
-        print(f"\n🏆 SUCCESS: $2M+ ARR systematic conversion TARGET ACHIEVED!")
+        print("\n🏆 SUCCESS: $2M+ ARR systematic conversion TARGET ACHIEVED!")
     else:
         print(f"\n🎯 PROGRESS: {forecast['arr_target_achievement']['achievement_percentage']:.1f}% toward $2M+ ARR target")
-        print(f"    Systematic sales engine operational and scaling toward target")
+        print("    Systematic sales engine operational and scaling toward target")
 
 if __name__ == "__main__":
     main()

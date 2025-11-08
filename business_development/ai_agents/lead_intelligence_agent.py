@@ -11,9 +11,9 @@ Provides advanced prospect research and qualification with:
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 from uuid import uuid4
 
 import numpy as np
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class LeadScore(Enum):
     """Lead scoring levels."""
     HOT = "hot"                    # Ready to buy, high priority
-    WARM = "warm"                  # Interested, needs nurturing  
+    WARM = "warm"                  # Interested, needs nurturing
     QUALIFIED = "qualified"        # Meets criteria, needs development
     COLD = "cold"                  # Early stage, long-term nurturing
     UNQUALIFIED = "unqualified"    # Does not meet criteria
@@ -67,35 +67,35 @@ class ContactProfile:
     title: str = ""
     department: str = ""
     seniority_level: str = ""  # c_level, vp, director, manager, individual
-    
+
     # Contact information
     email: str = ""
     phone: str = ""
     linkedin_profile: str = ""
     direct_mail_address: str = ""
-    
+
     # Influence and decision making
     decision_making_authority: str = ""  # decision_maker, influencer, user, blocker
     budget_authority: bool = False
     technical_authority: bool = False
     influence_score: float = 0.0  # 0-1 scale
-    
+
     # Engagement history
-    engagement_history: List[Dict[str, Any]] = field(default_factory=list)
+    engagement_history: list[dict[str, Any]] = field(default_factory=list)
     preferred_communication: str = "email"  # email, phone, linkedin, in_person
-    best_contact_times: List[str] = field(default_factory=list)
+    best_contact_times: list[str] = field(default_factory=list)
     response_rate: float = 0.0
-    
+
     # Intelligence
-    interests: List[str] = field(default_factory=list)
-    pain_points: List[str] = field(default_factory=list)
-    recent_activities: List[str] = field(default_factory=list)
-    social_media_activity: Dict[str, Any] = field(default_factory=dict)
-    
+    interests: list[str] = field(default_factory=list)
+    pain_points: list[str] = field(default_factory=list)
+    recent_activities: list[str] = field(default_factory=list)
+    social_media_activity: dict[str, Any] = field(default_factory=dict)
+
     # Metadata
     last_updated: str = ""
     confidence_score: float = 0.0
-    data_sources: List[str] = field(default_factory=list)
+    data_sources: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -106,71 +106,71 @@ class ProspectProfile:
     company_size: CompanySize = CompanySize.MEDIUM
     industry: str = ""
     sub_industry: str = ""
-    
+
     # Company details
     headquarters_location: str = ""
-    office_locations: List[str] = field(default_factory=list)
-    employee_count: Optional[int] = None
-    annual_revenue: Optional[float] = None
+    office_locations: list[str] = field(default_factory=list)
+    employee_count: int | None = None
+    annual_revenue: float | None = None
     funding_status: str = ""  # public, private, startup, etc.
-    recent_funding: Optional[Dict[str, Any]] = None
-    
+    recent_funding: dict[str, Any] | None = None
+
     # Business intelligence
     business_model: str = ""
-    primary_products: List[str] = field(default_factory=list)
-    target_customers: List[str] = field(default_factory=list)
-    key_competitors: List[str] = field(default_factory=list)
+    primary_products: list[str] = field(default_factory=list)
+    target_customers: list[str] = field(default_factory=list)
+    key_competitors: list[str] = field(default_factory=list)
     market_position: str = ""
-    
+
     # Technology profile
-    technology_stack: List[str] = field(default_factory=list)
-    current_solutions: Dict[str, str] = field(default_factory=dict)  # category -> solution
+    technology_stack: list[str] = field(default_factory=list)
+    current_solutions: dict[str, str] = field(default_factory=dict)  # category -> solution
     technology_maturity: str = ""  # early_adopter, mainstream, laggard
     digital_transformation_stage: str = ""
-    
+
     # Financial health
     financial_health_score: float = 0.0  # 0-1 scale
     growth_trajectory: str = ""  # growing, stable, declining
     profitability_status: str = ""
-    recent_financial_events: List[Dict[str, Any]] = field(default_factory=list)
-    
+    recent_financial_events: list[dict[str, Any]] = field(default_factory=list)
+
     # Buying signals and intent
     buying_intent: BuyingIntent = BuyingIntent.UNKNOWN
-    intent_signals: List[str] = field(default_factory=list)
+    intent_signals: list[str] = field(default_factory=list)
     decision_timeframe: DecisionTimeframe = DecisionTimeframe.UNKNOWN
-    budget_range: Optional[Tuple[float, float]] = None
-    
+    budget_range: tuple[float, float] | None = None
+
     # Organizational intelligence
-    org_structure: Dict[str, Any] = field(default_factory=dict)
+    org_structure: dict[str, Any] = field(default_factory=dict)
     decision_making_process: str = ""
     typical_sales_cycle: str = ""  # 30_days, 60_days, 90_days, 180_days, etc.
     procurement_process: str = ""
-    
+
     # Contacts and relationships
-    contacts: List[ContactProfile] = field(default_factory=list)
-    champion_contacts: List[str] = field(default_factory=list)  # contact_ids
-    blocker_contacts: List[str] = field(default_factory=list)  # contact_ids
-    existing_relationships: Dict[str, str] = field(default_factory=dict)
-    
+    contacts: list[ContactProfile] = field(default_factory=list)
+    champion_contacts: list[str] = field(default_factory=list)  # contact_ids
+    blocker_contacts: list[str] = field(default_factory=list)  # contact_ids
+    existing_relationships: dict[str, str] = field(default_factory=dict)
+
     # Opportunity assessment
     opportunity_score: float = 0.0  # 0-1 scale
     fit_score: float = 0.0  # How well they fit our ICP
     win_probability: float = 0.0
-    estimated_deal_size: Optional[float] = None
-    estimated_annual_value: Optional[float] = None
-    
+    estimated_deal_size: float | None = None
+    estimated_annual_value: float | None = None
+
     # Competitive landscape
-    competitive_threats: List[str] = field(default_factory=list)
-    incumbent_solutions: List[str] = field(default_factory=list)
-    switching_barriers: List[str] = field(default_factory=list)
-    competitive_advantages: List[str] = field(default_factory=list)
-    
+    competitive_threats: list[str] = field(default_factory=list)
+    incumbent_solutions: list[str] = field(default_factory=list)
+    switching_barriers: list[str] = field(default_factory=list)
+    competitive_advantages: list[str] = field(default_factory=list)
+
     # Engagement strategy
     recommended_approach: str = ""
-    key_value_propositions: List[str] = field(default_factory=list)
-    personalization_insights: List[str] = field(default_factory=list)
-    risk_factors: List[str] = field(default_factory=list)
-    
+    key_value_propositions: list[str] = field(default_factory=list)
+    personalization_insights: list[str] = field(default_factory=list)
+    risk_factors: list[str] = field(default_factory=list)
+
     # Metadata
     lead_score: LeadScore = LeadScore.COLD
     created_date: str = ""
@@ -178,7 +178,7 @@ class ProspectProfile:
     next_action_date: str = ""
     assigned_rep: str = ""
     data_confidence: float = 0.0
-    research_sources: List[str] = field(default_factory=list)
+    research_sources: list[str] = field(default_factory=list)
 
 
 class ResearchResult(BaseModel):
@@ -186,27 +186,27 @@ class ResearchResult(BaseModel):
     research_id: str = Field(default_factory=lambda: str(uuid4()))
     prospect_id: str = ""
     research_type: str = ""  # company_research, contact_research, intent_analysis
-    
+
     # Research findings
-    key_findings: List[str] = Field(default_factory=list)
-    data_collected: Dict[str, Any] = Field(default_factory=dict)
+    key_findings: list[str] = Field(default_factory=list)
+    data_collected: dict[str, Any] = Field(default_factory=dict)
     confidence_score: float = Field(default=0.0, ge=0.0, le=1.0)
-    
+
     # Intelligence insights
-    opportunities_identified: List[str] = Field(default_factory=list)
-    risks_identified: List[str] = Field(default_factory=list)
-    recommended_actions: List[str] = Field(default_factory=list)
-    
+    opportunities_identified: list[str] = Field(default_factory=list)
+    risks_identified: list[str] = Field(default_factory=list)
+    recommended_actions: list[str] = Field(default_factory=list)
+
     # Metadata
     research_timestamp: str = Field(default_factory=lambda: str(datetime.now()))
     research_duration: float = Field(default=0.0)
-    sources_used: List[str] = Field(default_factory=list)
+    sources_used: list[str] = Field(default_factory=list)
     researcher: str = "LeadIntelligenceAgent"
 
 
 class LeadIntelligenceAgent:
     """Advanced AI agent for prospect research and lead qualification."""
-    
+
     def __init__(
         self,
         graph_repository=None,
@@ -225,16 +225,16 @@ class LeadIntelligenceAgent:
         self.social_media_service = social_media_service
         self.financial_data_service = financial_data_service
         self.competitive_analyzer = competitive_analyzer
-        
+
         # Prospect database
-        self.prospect_profiles: Dict[str, ProspectProfile] = {}
-        self.research_cache: Dict[str, ResearchResult] = {}
-        
+        self.prospect_profiles: dict[str, ProspectProfile] = {}
+        self.research_cache: dict[str, ResearchResult] = {}
+
         # Intelligence configuration
         self.research_sources = self._initialize_research_sources()
         self.qualification_criteria = self._initialize_qualification_criteria()
         self.scoring_models = self._initialize_scoring_models()
-        
+
         # Performance tracking
         self.agent_stats = {
             "prospects_researched": 0,
@@ -244,8 +244,8 @@ class LeadIntelligenceAgent:
             "avg_research_time": 0.0,
             "conversion_to_opportunity": 0.0
         }
-    
-    def _initialize_research_sources(self) -> Dict[str, Dict[str, Any]]:
+
+    def _initialize_research_sources(self) -> dict[str, dict[str, Any]]:
         """Initialize research data sources."""
         return {
             "company_websites": {
@@ -279,8 +279,8 @@ class LeadIntelligenceAgent:
                 "data_types": ["sentiment", "engagement", "brand_mentions", "events"]
             }
         }
-    
-    def _initialize_qualification_criteria(self) -> Dict[str, Dict[str, Any]]:
+
+    def _initialize_qualification_criteria(self) -> dict[str, dict[str, Any]]:
         """Initialize lead qualification criteria."""
         return {
             "company_size": {
@@ -297,7 +297,7 @@ class LeadIntelligenceAgent:
             "industry_fit": {
                 "weight": 0.15,
                 "target_industries": [
-                    "technology", "financial_services", "healthcare", 
+                    "technology", "financial_services", "healthcare",
                     "manufacturing", "consulting", "government"
                 ]
             },
@@ -335,42 +335,42 @@ class LeadIntelligenceAgent:
                 }
             }
         }
-    
-    def _initialize_scoring_models(self) -> Dict[str, Dict[str, Any]]:
+
+    def _initialize_scoring_models(self) -> dict[str, dict[str, Any]]:
         """Initialize scoring models for lead assessment."""
         return {
             "lead_score": {
                 "factors": [
-                    "company_size", "industry_fit", "budget_potential", 
+                    "company_size", "industry_fit", "budget_potential",
                     "technology_maturity", "buying_intent", "decision_timeframe"
                 ],
                 "weights": [0.2, 0.15, 0.2, 0.15, 0.2, 0.1]
             },
             "fit_score": {
                 "factors": [
-                    "ideal_customer_profile", "use_case_alignment", 
+                    "ideal_customer_profile", "use_case_alignment",
                     "technology_compatibility", "geographic_alignment"
                 ],
                 "weights": [0.3, 0.3, 0.2, 0.2]
             },
             "opportunity_score": {
                 "factors": [
-                    "lead_score", "fit_score", "competitive_position", 
+                    "lead_score", "fit_score", "competitive_position",
                     "relationship_strength", "timing_alignment"
                 ],
                 "weights": [0.3, 0.25, 0.2, 0.15, 0.1]
             }
         }
-    
+
     async def research_prospect(
         self,
         company_name: str,
-        additional_context: Optional[Dict[str, Any]] = None,
+        additional_context: dict[str, Any] | None = None,
         research_depth: str = "comprehensive"  # basic, standard, comprehensive
     ) -> ProspectProfile:
         """Conduct comprehensive prospect research."""
         start_time = asyncio.get_event_loop().time()
-        
+
         # Create or get existing prospect profile
         existing_profile = self._find_existing_prospect(company_name)
         if existing_profile:
@@ -380,77 +380,77 @@ class LeadIntelligenceAgent:
                 company_name=company_name,
                 created_date=str(datetime.now())
             )
-        
+
         try:
             # Phase 1: Company research
             company_research = await self._research_company_basics(company_name, research_depth)
             self._update_profile_with_company_research(profile, company_research)
-            
+
             # Phase 2: Contact research
             if research_depth in ["standard", "comprehensive"]:
                 contact_research = await self._research_key_contacts(profile)
                 profile.contacts = contact_research
-            
+
             # Phase 3: Intent analysis
             if research_depth == "comprehensive":
                 intent_analysis = await self._analyze_buying_intent(profile)
                 self._update_profile_with_intent_analysis(profile, intent_analysis)
-            
+
             # Phase 4: Competitive landscape
             competitive_analysis = await self._analyze_competitive_landscape(profile)
             self._update_profile_with_competitive_analysis(profile, competitive_analysis)
-            
+
             # Phase 5: Opportunity assessment
             opportunity_assessment = await self._assess_opportunity(profile)
             self._update_profile_with_opportunity_assessment(profile, opportunity_assessment)
-            
+
             # Phase 6: Lead scoring and qualification
             profile.lead_score = self._calculate_lead_score(profile)
             profile.fit_score = self._calculate_fit_score(profile)
             profile.opportunity_score = self._calculate_opportunity_score(profile)
             profile.win_probability = self._calculate_win_probability(profile)
-            
+
             # Phase 7: Generate recommendations
             recommendations = await self._generate_engagement_recommendations(profile)
             profile.recommended_approach = recommendations.get("approach", "")
             profile.key_value_propositions = recommendations.get("value_props", [])
             profile.personalization_insights = recommendations.get("personalization", [])
-            
+
             # Update metadata
             profile.last_updated = str(datetime.now())
             profile.data_confidence = self._calculate_data_confidence(profile)
-            
+
             # Store profile
             self.prospect_profiles[profile.prospect_id] = profile
-            
+
             # Update performance stats
             research_time = asyncio.get_event_loop().time() - start_time
             self._update_agent_stats(profile, research_time)
-            
+
             logger.info(f"Prospect research completed for {company_name}: "
                        f"Score: {profile.lead_score.value}, "
                        f"Confidence: {profile.data_confidence:.2f}")
-            
+
             return profile
-            
+
         except Exception as e:
             logger.error(f"Error researching prospect {company_name}: {str(e)}")
             profile.data_confidence = 0.2
             profile.lead_score = LeadScore.UNQUALIFIED
             return profile
-    
-    def _find_existing_prospect(self, company_name: str) -> Optional[ProspectProfile]:
+
+    def _find_existing_prospect(self, company_name: str) -> ProspectProfile | None:
         """Find existing prospect profile by company name."""
         for profile in self.prospect_profiles.values():
             if profile.company_name.lower() == company_name.lower():
                 return profile
         return None
-    
+
     async def _research_company_basics(
-        self, 
-        company_name: str, 
+        self,
+        company_name: str,
         depth: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Research basic company information."""
         research_data = {
             "company_name": company_name,
@@ -461,7 +461,7 @@ class LeadIntelligenceAgent:
             "funding_status": np.random.choice(["public", "private", "startup"]),
             "business_model": "SaaS"
         }
-        
+
         # Use web research service if available
         if self.web_research_service:
             try:
@@ -469,7 +469,7 @@ class LeadIntelligenceAgent:
                 research_data.update(web_data)
             except Exception as e:
                 logger.warning(f"Web research failed for {company_name}: {str(e)}")
-        
+
         # Use financial data service for public companies
         if self.financial_data_service and research_data.get("funding_status") == "public":
             try:
@@ -477,29 +477,29 @@ class LeadIntelligenceAgent:
                 research_data.update(financial_data)
             except Exception as e:
                 logger.warning(f"Financial research failed for {company_name}: {str(e)}")
-        
+
         return research_data
-    
+
     def _update_profile_with_company_research(
-        self, 
-        profile: ProspectProfile, 
-        research_data: Dict[str, Any]
+        self,
+        profile: ProspectProfile,
+        research_data: dict[str, Any]
     ):
         """Update prospect profile with company research data."""
         # Map research data to profile fields
         field_mappings = {
             "industry": "industry",
-            "employee_count": "employee_count", 
+            "employee_count": "employee_count",
             "headquarters_location": "headquarters_location",
             "annual_revenue": "annual_revenue",
             "funding_status": "funding_status",
             "business_model": "business_model"
         }
-        
+
         for research_key, profile_key in field_mappings.items():
             if research_key in research_data:
                 setattr(profile, profile_key, research_data[research_key])
-        
+
         # Determine company size
         if profile.employee_count:
             if profile.employee_count >= 10000:
@@ -512,18 +512,18 @@ class LeadIntelligenceAgent:
                 profile.company_size = CompanySize.SMALL
             else:
                 profile.company_size = CompanySize.STARTUP
-        
+
         # Check if Fortune 500
         if profile.annual_revenue and profile.annual_revenue > 5_000_000_000:  # $5B+
             profile.company_size = CompanySize.FORTUNE_500
-        
+
         # Add to research sources
         profile.research_sources.extend(["company_research", "web_research", "financial_research"])
-    
-    async def _research_key_contacts(self, profile: ProspectProfile) -> List[ContactProfile]:
+
+    async def _research_key_contacts(self, profile: ProspectProfile) -> list[ContactProfile]:
         """Research key contacts within the prospect company."""
         contacts = []
-        
+
         # Mock contact research (would use LinkedIn, company website, etc.)
         key_roles = [
             ("Chief Technology Officer", "c_level", "technology"),
@@ -533,7 +533,7 @@ class LeadIntelligenceAgent:
             ("Chief Financial Officer", "c_level", "finance"),
             ("VP of Operations", "vp", "operations")
         ]
-        
+
         for role, seniority, department in key_roles[:4]:  # Limit to top 4 contacts
             contact = ContactProfile(
                 name=f"Contact at {profile.company_name}",
@@ -547,16 +547,16 @@ class LeadIntelligenceAgent:
                 preferred_communication="email",
                 confidence_score=0.7
             )
-            
+
             # Add mock engagement insights
             contact.interests = ["digital_transformation", "efficiency", "innovation"]
             contact.pain_points = ["legacy_systems", "scalability", "costs"]
-            
+
             contacts.append(contact)
-        
+
         return contacts
-    
-    async def _analyze_buying_intent(self, profile: ProspectProfile) -> Dict[str, Any]:
+
+    async def _analyze_buying_intent(self, profile: ProspectProfile) -> dict[str, Any]:
         """Analyze buying intent signals for the prospect."""
         intent_analysis = {
             "intent_level": BuyingIntent.MODERATE,
@@ -564,59 +564,59 @@ class LeadIntelligenceAgent:
             "timeframe": DecisionTimeframe.MEDIUM_TERM,
             "budget_indicators": []
         }
-        
+
         # Analyze various intent signals
         signals = []
-        
+
         # Technology adoption signals
         if profile.technology_maturity == "early_adopter":
             signals.append("Early technology adopter")
             intent_analysis["intent_level"] = BuyingIntent.HIGH
-        
+
         # Growth signals
         if profile.growth_trajectory == "growing":
             signals.append("Company in growth phase")
-        
+
         # Financial health signals
         if profile.financial_health_score > 0.7:
             signals.append("Strong financial position")
             intent_analysis["budget_indicators"].append("Healthy financials support investment")
-        
+
         # Recent funding signals
         if profile.recent_funding:
             signals.append("Recent funding secured")
             intent_analysis["intent_level"] = BuyingIntent.HIGH
             intent_analysis["timeframe"] = DecisionTimeframe.SHORT_TERM
-        
+
         # Industry trend signals
         if profile.industry in ["technology", "financial_services"]:
             signals.append("Industry undergoing digital transformation")
-        
+
         intent_analysis["signals"] = signals
-        
+
         return intent_analysis
-    
+
     def _update_profile_with_intent_analysis(
-        self, 
-        profile: ProspectProfile, 
-        intent_analysis: Dict[str, Any]
+        self,
+        profile: ProspectProfile,
+        intent_analysis: dict[str, Any]
     ):
         """Update profile with buying intent analysis."""
         profile.buying_intent = intent_analysis.get("intent_level", BuyingIntent.UNKNOWN)
         profile.intent_signals = intent_analysis.get("signals", [])
         profile.decision_timeframe = intent_analysis.get("timeframe", DecisionTimeframe.UNKNOWN)
-        
+
         # Estimate budget range based on company size and intent
         if profile.annual_revenue:
             # Estimate technology budget as 3-8% of revenue
             tech_budget = profile.annual_revenue * np.random.uniform(0.03, 0.08)
-            
+
             # Our solution could be 5-20% of tech budget
             min_budget = tech_budget * 0.05
             max_budget = tech_budget * 0.20
             profile.budget_range = (min_budget, max_budget)
-    
-    async def _analyze_competitive_landscape(self, profile: ProspectProfile) -> Dict[str, Any]:
+
+    async def _analyze_competitive_landscape(self, profile: ProspectProfile) -> dict[str, Any]:
         """Analyze competitive landscape for the prospect."""
         competitive_analysis = {
             "threats": [],
@@ -624,7 +624,7 @@ class LeadIntelligenceAgent:
             "advantages": [],
             "barriers": []
         }
-        
+
         # Use competitive analyzer if available
         if self.competitive_analyzer:
             try:
@@ -633,42 +633,42 @@ class LeadIntelligenceAgent:
                     analysis_type="market_overview",
                     market_segments=[profile.industry]
                 )
-                
+
                 competitive_analysis["threats"] = [
                     threat["title"] for threat in analysis_result.risk_alerts[:3]
                 ]
                 competitive_analysis["advantages"] = analysis_result.differentiation_opportunities[:3]
-                
+
             except Exception as e:
                 logger.warning(f"Competitive analysis failed: {str(e)}")
-        
+
         # Add default competitive considerations
         competitive_analysis["incumbents"] = [
             "Legacy enterprise solutions",
-            "Custom internal systems", 
+            "Custom internal systems",
             "Competitor solutions"
         ]
-        
+
         competitive_analysis["barriers"] = [
             "Existing system integration",
             "Change management resistance",
             "Procurement process complexity"
         ]
-        
+
         return competitive_analysis
-    
+
     def _update_profile_with_competitive_analysis(
-        self, 
-        profile: ProspectProfile, 
-        competitive_analysis: Dict[str, Any]
+        self,
+        profile: ProspectProfile,
+        competitive_analysis: dict[str, Any]
     ):
         """Update profile with competitive analysis."""
         profile.competitive_threats = competitive_analysis.get("threats", [])
         profile.incumbent_solutions = competitive_analysis.get("incumbents", [])
         profile.competitive_advantages = competitive_analysis.get("advantages", [])
         profile.switching_barriers = competitive_analysis.get("barriers", [])
-    
-    async def _assess_opportunity(self, profile: ProspectProfile) -> Dict[str, Any]:
+
+    async def _assess_opportunity(self, profile: ProspectProfile) -> dict[str, Any]:
         """Assess the sales opportunity for the prospect."""
         opportunity_assessment = {
             "deal_size_estimate": None,
@@ -676,10 +676,10 @@ class LeadIntelligenceAgent:
             "win_probability_factors": [],
             "risk_factors": []
         }
-        
+
         # Estimate deal size based on company characteristics
         base_deal_size = 50000  # Base deal size
-        
+
         # Size multiplier
         size_multipliers = {
             CompanySize.STARTUP: 0.5,
@@ -689,10 +689,10 @@ class LeadIntelligenceAgent:
             CompanySize.ENTERPRISE: 10.0,
             CompanySize.FORTUNE_500: 20.0
         }
-        
+
         size_multiplier = size_multipliers.get(profile.company_size, 1.0)
         estimated_deal_size = base_deal_size * size_multiplier
-        
+
         # Adjust for intent and urgency
         intent_multipliers = {
             BuyingIntent.HIGH: 1.5,
@@ -701,82 +701,82 @@ class LeadIntelligenceAgent:
             BuyingIntent.RESEARCH: 0.8,
             BuyingIntent.UNKNOWN: 0.7
         }
-        
+
         intent_multiplier = intent_multipliers.get(profile.buying_intent, 1.0)
         estimated_deal_size *= intent_multiplier
-        
+
         opportunity_assessment["deal_size_estimate"] = estimated_deal_size
         opportunity_assessment["annual_value_estimate"] = estimated_deal_size * 1.2  # Assume 20% annual growth
-        
+
         # Win probability factors
         win_factors = []
         if profile.buying_intent in [BuyingIntent.HIGH, BuyingIntent.MODERATE]:
             win_factors.append("Strong buying intent")
-        
+
         if profile.company_size in [CompanySize.ENTERPRISE, CompanySize.FORTUNE_500]:
             win_factors.append("Large enterprise target")
-        
+
         if profile.financial_health_score > 0.7:
             win_factors.append("Strong financial position")
-        
+
         opportunity_assessment["win_probability_factors"] = win_factors
-        
+
         # Risk factors
         risk_factors = []
         if len(profile.competitive_threats) > 2:
             risk_factors.append("High competitive pressure")
-        
+
         if profile.decision_timeframe == DecisionTimeframe.LONG_TERM:
             risk_factors.append("Long decision timeline")
-        
+
         if len(profile.switching_barriers) > 3:
             risk_factors.append("High switching barriers")
-        
+
         opportunity_assessment["risk_factors"] = risk_factors
-        
+
         return opportunity_assessment
-    
+
     def _update_profile_with_opportunity_assessment(
-        self, 
-        profile: ProspectProfile, 
-        opportunity_assessment: Dict[str, Any]
+        self,
+        profile: ProspectProfile,
+        opportunity_assessment: dict[str, Any]
     ):
         """Update profile with opportunity assessment."""
         profile.estimated_deal_size = opportunity_assessment.get("deal_size_estimate")
         profile.estimated_annual_value = opportunity_assessment.get("annual_value_estimate")
         profile.risk_factors = opportunity_assessment.get("risk_factors", [])
-    
+
     def _calculate_lead_score(self, profile: ProspectProfile) -> LeadScore:
         """Calculate lead score based on qualification criteria."""
         criteria = self.qualification_criteria
         total_score = 0.0
-        
+
         # Company size score
         size_score = criteria["company_size"]["criteria"].get(profile.company_size, 0.5)
         total_score += size_score * criteria["company_size"]["weight"]
-        
+
         # Industry fit score
         industry_fit = 1.0 if profile.industry in criteria["industry_fit"]["target_industries"] else 0.5
         total_score += industry_fit * criteria["industry_fit"]["weight"]
-        
+
         # Budget potential score
         if profile.budget_range:
             min_budget = profile.budget_range[0]
             budget_score = min(min_budget / criteria["budget_potential"]["minimum_budget"], 1.0)
             total_score += budget_score * criteria["budget_potential"]["weight"]
-        
+
         # Technology maturity score
         tech_score = criteria["technology_maturity"]["criteria"].get(profile.technology_maturity, 0.5)
         total_score += tech_score * criteria["technology_maturity"]["weight"]
-        
+
         # Buying intent score
         intent_score = criteria["buying_intent"]["criteria"].get(profile.buying_intent, 0.3)
         total_score += intent_score * criteria["buying_intent"]["weight"]
-        
+
         # Decision timeframe score
         timeframe_score = criteria["decision_timeframe"]["criteria"].get(profile.decision_timeframe, 0.5)
         total_score += timeframe_score * criteria["decision_timeframe"]["weight"]
-        
+
         # Map score to lead score enum
         if total_score >= 0.8:
             return LeadScore.HOT
@@ -788,7 +788,7 @@ class LeadIntelligenceAgent:
             return LeadScore.COLD
         else:
             return LeadScore.UNQUALIFIED
-    
+
     def _calculate_fit_score(self, profile: ProspectProfile) -> float:
         """Calculate how well prospect fits ideal customer profile."""
         fit_factors = {
@@ -797,12 +797,12 @@ class LeadIntelligenceAgent:
             "growth_stage": 1.0 if profile.growth_trajectory == "growing" else 0.7,
             "financial_health": profile.financial_health_score or 0.5
         }
-        
+
         weights = [0.3, 0.3, 0.2, 0.2]
-        fit_score = sum(factor * weight for factor, weight in zip(fit_factors.values(), weights))
-        
+        fit_score = sum(factor * weight for factor, weight in zip(fit_factors.values(), weights, strict=False))
+
         return min(fit_score, 1.0)
-    
+
     def _calculate_opportunity_score(self, profile: ProspectProfile) -> float:
         """Calculate overall opportunity score."""
         factors = {
@@ -812,12 +812,12 @@ class LeadIntelligenceAgent:
             "win_probability_factors": len(profile.risk_factors) / 10.0,  # Rough estimate
             "competitive_position": 1.0 - (len(profile.competitive_threats) / 5.0)  # Fewer threats = better
         }
-        
+
         weights = [0.3, 0.25, 0.2, 0.15, 0.1]
-        opportunity_score = sum(factor * weight for factor, weight in zip(factors.values(), weights))
-        
+        opportunity_score = sum(factor * weight for factor, weight in zip(factors.values(), weights, strict=False))
+
         return min(max(opportunity_score, 0.0), 1.0)
-    
+
     def _lead_score_to_numeric(self, lead_score: LeadScore) -> float:
         """Convert lead score enum to numeric value."""
         mapping = {
@@ -828,11 +828,11 @@ class LeadIntelligenceAgent:
             LeadScore.UNQUALIFIED: 0.1
         }
         return mapping.get(lead_score, 0.1)
-    
+
     def _calculate_win_probability(self, profile: ProspectProfile) -> float:
         """Calculate probability of winning the deal."""
         base_probability = 0.2  # Base 20% win rate
-        
+
         # Adjust based on lead score
         score_multipliers = {
             LeadScore.HOT: 2.5,
@@ -841,25 +841,25 @@ class LeadIntelligenceAgent:
             LeadScore.COLD: 1.0,
             LeadScore.UNQUALIFIED: 0.3
         }
-        
+
         multiplier = score_multipliers.get(profile.lead_score, 1.0)
         win_probability = base_probability * multiplier
-        
+
         # Adjust for competitive factors
         if len(profile.competitive_threats) > 2:
             win_probability *= 0.8
-        
+
         # Adjust for relationship strength
         champion_contacts = len([c for c in profile.contacts if c.influence_score > 0.8])
         if champion_contacts > 0:
             win_probability *= (1.0 + champion_contacts * 0.2)
-        
+
         return min(win_probability, 0.9)  # Cap at 90%
-    
+
     async def _generate_engagement_recommendations(
-        self, 
+        self,
         profile: ProspectProfile
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate engagement strategy recommendations."""
         recommendations = {
             "approach": "",
@@ -868,7 +868,7 @@ class LeadIntelligenceAgent:
             "channels": [],
             "timing": ""
         }
-        
+
         # Determine approach based on lead score and company characteristics
         if profile.lead_score == LeadScore.HOT:
             recommendations["approach"] = "Direct executive engagement with solution demonstration"
@@ -878,44 +878,44 @@ class LeadIntelligenceAgent:
             recommendations["approach"] = "Educational content strategy with gradual engagement"
         else:
             recommendations["approach"] = "Long-term nurturing with industry insights"
-        
+
         # Value propositions based on company characteristics
         value_props = []
         if profile.company_size in [CompanySize.ENTERPRISE, CompanySize.FORTUNE_500]:
             value_props.append("Enterprise-scale performance and reliability")
             value_props.append("Advanced security and compliance capabilities")
-        
+
         if profile.growth_trajectory == "growing":
             value_props.append("Scalable solution that grows with your business")
-        
+
         if "efficiency" in [pain for contact in profile.contacts for pain in contact.pain_points]:
             value_props.append("Significant operational efficiency improvements")
-        
+
         recommendations["value_props"] = value_props
-        
+
         # Personalization insights
         personalization = []
         if profile.industry:
             personalization.append(f"Industry-specific examples from {profile.industry} sector")
-        
+
         if profile.recent_funding:
             personalization.append("Focus on ROI and growth acceleration messaging")
-        
+
         for contact in profile.contacts:
             if contact.department == "technology":
                 personalization.append("Technical architecture and integration discussions")
             elif contact.department == "finance":
                 personalization.append("Cost savings and financial impact analysis")
-        
+
         recommendations["personalization"] = personalization
-        
+
         # Recommended channels
         channels = ["email", "linkedin"]
         if profile.company_size in [CompanySize.ENTERPRISE, CompanySize.FORTUNE_500]:
             channels.extend(["direct_mail", "executive_briefing"])
-        
+
         recommendations["channels"] = channels
-        
+
         # Timing recommendations
         if profile.decision_timeframe == DecisionTimeframe.IMMEDIATE:
             recommendations["timing"] = "Immediate follow-up within 24-48 hours"
@@ -923,9 +923,9 @@ class LeadIntelligenceAgent:
             recommendations["timing"] = "Weekly touchpoints over next month"
         else:
             recommendations["timing"] = "Monthly value-add communications"
-        
+
         return recommendations
-    
+
     def _calculate_data_confidence(self, profile: ProspectProfile) -> float:
         """Calculate confidence score for prospect data."""
         confidence_factors = {
@@ -936,48 +936,48 @@ class LeadIntelligenceAgent:
             "competitive_data": len(profile.competitive_threats) / 3.0,  # Target 3 threats
             "research_sources": len(profile.research_sources) / 6.0  # Target 6 sources
         }
-        
+
         weights = [0.2, 0.2, 0.15, 0.15, 0.15, 0.15]
-        confidence = sum(factor * weight for factor, weight in zip(confidence_factors.values(), weights))
-        
+        confidence = sum(factor * weight for factor, weight in zip(confidence_factors.values(), weights, strict=False))
+
         return min(confidence, 1.0)
-    
+
     def _update_agent_stats(self, profile: ProspectProfile, research_time: float):
         """Update agent performance statistics."""
         self.agent_stats["prospects_researched"] += 1
         self.agent_stats["contacts_profiled"] += len(profile.contacts)
-        
+
         # Update research time average
         count = self.agent_stats["prospects_researched"]
         old_time = self.agent_stats["avg_research_time"]
         new_time = ((old_time * (count - 1)) + research_time) / count
         self.agent_stats["avg_research_time"] = new_time
-    
-    def get_prospect_profile(self, prospect_id: str) -> Optional[ProspectProfile]:
+
+    def get_prospect_profile(self, prospect_id: str) -> ProspectProfile | None:
         """Get prospect profile by ID."""
         return self.prospect_profiles.get(prospect_id)
-    
+
     def list_prospects(
         self,
-        lead_score: Optional[LeadScore] = None,
-        company_size: Optional[CompanySize] = None,
-        industry: Optional[str] = None
-    ) -> List[ProspectProfile]:
+        lead_score: LeadScore | None = None,
+        company_size: CompanySize | None = None,
+        industry: str | None = None
+    ) -> list[ProspectProfile]:
         """List prospects with optional filtering."""
         prospects = list(self.prospect_profiles.values())
-        
+
         if lead_score:
             prospects = [p for p in prospects if p.lead_score == lead_score]
-        
+
         if company_size:
             prospects = [p for p in prospects if p.company_size == company_size]
-        
+
         if industry:
             prospects = [p for p in prospects if p.industry.lower() == industry.lower()]
-        
+
         return prospects
-    
-    def get_performance_stats(self) -> Dict[str, Any]:
+
+    def get_performance_stats(self) -> dict[str, Any]:
         """Get agent performance statistics."""
         return {
             **self.agent_stats,
@@ -985,34 +985,34 @@ class LeadIntelligenceAgent:
             "research_sources": len(self.research_sources),
             "qualification_criteria": len(self.qualification_criteria)
         }
-    
+
     async def update_prospect_data(self, prospect_id: str) -> bool:
         """Update prospect data with latest intelligence."""
         try:
             profile = self.prospect_profiles.get(prospect_id)
             if not profile:
                 return False
-            
+
             # Re-research company data
             company_research = await self._research_company_basics(profile.company_name, "standard")
             self._update_profile_with_company_research(profile, company_research)
-            
+
             # Re-assess opportunity
             opportunity_assessment = await self._assess_opportunity(profile)
             self._update_profile_with_opportunity_assessment(profile, opportunity_assessment)
-            
+
             # Recalculate scores
             profile.lead_score = self._calculate_lead_score(profile)
             profile.fit_score = self._calculate_fit_score(profile)
             profile.opportunity_score = self._calculate_opportunity_score(profile)
             profile.win_probability = self._calculate_win_probability(profile)
-            
+
             # Update metadata
             profile.last_updated = str(datetime.now())
             profile.data_confidence = self._calculate_data_confidence(profile)
-            
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Error updating prospect {prospect_id}: {str(e)}")
             return False

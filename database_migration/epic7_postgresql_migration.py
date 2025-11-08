@@ -8,17 +8,17 @@ Business Critical: Epic 7 Sales Automation Pipeline Protection
 - Zero disruption to sales operations
 """
 
-import os
-import sys
+import json
 import logging
+import os
 import sqlite3
-import psycopg2
-import psycopg2.extras
+import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Optional
-import json
-import time
+from typing import Any
+
+import psycopg2
+import psycopg2.extras
 
 # Configure logging
 logging.basicConfig(
@@ -303,7 +303,7 @@ class Epic7PostgreSQLMigrator:
                 if table_name == 'crm_contacts':
                     # Special handling for crm_contacts with proper type conversion
                     for row in rows:
-                        contact_data = dict(zip(columns, row))
+                        contact_data = dict(zip(columns, row, strict=False))
                         # Convert datetime strings to proper format if needed
                         if 'created_at' in contact_data and contact_data['created_at']:
                             # Ensure proper timestamp format
@@ -397,7 +397,7 @@ class Epic7PostgreSQLMigrator:
             pg_conn.rollback()
             return 0
 
-    def migrate_all_data(self) -> Dict[str, int]:
+    def migrate_all_data(self) -> dict[str, int]:
         """Migrate all Epic 7 data from SQLite to PostgreSQL"""
         logger.info("Starting data migration from SQLite to PostgreSQL...")
 
@@ -441,7 +441,7 @@ class Epic7PostgreSQLMigrator:
             sqlite_conn.close()
             pg_conn.close()
 
-    def validate_migration(self) -> Dict[str, Any]:
+    def validate_migration(self) -> dict[str, Any]:
         """Validate that migration was successful"""
         logger.info("Validating migration results...")
 

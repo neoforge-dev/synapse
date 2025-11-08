@@ -18,8 +18,7 @@ import logging
 import uuid
 from collections.abc import Callable
 from datetime import datetime
-from typing import Annotated, Any, Dict, List, Optional
-from uuid import UUID
+from typing import Annotated, Any
 
 from fastapi import (
     APIRouter,
@@ -33,8 +32,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import StreamingResponse
-from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 # Import all necessary schemas and dependencies
 from graph_rag.api import schemas
@@ -43,7 +41,6 @@ from graph_rag.api.auth.models import User
 from graph_rag.api.dependencies import (
     get_graph_rag_engine,
     get_graph_repository,
-    get_ingestion_service,
     get_vector_store,
 )
 from graph_rag.api.metrics import (
@@ -272,8 +269,8 @@ class CRMContactResponse(BaseModel):
 class ProposalGenerationRequest(BaseModel):
     """Request model for proposal generation"""
     contact_id: str
-    inquiry_type: Optional[str] = None
-    custom_requirements: Optional[str] = None
+    inquiry_type: str | None = None
+    custom_requirements: str | None = None
 
 class ProposalResponse(BaseModel):
     """Proposal API response model"""
@@ -283,7 +280,7 @@ class ProposalResponse(BaseModel):
     template_used: str
     proposal_value: int
     estimated_close_probability: float
-    roi_analysis: Dict
+    roi_analysis: dict
     status: str
     generated_at: str
 
@@ -301,20 +298,20 @@ class PipelineSummaryResponse(BaseModel):
 
 class ContactUpdateRequest(BaseModel):
     """Request model for contact updates"""
-    name: Optional[str] = None
-    company: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    notes: Optional[str] = None
+    name: str | None = None
+    company: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    notes: str | None = None
 
 class LeadScoringResponse(BaseModel):
     """Lead scoring analysis response"""
     contact_id: str
     current_score: int
-    previous_score: Optional[int] = None
-    scoring_factors: Dict
+    previous_score: int | None = None
+    scoring_factors: dict
     score_change: int
-    recommendations: List[str]
+    recommendations: list[str]
 
 # Define a factory function type for dependencies
 DependencyFactory = Callable[[], Any]
@@ -339,18 +336,18 @@ def get_sales_automation_engine(request: Request):
         import sys
         from pathlib import Path
         sys.path.append(str(Path(__file__).parent.parent.parent.parent / "business_development"))
-        
+
         from epic7_sales_automation import SalesAutomationEngine
-        
+
         # Check if already initialized in app state
         if hasattr(request.app.state, 'sales_automation_engine') and request.app.state.sales_automation_engine:
             return request.app.state.sales_automation_engine
-        
+
         # Initialize and cache in app state
         engine = SalesAutomationEngine()
         request.app.state.sales_automation_engine = engine
         return engine
-        
+
     except Exception as e:
         logger.error(f"Failed to initialize Sales Automation Engine: {e}")
         raise HTTPException(
@@ -412,10 +409,10 @@ def create_core_business_operations_router() -> APIRouter:
         try:
             # Use provided ID or generate a new one
             document_id = doc_in.id if doc_in.id else str(uuid.uuid4())
-            
+
             # Ensure metadata is a dict, even if None was provided
             doc_metadata = doc_in.metadata or {}
-            
+
             document_entity = Entity(
                 id=document_id, type="Document", properties=doc_metadata
             )
@@ -1051,7 +1048,7 @@ def create_core_business_operations_router() -> APIRouter:
     @router.get("/crm/pipeline/summary", response_model=PipelineSummaryResponse, tags=["Sales Pipeline"])
     async def get_pipeline_summary(
         request: Request,
-        current_user: Optional[User] = Depends(get_current_user_optional),
+        current_user: User | None = Depends(get_current_user_optional),
         engine = Depends(get_sales_automation_engine)
     ):
         """Get comprehensive sales pipeline summary"""
@@ -1062,14 +1059,14 @@ def create_core_business_operations_router() -> APIRouter:
             logger.error(f"Failed to get pipeline summary: {e}")
             raise HTTPException(status_code=500, detail="Failed to retrieve pipeline summary")
 
-    @router.get("/crm/contacts", response_model=List[CRMContactResponse], tags=["CRM"])
+    @router.get("/crm/contacts", response_model=list[CRMContactResponse], tags=["CRM"])
     async def list_contacts(
         request: Request,
         skip: int = 0,
         limit: int = 100,
-        priority_tier: Optional[str] = None,
-        qualification_status: Optional[str] = None,
-        current_user: Optional[User] = Depends(get_current_user_optional),
+        priority_tier: str | None = None,
+        qualification_status: str | None = None,
+        current_user: User | None = Depends(get_current_user_optional),
         engine = Depends(get_sales_automation_engine)
     ):
         """List CRM contacts with filtering options"""
@@ -1115,7 +1112,7 @@ def create_core_business_operations_router() -> APIRouter:
     async def get_contact(
         contact_id: str,
         request: Request,
-        current_user: Optional[User] = Depends(get_current_user_optional),
+        current_user: User | None = Depends(get_current_user_optional),
         engine = Depends(get_sales_automation_engine)
     ):
         """Get individual contact details"""
@@ -1158,7 +1155,7 @@ def create_core_business_operations_router() -> APIRouter:
         contact_id: str,
         contact_update: ContactUpdateRequest,
         request: Request,
-        current_user: Optional[User] = Depends(get_current_user_optional),
+        current_user: User | None = Depends(get_current_user_optional),
         engine = Depends(get_sales_automation_engine)
     ):
         """Update contact information"""
@@ -1229,7 +1226,7 @@ def create_core_business_operations_router() -> APIRouter:
     async def generate_proposal(
         proposal_request: ProposalGenerationRequest,
         request: Request,
-        current_user: Optional[User] = Depends(get_current_user_optional),
+        current_user: User | None = Depends(get_current_user_optional),
         engine = Depends(get_sales_automation_engine)
     ):
         """Generate automated proposal for contact"""
@@ -1263,13 +1260,13 @@ def create_core_business_operations_router() -> APIRouter:
             logger.error(f"Failed to generate proposal: {e}")
             raise HTTPException(status_code=500, detail="Failed to generate proposal")
 
-    @router.get("/crm/proposals", response_model=List[ProposalResponse], tags=["Proposals"])
+    @router.get("/crm/proposals", response_model=list[ProposalResponse], tags=["Proposals"])
     async def list_proposals(
         request: Request,
         skip: int = 0,
         limit: int = 50,
-        status: Optional[str] = None,
-        current_user: Optional[User] = Depends(get_current_user_optional),
+        status: str | None = None,
+        current_user: User | None = Depends(get_current_user_optional),
         engine = Depends(get_sales_automation_engine)
     ):
         """List generated proposals with filtering options"""
@@ -1305,7 +1302,7 @@ def create_core_business_operations_router() -> APIRouter:
     async def send_proposal(
         proposal_id: str,
         request: Request,
-        current_user: Optional[User] = Depends(get_current_user_optional),
+        current_user: User | None = Depends(get_current_user_optional),
         engine = Depends(get_sales_automation_engine)
     ):
         """Mark proposal as sent"""
@@ -1327,7 +1324,7 @@ def create_core_business_operations_router() -> APIRouter:
     @router.post("/crm/import-inquiries", tags=["Data Import"])
     async def import_consultation_inquiries(
         request: Request,
-        current_user: Optional[User] = Depends(get_current_user_optional),
+        current_user: User | None = Depends(get_current_user_optional),
         engine = Depends(get_sales_automation_engine)
     ):
         """Import consultation inquiries from existing business development system"""
@@ -1346,7 +1343,7 @@ def create_core_business_operations_router() -> APIRouter:
     async def get_lead_scoring(
         contact_id: str,
         request: Request,
-        current_user: Optional[User] = Depends(get_current_user_optional),
+        current_user: User | None = Depends(get_current_user_optional),
         engine = Depends(get_sales_automation_engine)
     ):
         """Get lead scoring analysis for contact"""
@@ -1368,7 +1365,7 @@ def create_core_business_operations_router() -> APIRouter:
     @router.get("/crm/analytics/conversion-funnel", tags=["Analytics"])
     async def get_conversion_funnel(
         request: Request,
-        current_user: Optional[User] = Depends(get_current_user_optional),
+        current_user: User | None = Depends(get_current_user_optional),
         engine = Depends(get_sales_automation_engine)
     ):
         """Get sales conversion funnel analytics"""

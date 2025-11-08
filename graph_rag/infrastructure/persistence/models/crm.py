@@ -5,16 +5,14 @@ These models provide the database schema and ORM mappings.
 Note: Uses JSON type adapter for cross-database compatibility (PostgreSQL JSONB, SQLite JSON)
 """
 
-from datetime import datetime
-from decimal import Decimal
-from typing import Dict, Any
 import uuid
+from decimal import Decimal
 
-from sqlalchemy import Column, String, Integer, DECIMAL, TIMESTAMP, Text, ForeignKey, Index, JSON
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import DECIMAL, JSON, TIMESTAMP, Column, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from sqlalchemy.types import TypeDecorator, CHAR
+from sqlalchemy.types import CHAR, TypeDecorator
 
 from graph_rag.infrastructure.persistence.models.base import Base
 

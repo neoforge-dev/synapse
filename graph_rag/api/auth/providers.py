@@ -2,7 +2,6 @@
 
 import logging
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
 from uuid import UUID
 
 from .jwt_handler import JWTHandler

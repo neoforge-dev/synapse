@@ -8,19 +8,15 @@ and community building infrastructure for the Synapse developer ecosystem.
 """
 
 import asyncio
-import json
 import logging
-import subprocess
 import uuid
-from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol, Union
-import yaml
+from typing import Any
 
-from pydantic import BaseModel, Field, validator
 from jinja2 import Template
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -63,16 +59,16 @@ class SDKSpecification(BaseModel):
     package_name: str
     repository_url: str
     documentation_url: str
-    features: List[str]
-    dependencies: List[str]
-    examples: List[Dict[str, str]]
-    build_instructions: Dict[str, Any]
+    features: list[str]
+    dependencies: list[str]
+    examples: list[dict[str, str]]
+    build_instructions: dict[str, Any]
     testing_framework: str
-    ci_cd_pipeline: Dict[str, Any]
+    ci_cd_pipeline: dict[str, Any]
 
 class PythonSDKSpecification(SDKSpecification):
     """Python SDK detailed specification"""
-    
+
     def __init__(self):
         super().__init__(
             language=SDKLanguage.PYTHON,
@@ -175,7 +171,7 @@ if __name__ == "__main__":
 
 class JavaScriptSDKSpecification(SDKSpecification):
     """JavaScript/TypeScript SDK specification"""
-    
+
     def __init__(self):
         super().__init__(
             language=SDKLanguage.TYPESCRIPT,
@@ -284,29 +280,29 @@ class DocumentationTemplate(BaseModel):
     """Template for generating documentation"""
     template_type: DocumentationType
     template_content: str
-    variables: Dict[str, Any]
+    variables: dict[str, Any]
     output_format: str = "markdown"  # markdown, html, pdf
-    
+
 class APIEndpointDoc(BaseModel):
     """Documentation for a single API endpoint"""
     path: str
     method: str
     summary: str
     description: str
-    parameters: List[Dict[str, Any]]
-    request_body: Optional[Dict[str, Any]] = None
-    responses: Dict[str, Dict[str, Any]]
-    examples: List[Dict[str, Any]]
-    sdk_examples: Dict[SDKLanguage, str]
+    parameters: list[dict[str, Any]]
+    request_body: dict[str, Any] | None = None
+    responses: dict[str, dict[str, Any]]
+    examples: list[dict[str, Any]]
+    sdk_examples: dict[SDKLanguage, str]
 
 class DocumentationGenerator:
     """Automated documentation generator"""
-    
+
     def __init__(self):
         self.templates = self._load_templates()
         self.api_spec = {}
-        
-    def _load_templates(self) -> Dict[DocumentationType, str]:
+
+    def _load_templates(self) -> dict[DocumentationType, str]:
         """Load documentation templates"""
         return {
             DocumentationType.API_REFERENCE: """
@@ -351,7 +347,7 @@ class DocumentationGenerator:
 {{endpoint.sdk_examples.javascript}}
 ```
             """,
-            
+
             DocumentationType.QUICKSTART: """
 # Quickstart Guide
 
@@ -383,7 +379,7 @@ Get your API key from the [Synapse Dashboard](https://dashboard.synapse.ai).
 - [Try the Cookbook Examples](./cookbook)
 - [Join the Community](https://discord.gg/synapse-ai)
             """,
-            
+
             DocumentationType.COOKBOOK: """
 # {{recipe.title}}
 
@@ -421,11 +417,11 @@ Get your API key from the [Synapse Dashboard](https://dashboard.synapse.ai).
 {% endfor %}
             """
         }
-    
-    async def generate_api_reference(self, api_spec: Dict[str, Any]) -> str:
+
+    async def generate_api_reference(self, api_spec: dict[str, Any]) -> str:
         """Generate comprehensive API reference documentation"""
         documentation_parts = []
-        
+
         for endpoint_path, methods in api_spec.items():
             for method, endpoint_info in methods.items():
                 endpoint_doc = APIEndpointDoc(
@@ -433,13 +429,13 @@ Get your API key from the [Synapse Dashboard](https://dashboard.synapse.ai).
                     method=method.upper(),
                     **endpoint_info
                 )
-                
+
                 template = Template(self.templates[DocumentationType.API_REFERENCE])
                 doc_content = template.render(endpoint=endpoint_doc)
                 documentation_parts.append(doc_content)
-        
+
         return "\n\n---\n\n".join(documentation_parts)
-    
+
     async def generate_sdk_documentation(self, sdk_spec: SDKSpecification) -> str:
         """Generate SDK-specific documentation"""
         template_content = f"""
@@ -479,7 +475,7 @@ Official {sdk_spec.language.value.title()} SDK for Synapse AI.
 - [Repository]({sdk_spec.repository_url})
 - [API Reference]({sdk_spec.documentation_url})
         """
-        
+
         return template_content
 
 # ===== COMMUNITY PLATFORM =====
@@ -489,10 +485,10 @@ class CommunityMember(BaseModel):
     member_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     username: str
     email: str
-    github_username: Optional[str] = None
-    discord_username: Optional[str] = None
+    github_username: str | None = None
+    discord_username: str | None = None
     level: CommunityLevel = CommunityLevel.NEWCOMER
-    contributions: List[str] = Field(default_factory=list)
+    contributions: list[str] = Field(default_factory=list)
     reputation_score: int = 0
     joined_date: datetime = Field(default_factory=datetime.utcnow)
     last_active: datetime = Field(default_factory=datetime.utcnow)
@@ -504,9 +500,9 @@ class CommunityProject(BaseModel):
     description: str
     category: str  # example, tutorial, integration, tool
     author_id: str
-    repository_url: Optional[str] = None
-    demo_url: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
+    repository_url: str | None = None
+    demo_url: str | None = None
+    tags: list[str] = Field(default_factory=list)
     upvotes: int = 0
     featured: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -514,79 +510,79 @@ class CommunityProject(BaseModel):
 
 class DeveloperProgram:
     """Developer community program management"""
-    
+
     def __init__(self):
-        self.members: Dict[str, CommunityMember] = {}
-        self.projects: Dict[str, CommunityProject] = {}
-        self.ambassadors: List[str] = []
-        
+        self.members: dict[str, CommunityMember] = {}
+        self.projects: dict[str, CommunityProject] = {}
+        self.ambassadors: list[str] = []
+
     async def register_member(self, username: str, email: str) -> CommunityMember:
         """Register a new community member"""
         member = CommunityMember(
             username=username,
             email=email
         )
-        
+
         self.members[member.member_id] = member
-        
+
         # Send welcome package
         await self._send_welcome_package(member)
-        
+
         return member
-    
-    async def submit_project(self, author_id: str, project_data: Dict[str, Any]) -> CommunityProject:
+
+    async def submit_project(self, author_id: str, project_data: dict[str, Any]) -> CommunityProject:
         """Submit a community project"""
         if author_id not in self.members:
             raise ValueError("Member not found")
-        
+
         project = CommunityProject(
             author_id=author_id,
             **project_data
         )
-        
+
         self.projects[project.project_id] = project
-        
+
         # Update member contributions
         member = self.members[author_id]
         member.contributions.append(project.project_id)
         member.reputation_score += 10  # Base points for submission
-        
+
         # Check for level promotion
         await self._check_level_promotion(member)
-        
+
         return project
-    
+
     async def promote_to_ambassador(self, member_id: str) -> bool:
         """Promote member to ambassador"""
         if member_id not in self.members:
             return False
-        
+
         member = self.members[member_id]
         if member.level != CommunityLevel.MAINTAINER:
             return False
-        
+
         member.level = CommunityLevel.AMBASSADOR
         self.ambassadors.append(member_id)
-        
+
         # Send ambassador welcome kit
         await self._send_ambassador_kit(member)
-        
+
         return True
-    
-    async def get_featured_projects(self) -> List[CommunityProject]:
+
+    async def get_featured_projects(self) -> list[CommunityProject]:
         """Get featured community projects"""
         return [project for project in self.projects.values() if project.featured]
-    
+
     async def _send_welcome_package(self, member: CommunityMember) -> None:
         """Send welcome package to new member"""
         logger.info(f"Sending welcome package to {member.username}")
         # Implementation would send email, Discord invite, etc.
-    
+
     async def _send_ambassador_kit(self, member: CommunityMember) -> None:
         """Send ambassador kit to new ambassador"""
         logger.info(f"Sending ambassador kit to {member.username}")
         # Implementation would send branded materials, access tokens, etc.
-    
+
     async def _check_level_promotion(self, member: CommunityMember) -> None:
         """Check if member qualifies for level promotion"""
         if member.reputation_score >= 100 and member.level == CommunityLevel.NEWCOMER:
@@ -598,29 +594,29 @@ class DeveloperProgram:
 
 class SDKGenerator:
     """Automated SDK generation from API specification"""
-    
+
     def __init__(self):
         self.templates_dir = Path("./sdk_templates")
         self.output_dir = Path("./generated_sdks")
-    
-    async def generate_python_sdk(self, api_spec: Dict[str, Any]) -> Path:
+
+    async def generate_python_sdk(self, api_spec: dict[str, Any]) -> Path:
         """Generate Python SDK from API specification"""
         sdk_dir = self.output_dir / "python"
         sdk_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Generate main client
         client_code = self._generate_python_client(api_spec)
         (sdk_dir / "synapse_ai" / "client.py").parent.mkdir(parents=True, exist_ok=True)
         (sdk_dir / "synapse_ai" / "client.py").write_text(client_code)
-        
+
         # Generate models
         models_code = self._generate_python_models(api_spec)
         (sdk_dir / "synapse_ai" / "models.py").write_text(models_code)
-        
+
         # Generate setup.py
         setup_code = self._generate_python_setup()
         (sdk_dir / "setup.py").write_text(setup_code)
-        
+
         # Generate requirements
         requirements = "\n".join([
             "httpx>=0.24.0",
@@ -628,10 +624,10 @@ class SDKGenerator:
             "typing_extensions>=4.5.0"
         ])
         (sdk_dir / "requirements.txt").write_text(requirements)
-        
+
         return sdk_dir
-    
-    def _generate_python_client(self, api_spec: Dict[str, Any]) -> str:
+
+    def _generate_python_client(self, api_spec: dict[str, Any]) -> str:
         """Generate Python client code"""
         client_template = """
 import asyncio
@@ -718,10 +714,10 @@ class GraphClient:
         response.raise_for_status()
         return response.json()
         """
-        
+
         return client_template
-    
-    def _generate_python_models(self, api_spec: Dict[str, Any]) -> str:
+
+    def _generate_python_models(self, api_spec: dict[str, Any]) -> str:
         """Generate Python model classes"""
         models_template = """
 from datetime import datetime
@@ -759,9 +755,9 @@ class QueryResult(BaseModel):
     sources: List[SearchResult]
     processing_time_ms: float
         """
-        
+
         return models_template
-    
+
     def _generate_python_setup(self) -> str:
         """Generate setup.py for Python SDK"""
         setup_template = """
@@ -793,17 +789,17 @@ setup(
     ],
 )
         """
-        
+
         return setup_template
 
 # ===== DEVELOPER PLATFORM INTEGRATION =====
 
 async def create_developer_platform_router():
     """Create FastAPI router for developer platform"""
-    from fastapi import APIRouter, Depends, HTTPException
-    
+    from fastapi import APIRouter
+
     router = APIRouter(prefix="/developer", tags=["Developer Platform"])
-    
+
     @router.get("/sdks")
     async def get_available_sdks():
         """Get list of available SDKs"""
@@ -818,19 +814,19 @@ async def create_developer_platform_router():
                 },
                 {
                     "language": "javascript",
-                    "version": "1.0.0", 
+                    "version": "1.0.0",
                     "package_name": "@synapse-ai/sdk",
                     "install_command": "npm install @synapse-ai/sdk",
                     "documentation_url": "https://docs.synapse.ai/javascript-sdk"
                 }
             ]
         }
-    
+
     @router.get("/documentation/{doc_type}")
     async def get_documentation(doc_type: str):
         """Get documentation by type"""
         doc_generator = DocumentationGenerator()
-        
+
         if doc_type == "api-reference":
             # Mock API spec - in real implementation, this would come from OpenAPI
             api_spec = {
@@ -856,12 +852,12 @@ async def create_developer_platform_router():
                     }
                 }
             }
-            
+
             documentation = await doc_generator.generate_api_reference(api_spec)
             return {"content": documentation, "format": "markdown"}
-        
+
         return {"error": f"Documentation type '{doc_type}' not found"}
-    
+
     @router.get("/community/projects")
     async def get_community_projects():
         """Get featured community projects"""
@@ -888,9 +884,9 @@ async def create_developer_platform_router():
                 }
             ]
         }
-    
+
     @router.post("/community/projects")
-    async def submit_community_project(project_data: Dict[str, Any]):
+    async def submit_community_project(project_data: dict[str, Any]):
         """Submit a new community project"""
         # In real implementation, this would validate and store the project
         return {
@@ -898,7 +894,7 @@ async def create_developer_platform_router():
             "status": "submitted",
             "message": "Thank you for your submission! It will be reviewed soon."
         }
-    
+
     return router
 
 if __name__ == "__main__":
@@ -907,37 +903,37 @@ if __name__ == "__main__":
         # Create SDK specifications
         python_sdk = PythonSDKSpecification()
         js_sdk = JavaScriptSDKSpecification()
-        
+
         print("Python SDK Features:", python_sdk.features)
         print("JavaScript SDK Features:", js_sdk.features)
-        
+
         # Generate documentation
         doc_generator = DocumentationGenerator()
-        
+
         python_docs = await doc_generator.generate_sdk_documentation(python_sdk)
         print("\nPython SDK Documentation Preview:")
         print(python_docs[:500] + "...")
-        
+
         # Generate SDK
         sdk_generator = SDKGenerator()
-        
+
         # Mock API spec
         api_spec = {
             "documents": {"ingest": {}, "get": {}},
             "query": {"graphrag": {}},
             "search": {"vector": {}}
         }
-        
+
         # python_sdk_path = await sdk_generator.generate_python_sdk(api_spec)
         # print(f"\nGenerated Python SDK at: {python_sdk_path}")
-        
+
         # Initialize developer program
         dev_program = DeveloperProgram()
-        
+
         # Register member
         member = await dev_program.register_member("john_dev", "john@example.com")
         print(f"\nRegistered member: {member.username} (ID: {member.member_id})")
-        
+
         # Submit project
         project = await dev_program.submit_project(
             author_id=member.member_id,
@@ -950,6 +946,6 @@ if __name__ == "__main__":
         )
         print(f"Submitted project: {project.title} (ID: {project.project_id})")
         print(f"Member reputation: {member.reputation_score}")
-    
+
     # Run example
     asyncio.run(main())

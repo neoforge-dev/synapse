@@ -1,17 +1,10 @@
 """Enterprise authentication providers for SSO, multi-tenancy, and LDAP integration."""
 
 import hashlib
-import hmac
 import logging
-from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
-from uuid import UUID, uuid4
-
-import bcrypt
-import jwt
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from datetime import datetime
+from typing import Any
+from uuid import UUID
 
 from .enterprise_models import (
     AuditEvent,
@@ -41,20 +34,20 @@ class EnterpriseAuthProvider(AuthProvider):
     def __init__(self, jwt_handler, time_service: TimeService = None):
         super().__init__(jwt_handler, time_service)
         self.time_service = time_service or default_time_service
-        
+
         # In-memory storage (replace with database in production)
-        self._tenants: Dict[UUID, Tenant] = {}
-        self._tenant_users: Dict[UUID, TenantUser] = {}
-        self._saml_configs: Dict[UUID, SAMLConfiguration] = {}
-        self._oauth_configs: Dict[UUID, OAuthConfiguration] = {}
-        self._ldap_configs: Dict[UUID, LDAPConfiguration] = {}
-        self._mfa_configs: Dict[UUID, List[MFAConfiguration]] = {}
-        self._audit_events: List[AuditEvent] = []
-        self._security_policies: Dict[UUID, SecurityPolicy] = {}
-        
+        self._tenants: dict[UUID, Tenant] = {}
+        self._tenant_users: dict[UUID, TenantUser] = {}
+        self._saml_configs: dict[UUID, SAMLConfiguration] = {}
+        self._oauth_configs: dict[UUID, OAuthConfiguration] = {}
+        self._ldap_configs: dict[UUID, LDAPConfiguration] = {}
+        self._mfa_configs: dict[UUID, list[MFAConfiguration]] = {}
+        self._audit_events: list[AuditEvent] = []
+        self._security_policies: dict[UUID, SecurityPolicy] = {}
+
         # Session tracking for security
-        self._active_sessions: Dict[str, Dict[str, Any]] = {}
-        self._failed_login_attempts: Dict[str, List[datetime]] = {}
+        self._active_sessions: dict[str, dict[str, Any]] = {}
+        self._failed_login_attempts: dict[str, list[datetime]] = {}
 
     # --- Tenant Management ---
 
@@ -63,7 +56,7 @@ class EnterpriseAuthProvider(AuthProvider):
         # Check for duplicate domain/subdomain
         for tenant in self._tenants.values():
             if tenant.domain == tenant_data.domain or tenant.subdomain == tenant_data.subdomain:
-                raise ValueError(f"Domain or subdomain already exists")
+                raise ValueError("Domain or subdomain already exists")
 
         tenant = Tenant(
             name=tenant_data.name,
@@ -89,7 +82,7 @@ class EnterpriseAuthProvider(AuthProvider):
             role=UserRole.ADMIN
         )
         admin_user = await self.create_user(admin_user_data)
-        
+
         # Add user to tenant as admin
         tenant_user = TenantUser(
             user_id=admin_user.id,
@@ -110,14 +103,14 @@ class EnterpriseAuthProvider(AuthProvider):
         logger.info(f"Created tenant: {tenant.name} with admin: {admin_user.username}")
         return tenant
 
-    async def get_tenant_by_domain(self, domain: str) -> Optional[Tenant]:
+    async def get_tenant_by_domain(self, domain: str) -> Tenant | None:
         """Get tenant by domain name."""
         for tenant in self._tenants.values():
             if tenant.domain == domain or tenant.subdomain == domain:
                 return tenant
         return None
 
-    async def get_tenant_by_id(self, tenant_id: UUID) -> Optional[Tenant]:
+    async def get_tenant_by_id(self, tenant_id: UUID) -> Tenant | None:
         """Get tenant by ID."""
         return self._tenants.get(tenant_id)
 
@@ -142,12 +135,12 @@ class EnterpriseAuthProvider(AuthProvider):
         logger.info(f"Configured SAML for tenant {tenant_id}: {saml_config.name}")
         return saml_config
 
-    async def authenticate_saml(self, saml_response: str, relay_state: Optional[str] = None) -> Optional[User]:
+    async def authenticate_saml(self, saml_response: str, relay_state: str | None = None) -> User | None:
         """Authenticate user with SAML response."""
         try:
             # Parse and validate SAML response (simplified implementation)
             user_attributes = self._parse_saml_response(saml_response)
-            
+
             # Find tenant and configuration
             entity_id = user_attributes.get("issuer")
             saml_config = None
@@ -237,7 +230,7 @@ class EnterpriseAuthProvider(AuthProvider):
         logger.info(f"Configured OAuth for tenant {tenant_id}: {oauth_config.provider.value}")
         return oauth_config
 
-    async def authenticate_oauth(self, provider_id: UUID, authorization_code: str, redirect_uri: Optional[str] = None) -> Optional[User]:
+    async def authenticate_oauth(self, provider_id: UUID, authorization_code: str, redirect_uri: str | None = None) -> User | None:
         """Authenticate user with OAuth authorization code."""
         try:
             oauth_config = self._oauth_configs.get(provider_id)
@@ -246,7 +239,7 @@ class EnterpriseAuthProvider(AuthProvider):
 
             # Exchange authorization code for access token
             token_data = await self._exchange_oauth_code(oauth_config, authorization_code, redirect_uri)
-            
+
             # Get user info from provider
             user_info = await self._get_oauth_user_info(oauth_config, token_data["access_token"])
 
@@ -313,7 +306,7 @@ class EnterpriseAuthProvider(AuthProvider):
         logger.info(f"Configured LDAP for tenant {tenant_id}: {ldap_config.name}")
         return ldap_config
 
-    async def authenticate_ldap(self, tenant_id: UUID, username: str, password: str) -> Optional[User]:
+    async def authenticate_ldap(self, tenant_id: UUID, username: str, password: str) -> User | None:
         """Authenticate user with LDAP/AD."""
         try:
             # Find LDAP configuration for tenant
@@ -328,7 +321,7 @@ class EnterpriseAuthProvider(AuthProvider):
 
             # Connect to LDAP server and authenticate
             ldap_user = await self._authenticate_ldap_user(ldap_config, username, password)
-            
+
             if not ldap_user:
                 await self._log_audit_event(
                     tenant_id=tenant_id,
@@ -398,7 +391,7 @@ class EnterpriseAuthProvider(AuthProvider):
 
         if user_id not in self._mfa_configs:
             self._mfa_configs[user_id] = []
-        
+
         self._mfa_configs[user_id].append(mfa_config)
 
         await self._log_audit_event(
@@ -416,13 +409,13 @@ class EnterpriseAuthProvider(AuthProvider):
     async def verify_mfa(self, user_id: UUID, mfa_type: MFAType, challenge_code: str) -> bool:
         """Verify MFA challenge."""
         user_mfa_configs = self._mfa_configs.get(user_id, [])
-        
+
         for config in user_mfa_configs:
             if config.mfa_type == mfa_type and config.is_enabled:
                 if await self._verify_mfa_challenge(config, challenge_code):
                     config.last_used = self.time_service.utcnow()
                     return True
-        
+
         return False
 
     # --- Audit and Compliance ---
@@ -431,24 +424,24 @@ class EnterpriseAuthProvider(AuthProvider):
         """Log audit event for compliance tracking."""
         return await self._log_audit_event(tenant_id, event_type, **kwargs)
 
-    async def generate_compliance_report(self, tenant_id: UUID, framework: ComplianceFramework, 
+    async def generate_compliance_report(self, tenant_id: UUID, framework: ComplianceFramework,
                                        start_date: datetime, end_date: datetime) -> ComplianceReport:
         """Generate compliance report for a tenant."""
         tenant_events = [
-            event for event in self._audit_events 
+            event for event in self._audit_events
             if event.tenant_id == tenant_id and start_date <= event.timestamp <= end_date
         ]
 
         security_violations = len([e for e in tenant_events if e.event_type == AuditEventType.SECURITY_VIOLATION])
         data_access_events = len([e for e in tenant_events if e.event_type == AuditEventType.DATA_ACCESS])
         user_management_events = len([
-            e for e in tenant_events 
+            e for e in tenant_events
             if e.event_type in [AuditEventType.USER_CREATED, AuditEventType.USER_UPDATED, AuditEventType.USER_DELETED]
         ])
 
         # Calculate risk score
         overall_risk_score = min(100.0, (security_violations * 10) + (data_access_events * 0.1))
-        
+
         report = ComplianceReport(
             tenant_id=tenant_id,
             framework=framework,
@@ -493,7 +486,7 @@ class EnterpriseAuthProvider(AuthProvider):
 
         # Generate digital signature for tamper-evidence
         event.signature = self._sign_audit_event(event)
-        
+
         self._audit_events.append(event)
         return event
 
@@ -528,7 +521,7 @@ class EnterpriseAuthProvider(AuthProvider):
         )
         self._security_policies[tenant_id] = policy
 
-    def _parse_saml_response(self, saml_response: str) -> Dict[str, Any]:
+    def _parse_saml_response(self, saml_response: str) -> dict[str, Any]:
         """Parse SAML response (simplified implementation)."""
         # In production, use proper SAML library like python3-saml
         return {
@@ -539,17 +532,17 @@ class EnterpriseAuthProvider(AuthProvider):
             "last_name": "Doe"
         }
 
-    def _map_saml_attributes(self, attributes: Dict[str, Any], mapping: Dict[str, str], field: str) -> Optional[str]:
+    def _map_saml_attributes(self, attributes: dict[str, Any], mapping: dict[str, str], field: str) -> str | None:
         """Map SAML attributes to user fields."""
         saml_attr = mapping.get(field, field)
         return attributes.get(saml_attr)
 
-    def _map_oauth_attributes(self, user_info: Dict[str, Any], mapping: Dict[str, str], field: str) -> Optional[str]:
+    def _map_oauth_attributes(self, user_info: dict[str, Any], mapping: dict[str, str], field: str) -> str | None:
         """Map OAuth user info to user fields."""
         oauth_attr = mapping.get(field, field)
         return user_info.get(oauth_attr)
 
-    async def _exchange_oauth_code(self, config: OAuthConfiguration, code: str, redirect_uri: Optional[str]) -> Dict[str, Any]:
+    async def _exchange_oauth_code(self, config: OAuthConfiguration, code: str, redirect_uri: str | None) -> dict[str, Any]:
         """Exchange OAuth authorization code for access token."""
         # Mock implementation - use proper OAuth library in production
         return {
@@ -558,7 +551,7 @@ class EnterpriseAuthProvider(AuthProvider):
             "expires_in": 3600
         }
 
-    async def _get_oauth_user_info(self, config: OAuthConfiguration, access_token: str) -> Dict[str, Any]:
+    async def _get_oauth_user_info(self, config: OAuthConfiguration, access_token: str) -> dict[str, Any]:
         """Get user information from OAuth provider."""
         # Mock implementation
         return {
@@ -567,7 +560,7 @@ class EnterpriseAuthProvider(AuthProvider):
             "name": "John Doe"
         }
 
-    async def _authenticate_ldap_user(self, config: LDAPConfiguration, username: str, password: str) -> Optional[Dict[str, Any]]:
+    async def _authenticate_ldap_user(self, config: LDAPConfiguration, username: str, password: str) -> dict[str, Any] | None:
         """Authenticate user against LDAP/AD."""
         # Mock implementation - use python-ldap or ldap3 in production
         if username == "testuser" and password == "testpass":
@@ -584,7 +577,7 @@ class EnterpriseAuthProvider(AuthProvider):
         import secrets
         return base64.b32encode(secrets.token_bytes(20)).decode()
 
-    def _generate_backup_codes(self) -> List[str]:
+    def _generate_backup_codes(self) -> list[str]:
         """Generate backup codes for MFA."""
         import secrets
         return [f"{secrets.randbelow(100000000):08d}" for _ in range(10)]

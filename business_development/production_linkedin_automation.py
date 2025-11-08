@@ -4,7 +4,6 @@ Production LinkedIn Automation System
 Enterprise-grade automation with error handling, monitoring, and failover capabilities
 """
 
-import asyncio
 import json
 import logging
 import os
@@ -13,8 +12,6 @@ import sqlite3
 import time
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
-from pathlib import Path
-from typing import Dict, List, Optional
 
 import aiohttp
 import schedule
@@ -41,7 +38,7 @@ class ProductionLinkedInAutomation:
         self.circuit_breaker_failures = 0
         self.circuit_breaker_threshold = 5
         self.circuit_breaker_reset_time = None
-        
+
         # Initialize systems
         self._init_content_queue_db()
         self._init_monitoring_db()
@@ -51,7 +48,7 @@ class ProductionLinkedInAutomation:
         """Initialize content queue database for advanced management"""
         conn = sqlite3.connect(self.content_queue_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS content_queue (
                 queue_id TEXT PRIMARY KEY,
@@ -70,7 +67,7 @@ class ProductionLinkedInAutomation:
                 performance_metrics TEXT NULL
             )
         ''')
-        
+
         # Brand safety checks table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS brand_safety_checks (
@@ -83,7 +80,7 @@ class ProductionLinkedInAutomation:
                 FOREIGN KEY (queue_id) REFERENCES content_queue (queue_id)
             )
         ''')
-        
+
         conn.commit()
         conn.close()
         logger.info("Content queue database initialized")
@@ -92,7 +89,7 @@ class ProductionLinkedInAutomation:
         """Initialize monitoring and analytics database"""
         conn = sqlite3.connect('production_monitoring.db')
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS automation_metrics (
                 metric_id TEXT PRIMARY KEY,
@@ -107,7 +104,7 @@ class ProductionLinkedInAutomation:
                 error_details TEXT
             )
         ''')
-        
+
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS circuit_breaker_events (
                 event_id TEXT PRIMARY KEY,
@@ -118,7 +115,7 @@ class ProductionLinkedInAutomation:
                 recovery_time TIMESTAMP NULL
             )
         ''')
-        
+
         conn.commit()
         conn.close()
         logger.info("Monitoring database initialized")
@@ -133,12 +130,12 @@ class ProductionLinkedInAutomation:
             'SMTP_USERNAME',
             'SMTP_PASSWORD'
         ]
-        
+
         missing_vars = []
         for var in required_env_vars:
             if not os.getenv(var):
                 missing_vars.append(var)
-        
+
         if missing_vars:
             logger.error(f"Missing required environment variables: {missing_vars}")
             self._send_alert(f"Production environment missing: {missing_vars}")
@@ -147,21 +144,21 @@ class ProductionLinkedInAutomation:
             self.api_available = True
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-    async def _api_request(self, method: str, url: str, **kwargs) -> Optional[Dict]:
+    async def _api_request(self, method: str, url: str, **kwargs) -> dict | None:
         """Make API request with retry logic and circuit breaker"""
-        
+
         # Check circuit breaker
         if self._is_circuit_breaker_open():
             logger.warning("Circuit breaker is open, skipping API request")
             return None
-        
+
         try:
             async with aiohttp.ClientSession() as session:
                 start_time = time.time()
-                
+
                 async with session.request(method, url, **kwargs) as response:
                     response_time = time.time() - start_time
-                    
+
                     if response.status == 200:
                         # Reset circuit breaker on success
                         self._reset_circuit_breaker()
@@ -173,7 +170,7 @@ class ProductionLinkedInAutomation:
                             history=response.history,
                             status=response.status
                         )
-        
+
         except Exception as e:
             self._handle_api_failure(e)
             self._log_api_metrics(time.time() - start_time, success=False, error=str(e))
@@ -205,7 +202,7 @@ class ProductionLinkedInAutomation:
         """Handle API failure and update circuit breaker"""
         self.circuit_breaker_failures += 1
         logger.error(f"API failure ({self.circuit_breaker_failures}/{self.circuit_breaker_threshold}): {error}")
-        
+
         if self.circuit_breaker_failures >= self.circuit_breaker_threshold:
             self._send_alert(f"Circuit breaker activated after {self.circuit_breaker_failures} failures: {error}")
 
@@ -213,15 +210,15 @@ class ProductionLinkedInAutomation:
         """Log circuit breaker events"""
         conn = sqlite3.connect('production_monitoring.db')
         cursor = conn.cursor()
-        
+
         event_id = f"cb_{datetime.now().strftime('%Y%m%d%H%M%S')}"
         cursor.execute('''
             INSERT INTO circuit_breaker_events 
             (event_id, event_type, failure_count, recovery_time)
             VALUES (?, ?, ?, ?)
-        ''', (event_id, event_type, failure_count, 
+        ''', (event_id, event_type, failure_count,
               datetime.now().isoformat() if event_type == "reset" else None))
-        
+
         conn.commit()
         conn.close()
 
@@ -229,21 +226,21 @@ class ProductionLinkedInAutomation:
         """Log API performance metrics"""
         conn = sqlite3.connect('production_monitoring.db')
         cursor = conn.cursor()
-        
+
         metric_id = f"api_{datetime.now().strftime('%Y%m%d%H%M%S')}"
         cursor.execute('''
             INSERT INTO automation_metrics 
             (metric_id, api_response_time, system_status, error_details)
             VALUES (?, ?, ?, ?)
         ''', (metric_id, response_time, "success" if success else "api_error", error))
-        
+
         conn.commit()
         conn.close()
 
     def generate_content_queue(self, weeks: int = 6) -> int:
         """Generate 4-6 weeks of content queue with smart scheduling"""
         logger.info(f"Generating {weeks} weeks of content queue")
-        
+
         # Content strategy patterns for optimal engagement
         content_patterns = [
             # Week 1: Foundation & Authority
@@ -263,7 +260,7 @@ class ProductionLinkedInAutomation:
                 'Friday': {'type': 'product_management', 'audience': 'product_teams', 'priority': 7},
             }
         ]
-        
+
         # Optimal posting times (based on research)
         optimal_times = {
             'Monday': '07:00',
@@ -274,26 +271,26 @@ class ProductionLinkedInAutomation:
             'Saturday': '10:00',
             'Sunday': '18:00'
         }
-        
+
         conn = sqlite3.connect(self.content_queue_path)
         cursor = conn.cursor()
-        
+
         generated_count = 0
         start_date = datetime.now()
-        
+
         for week in range(weeks):
             week_start = start_date + timedelta(weeks=week)
             pattern = content_patterns[week % len(content_patterns)]
-            
+
             for day, config in pattern.items():
                 post_date = week_start + timedelta(days=list(pattern.keys()).index(day))
                 scheduled_time = f"{post_date.strftime('%Y-%m-%d')} {optimal_times[day]}:00"
-                
+
                 queue_id = f"auto_{post_date.strftime('%Y%m%d')}_{day.lower()}"
-                
+
                 # Generate AI-enhanced content
                 content = self._generate_optimized_content(config['type'], config['audience'])
-                
+
                 cursor.execute('''
                     INSERT OR REPLACE INTO content_queue 
                     (queue_id, content, scheduled_time, post_type, target_audience, 
@@ -304,19 +301,19 @@ class ProductionLinkedInAutomation:
                     config['audience'], f"Generate consultation inquiries via {config['type']}",
                     config['priority'], 'queued'
                 ))
-                
+
                 generated_count += 1
                 logger.info(f"Queued {day} Week {week+1}: {config['type']} for {config['audience']}")
-        
+
         conn.commit()
         conn.close()
-        
+
         logger.info(f"Generated {generated_count} posts in content queue")
         return generated_count
 
     def _generate_optimized_content(self, content_type: str, audience: str) -> str:
         """Generate optimized content for specific type and audience"""
-        
+
         # Advanced content templates with proven engagement patterns
         templates = {
             'technical_insight': {
@@ -369,7 +366,7 @@ The goal isn't architectural perfection. It's shipping value consistently.
 
 What's driving your architecture decisions - business needs or technical curiosity?"""
             },
-            
+
             'controversial_take': {
                 'startup_founders': """🔥 Unpopular opinion: Your startup doesn't need a technical co-founder.
 
@@ -620,110 +617,110 @@ It's decision debt, tool debt, and cognitive load debt.
 What's the most complex part of your development process right now?"""
             }
         }
-        
-        return templates.get(content_type, {}).get(audience, 
+
+        return templates.get(content_type, {}).get(audience,
             f"Engaging content about {content_type} for {audience} - contact for consultation!")
 
     def run_brand_safety_checks(self, queue_id: str) -> bool:
         """Run comprehensive brand safety checks"""
         conn = sqlite3.connect(self.content_queue_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('SELECT content FROM content_queue WHERE queue_id = ?', (queue_id,))
         result = cursor.fetchone()
-        
+
         if not result:
             return False
-        
+
         content = result[0]
         issues = []
-        
+
         # Brand safety rules
         prohibited_terms = [
             'guaranteed results', 'get rich quick', 'secret formula',
             'revolutionary breakthrough', 'overnight success',
             'make millions', 'passive income', 'no experience needed'
         ]
-        
+
         linkedin_tos_violations = [
             'follow for follow', 'like for like', 'connection spam',
             'fake testimonials', 'misleading claims', 'pyramid scheme'
         ]
-        
+
         # Check for prohibited terms
         content_lower = content.lower()
         for term in prohibited_terms:
             if term in content_lower:
                 issues.append(f"Prohibited term: {term}")
-        
+
         # Check for LinkedIn TOS violations
         for violation in linkedin_tos_violations:
             if violation in content_lower:
                 issues.append(f"LinkedIn TOS violation: {violation}")
-        
+
         # Professional tone check
         if len([word for word in content.split() if word.isupper()]) > 5:
             issues.append("Excessive use of caps (appears spammy)")
-        
+
         # Length check
         if len(content) > 3000:
             issues.append("Content too long (LinkedIn limit 3000 chars)")
-        
+
         # Log safety check results
         check_id = f"safety_{queue_id}_{int(time.time())}"
         cursor.execute('''
             INSERT INTO brand_safety_checks 
             (check_id, queue_id, check_type, status, issues_found)
             VALUES (?, ?, ?, ?, ?)
-        ''', (check_id, queue_id, 'automated', 
-              'failed' if issues else 'passed', 
+        ''', (check_id, queue_id, 'automated',
+              'failed' if issues else 'passed',
               json.dumps(issues) if issues else None))
-        
+
         conn.commit()
         conn.close()
-        
+
         if issues:
             logger.warning(f"Brand safety issues found for {queue_id}: {issues}")
             self._send_alert(f"Brand safety issues in {queue_id}: {issues}")
-        
+
         return len(issues) == 0
 
     def setup_optimal_scheduling(self):
         """Setup optimal posting schedule with timezone handling"""
         logger.info("Setting up optimal posting schedule")
-        
+
         # Clear existing schedules
         schedule.clear()
-        
+
         # Tuesday and Thursday 6:30 AM (peak engagement times)
         schedule.every().tuesday.at("06:30").do(self._process_scheduled_posts, 'Tuesday')
         schedule.every().thursday.at("06:30").do(self._process_scheduled_posts, 'Thursday')
-        
+
         # Other optimal times
         schedule.every().monday.at("07:00").do(self._process_scheduled_posts, 'Monday')
         schedule.every().wednesday.at("08:00").do(self._process_scheduled_posts, 'Wednesday')
         schedule.every().friday.at("08:30").do(self._process_scheduled_posts, 'Friday')
         schedule.every().saturday.at("10:00").do(self._process_scheduled_posts, 'Saturday')
         schedule.every().sunday.at("18:00").do(self._process_scheduled_posts, 'Sunday')
-        
+
         # Performance monitoring every 2 hours
         schedule.every(2).hours.do(self._monitor_performance)
-        
+
         # Daily health check at 5 AM
         schedule.every().day.at("05:00").do(self._daily_health_check)
-        
+
         # Weekly analytics report every Monday at 9 AM
         schedule.every().monday.at("09:00").do(self._generate_weekly_report)
-        
+
         logger.info("Optimal scheduling configured successfully")
 
     async def _process_scheduled_posts(self, day: str):
         """Process all scheduled posts for a specific day"""
         logger.info(f"Processing scheduled posts for {day}")
-        
+
         conn = sqlite3.connect(self.content_queue_path)
         cursor = conn.cursor()
-        
+
         # Get posts scheduled for today
         today = datetime.now().strftime('%Y-%m-%d')
         cursor.execute('''
@@ -732,9 +729,9 @@ What's the most complex part of your development process right now?"""
             WHERE DATE(scheduled_time) = ? AND status = 'queued'
             ORDER BY priority DESC, scheduled_time ASC
         ''', (today,))
-        
+
         posts = cursor.fetchall()
-        
+
         for queue_id, content, objective, priority in posts:
             try:
                 # Run brand safety checks
@@ -745,10 +742,10 @@ What's the most complex part of your development process right now?"""
                         ('safety_failed', queue_id)
                     )
                     continue
-                
+
                 # Post to LinkedIn
                 success = await self._post_to_linkedin(queue_id, content, objective)
-                
+
                 if success:
                     cursor.execute('''
                         UPDATE content_queue 
@@ -756,7 +753,7 @@ What's the most complex part of your development process right now?"""
                         WHERE queue_id = ?
                     ''', (queue_id,))
                     logger.info(f"Successfully posted {queue_id}")
-                    
+
                     # Schedule performance monitoring
                     self._schedule_performance_monitoring(queue_id)
                 else:
@@ -771,11 +768,11 @@ What's the most complex part of your development process right now?"""
                         WHERE queue_id = ?
                     ''', (queue_id,))
                     logger.warning(f"Failed to post {queue_id}, will retry")
-                
+
             except Exception as e:
                 logger.error(f"Error processing {queue_id}: {e}")
                 self._send_alert(f"Error processing post {queue_id}: {e}")
-        
+
         conn.commit()
         conn.close()
 
@@ -788,7 +785,7 @@ What's the most complex part of your development process right now?"""
                 'Authorization': f'Bearer {os.getenv("LINKEDIN_API_TOKEN")}',
                 'Content-Type': 'application/json'
             }
-            
+
             payload = {
                 'content': {
                     'contentEntities': [],
@@ -800,10 +797,10 @@ What's the most complex part of your development process right now?"""
                 'owner': f'urn:li:person:{os.getenv("LINKEDIN_USER_ID")}',
                 'subject': 'LinkedIn Post via Automation'
             }
-            
-            response = await self._api_request('POST', linkedin_api_url, 
+
+            response = await self._api_request('POST', linkedin_api_url,
                                              headers=headers, json=payload)
-            
+
             if response:
                 # Store LinkedIn post ID for later analytics
                 conn = sqlite3.connect(self.content_queue_path)
@@ -815,11 +812,11 @@ What's the most complex part of your development process right now?"""
                 conn.commit()
                 conn.close()
                 return True
-                
+
         except Exception as e:
             logger.error(f"LinkedIn posting failed for {queue_id}: {e}")
             return False
-        
+
         return False
 
     def _schedule_performance_monitoring(self, queue_id: str):
@@ -832,16 +829,16 @@ What's the most complex part of your development process right now?"""
     def _check_post_performance(self, queue_id: str, check_type: str):
         """Check individual post performance"""
         logger.info(f"Checking performance for {queue_id} ({check_type})")
-        
+
         conn = sqlite3.connect(self.content_queue_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('SELECT linkedin_post_id FROM content_queue WHERE queue_id = ?', (queue_id,))
         result = cursor.fetchone()
-        
+
         if result and result[0]:
             linkedin_post_id = result[0]
-            
+
             # Fetch analytics from LinkedIn API
             # This would be replaced with actual LinkedIn Analytics API call
             analytics = {
@@ -852,22 +849,22 @@ What's the most complex part of your development process right now?"""
                 'shares': 3,
                 'engagement_rate': 0.027
             }
-            
+
             # Update performance metrics
             cursor.execute('''
                 UPDATE content_queue 
                 SET performance_metrics = ?
                 WHERE queue_id = ?
             ''', (json.dumps(analytics), queue_id))
-            
+
             # Check for consultation inquiries if comments > 3
             if analytics.get('comments', 0) > 3:
                 self._analyze_for_consultation_inquiries(queue_id, linkedin_post_id)
-            
+
             conn.commit()
-        
+
         conn.close()
-        
+
         # Clean up one-time scheduled jobs
         if check_type == '48h':
             schedule.clear(f'performance_{queue_id}')
@@ -875,7 +872,7 @@ What's the most complex part of your development process right now?"""
     def _analyze_for_consultation_inquiries(self, queue_id: str, linkedin_post_id: str):
         """Analyze post for potential consultation inquiries"""
         logger.info(f"Analyzing {queue_id} for consultation inquiries")
-        
+
         # This would integrate with consultation inquiry detection system
         # For now, create a notification for manual review
         alert_message = f"""
@@ -891,27 +888,27 @@ High comment activity detected. Please review for:
 
 Check LinkedIn post for business development opportunities.
         """
-        
+
         self._send_alert(alert_message)
 
     def _monitor_performance(self):
         """Monitor overall system performance"""
         conn = sqlite3.connect('production_monitoring.db')
         cursor = conn.cursor()
-        
+
         # Get current metrics
         queue_conn = sqlite3.connect(self.content_queue_path)
         queue_cursor = queue_conn.cursor()
-        
+
         queue_cursor.execute('SELECT COUNT(*) FROM content_queue WHERE status = "queued"')
         queued_count = queue_cursor.fetchone()[0]
-        
+
         queue_cursor.execute('SELECT COUNT(*) FROM content_queue WHERE status = "posted"')
         posted_count = queue_cursor.fetchone()[0]
-        
+
         queue_cursor.execute('SELECT COUNT(*) FROM content_queue WHERE status = "failed"')
         failed_count = queue_cursor.fetchone()[0]
-        
+
         # Calculate engagement rate
         queue_cursor.execute('''
             SELECT AVG(JSON_EXTRACT(performance_metrics, "$.engagement_rate"))
@@ -919,9 +916,9 @@ Check LinkedIn post for business development opportunities.
             WHERE performance_metrics IS NOT NULL
         ''')
         avg_engagement = queue_cursor.fetchone()[0] or 0
-        
+
         queue_conn.close()
-        
+
         # Log metrics
         metric_id = f"monitor_{int(time.time())}"
         cursor.execute('''
@@ -931,10 +928,10 @@ Check LinkedIn post for business development opportunities.
             VALUES (?, ?, ?, ?, ?, ?)
         ''', (metric_id, queued_count, posted_count, failed_count,
               avg_engagement, 'healthy' if failed_count < 5 else 'degraded'))
-        
+
         conn.commit()
         conn.close()
-        
+
         # Alert if performance is degraded
         if failed_count > 5 or avg_engagement < 0.02:
             self._send_alert(f"Performance alert: {failed_count} failures, {avg_engagement:.1%} engagement")
@@ -942,7 +939,7 @@ Check LinkedIn post for business development opportunities.
     def _daily_health_check(self):
         """Daily system health check and reporting"""
         logger.info("Running daily health check")
-        
+
         health_report = {
             'timestamp': datetime.now().isoformat(),
             'api_status': 'healthy' if self.api_available else 'degraded',
@@ -950,17 +947,17 @@ Check LinkedIn post for business development opportunities.
             'content_queue_status': self._get_queue_health(),
             'recent_performance': self._get_recent_performance()
         }
-        
+
         # Generate daily report
         self._send_daily_report(health_report)
-        
+
         logger.info("Daily health check completed")
 
-    def _get_queue_health(self) -> Dict:
+    def _get_queue_health(self) -> dict:
         """Get content queue health metrics"""
         conn = sqlite3.connect(self.content_queue_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT 
                 COUNT(CASE WHEN status = 'queued' THEN 1 END) as queued,
@@ -970,22 +967,22 @@ Check LinkedIn post for business development opportunities.
             FROM content_queue
             WHERE created_at > datetime('now', '-7 days')
         ''')
-        
+
         result = cursor.fetchone()
         conn.close()
-        
+
         return {
             'queued': result[0] or 0,
-            'posted': result[1] or 0, 
+            'posted': result[1] or 0,
             'failed': result[2] or 0,
             'safety_failed': result[3] or 0
         }
 
-    def _get_recent_performance(self) -> Dict:
+    def _get_recent_performance(self) -> dict:
         """Get recent performance metrics"""
         conn = sqlite3.connect(self.content_queue_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT 
                 AVG(JSON_EXTRACT(performance_metrics, "$.engagement_rate")) as avg_engagement,
@@ -995,10 +992,10 @@ Check LinkedIn post for business development opportunities.
             WHERE posted_at > datetime('now', '-7 days')
             AND performance_metrics IS NOT NULL
         ''')
-        
+
         result = cursor.fetchone()
         conn.close()
-        
+
         return {
             'avg_engagement_rate': result[0] or 0,
             'total_comments': result[1] or 0,
@@ -1008,7 +1005,7 @@ Check LinkedIn post for business development opportunities.
     def _generate_weekly_report(self):
         """Generate comprehensive weekly analytics report"""
         logger.info("Generating weekly analytics report")
-        
+
         # This would generate a comprehensive report and email it
         # For now, just log the report generation
         report = f"""
@@ -1028,14 +1025,14 @@ Performance Metrics: {self._get_recent_performance()}
 
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         """
-        
+
         logger.info("Weekly report generated")
         self._send_alert(report)
 
     def _send_alert(self, message: str, priority: str = 'normal'):
         """Send alert via email and logging"""
         logger.warning(f"ALERT ({priority}): {message}")
-        
+
         try:
             # Email alert configuration
             smtp_server = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
@@ -1043,26 +1040,26 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             username = os.getenv('SMTP_USERNAME')
             password = os.getenv('SMTP_PASSWORD')
             to_email = os.getenv('NOTIFICATION_EMAIL')
-            
+
             if all([username, password, to_email]):
                 msg = MIMEText(message)
                 msg['Subject'] = f'LinkedIn Automation Alert ({priority.upper()})'
                 msg['From'] = username
                 msg['To'] = to_email
-                
+
                 with smtplib.SMTP(smtp_server, smtp_port) as server:
                     server.starttls()
                     server.login(username, password)
                     server.send_message(msg)
-                
+
                 logger.info("Alert email sent successfully")
             else:
                 logger.warning("Email configuration missing, alert not sent")
-                
+
         except Exception as e:
             logger.error(f"Failed to send alert email: {e}")
 
-    def _send_daily_report(self, health_report: Dict):
+    def _send_daily_report(self, health_report: dict):
         """Send daily performance report"""
         report_text = f"""
 🚀 LINKEDIN AUTOMATION DAILY REPORT
@@ -1086,27 +1083,27 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 System operating normally. No action required.
         """
-        
+
         self._send_alert(report_text, priority='info')
 
     def start_production_automation(self):
         """Start the production automation system"""
         logger.info("Starting production LinkedIn automation system")
-        
+
         # Generate initial content queue if empty
         conn = sqlite3.connect(self.content_queue_path)
         cursor = conn.cursor()
         cursor.execute('SELECT COUNT(*) FROM content_queue WHERE status = "queued"')
         queued_count = cursor.fetchone()[0]
         conn.close()
-        
+
         if queued_count < 10:
             logger.info("Content queue low, generating new content")
             self.generate_content_queue(weeks=6)
-        
+
         # Setup scheduling
         self.setup_optimal_scheduling()
-        
+
         print("🚀 PRODUCTION LINKEDIN AUTOMATION ACTIVE")
         print("="*60)
         print("✅ Content queue populated with 6 weeks of optimized posts")
@@ -1120,17 +1117,17 @@ System operating normally. No action required.
         print("Expected ROI: 2-3x posting capacity, 15-30% engagement rates")
         print("Business Impact: $277K+ pipeline potential")
         print("="*60)
-        
+
         try:
             logger.info("Automation daemon started, processing scheduled tasks")
             while True:
                 schedule.run_pending()
                 time.sleep(60)  # Check every minute
-                
+
         except KeyboardInterrupt:
             logger.info("Production automation stopped by user")
             print("\n👋 Production LinkedIn automation stopped")
-        
+
         except Exception as e:
             logger.error(f"Production automation error: {e}")
             self._send_alert(f"CRITICAL: Production automation crashed: {e}", priority='critical')
@@ -1139,23 +1136,23 @@ System operating normally. No action required.
 def main():
     """Launch production LinkedIn automation system"""
     automation = ProductionLinkedInAutomation()
-    
+
     print("🚀 PRODUCTION LINKEDIN AUTOMATION SYSTEM")
     print("=" * 60)
     print("Enterprise-grade automation with monitoring and failover")
     print()
-    
+
     # Validate environment
     if not automation.api_available:
         print("❌ Environment validation failed - check configuration")
         print("Required environment variables:")
         print("• LINKEDIN_API_TOKEN")
-        print("• NOTIFICATION_EMAIL") 
+        print("• NOTIFICATION_EMAIL")
         print("• SMTP_SERVER, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD")
         return
-    
+
     print("✅ Environment validated successfully")
-    
+
     # Menu options
     while True:
         print("\n📋 Production Automation Options:")
@@ -1165,22 +1162,22 @@ def main():
         print("4. Check system health")
         print("5. Generate performance report")
         print("6. Exit")
-        
+
         choice = input("\nSelect option (1-6): ").strip()
-        
+
         if choice == '1':
             weeks = input("Weeks to generate (default 6): ").strip()
             weeks = int(weeks) if weeks.isdigit() else 6
             count = automation.generate_content_queue(weeks)
             print(f"✅ Generated {count} optimized posts for {weeks} weeks")
-        
+
         elif choice == '2':
             print("\n🚀 Starting production automation...")
             print("This will run continuously. Press Ctrl+C to stop.")
             input("Press Enter to confirm...")
             automation.start_production_automation()
             break
-        
+
         elif choice == '3':
             # Run brand safety checks on queued content
             conn = sqlite3.connect(automation.content_queue_path)
@@ -1188,7 +1185,7 @@ def main():
             cursor.execute('SELECT queue_id FROM content_queue WHERE status = "queued" LIMIT 5')
             results = cursor.fetchall()
             conn.close()
-            
+
             checked = 0
             for (queue_id,) in results:
                 if automation.run_brand_safety_checks(queue_id):
@@ -1197,7 +1194,7 @@ def main():
                     print(f"❌ {queue_id} failed brand safety checks")
                 checked += 1
             print(f"Completed brand safety checks on {checked} posts")
-        
+
         elif choice == '4':
             health = {
                 'api_status': 'healthy' if automation.api_available else 'degraded',
@@ -1205,21 +1202,21 @@ def main():
                 'content_queue_status': automation._get_queue_health(),
                 'recent_performance': automation._get_recent_performance()
             }
-            
+
             print("\n🔧 SYSTEM HEALTH:")
             print(f"• API Status: {health['api_status']}")
             print(f"• Circuit Breaker: {health['circuit_breaker_failures']} failures")
             print(f"• Queue Status: {health['content_queue_status']}")
             print(f"• Performance: {health['recent_performance']}")
-        
+
         elif choice == '5':
             automation._generate_weekly_report()
             print("✅ Performance report generated and sent")
-        
+
         elif choice == '6':
             print("👋 Goodbye!")
             break
-        
+
         else:
             print("Invalid choice. Please select 1-6.")
 

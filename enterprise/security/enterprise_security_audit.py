@@ -20,7 +20,6 @@ BUSINESS CONTEXT:
 """
 
 import asyncio
-import hashlib
 import json
 import logging
 import re
@@ -29,11 +28,9 @@ import subprocess
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
 import aiohttp
-import requests
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 
@@ -59,7 +56,7 @@ class SecurityFinding:
 class SecurityAuditConfig:
     """Security audit configuration"""
     base_url: str = "http://localhost:8000"
-    api_endpoints: List[str] = None
+    api_endpoints: list[str] = None
     scan_dependencies: bool = True
     scan_containers: bool = True
     scan_infrastructure: bool = True
@@ -67,14 +64,14 @@ class SecurityAuditConfig:
     test_authorization: bool = True
     test_input_validation: bool = True
     output_dir: str = "enterprise/security/results"
-    
+
     def __post_init__(self):
         if self.api_endpoints is None:
             self.api_endpoints = [
                 "/health",
                 "/ready",
                 "/api/v1/auth/login",
-                "/api/v1/auth/register", 
+                "/api/v1/auth/register",
                 "/api/v1/documents",
                 "/api/v1/search",
                 "/api/v1/query/ask",
@@ -89,20 +86,20 @@ class EnterpriseSecurityAuditor:
     Comprehensive enterprise security auditing framework
     Validates Fortune 500 security requirements
     """
-    
+
     def __init__(self, config: SecurityAuditConfig):
         self.config = config
-        self.findings: List[SecurityFinding] = []
-        self.audit_results: Dict = {}
+        self.findings: list[SecurityFinding] = []
+        self.audit_results: dict = {}
         self.output_dir = Path(config.output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
-    
-    async def run_comprehensive_audit(self) -> Dict:
+
+    async def run_comprehensive_audit(self) -> dict:
         """Execute comprehensive enterprise security audit"""
         logger.info("Starting Enterprise Security Audit")
-        
+
         audit_start_time = time.time()
-        
+
         # Execute all security audit modules
         await self._audit_authentication_authorization()
         await self._audit_data_protection()
@@ -112,40 +109,40 @@ class EnterpriseSecurityAuditor:
         await self._audit_infrastructure_security()
         await self._audit_logging_monitoring()
         await self._audit_compliance_frameworks()
-        
+
         audit_duration = time.time() - audit_start_time
-        
+
         # Generate comprehensive report
         report = self._generate_security_report(audit_duration)
-        
+
         # Save audit results
         self._save_audit_results(report)
-        
+
         logger.info(f"Enterprise Security Audit completed in {audit_duration:.1f}s")
         return report
-    
+
     async def _audit_authentication_authorization(self):
         """Audit authentication and authorization mechanisms"""
         logger.info("Auditing Authentication & Authorization")
-        
+
         auth_findings = []
-        
+
         try:
             # Test JWT token security
             await self._test_jwt_security()
-            
+
             # Test RBAC implementation
             await self._test_rbac_controls()
-            
+
             # Test API key security
             await self._test_api_key_security()
-            
+
             # Test session management
             await self._test_session_management()
-            
+
             # Test password policies
             await self._test_password_policies()
-            
+
         except Exception as e:
             logger.error(f"Authentication audit error: {e}")
             self.findings.append(SecurityFinding(
@@ -155,7 +152,7 @@ class EnterpriseSecurityAuditor:
                 description=f"Unable to complete authentication audit: {e}",
                 recommendation="Review authentication system configuration"
             ))
-    
+
     async def _test_jwt_security(self):
         """Test JWT token implementation security"""
         # Test JWT secret strength
@@ -168,7 +165,7 @@ class EnterpriseSecurityAuditor:
                         data = await response.json()
                         if "token" in data:
                             token = data["token"]
-                            
+
                             # Analyze JWT structure
                             self._analyze_jwt_token(token)
                         else:
@@ -182,18 +179,18 @@ class EnterpriseSecurityAuditor:
                     else:
                         self.findings.append(SecurityFinding(
                             severity="LOW",
-                            category="Authentication", 
+                            category="Authentication",
                             title="JWT Authentication Test Skipped",
                             description="Unable to obtain JWT token for analysis",
                             recommendation="Configure test credentials or verify authentication endpoint"
                         ))
         except Exception as e:
             logger.warning(f"JWT security test failed: {e}")
-    
+
     def _analyze_jwt_token(self, token: str):
         """Analyze JWT token for security issues"""
         import base64
-        
+
         try:
             # Split JWT token
             parts = token.split('.')
@@ -206,10 +203,10 @@ class EnterpriseSecurityAuditor:
                     recommendation="Fix JWT token generation"
                 ))
                 return
-            
+
             # Decode header
             header = json.loads(base64.urlsafe_b64decode(parts[0] + '=='))
-            
+
             # Check algorithm
             alg = header.get('alg', '')
             if alg in ['none', 'HS256']:
@@ -221,20 +218,20 @@ class EnterpriseSecurityAuditor:
                     description=f"JWT uses insecure algorithm: {alg}",
                     recommendation="Use RS256 or ES256 for JWT signing"
                 ))
-            
+
             # Decode payload
             payload = json.loads(base64.urlsafe_b64decode(parts[1] + '=='))
-            
+
             # Check expiration
             if 'exp' not in payload:
                 self.findings.append(SecurityFinding(
                     severity="HIGH",
-                    category="Authentication", 
+                    category="Authentication",
                     title="JWT Missing Expiration",
                     description="JWT token doesn't have expiration claim",
                     recommendation="Add expiration (exp) claim to JWT tokens"
                 ))
-            
+
             # Check token lifetime
             if 'exp' in payload and 'iat' in payload:
                 lifetime = payload['exp'] - payload['iat']
@@ -246,10 +243,10 @@ class EnterpriseSecurityAuditor:
                         description=f"JWT token lifetime is {lifetime/3600:.1f} hours",
                         recommendation="Reduce JWT token lifetime to 1-8 hours"
                     ))
-            
+
         except Exception as e:
             logger.warning(f"JWT analysis failed: {e}")
-    
+
     async def _test_rbac_controls(self):
         """Test Role-Based Access Control implementation"""
         # Test role elevation
@@ -267,7 +264,7 @@ class EnterpriseSecurityAuditor:
                         ))
         except Exception as e:
             logger.warning(f"RBAC test failed: {e}")
-    
+
     async def _test_api_key_security(self):
         """Test API key implementation security"""
         # Test for API key in URL parameters (security risk)
@@ -285,7 +282,7 @@ class EnterpriseSecurityAuditor:
                         ))
         except Exception as e:
             logger.warning(f"API key test failed: {e}")
-    
+
     async def _test_session_management(self):
         """Test session management security"""
         # Test session fixation, hijacking protection
@@ -303,28 +300,28 @@ class EnterpriseSecurityAuditor:
                                 description=f"Cookie {cookie.key} missing Secure flag",
                                 recommendation="Set Secure flag on all cookies in production"
                             ))
-                        
+
                         if not cookie.get('httponly'):
                             self.findings.append(SecurityFinding(
                                 severity="MEDIUM",
-                                category="Session Management", 
+                                category="Session Management",
                                 title="HttpOnly Cookie Flag Missing",
                                 description=f"Cookie {cookie.key} missing HttpOnly flag",
                                 recommendation="Set HttpOnly flag to prevent XSS attacks"
                             ))
         except Exception as e:
             logger.warning(f"Session management test failed: {e}")
-    
+
     async def _test_password_policies(self):
         """Test password policy enforcement"""
         # Test weak password acceptance
         try:
             weak_passwords = ["123", "password", "admin", "test"]
-            
+
             async with aiohttp.ClientSession() as session:
                 for weak_pwd in weak_passwords:
                     register_data = {"username": "testuser", "password": weak_pwd}
-                    
+
                     try:
                         async with session.post(f"{self.config.base_url}/api/v1/auth/register", json=register_data) as response:
                             if response.status == 200:
@@ -340,32 +337,32 @@ class EnterpriseSecurityAuditor:
                         continue  # Expected for non-existent endpoints
         except Exception as e:
             logger.warning(f"Password policy test failed: {e}")
-    
+
     async def _audit_data_protection(self):
         """Audit data protection and encryption"""
         logger.info("Auditing Data Protection")
-        
+
         try:
             # Test data encryption in transit
             await self._test_tls_configuration()
-            
+
             # Test sensitive data exposure
             await self._test_sensitive_data_exposure()
-            
+
             # Test PII handling
             await self._test_pii_handling()
-            
+
             # Test data masking
             await self._test_data_masking()
-            
+
         except Exception as e:
             logger.error(f"Data protection audit error: {e}")
-    
+
     async def _test_tls_configuration(self):
         """Test TLS/SSL configuration"""
         try:
             parsed_url = urlparse(self.config.base_url)
-            
+
             if parsed_url.scheme == 'http':
                 self.findings.append(SecurityFinding(
                     severity="CRITICAL",
@@ -377,10 +374,10 @@ class EnterpriseSecurityAuditor:
             elif parsed_url.scheme == 'https':
                 # Test TLS certificate
                 await self._analyze_tls_certificate(parsed_url.hostname, parsed_url.port or 443)
-                
+
         except Exception as e:
             logger.warning(f"TLS configuration test failed: {e}")
-    
+
     async def _analyze_tls_certificate(self, hostname: str, port: int):
         """Analyze TLS certificate security"""
         try:
@@ -389,9 +386,9 @@ class EnterpriseSecurityAuditor:
             with ssl.create_connection((hostname, port)) as sock:
                 with context.wrap_socket(sock, server_hostname=hostname) as ssock:
                     cert_der = ssock.getpeercert(binary_form=True)
-                    
+
             cert = x509.load_der_x509_certificate(cert_der, default_backend())
-            
+
             # Check expiration
             days_until_expiry = (cert.not_valid_after - cert.not_valid_before).days
             if days_until_expiry < 30:
@@ -402,7 +399,7 @@ class EnterpriseSecurityAuditor:
                     description=f"Certificate expires in {days_until_expiry} days",
                     recommendation="Renew TLS certificate"
                 ))
-            
+
             # Check signature algorithm
             sig_alg = cert.signature_algorithm_oid._name
             if 'sha1' in sig_alg.lower():
@@ -413,10 +410,10 @@ class EnterpriseSecurityAuditor:
                     description=f"Certificate uses weak signature algorithm: {sig_alg}",
                     recommendation="Use SHA-256 or stronger signature algorithm"
                 ))
-                
+
         except Exception as e:
             logger.warning(f"TLS certificate analysis failed: {e}")
-    
+
     async def _test_sensitive_data_exposure(self):
         """Test for sensitive data exposure in responses"""
         sensitive_patterns = [
@@ -428,14 +425,14 @@ class EnterpriseSecurityAuditor:
             (r'\b[0-9a-f]{32}\b', 'MD5 Hash'),
             (r'\b[0-9a-f]{40}\b', 'SHA1 Hash')
         ]
-        
+
         try:
             async with aiohttp.ClientSession() as session:
                 for endpoint in self.config.api_endpoints:
                     try:
                         async with session.get(f"{self.config.base_url}{endpoint}") as response:
                             text = await response.text()
-                            
+
                             for pattern, data_type in sensitive_patterns:
                                 matches = re.finditer(pattern, text, re.IGNORECASE)
                                 for match in matches:
@@ -449,10 +446,10 @@ class EnterpriseSecurityAuditor:
                                     ))
                     except Exception:
                         continue
-                        
+
         except Exception as e:
             logger.warning(f"Sensitive data exposure test failed: {e}")
-    
+
     async def _test_pii_handling(self):
         """Test Personally Identifiable Information handling"""
         pii_patterns = [
@@ -461,36 +458,36 @@ class EnterpriseSecurityAuditor:
             (r'\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b', 'Credit Card'),
             (r'\b\d{10,11}\b', 'Phone Number')
         ]
-        
+
         # Similar implementation to sensitive data exposure
         # but specifically for PII compliance
         logger.info("PII handling test - implementation depends on specific data flows")
-    
+
     async def _test_data_masking(self):
         """Test data masking in logs and responses"""
         # Test that sensitive data is properly masked
         logger.info("Data masking test - checking log files and response masking")
-    
+
     async def _audit_network_security(self):
         """Audit network security configuration"""
         logger.info("Auditing Network Security")
-        
+
         try:
             # Test CORS configuration
             await self._test_cors_configuration()
-            
+
             # Test rate limiting
             await self._test_rate_limiting()
-            
+
             # Test security headers
             await self._test_security_headers()
-            
+
             # Test HTTP methods
             await self._test_http_methods()
-            
+
         except Exception as e:
             logger.error(f"Network security audit error: {e}")
-    
+
     async def _test_cors_configuration(self):
         """Test CORS configuration security"""
         try:
@@ -498,7 +495,7 @@ class EnterpriseSecurityAuditor:
                 headers = {'Origin': 'https://evil-site.com'}
                 async with session.get(f"{self.config.base_url}/health", headers=headers) as response:
                     cors_origin = response.headers.get('Access-Control-Allow-Origin', '')
-                    
+
                     if cors_origin == '*':
                         self.findings.append(SecurityFinding(
                             severity="MEDIUM",
@@ -507,7 +504,7 @@ class EnterpriseSecurityAuditor:
                             description="CORS allows all origins (*)",
                             recommendation="Restrict CORS to specific trusted domains"
                         ))
-                    
+
                     if 'evil-site.com' in cors_origin:
                         self.findings.append(SecurityFinding(
                             severity="HIGH",
@@ -518,7 +515,7 @@ class EnterpriseSecurityAuditor:
                         ))
         except Exception as e:
             logger.warning(f"CORS test failed: {e}")
-    
+
     async def _test_rate_limiting(self):
         """Test rate limiting implementation"""
         try:
@@ -526,7 +523,7 @@ class EnterpriseSecurityAuditor:
             async with aiohttp.ClientSession() as session:
                 requests_sent = 0
                 rate_limited = False
-                
+
                 for i in range(100):  # Send 100 rapid requests
                     try:
                         async with session.get(f"{self.config.base_url}/health") as response:
@@ -536,7 +533,7 @@ class EnterpriseSecurityAuditor:
                                 break
                     except Exception:
                         break
-                
+
                 if not rate_limited and requests_sent > 50:
                     self.findings.append(SecurityFinding(
                         severity="MEDIUM",
@@ -545,20 +542,20 @@ class EnterpriseSecurityAuditor:
                         description="No rate limiting detected on API endpoints",
                         recommendation="Implement rate limiting to prevent abuse"
                     ))
-                    
+
         except Exception as e:
             logger.warning(f"Rate limiting test failed: {e}")
-    
+
     async def _test_security_headers(self):
         """Test security header implementation"""
         required_headers = {
             'X-Frame-Options': 'MEDIUM',
-            'X-Content-Type-Options': 'MEDIUM', 
+            'X-Content-Type-Options': 'MEDIUM',
             'X-XSS-Protection': 'LOW',
             'Strict-Transport-Security': 'HIGH',
             'Content-Security-Policy': 'MEDIUM'
         }
-        
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(f"{self.config.base_url}/health") as response:
@@ -573,11 +570,11 @@ class EnterpriseSecurityAuditor:
                             ))
         except Exception as e:
             logger.warning(f"Security headers test failed: {e}")
-    
+
     async def _test_http_methods(self):
         """Test HTTP methods security"""
         dangerous_methods = ['TRACE', 'CONNECT', 'DELETE']
-        
+
         try:
             async with aiohttp.ClientSession() as session:
                 for method in dangerous_methods:
@@ -595,27 +592,27 @@ class EnterpriseSecurityAuditor:
                         continue
         except Exception as e:
             logger.warning(f"HTTP methods test failed: {e}")
-    
+
     async def _audit_input_validation(self):
         """Audit input validation and injection prevention"""
         logger.info("Auditing Input Validation")
-        
+
         try:
             # Test SQL injection
             await self._test_sql_injection()
-            
+
             # Test XSS protection
             await self._test_xss_protection()
-            
+
             # Test command injection
             await self._test_command_injection()
-            
+
             # Test path traversal
             await self._test_path_traversal()
-            
+
         except Exception as e:
             logger.error(f"Input validation audit error: {e}")
-    
+
     async def _test_sql_injection(self):
         """Test SQL injection vulnerabilities"""
         sql_payloads = [
@@ -624,13 +621,13 @@ class EnterpriseSecurityAuditor:
             "' UNION SELECT * FROM users --",
             "1' AND (SELECT SUBSTRING(@@version,1,1))='5' --"
         ]
-        
+
         test_endpoints = [
             "/api/v1/search?q={}",
             "/api/v1/documents?id={}",
             "/api/v1/query/ask"
         ]
-        
+
         try:
             async with aiohttp.ClientSession() as session:
                 for endpoint_template in test_endpoints:
@@ -640,7 +637,7 @@ class EnterpriseSecurityAuditor:
                             try:
                                 async with session.get(url) as response:
                                     text = await response.text()
-                                    
+
                                     # Check for SQL error messages
                                     sql_errors = ['sql error', 'mysql', 'postgresql', 'sqlite', 'syntax error']
                                     if any(error in text.lower() for error in sql_errors):
@@ -656,7 +653,7 @@ class EnterpriseSecurityAuditor:
                                 continue
         except Exception as e:
             logger.warning(f"SQL injection test failed: {e}")
-    
+
     async def _test_xss_protection(self):
         """Test Cross-Site Scripting protection"""
         xss_payloads = [
@@ -665,17 +662,17 @@ class EnterpriseSecurityAuditor:
             "<img src=x onerror=alert('XSS')>",
             "';alert('XSS');//"
         ]
-        
+
         try:
             async with aiohttp.ClientSession() as session:
                 for payload in xss_payloads:
                     # Test in query parameters
                     test_url = f"{self.config.base_url}/api/v1/search?q={payload}"
-                    
+
                     try:
                         async with session.get(test_url) as response:
                             text = await response.text()
-                            
+
                             # Check if payload is reflected unescaped
                             if payload in text and 'script' in payload.lower():
                                 self.findings.append(SecurityFinding(
@@ -690,7 +687,7 @@ class EnterpriseSecurityAuditor:
                         continue
         except Exception as e:
             logger.warning(f"XSS test failed: {e}")
-    
+
     async def _test_command_injection(self):
         """Test command injection vulnerabilities"""
         command_payloads = [
@@ -699,11 +696,11 @@ class EnterpriseSecurityAuditor:
             "&& echo 'vulnerable'",
             "`id`"
         ]
-        
+
         # Similar implementation to SQL injection
         # Test command injection in various input fields
         logger.info("Command injection test - checking for OS command execution vulnerabilities")
-    
+
     async def _test_path_traversal(self):
         """Test path traversal vulnerabilities"""
         traversal_payloads = [
@@ -711,38 +708,38 @@ class EnterpriseSecurityAuditor:
             "..\\..\\..\\windows\\system32\\drivers\\etc\\hosts",
             "....//....//....//etc/passwd"
         ]
-        
+
         # Test file access endpoints for path traversal
         logger.info("Path traversal test - checking file access controls")
-    
+
     async def _audit_dependency_security(self):
         """Audit dependency security (CVE scanning)"""
         logger.info("Auditing Dependency Security")
-        
+
         if not self.config.scan_dependencies:
             return
-        
+
         try:
             # Scan Python dependencies
             await self._scan_python_dependencies()
-            
+
             # Scan JavaScript dependencies
             await self._scan_js_dependencies()
-            
+
         except Exception as e:
             logger.error(f"Dependency security audit error: {e}")
-    
+
     async def _scan_python_dependencies(self):
         """Scan Python dependencies for known vulnerabilities"""
         try:
             # Use safety to scan Python dependencies
-            result = subprocess.run(['safety', 'check', '--json'], 
+            result = subprocess.run(['safety', 'check', '--json'],
                                   capture_output=True, text=True, timeout=60)
-            
+
             if result.returncode != 0 and result.stdout:
                 # Parse safety output
                 vulnerabilities = json.loads(result.stdout)
-                
+
                 for vuln in vulnerabilities:
                     self.findings.append(SecurityFinding(
                         severity="HIGH",
@@ -753,7 +750,7 @@ class EnterpriseSecurityAuditor:
                         cve_id=vuln.get('id', ''),
                         affected_component=vuln.get('package_name', '')
                     ))
-                    
+
         except subprocess.TimeoutExpired:
             self.findings.append(SecurityFinding(
                 severity="MEDIUM",
@@ -772,7 +769,7 @@ class EnterpriseSecurityAuditor:
             ))
         except Exception as e:
             logger.warning(f"Python dependency scan failed: {e}")
-    
+
     async def _scan_js_dependencies(self):
         """Scan JavaScript/Node.js dependencies"""
         try:
@@ -781,16 +778,16 @@ class EnterpriseSecurityAuditor:
             if package_json_path.exists():
                 result = subprocess.run(['npm', 'audit', '--json'],
                                       capture_output=True, text=True, timeout=60)
-                
+
                 if result.stdout:
                     audit_data = json.loads(result.stdout)
                     vulnerabilities = audit_data.get('vulnerabilities', {})
-                    
+
                     for package, vuln_info in vulnerabilities.items():
                         severity = vuln_info.get('severity', 'unknown').upper()
                         if severity not in ['INFO', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL']:
                             severity = 'MEDIUM'
-                            
+
                         self.findings.append(SecurityFinding(
                             severity=severity,
                             category="Dependency Security",
@@ -799,35 +796,35 @@ class EnterpriseSecurityAuditor:
                             recommendation="Update dependency to fix vulnerability",
                             affected_component=package
                         ))
-                        
+
         except Exception as e:
             logger.warning(f"JS dependency scan failed: {e}")
-    
+
     async def _audit_infrastructure_security(self):
         """Audit infrastructure security"""
         logger.info("Auditing Infrastructure Security")
-        
+
         try:
             # Container security
             if self.config.scan_containers:
                 await self._scan_container_security()
-            
+
             # Cloud security
             if self.config.scan_infrastructure:
                 await self._scan_cloud_security()
-                
+
         except Exception as e:
             logger.error(f"Infrastructure security audit error: {e}")
-    
+
     async def _scan_container_security(self):
         """Scan container security"""
         try:
             # Check for Docker security best practices
             dockerfile_path = Path("Dockerfile")
             if dockerfile_path.exists():
-                with open(dockerfile_path, 'r') as f:
+                with open(dockerfile_path) as f:
                     dockerfile_content = f.read()
-                
+
                 # Check for running as root
                 if 'USER root' in dockerfile_content or 'USER 0' in dockerfile_content:
                     self.findings.append(SecurityFinding(
@@ -837,13 +834,13 @@ class EnterpriseSecurityAuditor:
                         description="Dockerfile sets USER to root",
                         recommendation="Create non-root user for container execution"
                     ))
-                
+
                 # Check for hardcoded secrets
                 secret_patterns = [
                     r'password\s*=\s*["\']([^"\']+)["\']',
                     r'api[_-]?key\s*=\s*["\']([^"\']+)["\']'
                 ]
-                
+
                 for pattern in secret_patterns:
                     if re.search(pattern, dockerfile_content, re.IGNORECASE):
                         self.findings.append(SecurityFinding(
@@ -853,79 +850,79 @@ class EnterpriseSecurityAuditor:
                             description="Secret found in Dockerfile",
                             recommendation="Use environment variables or secrets management"
                         ))
-                        
+
         except Exception as e:
             logger.warning(f"Container security scan failed: {e}")
-    
+
     async def _scan_cloud_security(self):
         """Scan cloud security configuration"""
         # Placeholder for cloud-specific security checks
         # Would include AWS/GCP/Azure security scanning
         logger.info("Cloud security scan - implementation depends on cloud provider")
-    
+
     async def _audit_logging_monitoring(self):
         """Audit logging and monitoring security"""
         logger.info("Auditing Logging & Monitoring")
-        
+
         try:
             # Check security event logging
             await self._test_security_logging()
-            
+
             # Check log protection
             await self._test_log_protection()
-            
+
         except Exception as e:
             logger.error(f"Logging audit error: {e}")
-    
+
     async def _test_security_logging(self):
         """Test security event logging"""
         # Test that security events are properly logged
         security_events = [
             "authentication_failure",
-            "authorization_failure", 
+            "authorization_failure",
             "input_validation_failure",
             "rate_limit_exceeded"
         ]
-        
+
         # This would require integration with actual logging system
         logger.info("Security logging test - verify security events are logged")
-    
+
     async def _test_log_protection(self):
         """Test log file protection and integrity"""
         # Check log file permissions and integrity
         logger.info("Log protection test - verify log file security")
-    
+
     async def _audit_compliance_frameworks(self):
         """Audit compliance with security frameworks"""
         logger.info("Auditing Compliance Frameworks")
-        
+
         try:
             # SOC2 compliance check
             await self._check_soc2_compliance()
-            
+
             # GDPR compliance check
             await self._check_gdpr_compliance()
-            
+
             # HIPAA compliance check (if applicable)
             await self._check_hipaa_compliance()
-            
+
         except Exception as e:
             logger.error(f"Compliance audit error: {e}")
-    
+
     async def _check_soc2_compliance(self):
         """Check SOC2 compliance requirements"""
         # SOC2 security criteria
         soc2_requirements = [
             "Access Control",
-            "Data Classification", 
+            "Data Classification",
             "Incident Response",
             "Risk Assessment",
             "Vendor Management"
         ]
-        
+
         # This would be a comprehensive check against SOC2 Type II requirements
         logger.info("SOC2 compliance check - verify security controls")
-    
+
     async def _check_gdpr_compliance(self):
         """Check GDPR compliance requirements"""
         # Test GDPR compliance endpoint if available
@@ -942,13 +939,13 @@ class EnterpriseSecurityAuditor:
                         ))
         except Exception as e:
             logger.warning(f"GDPR compliance test failed: {e}")
-    
+
     async def _check_hipaa_compliance(self):
         """Check HIPAA compliance requirements (if applicable)"""
         # HIPAA security rule requirements
         logger.info("HIPAA compliance check - if handling PHI")
-    
-    def _generate_security_report(self, audit_duration: float) -> Dict:
+
+    def _generate_security_report(self, audit_duration: float) -> dict:
         """Generate comprehensive security audit report"""
         # Categorize findings by severity
         findings_by_severity = {
@@ -958,13 +955,13 @@ class EnterpriseSecurityAuditor:
             'LOW': [f for f in self.findings if f.severity == 'LOW'],
             'INFO': [f for f in self.findings if f.severity == 'INFO']
         }
-        
+
         # Calculate security score
         security_score = self._calculate_security_score(findings_by_severity)
-        
+
         # Determine enterprise readiness
         enterprise_ready = self._assess_enterprise_security_readiness(findings_by_severity)
-        
+
         report = {
             "security_audit_summary": {
                 "audit_duration_seconds": audit_duration,
@@ -987,10 +984,10 @@ class EnterpriseSecurityAuditor:
             "compliance_status": self._generate_compliance_status(),
             "remediation_roadmap": self._generate_remediation_roadmap(findings_by_severity)
         }
-        
+
         return report
-    
-    def _calculate_security_score(self, findings_by_severity: Dict) -> float:
+
+    def _calculate_security_score(self, findings_by_severity: dict) -> float:
         """Calculate overall security score (0-100)"""
         # Weighted scoring system
         weights = {
@@ -1000,14 +997,14 @@ class EnterpriseSecurityAuditor:
             'LOW': -2,
             'INFO': -0.5
         }
-        
+
         base_score = 100
         for severity, findings in findings_by_severity.items():
             base_score += len(findings) * weights.get(severity, 0)
-        
+
         return max(0, min(100, base_score))
-    
-    def _assess_enterprise_security_readiness(self, findings_by_severity: Dict) -> bool:
+
+    def _assess_enterprise_security_readiness(self, findings_by_severity: dict) -> bool:
         """Assess if system meets enterprise security standards"""
         # Enterprise readiness criteria
         return (
@@ -1015,8 +1012,8 @@ class EnterpriseSecurityAuditor:
             len(findings_by_severity['HIGH']) <= 2 and
             len(findings_by_severity['MEDIUM']) <= 10
         )
-    
-    def _group_findings_by_category(self) -> Dict:
+
+    def _group_findings_by_category(self) -> dict:
         """Group findings by security category"""
         categories = {}
         for finding in self.findings:
@@ -1025,17 +1022,17 @@ class EnterpriseSecurityAuditor:
                 categories[category] = []
             categories[category].append(asdict(finding))
         return categories
-    
-    def _generate_security_recommendations(self, findings_by_severity: Dict) -> List[str]:
+
+    def _generate_security_recommendations(self, findings_by_severity: dict) -> list[str]:
         """Generate security recommendations based on findings"""
         recommendations = []
-        
+
         if findings_by_severity['CRITICAL']:
             recommendations.append("URGENT: Address all critical security vulnerabilities immediately")
-        
+
         if findings_by_severity['HIGH']:
             recommendations.append("HIGH PRIORITY: Remediate high-severity security issues")
-        
+
         recommendations.extend([
             "Implement comprehensive input validation",
             "Enable security headers on all responses",
@@ -1044,22 +1041,22 @@ class EnterpriseSecurityAuditor:
             "Conduct regular security assessments",
             "Implement incident response procedures"
         ])
-        
+
         return recommendations
-    
-    def _generate_compliance_status(self) -> Dict:
+
+    def _generate_compliance_status(self) -> dict:
         """Generate compliance framework status"""
         return {
             "SOC2": "REQUIRES_ASSESSMENT",
-            "GDPR": "REQUIRES_ASSESSMENT", 
+            "GDPR": "REQUIRES_ASSESSMENT",
             "HIPAA": "NOT_APPLICABLE",
             "ISO_27001": "REQUIRES_ASSESSMENT"
         }
-    
-    def _generate_remediation_roadmap(self, findings_by_severity: Dict) -> List[Dict]:
+
+    def _generate_remediation_roadmap(self, findings_by_severity: dict) -> list[dict]:
         """Generate remediation roadmap"""
         roadmap = []
-        
+
         if findings_by_severity['CRITICAL']:
             roadmap.append({
                 "phase": "IMMEDIATE",
@@ -1067,33 +1064,33 @@ class EnterpriseSecurityAuditor:
                 "priority": 1,
                 "actions": ["Fix all critical vulnerabilities", "Emergency security patch deployment"]
             })
-        
+
         if findings_by_severity['HIGH']:
             roadmap.append({
-                "phase": "URGENT", 
+                "phase": "URGENT",
                 "timeline": "1-4 weeks",
                 "priority": 2,
                 "actions": ["Remediate high-severity issues", "Implement security controls"]
             })
-        
+
         roadmap.append({
             "phase": "STRATEGIC",
-            "timeline": "1-3 months", 
+            "timeline": "1-3 months",
             "priority": 3,
             "actions": ["Address medium/low findings", "Implement security framework", "Security training"]
         })
-        
+
         return roadmap
-    
-    def _save_audit_results(self, report: Dict):
+
+    def _save_audit_results(self, report: dict):
         """Save audit results to files"""
         timestamp = int(time.time())
-        
+
         # Save full report
         report_file = self.output_dir / f"security_audit_report_{timestamp}.json"
         with open(report_file, 'w') as f:
             json.dump(report, f, indent=2)
-        
+
         # Save findings summary
         summary_file = self.output_dir / f"security_findings_summary_{timestamp}.json"
         summary = {
@@ -1103,10 +1100,10 @@ class EnterpriseSecurityAuditor:
             "critical_findings": report["security_audit_summary"]["critical_findings"],
             "high_findings": report["security_audit_summary"]["high_findings"]
         }
-        
+
         with open(summary_file, 'w') as f:
             json.dump(summary, f, indent=2)
-        
+
         logger.info(f"Security audit results saved to {report_file}")
 
 
@@ -1114,43 +1111,43 @@ class EnterpriseSecurityAuditor:
 async def main():
     """Main entry point for security audit"""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="Enterprise Security Audit Framework")
     parser.add_argument("--base-url", default="http://localhost:8000", help="Base URL for testing")
     parser.add_argument("--output-dir", default="enterprise/security/results", help="Output directory")
     parser.add_argument("--skip-dependencies", action="store_true", help="Skip dependency scanning")
     parser.add_argument("--skip-containers", action="store_true", help="Skip container scanning")
-    
+
     args = parser.parse_args()
-    
+
     config = SecurityAuditConfig(
         base_url=args.base_url,
         output_dir=args.output_dir,
         scan_dependencies=not args.skip_dependencies,
         scan_containers=not args.skip_containers
     )
-    
+
     auditor = EnterpriseSecurityAuditor(config)
     results = await auditor.run_comprehensive_audit()
-    
+
     print("\n" + "="*80)
     print("ENTERPRISE SECURITY AUDIT RESULTS")
     print("="*80)
-    
+
     summary = results["security_audit_summary"]
     print(f"Security Score: {summary['security_score']:.1f}/100")
     print(f"Enterprise Ready: {summary['enterprise_ready']}")
     print(f"Certification Status: {summary['certification_status']}")
     print(f"Total Findings: {summary['total_findings']}")
     print(f"Critical: {summary['critical_findings']} | High: {summary['high_findings']} | Medium: {summary['medium_findings']}")
-    
+
     if summary['critical_findings'] > 0:
         print("\n🚨 CRITICAL VULNERABILITIES FOUND - IMMEDIATE ACTION REQUIRED")
     elif summary['high_findings'] > 0:
         print("\n⚠️  HIGH SEVERITY ISSUES FOUND - URGENT REMEDIATION NEEDED")
     elif summary['enterprise_ready']:
         print("\n✅ SYSTEM READY FOR ENTERPRISE DEPLOYMENT")
-    
+
     print(f"\nDetailed report saved to: {args.output_dir}")
 
 

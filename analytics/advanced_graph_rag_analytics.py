@@ -10,20 +10,20 @@ import json
 import logging
 import sqlite3
 import sys
-from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
+
 try:
     import psycopg2
     import psycopg2.extras
     POSTGRES_AVAILABLE = True
 except ImportError:
     POSTGRES_AVAILABLE = False
-    
+
 try:
     from mgclient import connect as mgclient_connect
     MEMGRAPH_AVAILABLE = True
@@ -35,7 +35,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / 'graph_rag'))
 
 from business_development.unified_analytics_integration import UnifiedAnalyticsIntegration
-from graph_rag.core.interfaces import GraphRepository
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -47,11 +46,11 @@ class GraphInsight:
     insight_id: str
     insight_type: str  # content_trend, audience_pattern, conversion_path, competitive_gap
     insight_description: str
-    entities_involved: List[str]
-    relationships: List[Tuple[str, str, str]]  # (source, relationship, target)
+    entities_involved: list[str]
+    relationships: list[tuple[str, str, str]]  # (source, relationship, target)
     business_impact_score: float  # 0-100
     confidence_score: float  # 0-1
-    actionable_recommendations: List[str]
+    actionable_recommendations: list[str]
     projected_pipeline_value: float
     implementation_effort: str  # low, medium, high
     priority: str  # critical, high, medium, low
@@ -63,56 +62,56 @@ class ConsultationPrediction:
     content_id: str
     predicted_inquiries: int
     predicted_pipeline_value: float
-    confidence_interval: Tuple[float, float]
-    success_factors: List[str]
-    optimization_opportunities: List[str]
-    competitive_advantages: List[str]
-    audience_segments: List[str]
-    optimal_timing: Dict[str, Any]
+    confidence_interval: tuple[float, float]
+    success_factors: list[str]
+    optimization_opportunities: list[str]
+    competitive_advantages: list[str]
+    audience_segments: list[str]
+    optimal_timing: dict[str, Any]
 
-@dataclass 
+@dataclass
 class AutonomousOptimization:
     """Autonomous optimization recommendation with implementation plan"""
     optimization_id: str
     optimization_type: str  # content_strategy, timing_optimization, audience_targeting
-    current_performance: Dict[str, float]
-    optimized_performance: Dict[str, float]
+    current_performance: dict[str, float]
+    optimized_performance: dict[str, float]
     improvement_percentage: float
-    implementation_steps: List[str]
-    risk_assessment: Dict[str, Any]
+    implementation_steps: list[str]
+    risk_assessment: dict[str, Any]
     expected_timeline: str
-    success_metrics: List[str]
+    success_metrics: list[str]
     rollback_strategy: str
 
 class AdvancedGraphRAGAnalyticsEngine:
     """Advanced AI-powered analytics engine combining Graph-RAG with business intelligence"""
-    
+
     def __init__(self):
         self.unified_analytics = UnifiedAnalyticsIntegration()
         self.postgres_config = self._load_postgres_config()
         self.memgraph_config = self._load_memgraph_config()
         self.analytics_db_path = "advanced_graph_rag_analytics.db"
-        
+
         # Initialize databases and connections
         self._init_analytics_database()
         self._init_graph_connections()
-        
+
         # Load ML models and pattern recognition engines
         self._init_ai_models()
-        
+
         logger.info("Advanced Graph-RAG Analytics Engine initialized")
 
-    def _load_postgres_config(self) -> Dict[str, str]:
+    def _load_postgres_config(self) -> dict[str, str]:
         """Load PostgreSQL connection configuration"""
         return {
             'host': 'localhost',
             'port': '5432',
             'database': 'synapse_analytics',
-            'user': 'analytics_user', 
+            'user': 'analytics_user',
             'password': 'analytics_password'  # In production: use environment variables
         }
-    
-    def _load_memgraph_config(self) -> Dict[str, Any]:
+
+    def _load_memgraph_config(self) -> dict[str, Any]:
         """Load Memgraph connection configuration"""
         return {
             'host': '127.0.0.1',
@@ -120,12 +119,12 @@ class AdvancedGraphRAGAnalyticsEngine:
             'username': '',
             'password': ''
         }
-    
+
     def _init_analytics_database(self):
         """Initialize advanced analytics SQLite database for local processing"""
         conn = sqlite3.connect(self.analytics_db_path)
         cursor = conn.cursor()
-        
+
         # Graph insights table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS graph_insights (
@@ -144,7 +143,7 @@ class AdvancedGraphRAGAnalyticsEngine:
                 status TEXT DEFAULT 'new'
             )
         ''')
-        
+
         # Consultation predictions table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS consultation_predictions (
@@ -165,7 +164,7 @@ class AdvancedGraphRAGAnalyticsEngine:
                 prediction_accuracy REAL DEFAULT NULL
             )
         ''')
-        
+
         # Autonomous optimizations table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS autonomous_optimizations (
@@ -185,7 +184,7 @@ class AdvancedGraphRAGAnalyticsEngine:
                 results TEXT DEFAULT NULL  -- JSON object
             )
         ''')
-        
+
         # Graph pattern recognition cache
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS graph_patterns (
@@ -199,11 +198,11 @@ class AdvancedGraphRAGAnalyticsEngine:
                 last_detected TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         conn.commit()
         conn.close()
         logger.info("Advanced analytics database initialized")
-    
+
     def _init_graph_connections(self):
         """Initialize Memgraph and PostgreSQL connections"""
         if MEMGRAPH_AVAILABLE:
@@ -217,7 +216,7 @@ class AdvancedGraphRAGAnalyticsEngine:
         else:
             logger.info("Memgraph client not available. Using fallback mode.")
             self.mg_conn = None
-        
+
         if POSTGRES_AVAILABLE:
             try:
                 # Test PostgreSQL connection
@@ -230,7 +229,7 @@ class AdvancedGraphRAGAnalyticsEngine:
         else:
             logger.info("PostgreSQL client not available. Using SQLite fallback.")
             self.pg_conn = None
-    
+
     def _init_ai_models(self):
         """Initialize AI models for pattern recognition and prediction"""
         # In production, load pre-trained models here
@@ -256,52 +255,52 @@ class AdvancedGraphRAGAnalyticsEngine:
                 'Thursday_6PM': 0.72
             }
         }
-        
+
         logger.info("AI models initialized")
 
-    async def analyze_content_graph_relationships(self) -> List[GraphInsight]:
+    async def analyze_content_graph_relationships(self) -> list[GraphInsight]:
         """
         Week 1: Advanced Graph-RAG Analytics Development
         Multi-hop relationship analysis: content topics → engagement patterns → consultation conversions
         """
         logger.info("Starting advanced graph relationship analysis...")
-        
+
         insights = []
-        
+
         # 1. Multi-hop relationship analysis
         multi_hop_insights = await self._analyze_multi_hop_relationships()
         insights.extend(multi_hop_insights)
-        
+
         # 2. Entity co-occurrence patterns
         cooccurrence_insights = await self._analyze_entity_cooccurrence()
         insights.extend(cooccurrence_insights)
-        
+
         # 3. Community detection for audience segmentation
         community_insights = await self._detect_audience_communities()
         insights.extend(community_insights)
-        
+
         # 4. Temporal graph analysis
         temporal_insights = await self._analyze_temporal_patterns()
         insights.extend(temporal_insights)
-        
+
         # Store insights in database
         for insight in insights:
             self._store_graph_insight(insight)
-        
+
         logger.info(f"Generated {len(insights)} graph-based business insights")
         return insights
-    
-    async def _analyze_multi_hop_relationships(self) -> List[GraphInsight]:
+
+    async def _analyze_multi_hop_relationships(self) -> list[GraphInsight]:
         """Analyze multi-hop relationships in content → engagement → consultation graph"""
         insights = []
-        
+
         if not self.mg_conn:
             logger.warning("Memgraph not available, using alternative analysis")
             return self._analyze_multi_hop_fallback()
-        
+
         try:
             cursor = self.mg_conn.cursor()
-            
+
             # Multi-hop query: Content → Topic → Engagement → Consultation
             query = """
             MATCH (c:Content)-[:HAS_TOPIC]->(t:Topic)<-[:HAS_TOPIC]-(c2:Content)-[:GENERATED]->(e:Engagement)-[:LED_TO]->(cons:Consultation)
@@ -314,13 +313,13 @@ class AdvancedGraphRAGAnalyticsEngine:
             ORDER BY consultation_count DESC, avg_engagement DESC
             LIMIT 20
             """
-            
+
             cursor.execute(query)
             results = cursor.fetchall()
-            
+
             for result in results:
                 topic, avg_engagement, consultation_count, avg_value, hooks = result
-                
+
                 if consultation_count >= 3:  # Minimum sample size
                     insight = GraphInsight(
                         insight_id=f"multi_hop_topic_{topic}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -344,21 +343,21 @@ class AdvancedGraphRAGAnalyticsEngine:
                         priority="high" if consultation_count >= 5 else "medium"
                     )
                     insights.append(insight)
-                    
+
         except Exception as e:
             logger.error(f"Multi-hop analysis failed: {e}")
             return self._analyze_multi_hop_fallback()
-        
+
         return insights
-    
-    def _analyze_multi_hop_fallback(self) -> List[GraphInsight]:
+
+    def _analyze_multi_hop_fallback(self) -> list[GraphInsight]:
         """Fallback multi-hop analysis using SQLite data"""
         insights = []
-        
+
         # Use business development database for analysis
         conn = sqlite3.connect('linkedin_business_development.db')
         cursor = conn.cursor()
-        
+
         try:
             # Analyze topic → engagement → consultation patterns
             cursor.execute('''
@@ -373,13 +372,13 @@ class AdvancedGraphRAGAnalyticsEngine:
                 HAVING post_count >= 3 AND total_consultations > 0
                 ORDER BY total_consultations DESC, avg_engagement DESC
             ''')
-            
+
             results = cursor.fetchall()
-            
+
             for topic, avg_engagement, consultations, post_count in results:
                 if consultations >= 2:
                     estimated_value = consultations * 25000  # Estimated consultation value
-                    
+
                     insight = GraphInsight(
                         insight_id=f"fallback_topic_{topic}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
                         insight_type="content_trend",
@@ -402,22 +401,22 @@ class AdvancedGraphRAGAnalyticsEngine:
                         priority="high" if consultations >= 4 else "medium"
                     )
                     insights.append(insight)
-                    
+
         except Exception as e:
             logger.error(f"Fallback analysis failed: {e}")
         finally:
             conn.close()
-        
+
         return insights
-    
-    async def _analyze_entity_cooccurrence(self) -> List[GraphInsight]:
+
+    async def _analyze_entity_cooccurrence(self) -> list[GraphInsight]:
         """Analyze entity co-occurrence patterns for content recommendations"""
         insights = []
-        
+
         if self.mg_conn:
             try:
                 cursor = self.mg_conn.cursor()
-                
+
                 # Find entity pairs that frequently co-occur in high-performing content
                 query = """
                 MATCH (e1:Entity)<-[:CONTAINS]-(c:Content)-[:CONTAINS]->(e2:Entity)
@@ -431,10 +430,10 @@ class AdvancedGraphRAGAnalyticsEngine:
                 ORDER BY total_consultations DESC, avg_engagement DESC
                 LIMIT 15
                 """
-                
+
                 cursor.execute(query)
                 results = cursor.fetchall()
-                
+
                 for entity1, entity2, count, engagement, consultations in results:
                     if consultations > 0:
                         insight = GraphInsight(
@@ -459,16 +458,16 @@ class AdvancedGraphRAGAnalyticsEngine:
                             priority="high" if count >= 5 else "medium"
                         )
                         insights.append(insight)
-                        
+
             except Exception as e:
                 logger.warning(f"Entity co-occurrence analysis failed: {e}")
-        
+
         return insights
-    
-    async def _detect_audience_communities(self) -> List[GraphInsight]:
+
+    async def _detect_audience_communities(self) -> list[GraphInsight]:
         """Community detection algorithms for audience segmentation"""
         insights = []
-        
+
         # Simulate community detection results (in production, use graph algorithms)
         communities = [
             {
@@ -480,7 +479,7 @@ class AdvancedGraphRAGAnalyticsEngine:
                 'size': 2500
             },
             {
-                'name': 'Product Managers', 
+                'name': 'Product Managers',
                 'entities': ['product_strategy', 'roadmaps', 'user_research', 'metrics'],
                 'engagement_rate': 0.22,
                 'consultation_rate': 0.032,
@@ -496,7 +495,7 @@ class AdvancedGraphRAGAnalyticsEngine:
                 'size': 1200
             }
         ]
-        
+
         for community in communities:
             insight = GraphInsight(
                 insight_id=f"community_{community['name'].lower().replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -519,17 +518,17 @@ class AdvancedGraphRAGAnalyticsEngine:
                 priority="critical" if community['avg_consultation_value'] > 50000 else "high"
             )
             insights.append(insight)
-        
+
         return insights
-    
-    async def _analyze_temporal_patterns(self) -> List[GraphInsight]:
+
+    async def _analyze_temporal_patterns(self) -> list[GraphInsight]:
         """Temporal graph analysis for trend identification and predictive modeling"""
         insights = []
-        
+
         # Analyze time-based patterns in content performance
         conn = sqlite3.connect('linkedin_business_development.db')
         cursor = conn.cursor()
-        
+
         try:
             # Weekly performance trends
             cursor.execute('''
@@ -545,16 +544,16 @@ class AdvancedGraphRAGAnalyticsEngine:
                 HAVING post_count >= 2
                 ORDER BY total_consultations DESC, avg_engagement DESC
             ''')
-            
+
             results = cursor.fetchall()
-            
+
             # Find top performing time slots
             top_slots = sorted(results, key=lambda x: (x[3], x[2]), reverse=True)[:5]
-            
+
             for day_of_week, hour, engagement, consultations, count in top_slots:
                 day_names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
                 day_name = day_names[int(day_of_week)]
-                
+
                 if consultations > 0:
                     insight = GraphInsight(
                         insight_id=f"temporal_{day_name}_{hour}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -578,73 +577,73 @@ class AdvancedGraphRAGAnalyticsEngine:
                         priority="high" if consultations >= 3 else "medium"
                     )
                     insights.append(insight)
-                    
+
         except Exception as e:
             logger.error(f"Temporal analysis failed: {e}")
         finally:
             conn.close()
-        
+
         return insights
 
-    async def predict_consultation_opportunities(self, content_candidates: List[str]) -> List[ConsultationPrediction]:
+    async def predict_consultation_opportunities(self, content_candidates: list[str]) -> list[ConsultationPrediction]:
         """
         Week 2: Predictive Analytics & Optimization Engine
         Real-time consultation opportunity scoring using Graph-RAG features
         """
         logger.info(f"Predicting consultation opportunities for {len(content_candidates)} content candidates...")
-        
+
         predictions = []
-        
+
         for i, content in enumerate(content_candidates):
             prediction = await self._analyze_content_prediction(f"candidate_{i}", content)
             predictions.append(prediction)
             self._store_consultation_prediction(prediction)
-        
+
         # Sort by predicted pipeline value
         predictions.sort(key=lambda x: x.predicted_pipeline_value, reverse=True)
-        
+
         logger.info(f"Generated {len(predictions)} consultation predictions")
         return predictions
-    
+
     async def _analyze_content_prediction(self, content_id: str, content: str) -> ConsultationPrediction:
         """Analyze individual content for consultation prediction"""
-        
+
         # Content analysis
         content_features = self._extract_content_features(content)
-        
+
         # Graph-based prediction
         graph_score = await self._calculate_graph_prediction_score(content_features)
-        
+
         # Historical pattern matching
         pattern_score = self._calculate_pattern_matching_score(content_features)
-        
+
         # Combined prediction model
         base_inquiries = max(1, int((graph_score + pattern_score) / 2 * 5))  # Scale to realistic range
         predicted_inquiries = base_inquiries
-        
+
         # Calculate pipeline value
         avg_consultation_value = 35000  # Average from historical data
         predicted_pipeline_value = predicted_inquiries * avg_consultation_value
-        
+
         # Confidence interval (±20%)
         confidence_lower = predicted_pipeline_value * 0.8
         confidence_upper = predicted_pipeline_value * 1.2
-        
+
         # Success factors analysis
         success_factors = self._identify_success_factors(content_features)
-        
+
         # Optimization opportunities
         optimization_opportunities = self._identify_optimization_opportunities(content_features)
-        
+
         # Competitive advantages
         competitive_advantages = self._identify_competitive_advantages(content_features)
-        
+
         # Audience segmentation
         audience_segments = self._predict_audience_segments(content_features)
-        
+
         # Optimal timing
         optimal_timing = self._calculate_optimal_timing(content_features)
-        
+
         return ConsultationPrediction(
             prediction_id=f"prediction_{content_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
             content_id=content_id,
@@ -657,11 +656,11 @@ class AdvancedGraphRAGAnalyticsEngine:
             audience_segments=audience_segments,
             optimal_timing=optimal_timing
         )
-    
-    def _extract_content_features(self, content: str) -> Dict[str, Any]:
+
+    def _extract_content_features(self, content: str) -> dict[str, Any]:
         """Extract features from content for prediction"""
         content_lower = content.lower()
-        
+
         # Hook type detection
         hook_type = 'standard'
         if 'controversial' in content_lower or '🔥' in content:
@@ -672,7 +671,7 @@ class AdvancedGraphRAGAnalyticsEngine:
             hook_type = 'statistics'
         elif content_lower.strip().endswith('?'):
             hook_type = 'question'
-        
+
         # CTA detection
         cta_type = 'soft_ask'
         if 'dm me' in content_lower or 'message me' in content_lower:
@@ -681,7 +680,7 @@ class AdvancedGraphRAGAnalyticsEngine:
             cta_type = 'consultation_offer'
         elif any(phrase in content_lower for phrase in ['book a call', 'calendly', 'schedule']):
             cta_type = 'booking_focused'
-        
+
         # Topic analysis
         topics = []
         if any(term in content_lower for term in ['architecture', 'system', 'technical debt']):
@@ -692,7 +691,7 @@ class AdvancedGraphRAGAnalyticsEngine:
             topics.append('product_management')
         if any(term in content_lower for term in ['scaling', 'growth', 'startup']):
             topics.append('startup_scaling')
-        
+
         return {
             'hook_type': hook_type,
             'cta_type': cta_type,
@@ -705,39 +704,39 @@ class AdvancedGraphRAGAnalyticsEngine:
             'technical_depth': len([t for t in topics if 'technical' in t]),
             'business_focus': len([t for t in topics if t in ['product_management', 'startup_scaling']]),
         }
-    
-    async def _calculate_graph_prediction_score(self, features: Dict[str, Any]) -> float:
+
+    async def _calculate_graph_prediction_score(self, features: dict[str, Any]) -> float:
         """Calculate prediction score based on graph relationships"""
         score = 0.5  # Base score
-        
+
         # Hook type scoring
         hook_weights = self.content_performance_model['hook_weights']
         if features['hook_type'] in hook_weights:
             score += hook_weights[features['hook_type']] * 0.3
-        
+
         # CTA type scoring
         cta_weights = self.content_performance_model['cta_weights']
         if features['cta_type'] in cta_weights:
             score += cta_weights[features['cta_type']] * 0.3
-        
+
         # Topic scoring (topics with historical success)
         topic_bonus = len(features['topics']) * 0.1
         score += min(topic_bonus, 0.2)
-        
+
         # Technical depth bonus
         if features['technical_depth'] > 0:
             score += 0.15
-        
+
         # Business focus bonus
         if features['business_focus'] > 0:
             score += 0.2
-        
+
         return min(score, 1.0)
-    
-    def _calculate_pattern_matching_score(self, features: Dict[str, Any]) -> float:
+
+    def _calculate_pattern_matching_score(self, features: dict[str, Any]) -> float:
         """Calculate score based on historical pattern matching"""
         score = 0.4  # Base score
-        
+
         # Successful content patterns from historical data
         if features['hook_type'] in ['controversial', 'personal_story'] and features['cta_type'] == 'consultation_offer':
             score += 0.4
@@ -745,132 +744,132 @@ class AdvancedGraphRAGAnalyticsEngine:
             score += 0.35
         elif features['cta_type'] == 'direct_dm' and features['business_focus'] > 0:
             score += 0.3
-        
+
         # Word count optimization (300-500 words perform best)
         if 300 <= features['word_count'] <= 500:
             score += 0.1
         elif features['word_count'] > 500:
             score -= 0.05
-        
+
         # Code snippet bonus for technical content
         if features['has_code'] and features['technical_depth'] > 0:
             score += 0.15
-        
+
         return min(score, 1.0)
-    
-    def _identify_success_factors(self, features: Dict[str, Any]) -> List[str]:
+
+    def _identify_success_factors(self, features: dict[str, Any]) -> list[str]:
         """Identify key success factors for content"""
         factors = []
-        
+
         if features['hook_type'] == 'controversial':
             factors.append("Controversial hook drives high engagement")
-        
+
         if features['cta_type'] == 'consultation_offer':
             factors.append("Direct consultation offer increases conversion")
-        
+
         if 'technical_architecture' in features['topics']:
             factors.append("Technical architecture content resonates with CTOs")
-        
+
         if features['business_focus'] > 0:
             factors.append("Business-focused content drives consultation inquiries")
-        
+
         if features['has_code']:
             factors.append("Code examples demonstrate technical expertise")
-        
+
         if 300 <= features['word_count'] <= 500:
             factors.append("Optimal content length for engagement")
-        
+
         return factors[:5]  # Top 5 factors
-    
-    def _identify_optimization_opportunities(self, features: Dict[str, Any]) -> List[str]:
+
+    def _identify_optimization_opportunities(self, features: dict[str, Any]) -> list[str]:
         """Identify optimization opportunities"""
         opportunities = []
-        
+
         if features['hook_type'] == 'standard':
             opportunities.append("Consider controversial or personal story hook for higher engagement")
-        
+
         if features['cta_type'] == 'soft_ask':
             opportunities.append("Add direct consultation offer or booking link")
-        
+
         if not features['topics']:
             opportunities.append("Focus on specific technical or business topics")
-        
+
         if features['word_count'] < 200:
             opportunities.append("Expand content to 300-500 words for better performance")
-        
+
         if not features['has_emoji'] and features['hook_type'] != 'statistics':
             opportunities.append("Add relevant emojis to increase visual appeal")
-        
+
         return opportunities[:4]  # Top 4 opportunities
-    
-    def _identify_competitive_advantages(self, features: Dict[str, Any]) -> List[str]:
+
+    def _identify_competitive_advantages(self, features: dict[str, Any]) -> list[str]:
         """Identify competitive advantages of the content"""
         advantages = []
-        
+
         if features['has_code']:
             advantages.append("Technical code examples differentiate from generic business advice")
-        
+
         if features['hook_type'] == 'personal_story':
             advantages.append("Personal experience adds authenticity and trust")
-        
+
         if features['technical_depth'] > 0 and features['business_focus'] > 0:
             advantages.append("Unique blend of technical depth with business impact")
-        
+
         if 'technical_architecture' in features['topics']:
             advantages.append("Addresses specific CTO pain points with actionable solutions")
-        
+
         advantages.append("Data-driven insights backed by real production experience")
-        
+
         return advantages[:4]
-    
-    def _predict_audience_segments(self, features: Dict[str, Any]) -> List[str]:
+
+    def _predict_audience_segments(self, features: dict[str, Any]) -> list[str]:
         """Predict which audience segments will engage"""
         segments = []
-        
+
         if 'technical_architecture' in features['topics']:
             segments.append("Technical Leaders & CTOs")
-        
+
         if 'team_building' in features['topics']:
             segments.append("Engineering Managers")
-        
+
         if 'product_management' in features['topics']:
             segments.append("Product Leaders & PMs")
-        
+
         if 'startup_scaling' in features['topics']:
             segments.append("Startup Founders & CEOs")
-        
+
         if features['technical_depth'] > 0:
             segments.append("Senior Engineers")
-        
+
         # Default segments if none detected
         if not segments:
             segments = ["Technical Leaders", "Software Engineers"]
-        
+
         return segments[:3]
-    
-    def _calculate_optimal_timing(self, features: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _calculate_optimal_timing(self, features: dict[str, Any]) -> dict[str, Any]:
         """Calculate optimal timing for content based on features"""
-        
+
         # High-engagement content gets prime slots
         if features['hook_type'] in ['controversial', 'personal_story']:
             return {
                 'primary_day': 'Tuesday',
                 'primary_time': '6:30 AM EST',
-                'secondary_day': 'Thursday', 
+                'secondary_day': 'Thursday',
                 'secondary_time': '6:30 AM EST',
                 'reasoning': 'Controversial/personal content performs best in prime engagement windows'
             }
-        
+
         # Technical content for technical audience
         elif features['technical_depth'] > 0:
             return {
                 'primary_day': 'Tuesday',
                 'primary_time': '12:00 PM EST',
                 'secondary_day': 'Wednesday',
-                'secondary_time': '9:00 AM EST', 
+                'secondary_time': '9:00 AM EST',
                 'reasoning': 'Technical content performs well during work hours when engineers are active'
             }
-        
+
         # Business content for leadership audience
         elif features['business_focus'] > 0:
             return {
@@ -880,51 +879,51 @@ class AdvancedGraphRAGAnalyticsEngine:
                 'secondary_time': '7:00 AM EST',
                 'reasoning': 'Business-focused content resonates with leaders checking LinkedIn in morning'
             }
-        
+
         # Default timing
         return {
             'primary_day': 'Tuesday',
             'primary_time': '6:30 AM EST',
             'secondary_day': 'Thursday',
-            'secondary_time': '6:30 AM EST', 
+            'secondary_time': '6:30 AM EST',
             'reasoning': 'Default optimal engagement windows'
         }
 
-    async def generate_autonomous_optimizations(self) -> List[AutonomousOptimization]:
+    async def generate_autonomous_optimizations(self) -> list[AutonomousOptimization]:
         """
         Week 3: Strategic Intelligence & Autonomous Systems
         Advanced automation framework with AI-powered optimization
         """
         logger.info("Generating autonomous optimization recommendations...")
-        
+
         optimizations = []
-        
+
         # 1. Content strategy optimization
         content_opt = await self._optimize_content_strategy()
         optimizations.extend(content_opt)
-        
+
         # 2. Timing optimization
         timing_opt = await self._optimize_posting_timing()
         optimizations.extend(timing_opt)
-        
+
         # 3. Audience targeting optimization
         audience_opt = await self._optimize_audience_targeting()
         optimizations.extend(audience_opt)
-        
+
         # Store optimizations in database
         for optimization in optimizations:
             self._store_autonomous_optimization(optimization)
-        
+
         logger.info(f"Generated {len(optimizations)} autonomous optimizations")
         return optimizations
-    
-    async def _optimize_content_strategy(self) -> List[AutonomousOptimization]:
+
+    async def _optimize_content_strategy(self) -> list[AutonomousOptimization]:
         """Generate content strategy optimizations"""
         optimizations = []
-        
+
         # Analyze current content performance
         current_performance = await self._analyze_current_content_performance()
-        
+
         # Identify optimization opportunities
         if current_performance['avg_engagement'] < 0.12:
             optimization = AutonomousOptimization(
@@ -968,16 +967,16 @@ class AdvancedGraphRAGAnalyticsEngine:
                 rollback_strategy="Revert to previous content mix if engagement drops below baseline for 2 consecutive weeks"
             )
             optimizations.append(optimization)
-        
+
         return optimizations
-    
-    async def _optimize_posting_timing(self) -> List[AutonomousOptimization]:
+
+    async def _optimize_posting_timing(self) -> list[AutonomousOptimization]:
         """Generate timing optimization recommendations"""
         optimizations = []
-        
+
         # Analyze current timing performance
         timing_analysis = await self._analyze_timing_performance()
-        
+
         if timing_analysis['optimization_potential'] > 0.15:
             optimization = AutonomousOptimization(
                 optimization_id=f"timing_optimization_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -994,7 +993,7 @@ class AdvancedGraphRAGAnalyticsEngine:
                 ],
                 risk_assessment={
                     'business_risk': 'very_low',
-                    'brand_risk': 'very_low', 
+                    'brand_risk': 'very_low',
                     'implementation_risk': 'very_low',
                     'mitigation_strategies': ['Monitor engagement for first 2 weeks', 'Adjust timing if performance drops']
                 },
@@ -1007,16 +1006,16 @@ class AdvancedGraphRAGAnalyticsEngine:
                 rollback_strategy="Return to previous posting schedule if metrics decline for 1 week"
             )
             optimizations.append(optimization)
-        
+
         return optimizations
-    
-    async def _optimize_audience_targeting(self) -> List[AutonomousOptimization]:
+
+    async def _optimize_audience_targeting(self) -> list[AutonomousOptimization]:
         """Generate audience targeting optimizations"""
         optimizations = []
-        
+
         # Audience analysis
         audience_insights = await self._analyze_audience_performance()
-        
+
         optimization = AutonomousOptimization(
             optimization_id=f"audience_targeting_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
             optimization_type="audience_targeting",
@@ -1049,14 +1048,14 @@ class AdvancedGraphRAGAnalyticsEngine:
             rollback_strategy="Maintain successful segments, discontinue underperforming ones after 4-week evaluation"
         )
         optimizations.append(optimization)
-        
+
         return optimizations
 
-    async def _analyze_current_content_performance(self) -> Dict[str, float]:
+    async def _analyze_current_content_performance(self) -> dict[str, float]:
         """Analyze current content performance metrics"""
         conn = sqlite3.connect('linkedin_business_development.db')
         cursor = conn.cursor()
-        
+
         try:
             cursor.execute('''
                 SELECT 
@@ -1067,7 +1066,7 @@ class AdvancedGraphRAGAnalyticsEngine:
                 WHERE posted_at > date('now', '-30 days')
                 AND actual_engagement_rate IS NOT NULL
             ''')
-            
+
             result = cursor.fetchone()
             return {
                 'avg_engagement': result[0] or 0.08,
@@ -1076,8 +1075,8 @@ class AdvancedGraphRAGAnalyticsEngine:
             }
         finally:
             conn.close()
-    
-    async def _analyze_timing_performance(self) -> Dict[str, Any]:
+
+    async def _analyze_timing_performance(self) -> dict[str, Any]:
         """Analyze timing optimization potential"""
         return {
             'optimization_potential': 0.20,  # 20% improvement potential
@@ -1093,8 +1092,8 @@ class AdvancedGraphRAGAnalyticsEngine:
                 'projected_overall_engagement': 0.12
             }
         }
-    
-    async def _analyze_audience_performance(self) -> Dict[str, Any]:
+
+    async def _analyze_audience_performance(self) -> dict[str, Any]:
         """Analyze audience targeting performance"""
         return {
             'current_performance': {
@@ -1113,7 +1112,7 @@ class AdvancedGraphRAGAnalyticsEngine:
         """Store graph insight in database"""
         conn = sqlite3.connect(self.analytics_db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT OR REPLACE INTO graph_insights
             (insight_id, insight_type, insight_description, entities_involved,
@@ -1134,15 +1133,15 @@ class AdvancedGraphRAGAnalyticsEngine:
             insight.implementation_effort,
             insight.priority
         ))
-        
+
         conn.commit()
         conn.close()
-    
+
     def _store_consultation_prediction(self, prediction: ConsultationPrediction):
         """Store consultation prediction in database"""
         conn = sqlite3.connect(self.analytics_db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT OR REPLACE INTO consultation_predictions
             (prediction_id, content_id, predicted_inquiries, predicted_pipeline_value,
@@ -1162,15 +1161,15 @@ class AdvancedGraphRAGAnalyticsEngine:
             json.dumps(prediction.audience_segments),
             json.dumps(prediction.optimal_timing)
         ))
-        
+
         conn.commit()
         conn.close()
-    
+
     def _store_autonomous_optimization(self, optimization: AutonomousOptimization):
         """Store autonomous optimization in database"""
         conn = sqlite3.connect(self.analytics_db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT OR REPLACE INTO autonomous_optimizations
             (optimization_id, optimization_type, current_performance, optimized_performance,
@@ -1189,14 +1188,14 @@ class AdvancedGraphRAGAnalyticsEngine:
             json.dumps(optimization.success_metrics),
             optimization.rollback_strategy
         ))
-        
+
         conn.commit()
         conn.close()
 
-    async def generate_unified_intelligence_report(self) -> Dict[str, Any]:
+    async def generate_unified_intelligence_report(self) -> dict[str, Any]:
         """Generate comprehensive unified intelligence report"""
         logger.info("Generating unified business intelligence report...")
-        
+
         # Get all insights and predictions
         graph_insights = await self.analyze_content_graph_relationships()
         predictions = await self.predict_consultation_opportunities([
@@ -1205,12 +1204,12 @@ class AdvancedGraphRAGAnalyticsEngine:
             "Why your product roadmap is probably killing your startup (3 signs)"
         ])
         optimizations = await self.generate_autonomous_optimizations()
-        
+
         # Calculate business impact
         total_projected_value = sum(insight.projected_pipeline_value for insight in graph_insights)
         total_predicted_pipeline = sum(pred.predicted_pipeline_value for pred in predictions)
         total_optimization_improvement = sum(opt.improvement_percentage for opt in optimizations) / len(optimizations) if optimizations else 0
-        
+
         # Generate report
         report = {
             'report_id': f"unified_intelligence_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -1258,7 +1257,7 @@ class AdvancedGraphRAGAnalyticsEngine:
                     ]
                 },
                 {
-                    'priority': 'High - Week 2-3', 
+                    'priority': 'High - Week 2-3',
                     'actions': [
                         'Launch content strategy optimization',
                         'Implement audience segmentation strategy',
@@ -1275,7 +1274,7 @@ class AdvancedGraphRAGAnalyticsEngine:
                 }
             ]
         }
-        
+
         logger.info("Unified intelligence report generated successfully")
         return report
 
@@ -1285,17 +1284,17 @@ async def main():
     print("=" * 80)
     print("Mission: AI-powered analytics for 20-30% consultation pipeline growth")
     print()
-    
+
     # Initialize the analytics engine
     analytics_engine = AdvancedGraphRAGAnalyticsEngine()
-    
+
     print("🔍 Week 1: Advanced Graph-RAG Analytics Development")
     print("-" * 60)
-    
+
     # Generate graph insights
     insights = await analytics_engine.analyze_content_graph_relationships()
     print(f"✅ Generated {len(insights)} graph-based business insights")
-    
+
     # Display top insights
     high_priority_insights = [i for i in insights if i.priority in ['critical', 'high']]
     print(f"📊 High Priority Insights: {len(high_priority_insights)}")
@@ -1304,20 +1303,20 @@ async def main():
         print(f"    Pipeline Value: ${insight.projected_pipeline_value:,.0f}")
         print(f"    Confidence: {insight.confidence_score:.1%}")
         print()
-    
-    print("🔮 Week 2: Predictive Analytics & Optimization Engine") 
+
+    print("🔮 Week 2: Predictive Analytics & Optimization Engine")
     print("-" * 60)
-    
+
     # Test content predictions
     test_content = [
         "🔥 CONTROVERSIAL: Most technical architects are just feature factories. Here's how real technical leaders think differently...",
         "The brutal truth about scaling engineering teams that 99% of CTOs ignore (personal story from $50M company)",
         "Why your product roadmap is probably killing your startup: 3 data-driven warning signs from 100+ failed companies"
     ]
-    
+
     predictions = await analytics_engine.predict_consultation_opportunities(test_content)
     print(f"✅ Generated {len(predictions)} consultation predictions")
-    
+
     # Display top predictions
     for i, prediction in enumerate(predictions[:2], 1):
         print(f"📈 Prediction {i}:")
@@ -1325,14 +1324,14 @@ async def main():
         print(f"  Pipeline Value: ${prediction.predicted_pipeline_value:,.0f}")
         print(f"  Success Factors: {', '.join(prediction.success_factors[:2])}")
         print()
-    
+
     print("🤖 Week 3: Strategic Intelligence & Autonomous Systems")
     print("-" * 60)
-    
+
     # Generate autonomous optimizations
     optimizations = await analytics_engine.generate_autonomous_optimizations()
     print(f"✅ Generated {len(optimizations)} autonomous optimizations")
-    
+
     # Display optimizations
     for opt in optimizations:
         print(f"⚡ {opt.optimization_type.replace('_', ' ').title()}:")
@@ -1340,13 +1339,13 @@ async def main():
         print(f"  Timeline: {opt.expected_timeline}")
         print(f"  Risk: {opt.risk_assessment.get('business_risk', 'unknown')}")
         print()
-    
+
     print("📊 Unified Business Intelligence Report")
     print("-" * 60)
-    
+
     # Generate unified report
     report = await analytics_engine.generate_unified_intelligence_report()
-    
+
     print("💰 ROI Projections:")
     roi = report['roi_projections']
     print(f"  Current Pipeline: ${roi['baseline_monthly_pipeline']:,}/month")
@@ -1355,14 +1354,14 @@ async def main():
     print(f"  Annual Impact: ${roi['annual_additional_value']:,}")
     print(f"  ROI: {roi['roi_percentage']}%")
     print()
-    
+
     print("🎯 Strategic Implementation Priority:")
     for phase in report['implementation_priority']:
         print(f"  {phase['priority']}:")
         for action in phase['actions']:
             print(f"    - {action}")
         print()
-    
+
     print("✅ Epic 3 SUCCESS ACHIEVED!")
     print("=" * 80)
     print("🚀 Advanced Graph-RAG analytics deployed with:")

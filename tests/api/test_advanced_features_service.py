@@ -1,20 +1,19 @@
 import os
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 os.environ.setdefault("SKIP_SPACY_IMPORT", "1")
 
 import pytest
 from fastapi import FastAPI
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
+from graph_rag.api.dependencies import MockEmbeddingService, get_advanced_features_service
 from graph_rag.api.routers.advanced_features import create_advanced_features_router
-from graph_rag.api.dependencies import get_advanced_features_service
 from graph_rag.core.interfaces import ChunkData
 from graph_rag.domain.models import Chunk, Document, Entity, Relationship
 from graph_rag.infrastructure.graph_stores.mock_graph_store import MockGraphRepository
 from graph_rag.infrastructure.vector_stores.simple_vector_store import SimpleVectorStore
 from graph_rag.services.advanced_features import AdvancedFeaturesService
-from graph_rag.api.dependencies import MockEmbeddingService
 
 
 @pytest.fixture

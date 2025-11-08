@@ -323,7 +323,7 @@ class Settings(BaseSettings):
         False,
         description="Enable enterprise authentication features (SSO, multi-tenancy, compliance). Default: False"
     )
-    
+
     # SAML 2.0 Configuration
     saml_entity_id: str = Field(
         "",
@@ -337,13 +337,13 @@ class Settings(BaseSettings):
         None,
         description="Path to SAML private key file"
     )
-    
+
     # OAuth 2.0/OpenID Connect Configuration
     oauth_redirect_uri: str = Field(
         "http://localhost:8000/auth/enterprise/oauth/callback",
         description="OAuth redirect URI for authentication callbacks"
     )
-    
+
     # LDAP/Active Directory Configuration
     ldap_connection_timeout: int = Field(
         10,
@@ -355,7 +355,7 @@ class Settings(BaseSettings):
         ge=1,
         description="LDAP search operation timeout in seconds. Default: 30"
     )
-    
+
     # Multi-Factor Authentication Settings
     mfa_issuer_name: str = Field(
         "Synapse Graph-RAG",
@@ -373,7 +373,7 @@ class Settings(BaseSettings):
         le=5,
         description="TOTP time window tolerance (periods). Default: 1"
     )
-    
+
     # Multi-Tenancy Settings
     enable_multi_tenancy: bool = Field(
         False,
@@ -387,7 +387,7 @@ class Settings(BaseSettings):
         "database",
         description="Tenant isolation level ('database', 'schema', 'row'). Default: database"
     )
-    
+
     # Compliance and Audit Settings
     enable_audit_logging: bool = Field(
         True,
@@ -406,7 +406,7 @@ class Settings(BaseSettings):
         False,
         description="Enable GDPR compliance mode with data subject rights. Default: False"
     )
-    
+
     # Security Policy Settings
     password_min_length: int = Field(
         12,
@@ -429,7 +429,7 @@ class Settings(BaseSettings):
         True,
         description="Require MFA for admin users. Default: True"
     )
-    
+
     # Rate Limiting for Enterprise
     enterprise_rate_limit_per_minute: int = Field(
         1000,
@@ -446,7 +446,7 @@ class Settings(BaseSettings):
         ge=5,
         description="Account lockout duration in minutes. Default: 30"
     )
-    
+
     # Encryption and Key Management
     enable_field_encryption: bool = Field(
         True,
@@ -461,7 +461,7 @@ class Settings(BaseSettings):
         ge=30,
         description="Encryption key rotation interval in days. Default: 90"
     )
-    
+
     # High Availability and Disaster Recovery
     enable_ha_mode: bool = Field(
         False,
@@ -480,7 +480,7 @@ class Settings(BaseSettings):
         False,
         description="Enable cross-region data replication for DR. Default: False"
     )
-    
+
     # Add other settings as needed...
 
     @model_validator(mode="after")

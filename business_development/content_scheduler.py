@@ -6,11 +6,9 @@ Automate content posting at optimal times with performance tracking
 
 import logging
 import sqlite3
-import sys
 import time
 from datetime import datetime
 from datetime import time as datetime_time
-from pathlib import Path
 
 import schedule
 

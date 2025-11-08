@@ -7,9 +7,9 @@ This module provides premium consulting framework for Fortune 500 AI transformat
 - Executive AI Education for C-suite AI literacy and adoption
 """
 
-from .strategy_generator import AIStrategyGenerator
-from .governance_framework import AIGovernanceFramework
 from .executive_education import ExecutiveAIEducation
+from .governance_framework import AIGovernanceFramework
+from .strategy_generator import AIStrategyGenerator
 
 __all__ = [
     "AIStrategyGenerator",

@@ -8,11 +8,11 @@ This module provides real-time competitive analysis and market positioning:
 """
 
 from .competitor_analyzer import CompetitorAnalyzer
-from .market_positioning import MarketPositioningEngine
 from .differentiation_advisor import DifferentiationAdvisor
+from .market_positioning import MarketPositioningEngine
 
 __all__ = [
     "CompetitorAnalyzer",
-    "MarketPositioningEngine", 
+    "MarketPositioningEngine",
     "DifferentiationAdvisor"
 ]

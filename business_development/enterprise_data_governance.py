@@ -4,19 +4,16 @@ Epic 15 Phase 3: Enterprise-Ready Data Governance Framework
 Multi-tenant data isolation, compliance, and security for Fortune 500 scaling
 """
 
-import logging
-import sqlite3
 import json
-import hashlib
+import logging
 import secrets
-from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
-from typing import Dict, List, Optional, Tuple, Any, Union
-import pandas as pd
+import sqlite3
 import uuid
-from pathlib import Path
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 from enum import Enum
-import os
+from pathlib import Path
+from typing import Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -52,11 +49,11 @@ class TenantConfiguration:
     """Multi-tenant configuration"""
     tenant_id: str
     tenant_name: str
-    compliance_frameworks: List[ComplianceFramework]
+    compliance_frameworks: list[ComplianceFramework]
     data_retention_days: int
     encryption_required: bool
     audit_level: str  # basic, detailed, comprehensive
-    resource_limits: Dict[str, int]
+    resource_limits: dict[str, int]
     created_at: str
     updated_at: str
 
@@ -67,10 +64,10 @@ class DataGovernancePolicy:
     policy_name: str
     policy_type: str  # retention, access, encryption, classification
     tenant_id: str
-    rules: Dict[str, Any]  # JSON policy rules
-    compliance_frameworks: List[ComplianceFramework]
+    rules: dict[str, Any]  # JSON policy rules
+    compliance_frameworks: list[ComplianceFramework]
     effective_date: str
-    expiry_date: Optional[str]
+    expiry_date: str | None
     is_active: bool
 
 @dataclass
@@ -82,30 +79,30 @@ class AuditLogEntry:
     event_type: AuditEventType
     resource_type: str
     resource_id: str
-    action_details: Dict[str, Any]
+    action_details: dict[str, Any]
     ip_address: str
     user_agent: str
     timestamp: str
-    compliance_context: Dict[str, Any]
+    compliance_context: dict[str, Any]
 
 class EnterpriseDataGovernance:
     """Enterprise-ready data governance framework"""
-    
+
     def __init__(self):
         self.governance_db_path = 'synapse_system_infrastructure.db'
         self.encryption_key = self._get_or_create_encryption_key()
-        
+
         # Initialize governance infrastructure
         self._init_governance_database()
         self._init_default_policies()
         self._init_compliance_frameworks()
-        
+
         logger.info("Enterprise data governance framework initialized")
-        
+
     def _get_or_create_encryption_key(self) -> str:
         """Get or create encryption key for data governance"""
         key_file = Path('synapse_governance_key.txt')
-        
+
         if key_file.exists():
             return key_file.read_text().strip()
         else:
@@ -115,12 +112,12 @@ class EnterpriseDataGovernance:
             key_file.chmod(0o600)  # Restrict permissions
             logger.info("Generated new encryption key for data governance")
             return key
-            
+
     def _init_governance_database(self):
         """Initialize data governance database schema"""
         conn = sqlite3.connect(self.governance_db_path)
         cursor = conn.cursor()
-        
+
         # Multi-tenant configuration table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS tenant_configurations (
@@ -136,7 +133,7 @@ class EnterpriseDataGovernance:
                 is_active BOOLEAN DEFAULT TRUE
             )
         ''')
-        
+
         # Data governance policies table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS data_governance_policies (
@@ -154,7 +151,7 @@ class EnterpriseDataGovernance:
                 FOREIGN KEY (tenant_id) REFERENCES tenant_configurations (tenant_id)
             )
         ''')
-        
+
         # Comprehensive audit log table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS comprehensive_audit_log (
@@ -175,7 +172,7 @@ class EnterpriseDataGovernance:
                 FOREIGN KEY (tenant_id) REFERENCES tenant_configurations (tenant_id)
             )
         ''')
-        
+
         # Data classification and tagging table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS data_classification_registry (
@@ -196,7 +193,7 @@ class EnterpriseDataGovernance:
                 FOREIGN KEY (tenant_id) REFERENCES tenant_configurations (tenant_id)
             )
         ''')
-        
+
         # Compliance monitoring and reporting table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS compliance_monitoring (
@@ -217,7 +214,7 @@ class EnterpriseDataGovernance:
                 FOREIGN KEY (tenant_id) REFERENCES tenant_configurations (tenant_id)
             )
         ''')
-        
+
         # Data lineage and impact analysis table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS data_lineage_tracking (
@@ -237,7 +234,7 @@ class EnterpriseDataGovernance:
                 FOREIGN KEY (tenant_id) REFERENCES tenant_configurations (tenant_id)
             )
         ''')
-        
+
         # Security incident tracking table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS security_incident_log (
@@ -260,11 +257,11 @@ class EnterpriseDataGovernance:
                 FOREIGN KEY (tenant_id) REFERENCES tenant_configurations (tenant_id)
             )
         ''')
-        
+
         conn.commit()
         conn.close()
         logger.info("Enterprise data governance database schema initialized")
-        
+
     def _init_default_policies(self):
         """Initialize default data governance policies"""
         default_policies = [
@@ -286,7 +283,7 @@ class EnterpriseDataGovernance:
                 "is_active": True
             },
             {
-                "policy_id": "default-access-control-policy", 
+                "policy_id": "default-access-control-policy",
                 "policy_name": "Default Access Control Policy",
                 "policy_type": "access",
                 "tenant_id": "default",
@@ -305,7 +302,7 @@ class EnterpriseDataGovernance:
             },
             {
                 "policy_id": "default-encryption-policy",
-                "policy_name": "Default Data Encryption Policy", 
+                "policy_name": "Default Data Encryption Policy",
                 "policy_type": "encryption",
                 "tenant_id": "default",
                 "rules": {
@@ -323,7 +320,7 @@ class EnterpriseDataGovernance:
             {
                 "policy_id": "default-classification-policy",
                 "policy_name": "Default Data Classification Policy",
-                "policy_type": "classification", 
+                "policy_type": "classification",
                 "tenant_id": "default",
                 "rules": {
                     "automatic_classification": True,
@@ -338,10 +335,10 @@ class EnterpriseDataGovernance:
                 "is_active": True
             }
         ]
-        
+
         conn = sqlite3.connect(self.governance_db_path)
         cursor = conn.cursor()
-        
+
         for policy in default_policies:
             cursor.execute('''
                 INSERT OR REPLACE INTO data_governance_policies 
@@ -354,11 +351,11 @@ class EnterpriseDataGovernance:
                 json.dumps([f.value for f in policy["compliance_frameworks"]]),
                 policy["effective_date"], policy["expiry_date"], policy["is_active"]
             ))
-            
+
         conn.commit()
         conn.close()
         logger.info("Default data governance policies initialized")
-        
+
     def _init_compliance_frameworks(self):
         """Initialize compliance framework monitoring"""
         frameworks = [
@@ -393,10 +390,10 @@ class EnterpriseDataGovernance:
                 ]
             }
         ]
-        
+
         conn = sqlite3.connect(self.governance_db_path)
         cursor = conn.cursor()
-        
+
         for framework_data in frameworks:
             framework = framework_data["framework"]
             for control in framework_data["controls"]:
@@ -410,19 +407,19 @@ class EnterpriseDataGovernance:
                     control["description"], 'not_assessed', 'medium',
                     (datetime.now() + timedelta(days=90)).isoformat(), False
                 ))
-                
+
         conn.commit()
         conn.close()
         logger.info("Compliance framework monitoring initialized")
-        
-    def create_tenant(self, tenant_name: str, compliance_frameworks: List[ComplianceFramework] = None,
+
+    def create_tenant(self, tenant_name: str, compliance_frameworks: list[ComplianceFramework] = None,
                      data_retention_days: int = 2555) -> TenantConfiguration:
         """Create new multi-tenant configuration"""
         if compliance_frameworks is None:
             compliance_frameworks = [ComplianceFramework.SOC2, ComplianceFramework.GDPR]
-            
+
         tenant_id = f"tenant-{uuid.uuid4().hex[:12]}"
-        
+
         tenant_config = TenantConfiguration(
             tenant_id=tenant_id,
             tenant_name=tenant_name,
@@ -439,10 +436,10 @@ class EnterpriseDataGovernance:
             created_at=datetime.now().isoformat(),
             updated_at=datetime.now().isoformat()
         )
-        
+
         conn = sqlite3.connect(self.governance_db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT INTO tenant_configurations 
             (tenant_id, tenant_name, compliance_frameworks, data_retention_days,
@@ -455,26 +452,26 @@ class EnterpriseDataGovernance:
             tenant_config.audit_level, json.dumps(tenant_config.resource_limits),
             tenant_config.created_at, tenant_config.updated_at
         ))
-        
+
         conn.commit()
         conn.close()
-        
+
         logger.info(f"Created tenant configuration: {tenant_name} ({tenant_id})")
         return tenant_config
-        
+
     def log_audit_event(self, tenant_id: str, user_id: str, event_type: AuditEventType,
-                       resource_type: str, resource_id: str, action_details: Dict[str, Any],
+                       resource_type: str, resource_id: str, action_details: dict[str, Any],
                        ip_address: str = "unknown", user_agent: str = "unknown") -> str:
         """Log comprehensive audit event"""
         audit_id = f"audit-{uuid.uuid4().hex}"
-        
+
         # Determine data classification and risk score
         data_classification = self._determine_data_classification(resource_type, resource_id)
         risk_score = self._calculate_risk_score(event_type, data_classification, action_details)
-        
+
         # Build compliance context
         compliance_context = self._build_compliance_context(tenant_id, event_type, resource_type)
-        
+
         audit_entry = AuditLogEntry(
             audit_id=audit_id,
             tenant_id=tenant_id,
@@ -488,10 +485,10 @@ class EnterpriseDataGovernance:
             timestamp=datetime.now().isoformat(),
             compliance_context=compliance_context
         )
-        
+
         conn = sqlite3.connect(self.governance_db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT INTO comprehensive_audit_log 
             (audit_id, tenant_id, user_id, event_type, resource_type, resource_id,
@@ -505,17 +502,17 @@ class EnterpriseDataGovernance:
             audit_entry.ip_address, audit_entry.user_agent, audit_entry.timestamp,
             json.dumps(audit_entry.compliance_context), data_classification, risk_score
         ))
-        
+
         conn.commit()
         conn.close()
-        
+
         # Trigger automated response if high risk
         if risk_score >= 0.8:
             self._trigger_automated_response(audit_entry, risk_score)
-            
+
         logger.debug(f"Logged audit event: {audit_id} (Risk: {risk_score:.2f})")
         return audit_id
-        
+
     def _determine_data_classification(self, resource_type: str, resource_id: str) -> str:
         """Determine data classification for audit purposes"""
         # Business logic for data classification
@@ -527,12 +524,12 @@ class EnterpriseDataGovernance:
             return DataClassification.INTERNAL.value
         else:
             return DataClassification.INTERNAL.value
-            
+
     def _calculate_risk_score(self, event_type: AuditEventType, classification: str,
-                             action_details: Dict[str, Any]) -> float:
+                             action_details: dict[str, Any]) -> float:
         """Calculate risk score for audit event"""
         base_score = 0.3
-        
+
         # Event type risk factors
         event_risk = {
             AuditEventType.DATA_ACCESS: 0.2,
@@ -542,7 +539,7 @@ class EnterpriseDataGovernance:
             AuditEventType.PERMISSION_CHANGE: 0.6,
             AuditEventType.SECURITY_INCIDENT: 1.0
         }
-        
+
         # Classification risk factors
         classification_risk = {
             DataClassification.PUBLIC.value: 0.1,
@@ -550,10 +547,10 @@ class EnterpriseDataGovernance:
             DataClassification.CONFIDENTIAL.value: 0.6,
             DataClassification.RESTRICTED.value: 0.9
         }
-        
+
         event_multiplier = event_risk.get(event_type, 0.3)
         class_multiplier = classification_risk.get(classification, 0.3)
-        
+
         # Additional risk factors from action details
         additional_risk = 0.0
         if action_details.get('batch_operation', False):
@@ -562,12 +559,12 @@ class EnterpriseDataGovernance:
             additional_risk += 0.3
         if action_details.get('after_hours', False):
             additional_risk += 0.1
-            
+
         total_risk = min(base_score + event_multiplier + class_multiplier + additional_risk, 1.0)
         return round(total_risk, 3)
-        
+
     def _build_compliance_context(self, tenant_id: str, event_type: AuditEventType,
-                                 resource_type: str) -> Dict[str, Any]:
+                                 resource_type: str) -> dict[str, Any]:
         """Build compliance context for audit event"""
         context = {
             "applicable_frameworks": [],
@@ -575,41 +572,41 @@ class EnterpriseDataGovernance:
             "privacy_implications": {},
             "security_requirements": {}
         }
-        
+
         # Get tenant compliance frameworks
         conn = sqlite3.connect(self.governance_db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT compliance_frameworks FROM tenant_configurations 
             WHERE tenant_id = ?
         ''', (tenant_id,))
         result = cursor.fetchone()
-        
+
         if result:
             frameworks = json.loads(result[0])
             context["applicable_frameworks"] = frameworks
-            
+
             # Add framework-specific requirements
             if ComplianceFramework.GDPR.value in frameworks:
                 context["privacy_implications"]["gdpr_article_6"] = "lawful_basis_required"
                 context["retention_requirements"]["gdpr_compliant"] = True
-                
+
             if ComplianceFramework.SOC2.value in frameworks:
                 context["security_requirements"]["access_controls"] = "enforced"
                 context["security_requirements"]["monitoring"] = "continuous"
-                
+
             if ComplianceFramework.HIPAA.value in frameworks:
                 context["privacy_implications"]["phi_handling"] = "special_requirements"
                 context["security_requirements"]["encryption"] = "required"
-                
+
         conn.close()
         return context
-        
+
     def _trigger_automated_response(self, audit_entry: AuditLogEntry, risk_score: float):
         """Trigger automated response for high-risk events"""
         response_actions = []
-        
+
         if risk_score >= 0.9:
             # Critical risk - immediate actions
             response_actions.extend([
@@ -624,34 +621,34 @@ class EnterpriseDataGovernance:
                 "require_additional_authentication",
                 "detailed_logging"
             ])
-            
+
         # Log automated response
         conn = sqlite3.connect(self.governance_db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             UPDATE comprehensive_audit_log 
             SET automated_response = ?
             WHERE audit_id = ?
         ''', (json.dumps(response_actions), audit_entry.audit_id))
-        
+
         conn.commit()
         conn.close()
-        
+
         logger.warning(f"High-risk audit event triggered automated response: {audit_entry.audit_id} (Risk: {risk_score})")
-        
+
     def classify_data_resource(self, tenant_id: str, resource_type: str, resource_id: str,
-                              classification_level: DataClassification, 
-                              classification_tags: List[str] = None,
-                              compliance_requirements: List[ComplianceFramework] = None) -> str:
+                              classification_level: DataClassification,
+                              classification_tags: list[str] = None,
+                              compliance_requirements: list[ComplianceFramework] = None) -> str:
         """Classify data resource for governance"""
         classification_id = f"class-{uuid.uuid4().hex[:12]}"
-        
+
         if classification_tags is None:
             classification_tags = []
         if compliance_requirements is None:
             compliance_requirements = []
-            
+
         # Determine retention period based on classification
         retention_periods = {
             DataClassification.PUBLIC: 365,  # 1 year
@@ -659,13 +656,13 @@ class EnterpriseDataGovernance:
             DataClassification.CONFIDENTIAL: 2555,  # 7 years
             DataClassification.RESTRICTED: 3650  # 10 years
         }
-        
+
         retention_days = retention_periods.get(classification_level, 1825)
         next_review_date = (datetime.now() + timedelta(days=180)).isoformat()
-        
+
         conn = sqlite3.connect(self.governance_db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT INTO data_classification_registry 
             (classification_id, tenant_id, resource_type, resource_id, classification_level,
@@ -678,36 +675,36 @@ class EnterpriseDataGovernance:
             json.dumps([f.value for f in compliance_requirements]),
             retention_days, True, "system_auto", next_review_date
         ))
-        
+
         conn.commit()
         conn.close()
-        
+
         logger.info(f"Classified data resource: {resource_type}/{resource_id} as {classification_level.value}")
         return classification_id
-        
-    def perform_compliance_assessment(self, tenant_id: str, 
-                                    compliance_framework: ComplianceFramework) -> Dict[str, Any]:
+
+    def perform_compliance_assessment(self, tenant_id: str,
+                                    compliance_framework: ComplianceFramework) -> dict[str, Any]:
         """Perform comprehensive compliance assessment"""
         conn = sqlite3.connect(self.governance_db_path)
         cursor = conn.cursor()
-        
+
         # Get all controls for the framework
         cursor.execute('''
             SELECT control_id, control_description, assessment_result, risk_rating
             FROM compliance_monitoring 
             WHERE tenant_id = ? AND compliance_framework = ?
         ''', (tenant_id, compliance_framework.value))
-        
+
         controls = cursor.fetchall()
-        
+
         # Assess each control
         assessment_results = []
         for control in controls:
             control_id, description, current_result, risk_rating = control
-            
+
             # Perform automated assessment
             assessment_result = self._assess_control(tenant_id, compliance_framework, control_id)
-            
+
             assessment_results.append({
                 "control_id": control_id,
                 "description": description,
@@ -716,7 +713,7 @@ class EnterpriseDataGovernance:
                 "risk_rating": risk_rating,
                 "evidence": self._collect_evidence(tenant_id, control_id)
             })
-            
+
             # Update assessment result
             cursor.execute('''
                 UPDATE compliance_monitoring 
@@ -727,15 +724,15 @@ class EnterpriseDataGovernance:
                 (datetime.now() + timedelta(days=90)).isoformat(),
                 tenant_id, compliance_framework.value, control_id
             ))
-            
+
         conn.commit()
         conn.close()
-        
+
         # Calculate overall compliance score
         compliant_controls = sum(1 for result in assessment_results if result["assessment_result"] == "compliant")
         total_controls = len(assessment_results)
         compliance_score = (compliant_controls / total_controls * 100) if total_controls > 0 else 0
-        
+
         assessment_summary = {
             "framework": compliance_framework.value,
             "tenant_id": tenant_id,
@@ -747,14 +744,14 @@ class EnterpriseDataGovernance:
             "control_assessments": assessment_results,
             "recommendations": self._generate_compliance_recommendations(assessment_results)
         }
-        
+
         logger.info(f"Compliance assessment completed for {compliance_framework.value}: {compliance_score:.1f}%")
         return assessment_summary
-        
+
     def _assess_control(self, tenant_id: str, framework: ComplianceFramework, control_id: str) -> str:
         """Assess individual compliance control"""
         # Simplified assessment logic - in practice this would be much more sophisticated
-        
+
         if framework == ComplianceFramework.GDPR:
             if control_id == "GDPR-Art25":  # Data protection by design
                 # Check if encryption is enabled
@@ -762,7 +759,7 @@ class EnterpriseDataGovernance:
             elif control_id == "GDPR-Art32":  # Security of processing
                 # Check security measures
                 return "compliant" if self._check_security_measures(tenant_id) else "non_compliant"
-                
+
         elif framework == ComplianceFramework.SOC2:
             if control_id == "SOC2-CC6":  # Logical and physical access
                 # Check access controls
@@ -770,104 +767,104 @@ class EnterpriseDataGovernance:
             elif control_id == "SOC2-CC7":  # System operations
                 # Check operational controls
                 return "compliant" if self._check_operational_controls(tenant_id) else "non_compliant"
-                
+
         # Default to compliant for implemented controls
         return "compliant"
-        
+
     def _check_encryption_enabled(self, tenant_id: str) -> bool:
         """Check if encryption is properly configured"""
         conn = sqlite3.connect(self.governance_db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT encryption_required FROM tenant_configurations 
             WHERE tenant_id = ?
         ''', (tenant_id,))
         result = cursor.fetchone()
         conn.close()
-        
+
         return result and result[0]
-        
+
     def _check_security_measures(self, tenant_id: str) -> bool:
         """Check if security measures are in place"""
         # Check for recent security incidents
         conn = sqlite3.connect(self.governance_db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT COUNT(*) FROM security_incident_log 
             WHERE tenant_id = ? AND severity_level IN ('high', 'critical') 
             AND status != 'resolved' AND created_at >= date('now', '-30 days')
         ''', (tenant_id,))
-        
+
         unresolved_incidents = cursor.fetchone()[0]
         conn.close()
-        
+
         return unresolved_incidents == 0
-        
+
     def _check_access_controls(self, tenant_id: str) -> bool:
         """Check if access controls are properly implemented"""
         # Check governance policy for access controls
         conn = sqlite3.connect(self.governance_db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT rules FROM data_governance_policies 
             WHERE tenant_id = ? AND policy_type = 'access' AND is_active = 1
         ''', (tenant_id,))
         result = cursor.fetchone()
         conn.close()
-        
+
         if result:
             rules = json.loads(result[0])
             return rules.get('multi_factor_authentication_required', False)
-            
+
         return False
-        
+
     def _check_operational_controls(self, tenant_id: str) -> bool:
         """Check if operational controls are in place"""
         # Check for monitoring and alerting
         return True  # Assume operational controls are in place
-        
-    def _collect_evidence(self, tenant_id: str, control_id: str) -> List[str]:
+
+    def _collect_evidence(self, tenant_id: str, control_id: str) -> list[str]:
         """Collect evidence for compliance control"""
         evidence = []
-        
+
         # Collect audit log evidence
         conn = sqlite3.connect(self.governance_db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT COUNT(*) FROM comprehensive_audit_log 
             WHERE tenant_id = ? AND timestamp >= date('now', '-30 days')
         ''', (tenant_id,))
-        
+
         audit_count = cursor.fetchone()[0]
         if audit_count > 0:
             evidence.append(f"Comprehensive audit logging active: {audit_count} events in last 30 days")
-            
+
         # Collect policy evidence
         cursor.execute('''
             SELECT COUNT(*) FROM data_governance_policies 
             WHERE tenant_id = ? AND is_active = 1
         ''', (tenant_id,))
-        
+
         policy_count = cursor.fetchone()[0]
         if policy_count > 0:
             evidence.append(f"Active governance policies: {policy_count}")
-            
+
         conn.close()
         return evidence
-        
-    def _generate_compliance_recommendations(self, assessment_results: List[Dict]) -> List[str]:
+
+    def _generate_compliance_recommendations(self, assessment_results: list[dict]) -> list[str]:
         """Generate compliance improvement recommendations"""
         recommendations = []
-        
+
         non_compliant = [result for result in assessment_results if result["assessment_result"] == "non_compliant"]
-        
+
         if non_compliant:
             recommendations.append(f"Address {len(non_compliant)} non-compliant controls immediately")
-            
+
             # Specific recommendations based on control types
             for result in non_compliant:
                 control_id = result["control_id"]
@@ -877,49 +874,49 @@ class EnterpriseDataGovernance:
                     recommendations.append("Enable encryption at rest and in transit")
                 elif "monitoring" in control_id.lower():
                     recommendations.append("Implement continuous monitoring and alerting")
-                    
+
         high_risk = [result for result in assessment_results if result.get("risk_rating") == "high"]
         if high_risk:
             recommendations.append("Prioritize high-risk controls for immediate attention")
-            
+
         return recommendations
-        
-    def generate_compliance_report(self, tenant_id: str) -> Dict[str, Any]:
+
+    def generate_compliance_report(self, tenant_id: str) -> dict[str, Any]:
         """Generate comprehensive compliance report"""
         conn = sqlite3.connect(self.governance_db_path)
         cursor = conn.cursor()
-        
+
         # Get tenant configuration
         cursor.execute('''
             SELECT tenant_name, compliance_frameworks FROM tenant_configurations 
             WHERE tenant_id = ?
         ''', (tenant_id,))
         tenant_info = cursor.fetchone()
-        
+
         if not tenant_info:
             raise ValueError(f"Tenant {tenant_id} not found")
-            
+
         tenant_name, frameworks_json = tenant_info
         frameworks = json.loads(frameworks_json)
-        
+
         # Perform assessments for each framework
         framework_assessments = {}
         for framework_name in frameworks:
             framework = ComplianceFramework(framework_name)
             assessment = self.perform_compliance_assessment(tenant_id, framework)
             framework_assessments[framework_name] = assessment
-            
+
         # Calculate overall compliance score
         total_score = sum(assessment["compliance_score"] for assessment in framework_assessments.values())
         avg_compliance_score = total_score / len(framework_assessments) if framework_assessments else 0
-        
+
         # Get recent audit activity
         cursor.execute('''
             SELECT COUNT(*) FROM comprehensive_audit_log 
             WHERE tenant_id = ? AND timestamp >= date('now', '-30 days')
         ''', (tenant_id,))
         recent_audit_events = cursor.fetchone()[0]
-        
+
         # Get security incidents
         cursor.execute('''
             SELECT COUNT(*), severity_level FROM security_incident_log 
@@ -927,16 +924,16 @@ class EnterpriseDataGovernance:
             GROUP BY severity_level
         ''', (tenant_id,))
         incident_summary = dict(cursor.fetchall())
-        
+
         # Get data classification summary
         cursor.execute('''
             SELECT classification_level, COUNT(*) FROM data_classification_registry 
             WHERE tenant_id = ? GROUP BY classification_level
         ''', (tenant_id,))
         classification_summary = dict(cursor.fetchall())
-        
+
         conn.close()
-        
+
         report = {
             "report_id": f"compliance-report-{uuid.uuid4().hex[:12]}",
             "tenant_id": tenant_id,
@@ -955,53 +952,53 @@ class EnterpriseDataGovernance:
             "recommendations": self._generate_overall_recommendations(framework_assessments, avg_compliance_score),
             "next_assessment_due": (datetime.now() + timedelta(days=90)).isoformat()
         }
-        
+
         logger.info(f"Generated compliance report for {tenant_name}: {avg_compliance_score:.1f}% compliance")
         return report
-        
-    def _generate_overall_recommendations(self, assessments: Dict, overall_score: float) -> List[str]:
+
+    def _generate_overall_recommendations(self, assessments: dict, overall_score: float) -> list[str]:
         """Generate overall compliance recommendations"""
         recommendations = []
-        
+
         if overall_score < 80:
             recommendations.append("Overall compliance below 80% - immediate attention required")
-            
+
         if overall_score < 60:
             recommendations.append("Critical compliance gaps - consider compliance remediation program")
-            
+
         # Framework-specific recommendations
         low_scoring_frameworks = [
-            name for name, assessment in assessments.items() 
+            name for name, assessment in assessments.items()
             if assessment["compliance_score"] < 75
         ]
-        
+
         if low_scoring_frameworks:
             recommendations.append(f"Focus remediation efforts on: {', '.join(low_scoring_frameworks)}")
-            
+
         recommendations.append("Schedule quarterly compliance reviews")
         recommendations.append("Implement automated compliance monitoring")
-        
+
         return recommendations
-        
-    def get_governance_dashboard(self, tenant_id: str = "default") -> Dict[str, Any]:
+
+    def get_governance_dashboard(self, tenant_id: str = "default") -> dict[str, Any]:
         """Get enterprise data governance dashboard"""
         conn = sqlite3.connect(self.governance_db_path)
         cursor = conn.cursor()
-        
+
         # Get tenant info
         cursor.execute('''
             SELECT tenant_name, compliance_frameworks, data_retention_days, audit_level
             FROM tenant_configurations WHERE tenant_id = ?
         ''', (tenant_id,))
         tenant_info = cursor.fetchone()
-        
+
         # Get policy summary
         cursor.execute('''
             SELECT policy_type, COUNT(*) FROM data_governance_policies 
             WHERE tenant_id = ? AND is_active = 1 GROUP BY policy_type
         ''', (tenant_id,))
         policy_summary = dict(cursor.fetchall())
-        
+
         # Get recent audit activity
         cursor.execute('''
             SELECT event_type, COUNT(*) FROM comprehensive_audit_log 
@@ -1009,7 +1006,7 @@ class EnterpriseDataGovernance:
             GROUP BY event_type
         ''', (tenant_id,))
         recent_activity = dict(cursor.fetchall())
-        
+
         # Get compliance status
         cursor.execute('''
             SELECT compliance_framework, 
@@ -1019,7 +1016,7 @@ class EnterpriseDataGovernance:
             WHERE tenant_id = ?
             GROUP BY compliance_framework
         ''', (tenant_id,))
-        
+
         compliance_status = {}
         for row in cursor.fetchall():
             framework, compliant, total = row
@@ -1028,14 +1025,14 @@ class EnterpriseDataGovernance:
                 "total": total,
                 "percentage": round((compliant / total * 100) if total > 0 else 0, 1)
             }
-            
+
         # Get data classification metrics
         cursor.execute('''
             SELECT classification_level, COUNT(*) FROM data_classification_registry 
             WHERE tenant_id = ? GROUP BY classification_level
         ''', (tenant_id,))
         classification_metrics = dict(cursor.fetchall())
-        
+
         # Get security incident summary
         cursor.execute('''
             SELECT severity_level, COUNT(*) FROM security_incident_log 
@@ -1043,9 +1040,9 @@ class EnterpriseDataGovernance:
             GROUP BY severity_level
         ''', (tenant_id,))
         security_incidents = dict(cursor.fetchall())
-        
+
         conn.close()
-        
+
         dashboard = {
             "tenant_info": {
                 "tenant_id": tenant_id,
@@ -1073,19 +1070,19 @@ class EnterpriseDataGovernance:
             ),
             "last_updated": datetime.now().isoformat()
         }
-        
+
         return dashboard
-        
-    def _calculate_compliance_health(self, compliance_status: Dict) -> Dict[str, Any]:
+
+    def _calculate_compliance_health(self, compliance_status: dict) -> dict[str, Any]:
         """Calculate overall compliance health score"""
         if not compliance_status:
             return {"score": 0, "status": "not_assessed", "trend": "neutral"}
-            
+
         total_compliant = sum(status["compliant"] for status in compliance_status.values())
         total_controls = sum(status["total"] for status in compliance_status.values())
-        
+
         health_score = (total_compliant / total_controls * 100) if total_controls > 0 else 0
-        
+
         if health_score >= 90:
             status = "excellent"
         elif health_score >= 80:
@@ -1094,7 +1091,7 @@ class EnterpriseDataGovernance:
             status = "needs_improvement"
         else:
             status = "critical"
-            
+
         return {
             "score": round(health_score, 1),
             "status": status,
@@ -1102,13 +1099,13 @@ class EnterpriseDataGovernance:
             "total_controls": total_controls,
             "trend": "improving"  # Would calculate from historical data
         }
-        
-    def _generate_dashboard_recommendations(self, compliance_status: Dict, 
-                                          security_incidents: Dict, 
-                                          policy_summary: Dict) -> List[str]:
+
+    def _generate_dashboard_recommendations(self, compliance_status: dict,
+                                          security_incidents: dict,
+                                          policy_summary: dict) -> list[str]:
         """Generate dashboard recommendations"""
         recommendations = []
-        
+
         # Compliance recommendations
         low_compliance = [
             framework for framework, status in compliance_status.items()
@@ -1116,107 +1113,107 @@ class EnterpriseDataGovernance:
         ]
         if low_compliance:
             recommendations.append(f"Improve compliance for: {', '.join(low_compliance)}")
-            
+
         # Security recommendations
         high_incidents = security_incidents.get('high', 0) + security_incidents.get('critical', 0)
         if high_incidents > 0:
             recommendations.append(f"Address {high_incidents} high/critical security incidents")
-            
+
         # Policy recommendations
         if policy_summary.get('retention', 0) == 0:
             recommendations.append("Create data retention policies")
         if policy_summary.get('encryption', 0) == 0:
             recommendations.append("Define encryption policies")
-            
+
         return recommendations
 
 def run_enterprise_governance_demo():
     """Run enterprise data governance demonstration"""
     print("🏢 Epic 15 Phase 3: Enterprise Data Governance Framework")
     print("Multi-tenant compliance, security, and data classification\n")
-    
+
     # Initialize governance framework
     governance = EnterpriseDataGovernance()
-    
+
     # Create demo tenant for Epic 7 business
     print("🏗️  Creating Enterprise Tenant Configuration")
     tenant = governance.create_tenant(
-        "Epic7 Enterprise Client", 
+        "Epic7 Enterprise Client",
         [ComplianceFramework.GDPR, ComplianceFramework.SOC2, ComplianceFramework.ISO27001]
     )
     print(f"✅ Tenant created: {tenant.tenant_name} ({tenant.tenant_id})")
-    
+
     # Classify business-critical data
-    print(f"\n🏷️  Classifying Business-Critical Data")
+    print("\n🏷️  Classifying Business-Critical Data")
     governance.classify_data_resource(
         tenant.tenant_id, "crm_contacts", "epic7_crm_database",
-        DataClassification.CONFIDENTIAL, 
+        DataClassification.CONFIDENTIAL,
         ["pii", "business_critical", "customer_data"],
         [ComplianceFramework.GDPR]
     )
-    
+
     governance.classify_data_resource(
-        tenant.tenant_id, "revenue_forecasts", "unified_revenue_system", 
+        tenant.tenant_id, "revenue_forecasts", "unified_revenue_system",
         DataClassification.RESTRICTED,
         ["financial", "strategic", "confidential"],
         [ComplianceFramework.SOC2]
     )
     print("✅ Critical business data classified with appropriate governance controls")
-    
+
     # Log sample audit events
-    print(f"\n📊 Logging Enterprise Audit Events")
+    print("\n📊 Logging Enterprise Audit Events")
     audit_events = [
         {
             "event_type": AuditEventType.DATA_ACCESS,
-            "resource_type": "crm_contacts", 
+            "resource_type": "crm_contacts",
             "resource_id": "epic7_pipeline",
             "action_details": {"records_accessed": 16, "operation": "pipeline_analysis"}
         },
         {
             "event_type": AuditEventType.DATA_MODIFICATION,
             "resource_type": "revenue_forecasts",
-            "resource_id": "unified_forecast_engine", 
+            "resource_id": "unified_forecast_engine",
             "action_details": {"forecast_updated": "$4.99M", "confidence_score": 0.95}
         }
     ]
-    
+
     for event in audit_events:
         audit_id = governance.log_audit_event(
             tenant.tenant_id, "system_user", event["event_type"],
-            event["resource_type"], event["resource_id"], 
+            event["resource_type"], event["resource_id"],
             event["action_details"], "127.0.0.1", "Epic15-Phase3-Client"
         )
         print(f"✅ Audit event logged: {audit_id}")
-    
+
     # Perform compliance assessments
-    print(f"\n🛡️  Performing Compliance Assessments")
+    print("\n🛡️  Performing Compliance Assessments")
     frameworks_to_assess = [ComplianceFramework.GDPR, ComplianceFramework.SOC2]
-    
+
     assessment_results = {}
     for framework in frameworks_to_assess:
         assessment = governance.perform_compliance_assessment(tenant.tenant_id, framework)
         assessment_results[framework.value] = assessment
         print(f"✅ {framework.value}: {assessment['compliance_score']:.1f}% compliant")
-    
+
     # Generate comprehensive compliance report
-    print(f"\n📋 Generating Comprehensive Compliance Report")
+    print("\n📋 Generating Comprehensive Compliance Report")
     report = governance.generate_compliance_report(tenant.tenant_id)
     print(f"✅ Compliance report generated: {report['overall_compliance_score']:.1f}% overall compliance")
     print(f"   Status: {report['compliance_status']} | Report ID: {report['report_id']}")
-    
+
     # Get governance dashboard
-    print(f"\n📊 Enterprise Data Governance Dashboard")
+    print("\n📊 Enterprise Data Governance Dashboard")
     dashboard = governance.get_governance_dashboard(tenant.tenant_id)
-    
+
     governance_metrics = dashboard['governance_metrics']
     compliance_health = dashboard['compliance_health']
-    
-    print(f"✅ Dashboard generated:")
+
+    print("✅ Dashboard generated:")
     print(f"   Active Policies: {governance_metrics['total_policies']}")
     print(f"   Classified Resources: {governance_metrics['classified_resources']}")
     print(f"   Compliance Health: {compliance_health['score']:.1f}% ({compliance_health['status']})")
     print(f"   Recent Audit Events: {dashboard['security_metrics']['total_events_7_days']}")
-    
+
     # Success metrics
     success_metrics = {
         "tenant_created": len(governance_metrics['active_policies']) > 0,
@@ -1226,23 +1223,23 @@ def run_enterprise_governance_demo():
         "governance_policies": governance_metrics['total_policies'] >= 4,
         "enterprise_readiness": compliance_health['score'] >= 75
     }
-    
+
     success_count = sum(success_metrics.values())
     total_criteria = len(success_metrics)
-    
-    print(f"\n🎯 Enterprise Data Governance Success Criteria:")
+
+    print("\n🎯 Enterprise Data Governance Success Criteria:")
     for criterion, achieved in success_metrics.items():
         status = "✅" if achieved else "❌"
         print(f"  {status} {criterion.replace('_', ' ').title()}")
-    
+
     print(f"\n📋 Governance Success Rate: {success_count}/{total_criteria} ({success_count/total_criteria*100:.0f}%)")
-    
+
     if success_count >= total_criteria * 0.85:
-        print(f"\n🏆 ENTERPRISE DATA GOVERNANCE SUCCESSFULLY IMPLEMENTED!")
-        print(f"   Multi-tenant compliance framework operational")
+        print("\n🏆 ENTERPRISE DATA GOVERNANCE SUCCESSFULLY IMPLEMENTED!")
+        print("   Multi-tenant compliance framework operational")
     else:
-        print(f"\n⚠️  Enterprise data governance partially implemented")
-    
+        print("\n⚠️  Enterprise data governance partially implemented")
+
     return {
         "tenant_configuration": tenant,
         "assessment_results": assessment_results,
@@ -1255,17 +1252,17 @@ def run_enterprise_governance_demo():
 def main():
     """Main execution for enterprise data governance"""
     results = run_enterprise_governance_demo()
-    
-    print(f"\n📊 Enterprise Data Governance Implementation Summary:")
+
+    print("\n📊 Enterprise Data Governance Implementation Summary:")
     print(f"  🏢 Tenant: {results['tenant_configuration'].tenant_name}")
     print(f"  📋 Overall Compliance: {results['compliance_report']['overall_compliance_score']:.1f}%")
     print(f"  🛡️  Governance Health: {results['governance_dashboard']['compliance_health']['score']:.1f}%")
     print(f"  🎯 Success Rate: {results['success_rate']*100:.0f}%")
-    
+
     if results['success_rate'] >= 0.85:
-        print(f"\n🎉 EPIC 15 PHASE 3 ENTERPRISE DATA GOVERNANCE COMPLETE!")
-        print(f"   Ready for Fortune 500 multi-tenant scaling")
-    
+        print("\n🎉 EPIC 15 PHASE 3 ENTERPRISE DATA GOVERNANCE COMPLETE!")
+        print("   Ready for Fortune 500 multi-tenant scaling")
+
     return results
 
 if __name__ == "__main__":

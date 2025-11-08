@@ -6,18 +6,18 @@ CRITICAL: Advanced graph intelligence and specialized content features
 """
 
 import logging
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-# Graph and advanced feature dependencies
-from graph_rag.api.dependencies import get_advanced_features_service
-from graph_rag.services.advanced_features import AdvancedFeaturesService
-
 # Authentication dependencies
 from graph_rag.api.auth.dependencies import get_current_user_optional
 from graph_rag.api.auth.models import User
+
+# Graph and advanced feature dependencies
+from graph_rag.api.dependencies import get_advanced_features_service
+from graph_rag.services.advanced_features import AdvancedFeaturesService
 
 logger = logging.getLogger(__name__)
 
@@ -35,21 +35,21 @@ class GraphAnalysisRequest(BaseModel):
 
 class GraphAnalysisResponse(BaseModel):
     """Response model for graph analysis."""
-    entities: List[Dict[str, Any]]
-    relationships: List[Dict[str, Any]]
-    subgraphs: List[Dict[str, Any]]
-    analysis_metrics: Dict[str, Any]
+    entities: list[dict[str, Any]]
+    relationships: list[dict[str, Any]]
+    subgraphs: list[dict[str, Any]]
+    analysis_metrics: dict[str, Any]
 
 class GraphStatsResponse(BaseModel):
     """Response model for graph statistics."""
     total_nodes: int
     total_relationships: int
-    node_types: Dict[str, int]
-    relationship_types: Dict[str, int]
+    node_types: dict[str, int]
+    relationship_types: dict[str, int]
     graph_density: float
     connected_components: int
 
-# Hot Takes & Viral Content Models  
+# Hot Takes & Viral Content Models
 class HotTakeAnalysisRequest(BaseModel):
     """Request model for hot take analysis."""
     content: str = Field(..., description="Content to analyze for controversy")
@@ -64,23 +64,23 @@ class QuickScoreRequest(BaseModel):
 class OptimizationRequest(BaseModel):
     """Request model for content optimization."""
     original_content: str = Field(..., description="Original content to optimize")
-    optimization_goals: List[str] = Field(..., description="List of optimization goals")
+    optimization_goals: list[str] = Field(..., description="List of optimization goals")
     platform: str = Field(default="linkedin", description="Target platform")
 
 class HotTakeAnalysisResponse(BaseModel):
     """Response model for hot take analysis."""
     controversy_score: float
-    engagement_prediction: Dict[str, Any]
-    risk_assessment: Dict[str, Any]
-    optimization_suggestions: List[str]
+    engagement_prediction: dict[str, Any]
+    risk_assessment: dict[str, Any]
+    optimization_suggestions: list[str]
     viral_potential: float
 
 class ViralPredictionResponse(BaseModel):
     """Response model for viral prediction."""
     viral_score: float
     predicted_reach: int
-    engagement_factors: List[Dict[str, Any]]
-    optimization_recommendations: List[str]
+    engagement_factors: list[dict[str, Any]]
+    optimization_recommendations: list[str]
 
 # Brand Safety Models
 class SafetyCheckRequest(BaseModel):
@@ -91,25 +91,25 @@ class SafetyCheckRequest(BaseModel):
 class BrandSafetyResponse(BaseModel):
     """Response model for brand safety analysis."""
     safety_score: float
-    risk_categories: List[Dict[str, Any]]
-    flagged_content: List[str]
-    recommendations: List[str]
+    risk_categories: list[dict[str, Any]]
+    flagged_content: list[str]
+    recommendations: list[str]
     compliance_status: str
 
 # Reasoning & AI Models
 class ReasoningRequest(BaseModel):
     """Request model for AI reasoning."""
     query: str = Field(..., description="Query requiring reasoning")
-    context: Optional[str] = Field(None, description="Additional context")
+    context: str | None = Field(None, description="Additional context")
     reasoning_type: str = Field(default="logical", description="Type of reasoning: logical, causal, analogical")
 
 class ReasoningResponse(BaseModel):
     """Response model for AI reasoning."""
-    reasoning_chain: List[Dict[str, Any]]
+    reasoning_chain: list[dict[str, Any]]
     conclusion: str
     confidence_score: float
-    supporting_evidence: List[str]
-    alternative_viewpoints: List[str]
+    supporting_evidence: list[str]
+    alternative_viewpoints: list[str]
 
 # Chunks Management Models
 class ChunkAnalysisResponse(BaseModel):
@@ -133,7 +133,7 @@ def create_advanced_features_router() -> APIRouter:
     # GRAPH ANALYSIS ENDPOINTS
     # ===========================================
     @router.post(
-        "/graph/analyze", 
+        "/graph/analyze",
         response_model=GraphAnalysisResponse,
         summary="Perform advanced graph analysis",
         description="Analyze graph structure and relationships for complex queries",
@@ -142,7 +142,7 @@ def create_advanced_features_router() -> APIRouter:
     async def analyze_graph(
         request: GraphAnalysisRequest,
         service: Annotated[AdvancedFeaturesService, Depends(get_advanced_features_service)],
-        current_user: Optional[User] = Depends(get_current_user_optional),
+        current_user: User | None = Depends(get_current_user_optional),
     ) -> GraphAnalysisResponse:
         """Perform advanced graph analysis."""
         try:
@@ -158,7 +158,7 @@ def create_advanced_features_router() -> APIRouter:
             raise HTTPException(status_code=500, detail="Graph analysis failed")
 
     @router.get(
-        "/graph/stats", 
+        "/graph/stats",
         response_model=GraphStatsResponse,
         summary="Get graph statistics",
         description="Retrieve comprehensive graph structure statistics",
@@ -166,7 +166,7 @@ def create_advanced_features_router() -> APIRouter:
     )
     async def get_graph_stats(
         service: Annotated[AdvancedFeaturesService, Depends(get_advanced_features_service)],
-        current_user: Optional[User] = Depends(get_current_user_optional),
+        current_user: User | None = Depends(get_current_user_optional),
     ) -> GraphStatsResponse:
         """Get comprehensive graph statistics."""
         try:
@@ -186,7 +186,7 @@ def create_advanced_features_router() -> APIRouter:
         service: Annotated[AdvancedFeaturesService, Depends(get_advanced_features_service)],
         query: str = Query(..., description="Query to visualize"),
         max_nodes: int = Query(50, description="Maximum nodes to return"),
-        current_user: Optional[User] = Depends(get_current_user_optional),
+        current_user: User | None = Depends(get_current_user_optional),
     ):
         """Generate graph visualization data."""
         try:
@@ -200,7 +200,7 @@ def create_advanced_features_router() -> APIRouter:
     # HOT TAKES & VIRAL CONTENT ENDPOINTS
     # ===========================================
     @router.post(
-        "/hot-takes/analyze", 
+        "/hot-takes/analyze",
         response_model=HotTakeAnalysisResponse,
         summary="Analyze content for viral potential",
         description="Analyze content for controversy, engagement, and viral potential",
@@ -209,7 +209,7 @@ def create_advanced_features_router() -> APIRouter:
     async def analyze_hot_take(
         request: HotTakeAnalysisRequest,
         service: Annotated[AdvancedFeaturesService, Depends(get_advanced_features_service)],
-        current_user: Optional[User] = Depends(get_current_user_optional),
+        current_user: User | None = Depends(get_current_user_optional),
     ) -> HotTakeAnalysisResponse:
         """Analyze content for viral potential and controversy."""
         try:
@@ -224,7 +224,7 @@ def create_advanced_features_router() -> APIRouter:
             raise HTTPException(status_code=500, detail="Hot take analysis failed")
 
     @router.post(
-        "/hot-takes/quick-score", 
+        "/hot-takes/quick-score",
         summary="Get quick engagement score",
         description="Get rapid engagement score for content",
         tags=["Viral Content"]
@@ -232,7 +232,7 @@ def create_advanced_features_router() -> APIRouter:
     async def get_quick_score(
         request: QuickScoreRequest,
         service: Annotated[AdvancedFeaturesService, Depends(get_advanced_features_service)],
-        current_user: Optional[User] = Depends(get_current_user_optional),
+        current_user: User | None = Depends(get_current_user_optional),
     ):
         """Get quick engagement score for content."""
         try:
@@ -246,7 +246,7 @@ def create_advanced_features_router() -> APIRouter:
             raise HTTPException(status_code=500, detail="Quick score calculation failed")
 
     @router.post(
-        "/viral/predict", 
+        "/viral/predict",
         response_model=ViralPredictionResponse,
         summary="Predict viral potential",
         description="Predict viral potential and reach for content",
@@ -256,7 +256,7 @@ def create_advanced_features_router() -> APIRouter:
         service: Annotated[AdvancedFeaturesService, Depends(get_advanced_features_service)],
         content: str,
         platform: str = Query("linkedin", description="Target platform"),
-        current_user: Optional[User] = Depends(get_current_user_optional),
+        current_user: User | None = Depends(get_current_user_optional),
     ) -> ViralPredictionResponse:
         """Predict viral potential for content."""
         try:
@@ -270,7 +270,7 @@ def create_advanced_features_router() -> APIRouter:
     # BRAND SAFETY ENDPOINTS
     # ===========================================
     @router.post(
-        "/brand-safety/check", 
+        "/brand-safety/check",
         response_model=BrandSafetyResponse,
         summary="Check content brand safety",
         description="Analyze content for brand safety and compliance risks",
@@ -279,7 +279,7 @@ def create_advanced_features_router() -> APIRouter:
     async def check_brand_safety(
         request: SafetyCheckRequest,
         service: Annotated[AdvancedFeaturesService, Depends(get_advanced_features_service)],
-        current_user: Optional[User] = Depends(get_current_user_optional),
+        current_user: User | None = Depends(get_current_user_optional),
     ) -> BrandSafetyResponse:
         """Check content for brand safety compliance."""
         try:
@@ -300,7 +300,7 @@ def create_advanced_features_router() -> APIRouter:
     )
     async def get_brand_safety_guidelines(
         safety_level: str = Query("moderate", description="Guidelines level"),
-        current_user: Optional[User] = Depends(get_current_user_optional)
+        current_user: User | None = Depends(get_current_user_optional)
     ):
         """Get brand safety guidelines."""
         try:
@@ -328,7 +328,7 @@ def create_advanced_features_router() -> APIRouter:
                     "Content with regulatory compliance concerns"
                 ]
             }
-            
+
             return {
                 "guidelines": guidelines,
                 "safety_level": safety_level,
@@ -343,7 +343,7 @@ def create_advanced_features_router() -> APIRouter:
     # AI REASONING ENDPOINTS
     # ===========================================
     @router.post(
-        "/reasoning/analyze", 
+        "/reasoning/analyze",
         response_model=ReasoningResponse,
         summary="Perform AI reasoning analysis",
         description="Use AI reasoning to analyze complex queries and provide structured responses",
@@ -352,7 +352,7 @@ def create_advanced_features_router() -> APIRouter:
     async def perform_reasoning(
         request: ReasoningRequest,
         service: Annotated[AdvancedFeaturesService, Depends(get_advanced_features_service)],
-        current_user: Optional[User] = Depends(get_current_user_optional)
+        current_user: User | None = Depends(get_current_user_optional)
     ) -> ReasoningResponse:
         """Perform AI reasoning analysis."""
         try:
@@ -370,7 +370,7 @@ def create_advanced_features_router() -> APIRouter:
     # CHUNKS MANAGEMENT ENDPOINTS
     # ===========================================
     @router.get(
-        "/chunks/{chunk_id}", 
+        "/chunks/{chunk_id}",
         response_model=ChunkAnalysisResponse,
         summary="Get chunk analysis",
         description="Retrieve detailed analysis for a specific chunk",
@@ -379,7 +379,7 @@ def create_advanced_features_router() -> APIRouter:
     async def get_chunk_analysis(
         chunk_id: str,
         service: Annotated[AdvancedFeaturesService, Depends(get_advanced_features_service)],
-        current_user: Optional[User] = Depends(get_current_user_optional)
+        current_user: User | None = Depends(get_current_user_optional)
     ) -> ChunkAnalysisResponse:
         """Get detailed chunk analysis."""
         try:
@@ -390,7 +390,7 @@ def create_advanced_features_router() -> APIRouter:
             raise HTTPException(status_code=500, detail="Chunk analysis failed")
 
     @router.get(
-        "/chunks", 
+        "/chunks",
         summary="List chunks with filtering",
         description="List chunks with various filtering options",
         tags=["Chunks Management"]
@@ -399,8 +399,8 @@ def create_advanced_features_router() -> APIRouter:
         service: Annotated[AdvancedFeaturesService, Depends(get_advanced_features_service)],
         limit: int = Query(50, description="Maximum chunks to return"),
         skip: int = Query(0, description="Chunks to skip"),
-        document_id: Optional[str] = Query(None, description="Filter by document ID"),
-        current_user: Optional[User] = Depends(get_current_user_optional)
+        document_id: str | None = Query(None, description="Filter by document ID"),
+        current_user: User | None = Depends(get_current_user_optional)
     ):
         """List chunks with filtering options."""
         try:

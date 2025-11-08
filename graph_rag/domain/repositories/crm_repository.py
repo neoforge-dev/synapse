@@ -4,32 +4,31 @@ These define the contracts for data access in the domain layer.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
 from uuid import UUID
 
-from graph_rag.domain.models.crm import Contact, SalesPipeline, LeadQualification, Proposal
+from graph_rag.domain.models.crm import Contact, LeadQualification, Proposal, SalesPipeline
 
 
 class ICRMRepository(ABC):
     """Interface for CRM contact operations"""
 
     @abstractmethod
-    async def get_contact_by_id(self, contact_id: UUID) -> Optional[Contact]:
+    async def get_contact_by_id(self, contact_id: UUID) -> Contact | None:
         """Retrieve a contact by ID"""
         pass
 
     @abstractmethod
-    async def get_contacts_by_email(self, email: str) -> List[Contact]:
+    async def get_contacts_by_email(self, email: str) -> list[Contact]:
         """Retrieve contacts by email address"""
         pass
 
     @abstractmethod
-    async def get_contacts_by_lead_score(self, min_score: int) -> List[Contact]:
+    async def get_contacts_by_lead_score(self, min_score: int) -> list[Contact]:
         """Retrieve contacts with lead score above threshold"""
         pass
 
     @abstractmethod
-    async def get_high_value_contacts(self) -> List[Contact]:
+    async def get_high_value_contacts(self) -> list[Contact]:
         """Retrieve high-value contacts (business rule)"""
         pass
 
@@ -53,12 +52,12 @@ class ISalesPipelineRepository(ABC):
     """Interface for sales pipeline operations"""
 
     @abstractmethod
-    async def get_pipeline_by_contact(self, contact_id: UUID) -> List[SalesPipeline]:
+    async def get_pipeline_by_contact(self, contact_id: UUID) -> list[SalesPipeline]:
         """Get all pipeline entries for a contact"""
         pass
 
     @abstractmethod
-    async def get_pipeline_by_stage(self, stage: str) -> List[SalesPipeline]:
+    async def get_pipeline_by_stage(self, stage: str) -> list[SalesPipeline]:
         """Get pipeline entries by stage"""
         pass
 
@@ -82,7 +81,7 @@ class ILeadQualificationRepository(ABC):
     """Interface for lead qualification operations"""
 
     @abstractmethod
-    async def get_qualifications_by_contact(self, contact_id: UUID) -> List[LeadQualification]:
+    async def get_qualifications_by_contact(self, contact_id: UUID) -> list[LeadQualification]:
         """Get qualification history for a contact"""
         pass
 
@@ -92,7 +91,7 @@ class ILeadQualificationRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_recent_qualifications(self, days: int = 30) -> List[LeadQualification]:
+    async def get_recent_qualifications(self, days: int = 30) -> list[LeadQualification]:
         """Get qualifications from the last N days"""
         pass
 
@@ -101,12 +100,12 @@ class IProposalRepository(ABC):
     """Interface for proposal operations"""
 
     @abstractmethod
-    async def get_proposals_by_contact(self, contact_id: UUID) -> List[Proposal]:
+    async def get_proposals_by_contact(self, contact_id: UUID) -> list[Proposal]:
         """Get all proposals for a contact"""
         pass
 
     @abstractmethod
-    async def get_proposals_by_status(self, status: str) -> List[Proposal]:
+    async def get_proposals_by_status(self, status: str) -> list[Proposal]:
         """Get proposals by status"""
         pass
 

@@ -5,28 +5,20 @@ These tests demonstrate the usage of the CRM service layer and verify
 all operations work correctly. Tests use in-memory SQLite for fast execution.
 """
 
-import pytest
 from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from graph_rag.infrastructure.persistence.models.base import Base
-from graph_rag.infrastructure.persistence.models.crm import (
-    ContactModel,
-    SalesPipelineModel,
-    LeadQualificationModel,
-    ProposalModel,
-    ABTestCampaignModel,
-    RevenueForecastModel,
-)
 from graph_rag.services.crm_service import (
-    CRMService,
-    DatabaseConfig,
     ContactNotFoundError,
+    CRMService,
     CRMServiceError,
+    DatabaseConfig,
     get_crm_service,
 )
 

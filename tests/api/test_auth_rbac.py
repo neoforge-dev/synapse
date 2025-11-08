@@ -398,6 +398,7 @@ class TestRoleIntegrationWithAuthentication:
     def test_role_in_token_data(self):
         """Test that roles are included in JWT token data."""
         from datetime import datetime, timedelta
+
         from graph_rag.api.auth.models import TokenData
 
         token_data = TokenData(

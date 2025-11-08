@@ -4,18 +4,12 @@ Epic 18: Market Leadership & Global Expansion
 Systematically scale to $10M+ ARR through market dominance and international expansion
 """
 
-import asyncio
 import json
 import logging
 import sqlite3
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-from uuid import uuid4
-
-import numpy as np
-import pandas as pd
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -26,7 +20,7 @@ class GlobalMarket:
     """Global market region for expansion"""
     region_id: str
     region_name: str
-    countries: List[str]
+    countries: list[str]
     fortune500_targets: int
     market_size_billions: float
     digital_maturity_score: float
@@ -37,8 +31,8 @@ class GlobalMarket:
     projected_arr: int
     time_to_market_months: int
     success_probability: float
-    key_challenges: List[str]
-    strategic_advantages: List[str]
+    key_challenges: list[str]
+    strategic_advantages: list[str]
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
 
 @dataclass
@@ -48,15 +42,15 @@ class StrategicPartnership:
     partner_name: str
     partner_type: str  # cloud_provider, software_vendor, consulting_firm, system_integrator
     partnership_level: str  # strategic, preferred, certified, authorized
-    market_reach: List[str]  # Geographic markets they serve
+    market_reach: list[str]  # Geographic markets they serve
     customer_overlap: int  # Number of overlapping Fortune 500 clients
     integration_complexity: str  # low, medium, high
     revenue_potential: int
     investment_required: int
     timeline_months: int
     status: str  # prospecting, negotiating, signed, active
-    key_benefits: List[str]
-    requirements: List[str]
+    key_benefits: list[str]
+    requirements: list[str]
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
 
 @dataclass
@@ -66,15 +60,15 @@ class ThoughtLeadershipInitiative:
     initiative_type: str  # conference_speaking, research_publication, industry_report, webinar_series
     title: str
     target_audience: str
-    industry_focus: List[str]
+    industry_focus: list[str]
     global_reach: bool
     investment_required: int
     timeline_months: int
     expected_leads: int
     brand_value_impact: float  # 0-1 scale
     competitive_advantage: str
-    deliverables: List[str]
-    success_metrics: Dict[str, float]
+    deliverables: list[str]
+    success_metrics: dict[str, float]
     status: str  # planning, development, launched, completed
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
 
@@ -83,14 +77,14 @@ class ScalableDeliveryFramework:
     """Enterprise client success delivery framework"""
     framework_id: str
     framework_name: str
-    client_segments: List[str]  # Fortune 500, Enterprise, Large
+    client_segments: list[str]  # Fortune 500, Enterprise, Large
     delivery_methodology: str
-    standardized_processes: List[str]
+    standardized_processes: list[str]
     automation_level: float  # 0-1 scale
     scalability_factor: int  # How many concurrent clients supported
-    quality_assurance: Dict[str, str]
-    success_metrics: Dict[str, float]
-    resource_requirements: Dict[str, int]
+    quality_assurance: dict[str, str]
+    success_metrics: dict[str, float]
+    resource_requirements: dict[str, int]
     client_satisfaction_target: float
     retention_rate_target: float
     expansion_rate_target: float
@@ -110,34 +104,34 @@ class MarketConsolidationOpportunity:
     revenue_synergies: int
     cost_synergies: int
     time_to_integration_months: int
-    risk_factors: List[str]
-    strategic_benefits: List[str]
+    risk_factors: list[str]
+    strategic_benefits: list[str]
     due_diligence_status: str
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
 
 class GlobalMarketExpansionEngine:
     """Master orchestrator for global market expansion and $10M+ ARR achievement"""
-    
+
     def __init__(self):
         self.db_path = 'business_development/epic18_global_expansion.db'
         self._init_database()
-        
+
         # Load existing foundation data
         self.epic16_db_path = 'business_development/epic16_fortune500_acquisition.db'
         self.epic17_capabilities = self._load_epic17_capabilities()
-        
+
         # Global expansion configuration
         self.target_regions = self._initialize_target_regions()
         self.strategic_partners = self._initialize_strategic_partners()
         self.thought_leadership_plan = self._initialize_thought_leadership()
         self.delivery_frameworks = self._initialize_delivery_frameworks()
         self.consolidation_opportunities = self._initialize_consolidation_targets()
-        
+
     def _init_database(self):
         """Initialize Epic 18 global expansion database"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Global markets table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS global_markets (
@@ -160,7 +154,7 @@ class GlobalMarketExpansionEngine:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # Strategic partnerships table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS strategic_partnerships (
@@ -180,7 +174,7 @@ class GlobalMarketExpansionEngine:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # Thought leadership initiatives table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS thought_leadership (
@@ -201,7 +195,7 @@ class GlobalMarketExpansionEngine:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # Scalable delivery frameworks table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS delivery_frameworks (
@@ -222,7 +216,7 @@ class GlobalMarketExpansionEngine:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # Market consolidation opportunities table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS consolidation_opportunities (
@@ -243,7 +237,7 @@ class GlobalMarketExpansionEngine:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # ARR tracking and milestones table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS arr_milestones (
@@ -258,12 +252,12 @@ class GlobalMarketExpansionEngine:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         conn.commit()
         conn.close()
         logger.info("Epic 18 global expansion database initialized")
-        
-    def _load_epic17_capabilities(self) -> Dict[str, Any]:
+
+    def _load_epic17_capabilities(self) -> dict[str, Any]:
         """Load Epic 17 AI-enhanced competitive advantages"""
         return {
             "semantic_reasoning": "Multi-hop logical inference with 95%+ accuracy",
@@ -275,8 +269,8 @@ class GlobalMarketExpansionEngine:
             "technical_lead": "6-12 month competitive advantage",
             "market_position": "Definitive leader in enterprise GraphRAG"
         }
-        
-    def _initialize_target_regions(self) -> List[GlobalMarket]:
+
+    def _initialize_target_regions(self) -> list[GlobalMarket]:
         """Initialize target regions for global expansion"""
         return [
             GlobalMarket(
@@ -388,8 +382,8 @@ class GlobalMarketExpansionEngine:
                 ]
             )
         ]
-        
-    def _initialize_strategic_partners(self) -> List[StrategicPartnership]:
+
+    def _initialize_strategic_partners(self) -> list[StrategicPartnership]:
         """Initialize strategic technology vendor partnerships"""
         return [
             StrategicPartnership(
@@ -497,8 +491,8 @@ class GlobalMarketExpansionEngine:
                 ]
             )
         ]
-        
-    def _initialize_thought_leadership(self) -> List[ThoughtLeadershipInitiative]:
+
+    def _initialize_thought_leadership(self) -> list[ThoughtLeadershipInitiative]:
         """Initialize thought leadership initiatives"""
         return [
             ThoughtLeadershipInitiative(
@@ -580,8 +574,8 @@ class GlobalMarketExpansionEngine:
                 status="launched"
             )
         ]
-        
-    def _initialize_delivery_frameworks(self) -> List[ScalableDeliveryFramework]:
+
+    def _initialize_delivery_frameworks(self) -> list[ScalableDeliveryFramework]:
         """Initialize scalable delivery frameworks"""
         return [
             ScalableDeliveryFramework(
@@ -657,8 +651,8 @@ class GlobalMarketExpansionEngine:
                 expansion_rate_target=0.70
             )
         ]
-        
-    def _initialize_consolidation_targets(self) -> List[MarketConsolidationOpportunity]:
+
+    def _initialize_consolidation_targets(self) -> list[MarketConsolidationOpportunity]:
         """Initialize market consolidation opportunities"""
         return [
             MarketConsolidationOpportunity(
@@ -740,40 +734,40 @@ class GlobalMarketExpansionEngine:
                 due_diligence_status="identified"
             )
         ]
-        
-    def execute_global_market_expansion(self) -> Dict[str, Any]:
+
+    def execute_global_market_expansion(self) -> dict[str, Any]:
         """Execute comprehensive global market expansion strategy"""
-        
+
         logger.info("🌍 Epic 18: Global Market Leadership & Expansion")
-        
+
         # Phase 1: Global market analysis and expansion planning
         logger.info("📊 Phase 1: Global market expansion framework")
         market_expansion_plan = self._develop_market_expansion_plan()
-        
+
         # Phase 2: Strategic partnership development
         logger.info("🤝 Phase 2: Strategic partnership platform")
         partnership_strategy = self._build_partnership_strategy()
-        
+
         # Phase 3: Thought leadership domination
         logger.info("🎤 Phase 3: Thought leadership dominance")
         thought_leadership_execution = self._execute_thought_leadership()
-        
+
         # Phase 4: Scalable delivery framework implementation
         logger.info("🏗️ Phase 4: Scalable delivery framework")
         delivery_framework_deployment = self._deploy_delivery_frameworks()
-        
+
         # Phase 5: Market consolidation strategy
         logger.info("🎯 Phase 5: Market consolidation opportunities")
         consolidation_strategy = self._develop_consolidation_strategy()
-        
+
         # Phase 6: Multi-region infrastructure
         logger.info("🌐 Phase 6: Multi-region infrastructure")
         infrastructure_deployment = self._deploy_global_infrastructure()
-        
+
         # Phase 7: $10M+ ARR achievement framework
         logger.info("💰 Phase 7: $10M+ ARR achievement validation")
         arr_achievement_framework = self._create_arr_achievement_framework()
-        
+
         # Save all components to database
         self._save_expansion_components(
             market_expansion_plan,
@@ -783,7 +777,7 @@ class GlobalMarketExpansionEngine:
             consolidation_strategy,
             arr_achievement_framework
         )
-        
+
         # Calculate comprehensive metrics
         expansion_metrics = self._calculate_expansion_metrics(
             market_expansion_plan,
@@ -792,7 +786,7 @@ class GlobalMarketExpansionEngine:
             delivery_framework_deployment,
             consolidation_strategy
         )
-        
+
         return {
             "global_expansion_execution": {
                 "market_expansion_plan": market_expansion_plan,
@@ -806,15 +800,15 @@ class GlobalMarketExpansionEngine:
             "expansion_metrics": expansion_metrics,
             "execution_timestamp": datetime.now().isoformat()
         }
-        
-    def _develop_market_expansion_plan(self) -> Dict[str, Any]:
+
+    def _develop_market_expansion_plan(self) -> dict[str, Any]:
         """Develop comprehensive global market expansion plan"""
-        
+
         # Calculate total investment and revenue projections
         total_investment = sum(market.investment_required for market in self.target_regions)
         total_projected_arr = sum(market.projected_arr for market in self.target_regions)
         total_fortune500_targets = sum(market.fortune500_targets for market in self.target_regions)
-        
+
         # Prioritize markets by ROI and success probability
         market_priorities = []
         for market in self.target_regions:
@@ -829,18 +823,18 @@ class GlobalMarketExpansionEngine:
                 "success_probability": market.success_probability,
                 "timeline_months": market.time_to_market_months
             })
-        
+
         market_priorities.sort(key=lambda x: x["priority_score"], reverse=True)
-        
+
         # Create phased expansion timeline
         expansion_phases = []
         cumulative_investment = 0
         cumulative_arr = 0
-        
+
         for i, market_priority in enumerate(market_priorities):
             cumulative_investment += market_priority["investment"]
             cumulative_arr += market_priority["projected_arr"]
-            
+
             expansion_phases.append({
                 "phase": i + 1,
                 "market": market_priority["region"],
@@ -851,7 +845,7 @@ class GlobalMarketExpansionEngine:
                 "cumulative_arr": cumulative_arr,
                 "success_probability": market_priority["success_probability"]
             })
-        
+
         return {
             "global_opportunity": {
                 "total_addressable_markets": len(self.target_regions),
@@ -881,10 +875,10 @@ class GlobalMarketExpansionEngine:
                 "market_leadership_position": "Top 3 in enterprise GraphRAG globally"
             }
         }
-        
-    def _build_partnership_strategy(self) -> Dict[str, Any]:
+
+    def _build_partnership_strategy(self) -> dict[str, Any]:
         """Build strategic partnership platform"""
-        
+
         # Calculate partnership value and prioritization
         partnership_priorities = []
         for partnership in self.strategic_partners:
@@ -893,7 +887,7 @@ class GlobalMarketExpansionEngine:
                 partnership.customer_overlap * 10000 * 0.3 +
                 (1.0 / max(partnership.timeline_months, 1)) * 1000000 * 0.3
             )
-            
+
             partnership_priorities.append({
                 "partner": partnership.partner_name,
                 "type": partnership.partner_type,
@@ -905,18 +899,18 @@ class GlobalMarketExpansionEngine:
                 "integration_complexity": partnership.integration_complexity,
                 "status": partnership.status
             })
-        
+
         partnership_priorities.sort(key=lambda x: x["value_score"], reverse=True)
-        
+
         # Create partnership development roadmap
         partnership_roadmap = []
         total_partnership_investment = 0
         total_partnership_revenue = 0
-        
+
         for i, partner in enumerate(partnership_priorities):
             total_partnership_investment += partner["investment"]
             total_partnership_revenue += partner["revenue_potential"]
-            
+
             partnership_roadmap.append({
                 "phase": i + 1,
                 "partner": partner["partner"],
@@ -930,7 +924,7 @@ class GlobalMarketExpansionEngine:
                     "Joint customer success program"
                 ]
             })
-        
+
         return {
             "partnership_opportunity": {
                 "total_strategic_partners": len(self.strategic_partners),
@@ -954,15 +948,15 @@ class GlobalMarketExpansionEngine:
                 "brand_association": "Association with industry-leading technology vendors"
             }
         }
-        
-    def _execute_thought_leadership(self) -> Dict[str, Any]:
+
+    def _execute_thought_leadership(self) -> dict[str, Any]:
         """Execute thought leadership dominance strategy"""
-        
+
         # Calculate thought leadership impact and ROI
         total_investment = sum(initiative.investment_required for initiative in self.thought_leadership_plan)
         total_expected_leads = sum(initiative.expected_leads for initiative in self.thought_leadership_plan)
         total_brand_impact = sum(initiative.brand_value_impact for initiative in self.thought_leadership_plan) / len(self.thought_leadership_plan)
-        
+
         # Create thought leadership calendar
         thought_leadership_calendar = []
         for initiative in self.thought_leadership_plan:
@@ -977,13 +971,13 @@ class GlobalMarketExpansionEngine:
                 "success_metrics": initiative.success_metrics,
                 "competitive_advantage": initiative.competitive_advantage
             })
-        
+
         # Industry authority building strategy
         authority_building = {
             "conference_speaking": {
                 "target_conferences": [
                     "Strata Data Conference",
-                    "AI World Conference", 
+                    "AI World Conference",
                     "Enterprise AI Summit",
                     "GraphConnect Conference",
                     "Fortune 500 CTO Summit"
@@ -1011,7 +1005,7 @@ class GlobalMarketExpansionEngine:
                 ]
             }
         }
-        
+
         return {
             "thought_leadership_impact": {
                 "total_investment": total_investment,
@@ -1036,17 +1030,17 @@ class GlobalMarketExpansionEngine:
                 "paid_media": ["Sponsored content", "Digital advertising", "Event sponsorships"]
             }
         }
-        
-    def _deploy_delivery_frameworks(self) -> Dict[str, Any]:
+
+    def _deploy_delivery_frameworks(self) -> dict[str, Any]:
         """Deploy scalable delivery frameworks for enterprise client success"""
-        
+
         # Calculate delivery capacity and metrics
         total_capacity = sum(framework.scalability_factor for framework in self.delivery_frameworks)
         total_resources = sum(
-            sum(framework.resource_requirements.values()) 
+            sum(framework.resource_requirements.values())
             for framework in self.delivery_frameworks
         )
-        
+
         # Framework deployment plan
         deployment_plan = []
         for framework in self.delivery_frameworks:
@@ -1063,7 +1057,7 @@ class GlobalMarketExpansionEngine:
                     "expansion_rate": framework.expansion_rate_target
                 }
             })
-        
+
         # Quality assurance and success methodology
         quality_framework = {
             "methodology": "AI-Enhanced Six Sigma for Enterprise Success",
@@ -1088,7 +1082,7 @@ class GlobalMarketExpansionEngine:
                 "Automated optimization suggestions"
             ]
         }
-        
+
         return {
             "delivery_capacity": {
                 "total_concurrent_clients": total_capacity,
@@ -1114,10 +1108,10 @@ class GlobalMarketExpansionEngine:
                 "Automated quality assurance"
             ]
         }
-        
-    def _develop_consolidation_strategy(self) -> Dict[str, Any]:
+
+    def _develop_consolidation_strategy(self) -> dict[str, Any]:
         """Develop market consolidation and acquisition strategy"""
-        
+
         # Calculate consolidation impact and prioritization
         consolidation_priorities = []
         for opportunity in self.consolidation_opportunities:
@@ -1126,7 +1120,7 @@ class GlobalMarketExpansionEngine:
             strategic_score = investment_roi * opportunity.market_share_gain * (
                 {"high": 1.0, "medium": 0.7, "low": 0.4}[opportunity.strategic_value]
             )
-            
+
             consolidation_priorities.append({
                 "target": opportunity.target_name,
                 "type": opportunity.target_type,
@@ -1139,20 +1133,20 @@ class GlobalMarketExpansionEngine:
                 "strategic_benefits": opportunity.strategic_benefits,
                 "risk_factors": opportunity.risk_factors
             })
-        
+
         consolidation_priorities.sort(key=lambda x: x["strategic_score"], reverse=True)
-        
+
         # Market consolidation roadmap
         consolidation_roadmap = []
         total_acquisition_cost = 0
         total_synergy_value = 0
         cumulative_market_share = 0
-        
+
         for i, opportunity in enumerate(consolidation_priorities[:3]):  # Top 3 priorities
             total_acquisition_cost += opportunity["acquisition_cost"]
             total_synergy_value += opportunity["synergy_value"]
             cumulative_market_share += opportunity["market_share_gain"]
-            
+
             consolidation_roadmap.append({
                 "phase": i + 1,
                 "target": opportunity["target"],
@@ -1168,7 +1162,7 @@ class GlobalMarketExpansionEngine:
                     "Synergy realization"
                 ]
             })
-        
+
         return {
             "consolidation_opportunity": {
                 "total_acquisition_targets": len(self.consolidation_opportunities),
@@ -1194,10 +1188,10 @@ class GlobalMarketExpansionEngine:
                 "brand_consolidation": "Unified market presence under Synapse brand"
             }
         }
-        
-    def _deploy_global_infrastructure(self) -> Dict[str, Any]:
+
+    def _deploy_global_infrastructure(self) -> dict[str, Any]:
         """Deploy multi-region infrastructure for international enterprise deployment"""
-        
+
         infrastructure_requirements = {
             "cloud_regions": {
                 "americas": ["us-east-1", "us-west-2", "ca-central-1", "sa-east-1"],
@@ -1218,7 +1212,7 @@ class GlobalMarketExpansionEngine:
                 "disaster_recovery": "RPO: 1 hour, RTO: 4 hours"
             }
         }
-        
+
         deployment_phases = [
             {
                 "phase": 1,
@@ -1257,7 +1251,7 @@ class GlobalMarketExpansionEngine:
                 ]
             }
         ]
-        
+
         return {
             "infrastructure_scope": {
                 "global_regions": 4,
@@ -1282,17 +1276,17 @@ class GlobalMarketExpansionEngine:
                 "escalation_procedures": "Regional escalation with global coordination"
             }
         }
-        
-    def _create_arr_achievement_framework(self) -> Dict[str, Any]:
+
+    def _create_arr_achievement_framework(self) -> dict[str, Any]:
         """Create $10M+ ARR achievement validation and sustainability framework"""
-        
+
         # Current baseline from Epic 16 and 17
         current_baseline = {
             "epic16_projected_arr": 1597000,
             "epic17_enhancement_multiplier": 1.5,  # 50% enhancement from AI capabilities
             "current_baseline_arr": 2395500  # $1.597M * 1.5
         }
-        
+
         # ARR growth pathway to $10M+
         arr_milestones = [
             {
@@ -1307,7 +1301,7 @@ class GlobalMarketExpansionEngine:
                 "success_probability": 0.90
             },
             {
-                "milestone": "Q2 Year 1", 
+                "milestone": "Q2 Year 1",
                 "target_arr": 5200000,
                 "increment": 1700000,
                 "growth_drivers": [
@@ -1340,7 +1334,7 @@ class GlobalMarketExpansionEngine:
                 "success_probability": 0.75
             }
         ]
-        
+
         # Revenue composition at $10M+ ARR
         revenue_composition = {
             "geographic_distribution": {
@@ -1360,7 +1354,7 @@ class GlobalMarketExpansionEngine:
                 "ongoing_optimization": {"percentage": 20, "arr": 2100000}
             }
         }
-        
+
         # Sustainability framework
         sustainability_metrics = {
             "client_retention": {
@@ -1384,7 +1378,7 @@ class GlobalMarketExpansionEngine:
                 "improvement_strategy": "Enterprise delivery framework and AI value"
             }
         }
-        
+
         return {
             "arr_trajectory": {
                 "starting_baseline": current_baseline,
@@ -1420,12 +1414,12 @@ class GlobalMarketExpansionEngine:
                 "competitive_metrics": ["Win rate", "Deal size", "Sales cycle"]
             }
         }
-        
+
     def _save_expansion_components(self, *components):
         """Save all expansion components to database"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Save global markets
         for market in self.target_regions:
             cursor.execute('''
@@ -1443,7 +1437,7 @@ class GlobalMarketExpansionEngine:
                 market.success_probability, json.dumps(market.key_challenges),
                 json.dumps(market.strategic_advantages)
             ))
-        
+
         # Save strategic partnerships
         for partnership in self.strategic_partners:
             cursor.execute('''
@@ -1460,7 +1454,7 @@ class GlobalMarketExpansionEngine:
                 partnership.timeline_months, partnership.status,
                 json.dumps(partnership.key_benefits), json.dumps(partnership.requirements)
             ))
-        
+
         # Save thought leadership initiatives
         for initiative in self.thought_leadership_plan:
             cursor.execute('''
@@ -1477,15 +1471,15 @@ class GlobalMarketExpansionEngine:
                 initiative.competitive_advantage, json.dumps(initiative.deliverables),
                 json.dumps(initiative.success_metrics), initiative.status
             ))
-        
+
         conn.commit()
         conn.close()
-        
-    def _calculate_expansion_metrics(self, *components) -> Dict[str, Any]:
+
+    def _calculate_expansion_metrics(self, *components) -> dict[str, Any]:
         """Calculate comprehensive expansion performance metrics"""
-        
+
         market_plan, partnership_strategy, thought_leadership, delivery_frameworks, consolidation = components[:5]
-        
+
         # Financial metrics
         total_investment = (
             market_plan["global_opportunity"]["total_investment_required"] +
@@ -1493,19 +1487,19 @@ class GlobalMarketExpansionEngine:
             thought_leadership["thought_leadership_impact"]["total_investment"] +
             consolidation["consolidation_opportunity"]["total_acquisition_cost"]
         )
-        
+
         total_revenue_potential = (
             market_plan["global_opportunity"]["total_projected_arr"] +
             partnership_strategy["partnership_opportunity"]["total_revenue_potential"] +
             consolidation["consolidation_opportunity"]["total_synergy_value"]
         )
-        
+
         # Market impact metrics
         total_market_reach = (
             market_plan["global_opportunity"]["total_fortune500_targets"] +
             partnership_strategy["partnership_opportunity"]["combined_customer_reach"]
         )
-        
+
         return {
             "financial_impact": {
                 "total_investment_required": total_investment,
@@ -1545,62 +1539,62 @@ def run_epic18_global_expansion_demo():
     """Run Epic 18 global expansion demonstration"""
     print("🌍 Epic 18: Market Leadership & Global Expansion")
     print("Systematically scaling to $10M+ ARR through market dominance and international expansion\n")
-    
+
     # Initialize global expansion engine
     expansion_engine = GlobalMarketExpansionEngine()
-    
+
     # Execute comprehensive global expansion
     print("🚀 Executing Global Market Leadership & Expansion Strategy...")
     results = expansion_engine.execute_global_market_expansion()
-    
+
     # Display results
     execution = results["global_expansion_execution"]
     metrics = results["expansion_metrics"]
-    
-    print(f"\n📊 Global Expansion Execution Results:")
+
+    print("\n📊 Global Expansion Execution Results:")
     print(f"  🌍 Global Markets: {metrics['market_impact']['global_regions_covered']} regions")
     print(f"  🤝 Strategic Partnerships: {metrics['market_impact']['strategic_partnerships']} major vendors")
     print(f"  🎤 Thought Leadership: {metrics['operational_metrics']['thought_leadership_reach']} expected leads")
     print(f"  🏗️ Delivery Capacity: {metrics['operational_metrics']['delivery_capacity']} concurrent clients")
     print(f"  🎯 Market Consolidation: {metrics['strategic_positioning']['competitive_threats_eliminated']} acquisitions planned")
-    
-    print(f"\n💰 Financial Impact Analysis:")
+
+    print("\n💰 Financial Impact Analysis:")
     financial = metrics["financial_impact"]
     print(f"  💵 Total Investment: ${financial['total_investment_required']:,}")
     print(f"  📈 Revenue Potential: ${financial['total_revenue_potential']:,}")
     print(f"  📊 Expansion ROI: {financial['expansion_roi']:.1f}x")
     print(f"  🚀 ARR Growth Multiple: {financial['arr_growth_multiple']:.1f}x")
     print(f"  ⏱️  Payback Period: {financial['payback_period_months']:.1f} months")
-    
-    print(f"\n🎯 $10M+ ARR Achievement Pathway:")
+
+    print("\n🎯 $10M+ ARR Achievement Pathway:")
     arr_framework = execution["arr_achievement_framework"]
     print(f"  📍 Starting Baseline: ${arr_framework['arr_trajectory']['starting_baseline']['current_baseline_arr']:,}")
     print(f"  🎯 Target Achievement: ${arr_framework['arr_trajectory']['target_achievement']:,}")
     print(f"  📈 Growth Multiple: {arr_framework['arr_trajectory']['growth_multiple']:.1f}x")
     print(f"  📅 Timeline: {arr_framework['arr_trajectory']['timeline_months']} months")
     print(f"  📊 Monthly Growth Rate: {arr_framework['arr_trajectory']['compound_monthly_growth']:.1%}")
-    
-    print(f"\n🌐 Global Market Expansion:")
+
+    print("\n🌐 Global Market Expansion:")
     market_plan = execution["market_expansion_plan"]
     for phase in market_plan["expansion_phases"][:3]:
         print(f"  Phase {phase['phase']}: {phase['market']} - ${phase['projected_arr']:,} ARR ({phase['timeline']})")
-    
-    print(f"\n🤝 Strategic Partnership Platform:")
+
+    print("\n🤝 Strategic Partnership Platform:")
     partnership_strategy = execution["partnership_strategy"]
     for partner in partnership_strategy["partnership_priorities"][:3]:
         print(f"  {partner['partner']} ({partner['type']}) - ${partner['revenue_potential']:,} potential")
-    
-    print(f"\n🎤 Thought Leadership Domination:")
+
+    print("\n🎤 Thought Leadership Domination:")
     thought_leadership = execution["thought_leadership"]
     for initiative in thought_leadership["thought_leadership_calendar"]:
         print(f"  {initiative['initiative']} - {initiative['expected_leads']} leads, {initiative['brand_impact']:.1f} brand impact")
-    
-    print(f"\n🏆 Market Leadership Positioning:")
+
+    print("\n🏆 Market Leadership Positioning:")
     print(f"  📊 Market Authority Score: {metrics['market_impact']['market_leadership_score']}/10")
     print(f"  🛡️ Competitive Moat: {metrics['market_impact']['competitive_moat_strength']}")
     print(f"  🌍 Global Presence: {metrics['strategic_positioning']['global_presence']}")
     print(f"  👑 Industry Status: {metrics['strategic_positioning']['industry_authority_status']}")
-    
+
     # Success criteria assessment
     success_metrics = {
         "global_expansion": metrics["market_impact"]["global_regions_covered"] >= 4,
@@ -1612,26 +1606,26 @@ def run_epic18_global_expansion_demo():
         "expansion_roi": financial['expansion_roi'] >= 2.0,
         "execution_readiness": metrics['success_probability']['overall_success_rate'] >= 0.80
     }
-    
+
     success_count = sum(success_metrics.values())
     total_criteria = len(success_metrics)
-    
-    print(f"\n🎯 Epic 18 Success Criteria:")
+
+    print("\n🎯 Epic 18 Success Criteria:")
     for criterion, achieved in success_metrics.items():
         status = "✅" if achieved else "❌"
         print(f"  {status} {criterion.replace('_', ' ').title()}")
-    
+
     print(f"\n📋 Epic 18 Success Rate: {success_count}/{total_criteria} ({success_count/total_criteria*100:.0f}%)")
-    
+
     if success_count >= total_criteria * 0.85:  # 85% success threshold
-        print(f"\n🏆 EPIC 18 SUCCESSFULLY COMPLETED!")
-        print(f"   Global market leadership and $10M+ ARR framework established")
-        print(f"   Synapse positioned as definitive global leader in enterprise GraphRAG")
-        print(f"   Systematic scalability achieved through market dominance and international expansion")
+        print("\n🏆 EPIC 18 SUCCESSFULLY COMPLETED!")
+        print("   Global market leadership and $10M+ ARR framework established")
+        print("   Synapse positioned as definitive global leader in enterprise GraphRAG")
+        print("   Systematic scalability achieved through market dominance and international expansion")
     else:
         print(f"\n⚠️  Epic 18 partially completed ({success_count}/{total_criteria} criteria met)")
-        print(f"   Additional optimization required for full global market leadership")
-    
+        print("   Additional optimization required for full global market leadership")
+
     return {
         "execution_results": results,
         "success_metrics": success_metrics,
@@ -1641,22 +1635,22 @@ def run_epic18_global_expansion_demo():
 def main():
     """Main execution for Epic 18"""
     results = run_epic18_global_expansion_demo()
-    
+
     metrics = results["execution_results"]["expansion_metrics"]
-    
-    print(f"\n📊 Epic 18 Global Expansion Summary:")
+
+    print("\n📊 Epic 18 Global Expansion Summary:")
     print(f"  🌍 Global Market Coverage: {metrics['market_impact']['global_regions_covered']} regions")
     print(f"  💰 Total Revenue Potential: ${metrics['financial_impact']['total_revenue_potential']:,}")
     print(f"  📈 ARR Growth Multiple: {metrics['financial_impact']['arr_growth_multiple']:.1f}x")
     print(f"  🎯 Success Probability: {metrics['success_probability']['overall_success_rate']:.1%}")
     print(f"  👑 Market Leadership: {metrics['market_impact']['market_leadership_score']}/10")
-    
+
     if results["success_rate"] >= 0.85:
-        print(f"\n🎉 EPIC 18 COMPLETE - GLOBAL MARKET LEADERSHIP ACHIEVED!")
-        print(f"   Systematic $10M+ ARR growth pathway established")
-        print(f"   Synapse positioned as definitive global leader in enterprise AI transformation")
-        print(f"   Market dominance achieved through international expansion and strategic partnerships")
-    
+        print("\n🎉 EPIC 18 COMPLETE - GLOBAL MARKET LEADERSHIP ACHIEVED!")
+        print("   Systematic $10M+ ARR growth pathway established")
+        print("   Synapse positioned as definitive global leader in enterprise AI transformation")
+        print("   Market dominance achieved through international expansion and strategic partnerships")
+
     return results
 
 if __name__ == "__main__":

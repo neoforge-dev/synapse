@@ -11,7 +11,6 @@ import os
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -146,7 +145,7 @@ class ConsultationInquiryDetector:
         # Strong consultation indicators - enhanced for business value detection
         strong_indicators = [
             r"\b(would love to|interested in|need help|looking for|want to discuss|can you help|seeking advice)\b",
-            r"\b(schedule|book|call|meeting|consultation|discuss this|dive deeper)\b", 
+            r"\b(schedule|book|call|meeting|consultation|discuss this|dive deeper)\b",
             r"\b(our company|our startup|our team|we are|we're struggling|we need)\b",
             r"\b(similar situation|same problem|facing this|dealing with|experiencing)\b",
             r"\b(help with|assistance with|support with|guidance on)\b"
@@ -157,17 +156,17 @@ class ConsultationInquiryDetector:
         # Business value indicators - specific company contexts that indicate higher value
         business_value_indicators = [
             r"\b(\d+-person company|\d+ employees|\d+ team members)\b",
-            r"\b(25-person|20-person|30-person|50-person)\b", 
+            r"\b(25-person|20-person|30-person|50-person)\b",
             r"\b(our \d+-person|our \d+ person)\b",
             r"\b(company with \d+|startup with \d+)\b"
         ]
-        
+
         has_business_value_indicator = any(re.search(pattern, text_lower) for pattern in business_value_indicators)
 
         # Negative intent indicators - reduce priority
         negative_indicators = [
             r"\b(not interested|no thanks|not looking|not ready|not now)\b",
-            r"\b(but not|however not|sounds good but)\b", 
+            r"\b(but not|however not|sounds good but)\b",
             r"\b(maybe later|perhaps later|not at this time)\b"
         ]
         has_negative_indicator = any(re.search(pattern, text_lower) for pattern in negative_indicators)
@@ -181,7 +180,7 @@ class ConsultationInquiryDetector:
             if keyword_matches > 0:
                 # Calculate priority score with enhanced business logic
                 base_score = keyword_matches
-                
+
                 if has_strong_indicator:
                     base_score += 3
 
@@ -200,7 +199,7 @@ class ConsultationInquiryDetector:
                     base_score += 1
 
                 final_score = base_score + pattern.priority_boost
-                
+
                 # Negative intent significantly reduces final priority (after pattern boost)
                 if has_negative_indicator:
                     final_score = max(1, final_score - 2)  # Reduce final score after boost

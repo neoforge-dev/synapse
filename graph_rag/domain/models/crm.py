@@ -5,7 +5,6 @@ These models represent the business domain with proper validation and business r
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, validator
@@ -15,11 +14,11 @@ class Contact(BaseModel):
     """Domain model for business contacts"""
     contact_id: UUID = Field(default_factory=uuid4)
     name: str = Field(..., min_length=1, max_length=255)
-    company: Optional[str] = Field(None, max_length=255)
-    title: Optional[str] = Field(None, max_length=255)
+    company: str | None = Field(None, max_length=255)
+    title: str | None = Field(None, max_length=255)
     email: str = Field(..., max_length=255)
-    phone: Optional[str] = Field(None, max_length=50)
-    linkedin_profile: Optional[str] = Field(None, max_length=500)
+    phone: str | None = Field(None, max_length=50)
+    linkedin_profile: str | None = Field(None, max_length=500)
     lead_score: int = Field(default=0, ge=0, le=100)
     estimated_value: Decimal = Field(default=Decimal('0.00'), ge=0)
     priority_tier: str = Field(default="bronze", pattern="^(bronze|silver|gold|platinum)$")
@@ -27,8 +26,8 @@ class Contact(BaseModel):
         default="prospect",
         pattern="^(prospect|qualified|disqualified|customer)$"
     )
-    next_action: Optional[str] = Field(None, max_length=1000)
-    next_action_date: Optional[datetime] = None
+    next_action: str | None = Field(None, max_length=1000)
+    next_action_date: datetime | None = None
     notes: str = Field(default="", max_length=5000)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -69,7 +68,7 @@ class SalesPipeline(BaseModel):
         pattern="^(prospect|qualified|proposal|negotiation|closed_won|closed_lost)$"
     )
     probability: float = Field(..., ge=0.0, le=1.0)
-    expected_close_date: Optional[datetime] = None
+    expected_close_date: datetime | None = None
     deal_value: Decimal = Field(default=Decimal('0.00'), ge=0)
     notes: str = Field(default="", max_length=2000)
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -119,8 +118,8 @@ class Proposal(BaseModel):
         pattern="^(draft|sent|accepted|rejected|expired)$"
     )
     generated_at: datetime = Field(default_factory=datetime.utcnow)
-    sent_at: Optional[datetime] = None
-    responded_at: Optional[datetime] = None
+    sent_at: datetime | None = None
+    responded_at: datetime | None = None
 
     def is_expired(self) -> bool:
         """Check if proposal has expired (30 days old)"""

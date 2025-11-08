@@ -4,14 +4,12 @@ Epic 16 Enterprise Onboarding Platform
 White-glove client success system for Fortune 500 enterprises
 """
 
+import json
 import logging
 import sqlite3
-import json
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
-from typing import Dict, List, Optional, Tuple, Any
-import uuid
-from pathlib import Path
+from typing import Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -24,11 +22,11 @@ class EnterpriseClient:
     company_name: str
     industry: str
     contract_value: int
-    decision_makers: List[Dict]
-    technical_contacts: List[Dict]
+    decision_makers: list[dict]
+    technical_contacts: list[dict]
     onboarding_tier: str  # platinum, gold, standard
     engagement_model: str  # transformation, advisory, implementation
-    success_metrics: Dict[str, Any]
+    success_metrics: dict[str, Any]
     timeline_weeks: int
     current_phase: str
     health_score: float
@@ -43,13 +41,13 @@ class OnboardingMilestone:
     milestone_name: str
     milestone_type: str  # discovery, planning, implementation, optimization
     target_date: str
-    completion_date: Optional[str]
+    completion_date: str | None
     status: str  # planned, in_progress, completed, delayed
-    success_criteria: List[str]
-    deliverables: List[str]
+    success_criteria: list[str]
+    deliverables: list[str]
     stakeholder_approval_required: bool
     risk_level: str  # low, medium, high
-    dependencies: List[str]
+    dependencies: list[str]
 
 @dataclass
 class ClientHealthMetric:
@@ -61,21 +59,21 @@ class ClientHealthMetric:
     metric_target: float
     measurement_date: str
     trend_direction: str  # improving, stable, declining
-    action_items: List[str]
+    action_items: list[str]
     escalation_required: bool
 
 class EnterpriseOnboardingDatabase:
     """Database management for enterprise onboarding"""
-    
+
     def __init__(self):
         self.db_path = 'business_development/epic16_enterprise_onboarding.db'
         self._init_database()
-        
+
     def _init_database(self):
         """Initialize enterprise onboarding database"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Enterprise clients table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS enterprise_clients (
@@ -95,7 +93,7 @@ class EnterpriseOnboardingDatabase:
                 last_updated TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # Onboarding milestones table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS onboarding_milestones (
@@ -115,7 +113,7 @@ class EnterpriseOnboardingDatabase:
                 FOREIGN KEY (client_id) REFERENCES enterprise_clients (client_id)
             )
         ''')
-        
+
         # Client health metrics table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS client_health_metrics (
@@ -131,7 +129,7 @@ class EnterpriseOnboardingDatabase:
                 FOREIGN KEY (client_id) REFERENCES enterprise_clients (client_id)
             )
         ''')
-        
+
         # Success plan templates table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS success_plan_templates (
@@ -148,7 +146,7 @@ class EnterpriseOnboardingDatabase:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # Client communications log table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS client_communications (
@@ -165,18 +163,18 @@ class EnterpriseOnboardingDatabase:
                 FOREIGN KEY (client_id) REFERENCES enterprise_clients (client_id)
             )
         ''')
-        
+
         conn.commit()
         conn.close()
         logger.info("Enterprise onboarding database initialized")
 
 class WhiteGloveOnboardingEngine:
     """White-glove enterprise client onboarding engine"""
-    
+
     def __init__(self):
         self.db = EnterpriseOnboardingDatabase()
         self._init_success_plan_templates()
-        
+
     def _init_success_plan_templates(self):
         """Initialize success plan templates for different engagement models"""
         templates = [
@@ -187,7 +185,7 @@ class WhiteGloveOnboardingEngine:
                 "timeline_weeks": 52,  # Full year engagement
                 "phase_structure": {
                     "phase_1": {"name": "Discovery & Assessment", "weeks": 8},
-                    "phase_2": {"name": "Strategy Development", "weeks": 8}, 
+                    "phase_2": {"name": "Strategy Development", "weeks": 8},
                     "phase_3": {"name": "Pilot Implementation", "weeks": 16},
                     "phase_4": {"name": "Full Rollout", "weeks": 16},
                     "phase_5": {"name": "Optimization", "weeks": 4}
@@ -210,7 +208,7 @@ class WhiteGloveOnboardingEngine:
             {
                 "template_name": "Technical Advisory - Gold",
                 "engagement_model": "advisory",
-                "onboarding_tier": "gold", 
+                "onboarding_tier": "gold",
                 "timeline_weeks": 26,  # 6 months
                 "phase_structure": {
                     "phase_1": {"name": "Technical Assessment", "weeks": 4},
@@ -258,10 +256,10 @@ class WhiteGloveOnboardingEngine:
                 }
             }
         ]
-        
+
         conn = sqlite3.connect(self.db.db_path)
         cursor = conn.cursor()
-        
+
         for template in templates:
             cursor.execute('''
                 INSERT OR REPLACE INTO success_plan_templates 
@@ -280,24 +278,24 @@ class WhiteGloveOnboardingEngine:
                 json.dumps(template["resource_requirements"]),
                 json.dumps({"risk_assessment": "standard", "mitigation_plans": []})
             ))
-            
+
         conn.commit()
         conn.close()
         logger.info("Success plan templates initialized")
-        
-    def onboard_enterprise_client(self, prospect_data: Dict[str, Any]) -> EnterpriseClient:
+
+    def onboard_enterprise_client(self, prospect_data: dict[str, Any]) -> EnterpriseClient:
         """Create comprehensive onboarding plan for enterprise client"""
-        
+
         # Generate client ID
         client_id = f"client-{prospect_data['company_name'].lower().replace(' ', '-').replace('.', '').replace(',', '')}"
-        
+
         # Determine onboarding tier and engagement model
         onboarding_tier = self._determine_onboarding_tier(prospect_data)
         engagement_model = self._determine_engagement_model(prospect_data)
-        
+
         # Get success plan template
         success_template = self._get_success_template(engagement_model, onboarding_tier)
-        
+
         # Create enterprise client
         enterprise_client = EnterpriseClient(
             client_id=client_id,
@@ -315,58 +313,58 @@ class WhiteGloveOnboardingEngine:
             created_at=datetime.now().isoformat(),
             last_updated=datetime.now().isoformat()
         )
-        
+
         # Save client to database
         self._save_enterprise_client(enterprise_client)
-        
+
         # Create onboarding milestones
         milestones = self._create_onboarding_milestones(enterprise_client, success_template)
-        
+
         # Initialize health metrics
         self._initialize_health_metrics(enterprise_client)
-        
+
         logger.info(f"Enterprise client onboarded: {enterprise_client.company_name} ({onboarding_tier} tier)")
         return enterprise_client
-        
-    def _determine_onboarding_tier(self, prospect_data: Dict[str, Any]) -> str:
+
+    def _determine_onboarding_tier(self, prospect_data: dict[str, Any]) -> str:
         """Determine onboarding tier based on prospect characteristics"""
         contract_value = prospect_data["estimated_contract_value"]
         priority = prospect_data.get("contact_priority", "silver")
-        
+
         if contract_value >= 1000000 and priority == "platinum":
             return "platinum"
         elif contract_value >= 500000 and priority in ["platinum", "gold"]:
             return "gold"
         else:
             return "standard"
-            
-    def _determine_engagement_model(self, prospect_data: Dict[str, Any]) -> str:
+
+    def _determine_engagement_model(self, prospect_data: dict[str, Any]) -> str:
         """Determine engagement model based on prospect needs"""
         pain_points = prospect_data.get("pain_points", [])
         digital_score = prospect_data.get("digital_transformation_score", 7.0)
-        
+
         # Digital transformation for low digital maturity
         if digital_score < 6.0:
             return "transformation"
-        
+
         # Advisory for strategic needs
         transformation_signals = ["modernization", "transformation", "strategic"]
         if any(signal in " ".join(pain_points).lower() for signal in transformation_signals):
             return "advisory"
-            
+
         # Implementation for specific process needs
         return "implementation"
-        
-    def _get_success_template(self, engagement_model: str, onboarding_tier: str) -> Dict[str, Any]:
+
+    def _get_success_template(self, engagement_model: str, onboarding_tier: str) -> dict[str, Any]:
         """Get success plan template for engagement model and tier"""
         conn = sqlite3.connect(self.db.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT * FROM success_plan_templates 
             WHERE engagement_model = ? AND onboarding_tier = ?
         ''', (engagement_model, onboarding_tier))
-        
+
         template_data = cursor.fetchone()
         if not template_data:
             # Fallback to standard template
@@ -376,20 +374,20 @@ class WhiteGloveOnboardingEngine:
                 LIMIT 1
             ''')
             template_data = cursor.fetchone()
-            
+
         conn.close()
-        
+
         if template_data:
             columns = ['template_id', 'template_name', 'engagement_model', 'onboarding_tier',
                       'timeline_weeks', 'phase_structure', 'milestone_templates',
                       'success_metrics_template', 'resource_requirements', 'risk_mitigation_strategies']
             template_dict = dict(zip(columns, template_data, strict=False))
-            
+
             # Parse JSON fields
             template_dict["phase_structure"] = json.loads(template_dict["phase_structure"])
             template_dict["success_metrics"] = json.loads(template_dict["success_metrics_template"])
             template_dict["resource_requirements"] = json.loads(template_dict["resource_requirements"])
-            
+
             return template_dict
         else:
             # Default template
@@ -399,11 +397,11 @@ class WhiteGloveOnboardingEngine:
                 "success_metrics": {"satisfaction": {"target": 8.0, "measurement": "score"}},
                 "resource_requirements": {"senior_consultants": 1}
             }
-            
-    def _identify_technical_contacts(self, prospect_data: Dict[str, Any]) -> List[Dict]:
+
+    def _identify_technical_contacts(self, prospect_data: dict[str, Any]) -> list[dict]:
         """Identify technical contacts from decision makers"""
         technical_contacts = []
-        
+
         for decision_maker in prospect_data.get("decision_makers", []):
             if decision_maker.get("technical_background", False):
                 technical_contacts.append({
@@ -413,7 +411,7 @@ class WhiteGloveOnboardingEngine:
                     "accessibility": decision_maker["accessibility"],
                     "contact_type": "primary_technical"
                 })
-                
+
         # Add additional technical contacts (would be enriched from real data)
         if len(technical_contacts) < 2:
             technical_contacts.append({
@@ -423,14 +421,14 @@ class WhiteGloveOnboardingEngine:
                 "accessibility": 8,
                 "contact_type": "implementation_lead"
             })
-            
+
         return technical_contacts
-        
+
     def _save_enterprise_client(self, client: EnterpriseClient):
         """Save enterprise client to database"""
         conn = sqlite3.connect(self.db.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT OR REPLACE INTO enterprise_clients 
             (client_id, company_name, industry, contract_value, decision_makers,
@@ -444,31 +442,31 @@ class WhiteGloveOnboardingEngine:
             client.timeline_weeks, client.current_phase, client.health_score,
             client.created_at, client.last_updated
         ))
-        
+
         conn.commit()
         conn.close()
-        
-    def _create_onboarding_milestones(self, client: EnterpriseClient, success_template: Dict) -> List[OnboardingMilestone]:
+
+    def _create_onboarding_milestones(self, client: EnterpriseClient, success_template: dict) -> list[OnboardingMilestone]:
         """Create detailed onboarding milestones based on success template"""
         milestones = []
-        
+
         phase_structure = success_template.get("phase_structure", {})
         start_date = datetime.now()
-        
+
         for phase_key, phase_info in phase_structure.items():
             phase_name = phase_info["name"]
             phase_weeks = phase_info["weeks"]
-            
+
             # Create milestone for each phase
             milestone_id = f"milestone-{client.client_id}-{phase_key}"
             target_date = (start_date + timedelta(weeks=phase_weeks)).isoformat()
-            
+
             # Define success criteria based on phase
             success_criteria = self._generate_phase_success_criteria(phase_name, client.engagement_model)
-            
+
             # Define deliverables
             deliverables = self._generate_phase_deliverables(phase_name, client.engagement_model)
-            
+
             milestone = OnboardingMilestone(
                 milestone_id=milestone_id,
                 client_id=client.client_id,
@@ -483,18 +481,18 @@ class WhiteGloveOnboardingEngine:
                 risk_level="medium",
                 dependencies=[]
             )
-            
+
             milestones.append(milestone)
-            
+
             # Update start date for next phase
             start_date += timedelta(weeks=phase_weeks)
-            
+
         # Save milestones to database
         self._save_milestones(milestones)
-        
+
         return milestones
-        
-    def _generate_phase_success_criteria(self, phase_name: str, engagement_model: str) -> List[str]:
+
+    def _generate_phase_success_criteria(self, phase_name: str, engagement_model: str) -> list[str]:
         """Generate success criteria for onboarding phase"""
         criteria_templates = {
             "Discovery & Assessment": [
@@ -518,7 +516,7 @@ class WhiteGloveOnboardingEngine:
             "Full Rollout": [
                 "Deploy solution across all target teams",
                 "Achieve 90%+ user adoption",
-                "Meet defined performance targets", 
+                "Meet defined performance targets",
                 "Complete knowledge transfer"
             ],
             "Optimization": [
@@ -528,10 +526,10 @@ class WhiteGloveOnboardingEngine:
                 "Deliver optimization recommendations"
             ]
         }
-        
+
         return criteria_templates.get(phase_name, ["Complete phase objectives", "Stakeholder approval"])
-        
-    def _generate_phase_deliverables(self, phase_name: str, engagement_model: str) -> List[str]:
+
+    def _generate_phase_deliverables(self, phase_name: str, engagement_model: str) -> list[str]:
         """Generate deliverables for onboarding phase"""
         deliverable_templates = {
             "Discovery & Assessment": [
@@ -565,14 +563,14 @@ class WhiteGloveOnboardingEngine:
                 "Success Story Documentation"
             ]
         }
-        
+
         return deliverable_templates.get(phase_name, ["Phase completion report"])
-        
-    def _save_milestones(self, milestones: List[OnboardingMilestone]):
+
+    def _save_milestones(self, milestones: list[OnboardingMilestone]):
         """Save onboarding milestones to database"""
         conn = sqlite3.connect(self.db.db_path)
         cursor = conn.cursor()
-        
+
         for milestone in milestones:
             cursor.execute('''
                 INSERT OR REPLACE INTO onboarding_milestones 
@@ -587,10 +585,10 @@ class WhiteGloveOnboardingEngine:
                 json.dumps(milestone.deliverables), milestone.stakeholder_approval_required,
                 milestone.risk_level, json.dumps(milestone.dependencies)
             ))
-            
+
         conn.commit()
         conn.close()
-        
+
     def _initialize_health_metrics(self, client: EnterpriseClient):
         """Initialize health metrics for enterprise client"""
         health_metrics = [
@@ -623,10 +621,10 @@ class WhiteGloveOnboardingEngine:
                 "action_items": ["Maintain proactive risk management"]
             }
         ]
-        
+
         conn = sqlite3.connect(self.db.db_path)
         cursor = conn.cursor()
-        
+
         for metric in health_metrics:
             cursor.execute('''
                 INSERT INTO client_health_metrics 
@@ -638,23 +636,23 @@ class WhiteGloveOnboardingEngine:
                 metric["metric_target"], metric["trend_direction"],
                 json.dumps(metric["action_items"]), False
             ))
-            
+
         conn.commit()
         conn.close()
-        
-    def get_client_dashboard(self, client_id: str) -> Dict[str, Any]:
+
+    def get_client_dashboard(self, client_id: str) -> dict[str, Any]:
         """Get comprehensive client dashboard data"""
         conn = sqlite3.connect(self.db.db_path)
         cursor = conn.cursor()
-        
+
         # Get client details
         cursor.execute('SELECT * FROM enterprise_clients WHERE client_id = ?', (client_id,))
         client_data = cursor.fetchone()
-        
+
         if not client_data:
             conn.close()
             return {"error": "Client not found"}
-            
+
         # Get milestones
         cursor.execute('''
             SELECT * FROM onboarding_milestones 
@@ -662,7 +660,7 @@ class WhiteGloveOnboardingEngine:
             ORDER BY target_date
         ''', (client_id,))
         milestones_data = cursor.fetchall()
-        
+
         # Get health metrics
         cursor.execute('''
             SELECT * FROM client_health_metrics 
@@ -670,16 +668,16 @@ class WhiteGloveOnboardingEngine:
             ORDER BY measurement_date DESC
         ''', (client_id,))
         health_data = cursor.fetchall()
-        
+
         conn.close()
-        
+
         # Parse client data
         client_columns = ['client_id', 'company_name', 'industry', 'contract_value',
                          'decision_makers', 'technical_contacts', 'onboarding_tier',
                          'engagement_model', 'success_metrics', 'timeline_weeks',
                          'current_phase', 'health_score', 'created_at', 'last_updated']
         client_dict = dict(zip(client_columns, client_data, strict=False))
-        
+
         # Parse milestones
         milestone_columns = ['milestone_id', 'client_id', 'milestone_name', 'milestone_type',
                            'target_date', 'completion_date', 'status', 'success_criteria',
@@ -691,7 +689,7 @@ class WhiteGloveOnboardingEngine:
             milestone_dict['success_criteria'] = json.loads(milestone_dict['success_criteria'] or '[]')
             milestone_dict['deliverables'] = json.loads(milestone_dict['deliverables'] or '[]')
             milestones.append(milestone_dict)
-            
+
         # Parse health metrics
         health_columns = ['health_id', 'client_id', 'metric_type', 'metric_value',
                          'metric_target', 'measurement_date', 'trend_direction',
@@ -701,15 +699,15 @@ class WhiteGloveOnboardingEngine:
             health_dict = dict(zip(health_columns, health_data_row, strict=False))
             health_dict['action_items'] = json.loads(health_dict['action_items'] or '[]')
             health_metrics.append(health_dict)
-            
+
         # Calculate progress metrics
         completed_milestones = sum(1 for m in milestones if m['status'] == 'completed')
         total_milestones = len(milestones)
         progress_percentage = (completed_milestones / max(total_milestones, 1)) * 100
-        
+
         # Current milestone
         current_milestone = next((m for m in milestones if m['status'] in ['in_progress', 'planned']), None)
-        
+
         return {
             "client_overview": {
                 "client_id": client_dict['client_id'],
@@ -735,39 +733,39 @@ class WhiteGloveOnboardingEngine:
             "technical_contacts": json.loads(client_dict['technical_contacts']),
             "dashboard_generated": datetime.now().isoformat()
         }
-        
-    def get_all_clients_summary(self) -> Dict[str, Any]:
+
+    def get_all_clients_summary(self) -> dict[str, Any]:
         """Get summary of all enterprise clients"""
         conn = sqlite3.connect(self.db.db_path)
         cursor = conn.cursor()
-        
+
         # Get all clients
         cursor.execute('SELECT * FROM enterprise_clients')
         clients_data = cursor.fetchall()
-        
+
         if not clients_data:
             conn.close()
             return {
                 "total_clients": 0,
                 "summary": "No enterprise clients onboarded yet"
             }
-            
+
         # Calculate summary metrics
         total_clients = len(clients_data)
         total_contract_value = sum(row[3] for row in clients_data)  # contract_value column
         avg_health_score = sum(row[11] for row in clients_data) / total_clients  # health_score column
-        
+
         # Tier distribution
         tier_distribution = {}
         engagement_distribution = {}
-        
+
         for client_data in clients_data:
             tier = client_data[6]  # onboarding_tier column
             engagement = client_data[7]  # engagement_model column
-            
+
             tier_distribution[tier] = tier_distribution.get(tier, 0) + 1
             engagement_distribution[engagement] = engagement_distribution.get(engagement, 0) + 1
-            
+
         # Get milestone completion rates
         cursor.execute('''
             SELECT 
@@ -777,14 +775,14 @@ class WhiteGloveOnboardingEngine:
             FROM onboarding_milestones
         ''')
         milestone_stats = cursor.fetchone()
-        
+
         conn.close()
-        
+
         # Calculate completion rate
         total_milestones = milestone_stats[0] or 0
         completed_milestones = milestone_stats[1] or 0
         completion_rate = (completed_milestones / max(total_milestones, 1)) * 100
-        
+
         return {
             "total_clients": total_clients,
             "total_contract_value": total_contract_value,
@@ -805,10 +803,10 @@ def run_enterprise_onboarding_demo():
     """Demonstrate enterprise onboarding platform"""
     print("🚀 Epic 16: Enterprise Onboarding Platform Demo")
     print("White-glove client success system for Fortune 500 enterprises\n")
-    
+
     # Initialize onboarding engine
     onboarding_engine = WhiteGloveOnboardingEngine()
-    
+
     # Sample Fortune 500 prospects for onboarding
     sample_prospects = [
         {
@@ -825,7 +823,7 @@ def run_enterprise_onboarding_demo():
         },
         {
             "company_name": "General Electric Company",
-            "industry": "Industrial", 
+            "industry": "Industrial",
             "estimated_contract_value": 650000,
             "contact_priority": "gold",
             "digital_transformation_score": 5.5,
@@ -847,11 +845,11 @@ def run_enterprise_onboarding_demo():
             ]
         }
     ]
-    
+
     # Onboard enterprise clients
     onboarded_clients = []
     print("📋 Onboarding Enterprise Clients:")
-    
+
     for prospect in sample_prospects:
         try:
             client = onboarding_engine.onboard_enterprise_client(prospect)
@@ -860,35 +858,35 @@ def run_enterprise_onboarding_demo():
             print(f"     Timeline: {client.timeline_weeks} weeks | Health Score: {client.health_score}/10")
         except Exception as e:
             logger.error(f"Failed to onboard {prospect['company_name']}: {e}")
-            
+
     # Get client dashboards
-    print(f"\n📊 Client Dashboard Summaries:")
+    print("\n📊 Client Dashboard Summaries:")
     for client in onboarded_clients[:2]:  # Show first 2 for demo
         try:
             dashboard = onboarding_engine.get_client_dashboard(client.client_id)
             overview = dashboard["client_overview"]
             progress = dashboard["progress_summary"]
-            
+
             print(f"\n  🏢 {overview['company_name']} ({overview['industry']})")
             print(f"     Contract: ${overview['contract_value']:,} | Tier: {overview['onboarding_tier']}")
             print(f"     Progress: {progress['overall_progress']:.1f}% | Phase: {overview['current_phase']}")
             print(f"     Milestones: {progress['completed_milestones']}/{progress['total_milestones']} completed")
             print(f"     Health Score: {overview['health_score']}/10")
-            
+
         except Exception as e:
             logger.error(f"Failed to get dashboard for {client.company_name}: {e}")
-            
+
     # Get platform summary
-    print(f"\n📈 Platform Summary:")
+    print("\n📈 Platform Summary:")
     summary = onboarding_engine.get_all_clients_summary()
-    
+
     print(f"  📊 Total Enterprise Clients: {summary['total_clients']}")
     print(f"  💰 Total Contract Value: ${summary['total_contract_value']:,}")
     print(f"  🏥 Average Health Score: {summary['average_health_score']}/10")
     print(f"  📋 Milestone Completion: {summary['milestone_metrics']['completion_rate']:.1f}%")
     print(f"  🎯 Tier Distribution: {summary['tier_distribution']}")
     print(f"  🔧 Engagement Models: {summary['engagement_distribution']}")
-    
+
     # Success criteria
     success_metrics = {
         "clients_onboarded": len(onboarded_clients) >= 3,
@@ -897,23 +895,23 @@ def run_enterprise_onboarding_demo():
         "milestone_tracking": summary['milestone_metrics']['total_milestones'] >= 10,
         "white_glove_service": all(c.onboarding_tier in ['platinum', 'gold', 'standard'] for c in onboarded_clients)
     }
-    
+
     success_count = sum(success_metrics.values())
     total_criteria = len(success_metrics)
-    
-    print(f"\n🎯 Enterprise Onboarding Success Criteria:")
+
+    print("\n🎯 Enterprise Onboarding Success Criteria:")
     for criterion, achieved in success_metrics.items():
         status = "✅" if achieved else "❌"
         print(f"  {status} {criterion.replace('_', ' ').title()}")
-    
+
     print(f"\n📋 Success Rate: {success_count}/{total_criteria} ({success_count/total_criteria*100:.0f}%)")
-    
+
     if success_count >= total_criteria * 0.8:  # 80% success threshold
-        print(f"\n🏆 ENTERPRISE ONBOARDING PLATFORM SUCCESSFULLY OPERATIONAL!")
-        print(f"   White-glove client success system ready for Fortune 500 enterprises")
+        print("\n🏆 ENTERPRISE ONBOARDING PLATFORM SUCCESSFULLY OPERATIONAL!")
+        print("   White-glove client success system ready for Fortune 500 enterprises")
     else:
         print(f"\n⚠️  Enterprise onboarding partially operational ({success_count}/{total_criteria} criteria met)")
-        
+
     return {
         "onboarded_clients": onboarded_clients,
         "platform_summary": summary,
@@ -924,17 +922,17 @@ def run_enterprise_onboarding_demo():
 def main():
     """Main execution for enterprise onboarding demo"""
     results = run_enterprise_onboarding_demo()
-    
-    print(f"\n📊 Enterprise Onboarding Platform Complete:")
+
+    print("\n📊 Enterprise Onboarding Platform Complete:")
     print(f"  🏢 Clients Onboarded: {len(results['onboarded_clients'])}")
     print(f"  💰 Total Contract Value: ${results['platform_summary']['total_contract_value']:,}")
     print(f"  🏥 Platform Health: {results['platform_summary']['onboarding_health']}")
     print(f"  🎯 Success Rate: {results['success_rate']*100:.0f}%")
-    
+
     if results['success_rate'] >= 0.8:
-        print(f"\n🎉 WHITE-GLOVE ONBOARDING PLATFORM OPERATIONAL!")
-        print(f"   Ready to deliver premium client success for Fortune 500 enterprises")
-    
+        print("\n🎉 WHITE-GLOVE ONBOARDING PLATFORM OPERATIONAL!")
+        print("   Ready to deliver premium client success for Fortune 500 enterprises")
+
     return results
 
 if __name__ == "__main__":

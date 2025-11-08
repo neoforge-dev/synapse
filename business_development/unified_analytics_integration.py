@@ -8,7 +8,6 @@ import json
 import logging
 import sqlite3
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -16,20 +15,20 @@ logger = logging.getLogger(__name__)
 
 class UnifiedAnalyticsIntegration:
     """Integration between LinkedIn automation and unified business analytics"""
-    
+
     def __init__(self):
         # Connect to unified analytics database from Epic 2
         self.unified_db_path = 'unified_business_intelligence.db'
         self.linkedin_db_path = 'linkedin_business_development.db'
         self.content_queue_path = 'content_queue.db'
-        
+
         self._init_unified_analytics_tables()
-    
+
     def _init_unified_analytics_tables(self):
         """Initialize unified analytics tables for LinkedIn automation data"""
         conn = sqlite3.connect(self.unified_db_path)
         cursor = conn.cursor()
-        
+
         # LinkedIn automation metrics table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS linkedin_automation_metrics (
@@ -65,7 +64,7 @@ class UnifiedAnalyticsIntegration:
                 engagement_to_inquiry_ratio REAL DEFAULT 0
             )
         ''')
-        
+
         # Real-time performance dashboard
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS linkedin_realtime_dashboard (
@@ -89,7 +88,7 @@ class UnifiedAnalyticsIntegration:
                 optimal_posting_recommendations TEXT
             )
         ''')
-        
+
         # Content intelligence tracking
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS content_intelligence (
@@ -114,46 +113,46 @@ class UnifiedAnalyticsIntegration:
                 inquiry_quality_score REAL DEFAULT 0
             )
         ''')
-        
+
         conn.commit()
         conn.close()
         logger.info("Unified analytics tables initialized")
-    
-    def sync_linkedin_metrics(self) -> Dict:
+
+    def sync_linkedin_metrics(self) -> dict:
         """Synchronize LinkedIn automation metrics with unified analytics"""
         logger.info("Syncing LinkedIn automation metrics to unified analytics")
-        
+
         # Get LinkedIn automation data
         linkedin_metrics = self._get_linkedin_performance_data()
         content_metrics = self._get_content_performance_data()
         business_metrics = self._get_business_development_data()
-        
+
         # Calculate unified metrics
         unified_metrics = self._calculate_unified_metrics(
             linkedin_metrics, content_metrics, business_metrics
         )
-        
+
         # Store in unified analytics database
         metric_id = f"linkedin_sync_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         self._store_unified_metrics(metric_id, unified_metrics)
-        
+
         # Update real-time dashboard
         self._update_realtime_dashboard(unified_metrics)
-        
+
         # Store content intelligence
         self._sync_content_intelligence()
-        
+
         logger.info(f"Synchronized {len(unified_metrics)} metrics to unified analytics")
         return unified_metrics
-    
-    def _get_linkedin_performance_data(self) -> Dict:
+
+    def _get_linkedin_performance_data(self) -> dict:
         """Get LinkedIn posting performance data"""
         conn = sqlite3.connect(self.linkedin_db_path)
         cursor = conn.cursor()
-        
+
         # Get last 24 hours performance
         yesterday = (datetime.now() - timedelta(days=1)).isoformat()
-        
+
         cursor.execute('''
             SELECT 
                 COUNT(*) as posts_published,
@@ -164,10 +163,10 @@ class UnifiedAnalyticsIntegration:
             FROM linkedin_posts 
             WHERE posted_at > ? AND impressions > 0
         ''', (yesterday,))
-        
+
         result = cursor.fetchone()
         conn.close()
-        
+
         return {
             'posts_published': result[0] or 0,
             'total_impressions': result[1] or 0,
@@ -175,12 +174,12 @@ class UnifiedAnalyticsIntegration:
             'avg_engagement_rate': result[3] or 0,
             'consultation_inquiries': result[4] or 0
         }
-    
-    def _get_content_performance_data(self) -> Dict:
+
+    def _get_content_performance_data(self) -> dict:
         """Get content queue and generation performance"""
         conn = sqlite3.connect(self.content_queue_path)
         cursor = conn.cursor()
-        
+
         # Content queue metrics
         cursor.execute('''
             SELECT 
@@ -190,26 +189,26 @@ class UnifiedAnalyticsIntegration:
                 COUNT(CASE WHEN status = 'safety_failed' THEN 1 END) as safety_failed
             FROM content_queue
         ''')
-        
+
         queue_result = cursor.fetchone()
-        
+
         # Calculate success rates
         total_processed = (queue_result[1] or 0) + (queue_result[2] or 0)
         posting_success_rate = (queue_result[1] or 0) / total_processed if total_processed > 0 else 0
-        
+
         conn.close()
-        
+
         return {
             'content_queue_size': queue_result[0] or 0,
             'posting_success_rate': posting_success_rate,
             'brand_safety_violations': queue_result[3] or 0
         }
-    
-    def _get_business_development_data(self) -> Dict:
+
+    def _get_business_development_data(self) -> dict:
         """Get business development and pipeline data"""
         conn = sqlite3.connect(self.linkedin_db_path)
         cursor = conn.cursor()
-        
+
         # Pipeline and conversion metrics
         cursor.execute('''
             SELECT 
@@ -221,34 +220,34 @@ class UnifiedAnalyticsIntegration:
             FROM consultation_inquiries
             WHERE created_at > date('now', '-30 days')
         ''')
-        
+
         result = cursor.fetchone()
-        
+
         total_inquiries = result[0] or 0
         pipeline_value = result[1] or 0
         won_deals = result[2] or 0
         revenue = result[3] or 0
         pipeline_velocity = result[4] or 0
-        
+
         conversion_rate = (won_deals / total_inquiries) if total_inquiries > 0 else 0
-        
+
         conn.close()
-        
+
         return {
             'pipeline_value_usd': pipeline_value,
             'conversion_rate': conversion_rate,
             'revenue_generated': revenue,
             'pipeline_velocity_days': pipeline_velocity
         }
-    
-    def _calculate_unified_metrics(self, linkedin_metrics: Dict, content_metrics: Dict, business_metrics: Dict) -> Dict:
+
+    def _calculate_unified_metrics(self, linkedin_metrics: dict, content_metrics: dict, business_metrics: dict) -> dict:
         """Calculate unified metrics combining all data sources"""
-        
+
         # Calculate advanced metrics
         engagement_to_inquiry_ratio = 0
         if linkedin_metrics['total_engagement'] > 0 and linkedin_metrics['consultation_inquiries'] > 0:
             engagement_to_inquiry_ratio = linkedin_metrics['total_engagement'] / linkedin_metrics['consultation_inquiries']
-        
+
         cost_per_acquisition = 0
         if business_metrics['conversion_rate'] > 0:
             # Estimate monthly automation cost at $500
@@ -256,10 +255,10 @@ class UnifiedAnalyticsIntegration:
             monthly_acquisitions = linkedin_metrics['consultation_inquiries'] * business_metrics['conversion_rate'] * 30
             if monthly_acquisitions > 0:
                 cost_per_acquisition = estimated_monthly_cost / monthly_acquisitions
-        
+
         # Optimal posting adherence (percentage of posts at optimal times)
         optimal_posting_adherence = 0.85  # Would calculate from actual posting times vs optimal
-        
+
         return {
             **linkedin_metrics,
             **content_metrics,
@@ -270,12 +269,12 @@ class UnifiedAnalyticsIntegration:
             'api_response_time_ms': 150,  # Would get from monitoring
             'circuit_breaker_activations': 0  # Would get from system metrics
         }
-    
-    def _store_unified_metrics(self, metric_id: str, metrics: Dict):
+
+    def _store_unified_metrics(self, metric_id: str, metrics: dict):
         """Store metrics in unified analytics database"""
         conn = sqlite3.connect(self.unified_db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT INTO linkedin_automation_metrics 
             (metric_id, posts_published, total_impressions, total_engagement,
@@ -305,35 +304,35 @@ class UnifiedAnalyticsIntegration:
             metrics['pipeline_velocity_days'],
             metrics['engagement_to_inquiry_ratio']
         ))
-        
+
         conn.commit()
         conn.close()
-    
-    def _update_realtime_dashboard(self, metrics: Dict):
+
+    def _update_realtime_dashboard(self, metrics: dict):
         """Update real-time dashboard with latest metrics"""
         conn = sqlite3.connect(self.unified_db_path)
         cursor = conn.cursor()
-        
+
         # Calculate system health score
         system_health_score = self._calculate_system_health_score(metrics)
-        
+
         # Get pending inquiries
         linkedin_conn = sqlite3.connect(self.linkedin_db_path)
         linkedin_cursor = linkedin_conn.cursor()
         linkedin_cursor.execute("SELECT COUNT(*) FROM consultation_inquiries WHERE status IN ('new', 'contacted')")
         pending_inquiries = linkedin_cursor.fetchone()[0] or 0
         linkedin_conn.close()
-        
+
         # Generate business intelligence insights
         weekly_trend = self._analyze_weekly_pipeline_trend()
         top_content_types = self._analyze_top_content_types()
         funnel_metrics = self._calculate_consultation_funnel_metrics()
-        
+
         # Predictive analytics
         projected_pipeline = self._project_monthly_pipeline(metrics)
         engagement_forecast = self._forecast_engagement_trends()
         posting_recommendations = self._generate_posting_recommendations(metrics)
-        
+
         dashboard_id = "linkedin_automation_dashboard"
         cursor.execute('''
             INSERT OR REPLACE INTO linkedin_realtime_dashboard 
@@ -355,19 +354,19 @@ class UnifiedAnalyticsIntegration:
             json.dumps(engagement_forecast),
             json.dumps(posting_recommendations)
         ))
-        
+
         conn.commit()
         conn.close()
-    
+
     def _sync_content_intelligence(self):
         """Sync individual content performance for intelligence analysis"""
         conn = sqlite3.connect(self.unified_db_path)
         cursor = conn.cursor()
-        
+
         # Get recent posts from LinkedIn database
         linkedin_conn = sqlite3.connect(self.linkedin_db_path)
         linkedin_cursor = linkedin_conn.cursor()
-        
+
         linkedin_cursor.execute('''
             SELECT post_id, posted_at, day, target_audience, impressions,
                    actual_engagement_rate, consultation_requests, business_objective
@@ -375,20 +374,20 @@ class UnifiedAnalyticsIntegration:
             WHERE posted_at > date('now', '-7 days')
             AND impressions > 0
         ''')
-        
+
         posts = linkedin_cursor.fetchall()
         linkedin_conn.close()
-        
+
         for post in posts:
             post_id, posted_at, content_type, audience, impressions, engagement_rate, inquiries, objective = post
-            
+
             # Calculate AI analysis scores (would use actual AI analysis)
             sentiment_score = 0.7  # Positive sentiment
             hook_effectiveness = engagement_rate * 5  # Scale to 0-1
             cta_performance = inquiries / max(impressions / 1000, 1)  # Inquiries per 1K impressions
             pipeline_contribution = inquiries * 25000  # Estimated value per inquiry
             inquiry_quality_score = 0.8  # Would analyze actual inquiry quality
-            
+
             cursor.execute('''
                 INSERT OR REPLACE INTO content_intelligence 
                 (content_id, posted_at, content_type, target_audience,
@@ -402,14 +401,14 @@ class UnifiedAnalyticsIntegration:
                 sentiment_score, hook_effectiveness, cta_performance,
                 pipeline_contribution, inquiry_quality_score
             ))
-        
+
         conn.commit()
         conn.close()
-    
-    def _calculate_system_health_score(self, metrics: Dict) -> float:
+
+    def _calculate_system_health_score(self, metrics: dict) -> float:
         """Calculate overall system health score (0-100)"""
         score = 0
-        
+
         # Posting performance (30 points)
         if metrics['posting_success_rate'] > 0.95:
             score += 30
@@ -417,7 +416,7 @@ class UnifiedAnalyticsIntegration:
             score += 20
         elif metrics['posting_success_rate'] > 0.5:
             score += 10
-        
+
         # Engagement performance (25 points)
         if metrics['avg_engagement_rate'] > 0.15:
             score += 25
@@ -425,20 +424,20 @@ class UnifiedAnalyticsIntegration:
             score += 15
         elif metrics['avg_engagement_rate'] > 0.03:
             score += 10
-        
+
         # Business development (25 points)
         if metrics['consultation_inquiries'] > 0:
             score += 25
-        
+
         # System stability (20 points)
         if metrics['circuit_breaker_activations'] == 0:
             score += 20
         elif metrics['circuit_breaker_activations'] < 3:
             score += 10
-        
+
         return float(score)
-    
-    def _analyze_weekly_pipeline_trend(self) -> List[Dict]:
+
+    def _analyze_weekly_pipeline_trend(self) -> list[dict]:
         """Analyze weekly pipeline trends"""
         # Would analyze actual trend data
         return [
@@ -447,8 +446,8 @@ class UnifiedAnalyticsIntegration:
             {'week': 'Week 3', 'pipeline_value': 58000, 'inquiries': 15},
             {'week': 'Week 4', 'pipeline_value': 61000, 'inquiries': 18}
         ]
-    
-    def _analyze_top_content_types(self) -> List[Dict]:
+
+    def _analyze_top_content_types(self) -> list[dict]:
         """Analyze top-performing content types"""
         return [
             {'type': 'controversial_take', 'avg_engagement': 0.24, 'inquiries_per_post': 2.3},
@@ -456,8 +455,8 @@ class UnifiedAnalyticsIntegration:
             {'type': 'technical_insight', 'avg_engagement': 0.15, 'inquiries_per_post': 2.1},
             {'type': 'product_management', 'avg_engagement': 0.12, 'inquiries_per_post': 2.8}
         ]
-    
-    def _calculate_consultation_funnel_metrics(self) -> Dict:
+
+    def _calculate_consultation_funnel_metrics(self) -> dict:
         """Calculate consultation funnel conversion metrics"""
         return {
             'post_views_to_profile_visits': 0.15,
@@ -466,17 +465,17 @@ class UnifiedAnalyticsIntegration:
             'discovery_calls_to_proposals': 0.45,
             'proposals_to_closed_won': 0.35
         }
-    
-    def _project_monthly_pipeline(self, metrics: Dict) -> float:
+
+    def _project_monthly_pipeline(self, metrics: dict) -> float:
         """Project monthly pipeline value based on current trends"""
         daily_pipeline = metrics['pipeline_value_usd'] / 7  # Assume weekly data
         projected_monthly = daily_pipeline * 30
-        
+
         # Apply growth trend (would use actual trend analysis)
         growth_factor = 1.15  # 15% month-over-month growth
         return projected_monthly * growth_factor
-    
-    def _forecast_engagement_trends(self) -> List[Dict]:
+
+    def _forecast_engagement_trends(self) -> list[dict]:
         """Forecast engagement trends"""
         return [
             {'week': 'Next Week', 'predicted_engagement': 0.18, 'confidence': 0.85},
@@ -484,37 +483,37 @@ class UnifiedAnalyticsIntegration:
             {'week': 'Week +3', 'predicted_engagement': 0.21, 'confidence': 0.72},
             {'week': 'Week +4', 'predicted_engagement': 0.22, 'confidence': 0.65}
         ]
-    
-    def _generate_posting_recommendations(self, metrics: Dict) -> List[str]:
+
+    def _generate_posting_recommendations(self, metrics: dict) -> list[str]:
         """Generate AI-powered posting recommendations"""
         recommendations = []
-        
+
         if metrics['avg_engagement_rate'] < 0.10:
             recommendations.append("Increase controversial takes - they drive 2.4x higher engagement")
-        
+
         if metrics['consultation_inquiries'] < 2:
             recommendations.append("Add more product management content - highest inquiry conversion")
-        
+
         if metrics['optimal_posting_adherence'] < 0.8:
             recommendations.append("Focus posting on Tue/Thu 6:30 AM for optimal engagement")
-        
+
         recommendations.append("Personal stories perform well - consider 2x weekly frequency")
-        
+
         return recommendations
-    
-    def get_unified_dashboard_data(self) -> Dict:
+
+    def get_unified_dashboard_data(self) -> dict:
         """Get complete unified dashboard data"""
         conn = sqlite3.connect(self.unified_db_path)
         cursor = conn.cursor()
-        
+
         # Get latest dashboard data
         cursor.execute('''
             SELECT * FROM linkedin_realtime_dashboard 
             WHERE dashboard_id = 'linkedin_automation_dashboard'
         ''')
-        
+
         dashboard_row = cursor.fetchone()
-        
+
         # Get recent metrics trend
         cursor.execute('''
             SELECT timestamp, avg_engagement_rate, consultation_inquiries, pipeline_value_usd
@@ -522,13 +521,13 @@ class UnifiedAnalyticsIntegration:
             ORDER BY timestamp DESC
             LIMIT 24  -- Last 24 data points
         ''')
-        
+
         metrics_trend = cursor.fetchall()
         conn.close()
-        
+
         if not dashboard_row:
             return {'error': 'Dashboard data not available'}
-        
+
         return {
             'timestamp': dashboard_row[1],
             'current_metrics': {
@@ -556,12 +555,12 @@ class UnifiedAnalyticsIntegration:
                 } for row in metrics_trend
             ]
         }
-    
-    def generate_roi_report(self) -> Dict:
+
+    def generate_roi_report(self) -> dict:
         """Generate comprehensive ROI report for LinkedIn automation"""
         conn = sqlite3.connect(self.unified_db_path)
         cursor = conn.cursor()
-        
+
         # Get metrics from last 30 days
         cursor.execute('''
             SELECT 
@@ -575,23 +574,23 @@ class UnifiedAnalyticsIntegration:
             FROM linkedin_automation_metrics
             WHERE timestamp > datetime('now', '-30 days')
         ''')
-        
+
         result = cursor.fetchone()
         conn.close()
-        
+
         if not result or not any(result):
             return {'error': 'Insufficient data for ROI calculation'}
-        
+
         avg_daily_posts, avg_engagement, total_inquiries, avg_pipeline_value, avg_conversion_rate, total_revenue, avg_cpa = result
-        
+
         # Calculate ROI metrics
         monthly_automation_cost = 500  # Estimated infrastructure cost
         roi_percentage = ((total_revenue or 0) - monthly_automation_cost) / monthly_automation_cost * 100
-        
+
         # Time savings calculation
         posts_per_month = (avg_daily_posts or 0) * 30
         time_saved_hours = posts_per_month * 0.5  # 30 minutes per post saved
-        
+
         return {
             'reporting_period': '30 days',
             'automation_performance': {
@@ -627,44 +626,44 @@ class UnifiedAnalyticsIntegration:
 def main():
     """Main function to sync LinkedIn automation with unified analytics"""
     integration = UnifiedAnalyticsIntegration()
-    
+
     print("🔄 LinkedIn Automation → Unified Analytics Integration")
     print("=" * 60)
-    
+
     # Sync current metrics
     print("📊 Syncing automation metrics...")
     metrics = integration.sync_linkedin_metrics()
-    
+
     # Display key metrics
-    print(f"✅ Synced metrics:")
+    print("✅ Synced metrics:")
     print(f"  • Posts Published: {metrics.get('posts_published', 0)}")
     print(f"  • Engagement Rate: {metrics.get('avg_engagement_rate', 0):.1%}")
     print(f"  • Consultation Inquiries: {metrics.get('consultation_inquiries', 0)}")
     print(f"  • Pipeline Value: ${metrics.get('pipeline_value_usd', 0):,.0f}")
-    
+
     # Generate ROI report
     print("\n📈 Generating ROI report...")
     roi_report = integration.generate_roi_report()
-    
+
     if 'error' not in roi_report:
-        print(f"✅ ROI Analysis:")
+        print("✅ ROI Analysis:")
         print(f"  • Revenue Generated: ${roi_report['financial_impact']['revenue_generated']:,.0f}")
         print(f"  • Pipeline Value: ${roi_report['financial_impact']['pipeline_value']:,.0f}")
         print(f"  • ROI: {roi_report['financial_impact']['roi_percentage']:.1f}%")
         print(f"  • Time Saved: {roi_report['operational_efficiency']['time_saved_hours']:.1f} hours/month")
-    
+
     # Get dashboard data
     print("\n📊 Unified dashboard data available")
     dashboard_data = integration.get_unified_dashboard_data()
-    
+
     if 'error' not in dashboard_data:
         health_score = dashboard_data['current_metrics']['system_health_score']
         print(f"✅ System Health: {health_score:.0f}/100")
-        
+
         recommendations = dashboard_data['predictive_analytics']['recommendations']
         if recommendations:
             print(f"💡 AI Recommendations: {len(recommendations)} optimization suggestions")
-    
+
     print("\n🎯 LinkedIn automation successfully integrated with unified analytics!")
     print("Real-time performance tracking and business intelligence active.")
 

@@ -6,15 +6,12 @@ Supports multi-hop queries, community detection, and temporal analysis for consu
 """
 
 import asyncio
-import json
 import logging
 import sqlite3
 import sys
-from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 try:
     from mgclient import connect as mgclient_connect
@@ -35,7 +32,7 @@ class GraphNode:
     """Graph node representation"""
     id: str
     label: str
-    properties: Dict[str, Any]
+    properties: dict[str, Any]
 
 @dataclass
 class GraphRelationship:
@@ -44,7 +41,7 @@ class GraphRelationship:
     type: str
     source_id: str
     target_id: str
-    properties: Dict[str, Any]
+    properties: dict[str, Any]
 
 @dataclass
 class GraphPattern:
@@ -57,7 +54,7 @@ class GraphPattern:
 
 class GraphRAGMemgraphIntegration:
     """Production-ready Memgraph integration for Graph-RAG analytics"""
-    
+
     def __init__(self):
         self.memgraph_config = {
             'host': '127.0.0.1',
@@ -65,40 +62,40 @@ class GraphRAGMemgraphIntegration:
             'username': '',
             'password': ''
         }
-        
+
         self.connection = None
         self.fallback_mode = False
-        
+
         # Initialize connection
         self._init_memgraph_connection()
-        
+
         # Load business data patterns
         self._init_graph_patterns()
-        
+
         logger.info(f"Graph-RAG Memgraph Integration initialized (fallback_mode: {self.fallback_mode})")
-    
+
     def _init_memgraph_connection(self):
         """Initialize Memgraph connection with fallback"""
         if not MEMGRAPH_AVAILABLE:
             logger.warning("Memgraph client not available. Using fallback mode.")
             self.fallback_mode = True
             return
-        
+
         try:
             self.connection = mgclient_connect(**self.memgraph_config)
             logger.info("Memgraph connection established")
-            
+
             # Test connection
             cursor = self.connection.cursor()
             cursor.execute("RETURN 'Connection successful' as status")
             result = cursor.fetchone()
             logger.info(f"Memgraph test query result: {result[0]}")
-            
+
         except Exception as e:
             logger.warning(f"Memgraph connection failed: {e}. Using fallback mode.")
             self.fallback_mode = True
             self.connection = None
-    
+
     def _init_graph_patterns(self):
         """Initialize graph patterns for business analysis"""
         self.graph_patterns = [
@@ -194,15 +191,15 @@ class GraphRAGMemgraphIntegration:
                 expected_results=12
             )
         ]
-    
+
     async def create_business_graph_schema(self):
         """Create comprehensive graph schema for business intelligence"""
         if self.fallback_mode:
             logger.info("Skipping graph schema creation - fallback mode")
             return
-        
+
         cursor = self.connection.cursor()
-        
+
         # Create node labels and properties
         schema_queries = [
             # Content nodes
@@ -218,7 +215,7 @@ class GraphRAGMemgraphIntegration:
                 posted_at: datetime('2024-01-15T06:30:00')
             })
             """,
-            
+
             # Topic nodes
             """
             CREATE (:Topic {
@@ -228,7 +225,7 @@ class GraphRAGMemgraphIntegration:
                 avg_engagement: 0.18
             })
             """,
-            
+
             # Entity nodes
             """
             CREATE (:Entity {
@@ -239,7 +236,7 @@ class GraphRAGMemgraphIntegration:
                 engagement_impact: 0.12
             })
             """,
-            
+
             # User/Audience nodes
             """
             CREATE (:User {
@@ -250,7 +247,7 @@ class GraphRAGMemgraphIntegration:
                 engagement_frequency: 'high'
             })
             """,
-            
+
             # Consultation nodes
             """
             CREATE (:Consultation {
@@ -261,7 +258,7 @@ class GraphRAGMemgraphIntegration:
                 created_at: datetime('2024-01-16T10:00:00')
             })
             """,
-            
+
             # Deal nodes
             """
             CREATE (:Deal {
@@ -273,62 +270,62 @@ class GraphRAGMemgraphIntegration:
             })
             """
         ]
-        
+
         # Create relationships
         relationship_queries = [
             # Content relationships
             "MATCH (c:Content {id: 'content_1'}), (t:Topic {name: 'Technical Architecture'}) CREATE (c)-[:HAS_TOPIC]->(t)",
             "MATCH (c:Content {id: 'content_1'}), (e:Entity {name: 'microservices'}) CREATE (c)-[:CONTAINS]->(e)",
-            
+
             # Engagement relationships
             "MATCH (c:Content {id: 'content_1'}), (u:User {id: 'user_1'}) CREATE (u)-[:ENGAGED_WITH {type: 'comment', timestamp: datetime()}]->(c)",
-            
+
             # Conversion relationships
             "MATCH (c:Content {id: 'content_1'}), (cons:Consultation {id: 'consultation_1'}) CREATE (c)-[:LED_TO]->(cons)",
             "MATCH (cons:Consultation {id: 'consultation_1'}), (d:Deal {id: 'deal_1'}) CREATE (cons)-[:RESULTED_IN]->(d)"
         ]
-        
+
         try:
             # Clear existing data
             cursor.execute("MATCH (n) DETACH DELETE n")
             logger.info("Cleared existing graph data")
-            
+
             # Create nodes
             for query in schema_queries:
                 cursor.execute(query)
-            
+
             # Create relationships
             for query in relationship_queries:
                 cursor.execute(query)
-            
+
             self.connection.commit()
             logger.info("Graph schema created successfully")
-            
+
         except Exception as e:
             logger.error(f"Failed to create graph schema: {e}")
-    
+
     async def load_business_data_to_graph(self):
         """Load business data from SQLite databases to Memgraph"""
         if self.fallback_mode:
             logger.info("Skipping data loading - fallback mode")
             return
-        
+
         # Load LinkedIn business data
         await self._load_linkedin_data()
-        
+
         # Load analytics data
         await self._load_analytics_data()
-        
+
         # Load content performance data
         await self._load_content_performance_data()
-        
+
         logger.info("Business data loaded to graph successfully")
-    
+
     async def _load_linkedin_data(self):
         """Load LinkedIn posts and engagement data"""
         conn = sqlite3.connect('linkedin_business_development.db')
         cursor = conn.cursor()
-        
+
         try:
             # Get LinkedIn posts
             cursor.execute('''
@@ -338,11 +335,11 @@ class GraphRAGMemgraphIntegration:
                 WHERE actual_engagement_rate IS NOT NULL
                 LIMIT 100
             ''')
-            
+
             posts = cursor.fetchall()
-            
+
             mg_cursor = self.connection.cursor()
-            
+
             for post_id, content, day, engagement_rate, consultations, objective, posted_at in posts:
                 # Create Content node
                 mg_cursor.execute('''
@@ -364,43 +361,43 @@ class GraphRAGMemgraphIntegration:
                     'objective': objective,
                     'posted_at': posted_at
                 })
-                
+
                 # Create Topic node and relationship
                 if objective:
                     mg_cursor.execute('''
                         MERGE (t:Topic {name: $topic})
                         ON CREATE SET t.category = 'business'
                     ''', {'topic': objective})
-                    
+
                     mg_cursor.execute('''
                         MATCH (c:Content {id: $post_id}), (t:Topic {name: $topic})
                         CREATE (c)-[:HAS_TOPIC]->(t)
                     ''', {'post_id': post_id, 'topic': objective})
-            
+
             self.connection.commit()
             logger.info(f"Loaded {len(posts)} LinkedIn posts to graph")
-            
+
         except Exception as e:
             logger.error(f"Failed to load LinkedIn data: {e}")
         finally:
             conn.close()
-    
+
     async def _load_analytics_data(self):
         """Load analytics and performance data"""
         # This would load additional analytics data
         # For now, create sample analytics nodes
         if self.fallback_mode:
             return
-        
+
         mg_cursor = self.connection.cursor()
-        
+
         # Create sample analytics nodes
         analytics_data = [
             ('engagement_rate', 0.156, 'daily_metric'),
             ('consultation_conversion', 0.028, 'conversion_metric'),
             ('pipeline_value', 75000, 'business_metric')
         ]
-        
+
         for metric_name, value, metric_type in analytics_data:
             mg_cursor.execute('''
                 CREATE (:Metric {
@@ -410,31 +407,31 @@ class GraphRAGMemgraphIntegration:
                     timestamp: datetime()
                 })
             ''', {'name': metric_name, 'value': value, 'type': metric_type})
-        
+
         self.connection.commit()
         logger.info("Analytics data loaded to graph")
-    
+
     async def _load_content_performance_data(self):
         """Load content performance and optimization data"""
         # Load from performance analytics database
         if self.fallback_mode:
             return
-        
+
         try:
             conn = sqlite3.connect('performance_analytics.db')
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 SELECT pattern_type, pattern_value, avg_engagement_rate,
                        avg_consultation_conversion, sample_size, confidence_score
                 FROM content_patterns
                 WHERE confidence_score > 0.5
             ''')
-            
+
             patterns = cursor.fetchall()
-            
+
             mg_cursor = self.connection.cursor()
-            
+
             for pattern_type, pattern_value, engagement, conversion, sample_size, confidence in patterns:
                 # Create Pattern node
                 mg_cursor.execute('''
@@ -454,47 +451,47 @@ class GraphRAGMemgraphIntegration:
                     'sample_size': sample_size,
                     'confidence': confidence
                 })
-            
+
             self.connection.commit()
             logger.info(f"Loaded {len(patterns)} content patterns to graph")
-            
+
         except Exception as e:
             logger.warning(f"Failed to load content performance data: {e}")
         finally:
             if 'conn' in locals():
                 conn.close()
-    
-    async def execute_graph_analysis(self, pattern_id: str) -> List[Dict[str, Any]]:
+
+    async def execute_graph_analysis(self, pattern_id: str) -> list[dict[str, Any]]:
         """Execute graph analysis pattern and return results"""
         pattern = next((p for p in self.graph_patterns if p.pattern_id == pattern_id), None)
-        
+
         if not pattern:
             logger.error(f"Pattern {pattern_id} not found")
             return []
-        
+
         if self.fallback_mode:
             return await self._execute_fallback_analysis(pattern)
-        
+
         try:
             cursor = self.connection.cursor()
             cursor.execute(pattern.cypher_query)
             results = cursor.fetchall()
-            
+
             # Convert results to dictionaries
             columns = [desc[0] for desc in cursor.description]
-            result_dicts = [dict(zip(columns, row)) for row in results]
-            
+            result_dicts = [dict(zip(columns, row, strict=False)) for row in results]
+
             logger.info(f"Executed {pattern_id}: {len(result_dicts)} results")
             return result_dicts
-            
+
         except Exception as e:
             logger.error(f"Failed to execute {pattern_id}: {e}")
             return await self._execute_fallback_analysis(pattern)
-    
-    async def _execute_fallback_analysis(self, pattern: GraphPattern) -> List[Dict[str, Any]]:
+
+    async def _execute_fallback_analysis(self, pattern: GraphPattern) -> list[dict[str, Any]]:
         """Execute fallback analysis using SQLite data"""
         logger.info(f"Executing fallback analysis for {pattern.pattern_id}")
-        
+
         # Simplified fallback implementations
         if pattern.pattern_id == "content_topic_consultation_path":
             return await self._fallback_topic_analysis()
@@ -505,12 +502,12 @@ class GraphRAGMemgraphIntegration:
         else:
             logger.warning(f"No fallback implementation for {pattern.pattern_id}")
             return []
-    
-    async def _fallback_topic_analysis(self) -> List[Dict[str, Any]]:
+
+    async def _fallback_topic_analysis(self) -> list[dict[str, Any]]:
         """Fallback topic analysis using SQLite"""
         conn = sqlite3.connect('linkedin_business_development.db')
         cursor = conn.cursor()
-        
+
         try:
             cursor.execute('''
                 SELECT 
@@ -526,9 +523,9 @@ class GraphRAGMemgraphIntegration:
                 HAVING content_count >= 2
                 ORDER BY consultation_count DESC, avg_engagement DESC
             ''')
-            
+
             results = cursor.fetchall()
-            
+
             return [
                 {
                     'topic': row[0],
@@ -540,14 +537,14 @@ class GraphRAGMemgraphIntegration:
                 }
                 for row in results
             ]
-            
+
         except Exception as e:
             logger.error(f"Fallback topic analysis failed: {e}")
             return []
         finally:
             conn.close()
-    
-    async def _fallback_cooccurrence_analysis(self) -> List[Dict[str, Any]]:
+
+    async def _fallback_cooccurrence_analysis(self) -> list[dict[str, Any]]:
         """Fallback entity co-occurrence analysis"""
         # Mock co-occurrence data based on business knowledge
         return [
@@ -573,12 +570,12 @@ class GraphRAGMemgraphIntegration:
                 'total_consultations': 3
             }
         ]
-    
-    async def _fallback_temporal_analysis(self) -> List[Dict[str, Any]]:
+
+    async def _fallback_temporal_analysis(self) -> list[dict[str, Any]]:
         """Fallback temporal analysis"""
         conn = sqlite3.connect('linkedin_business_development.db')
         cursor = conn.cursor()
-        
+
         try:
             cursor.execute('''
                 SELECT 
@@ -592,12 +589,12 @@ class GraphRAGMemgraphIntegration:
                 HAVING post_count >= 1
                 ORDER BY consultation_count DESC, avg_engagement DESC
             ''')
-            
+
             results = cursor.fetchall()
-            
+
             # Mock hour data since we don't have it in SQLite
             hours = ['06', '12', '18', '09', '15']  # Sample hours
-            
+
             temporal_results = []
             for i, (day, post_count, avg_engagement, consultation_count) in enumerate(results):
                 temporal_results.append({
@@ -607,21 +604,21 @@ class GraphRAGMemgraphIntegration:
                     'avg_engagement': avg_engagement or 0,
                     'consultation_count': consultation_count or 0
                 })
-            
+
             return temporal_results
-            
+
         except Exception as e:
             logger.error(f"Fallback temporal analysis failed: {e}")
             return []
         finally:
             conn.close()
-    
-    async def run_comprehensive_graph_analysis(self) -> Dict[str, Any]:
+
+    async def run_comprehensive_graph_analysis(self) -> dict[str, Any]:
         """Run comprehensive graph analysis across all patterns"""
         logger.info("Running comprehensive graph analysis...")
-        
+
         analysis_results = {}
-        
+
         for pattern in self.graph_patterns:
             try:
                 results = await self.execute_graph_analysis(pattern.pattern_id)
@@ -631,10 +628,10 @@ class GraphRAGMemgraphIntegration:
                     'results_count': len(results),
                     'results': results[:10]  # Top 10 results
                 }
-                
+
                 # Add brief pause between queries
                 await asyncio.sleep(0.1)
-                
+
             except Exception as e:
                 logger.error(f"Analysis failed for {pattern.pattern_id}: {e}")
                 analysis_results[pattern.pattern_id] = {
@@ -644,41 +641,41 @@ class GraphRAGMemgraphIntegration:
                     'results': [],
                     'error': str(e)
                 }
-        
+
         # Generate business intelligence summary
         business_summary = self._generate_business_intelligence_summary(analysis_results)
         analysis_results['business_intelligence_summary'] = business_summary
-        
+
         logger.info("Comprehensive graph analysis completed")
         return analysis_results
-    
-    def _generate_business_intelligence_summary(self, analysis_results: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _generate_business_intelligence_summary(self, analysis_results: dict[str, Any]) -> dict[str, Any]:
         """Generate business intelligence summary from graph analysis results"""
-        
+
         # Extract key insights
         topic_analysis = analysis_results.get('content_topic_consultation_path', {}).get('results', [])
         cooccurrence_analysis = analysis_results.get('entity_cooccurrence_performance', {}).get('results', [])
         temporal_analysis = analysis_results.get('temporal_content_trends', {}).get('results', [])
-        
+
         # Calculate business metrics
         total_consultations = sum(result.get('consultation_count', 0) for result in topic_analysis)
         avg_engagement = sum(result.get('avg_engagement', 0) for result in topic_analysis) / len(topic_analysis) if topic_analysis else 0
-        
+
         # Top opportunities
         top_topics = sorted(topic_analysis, key=lambda x: x.get('consultation_count', 0), reverse=True)[:3]
         top_entity_pairs = sorted(cooccurrence_analysis, key=lambda x: x.get('total_consultations', 0), reverse=True)[:3]
         optimal_times = sorted(temporal_analysis, key=lambda x: x.get('consultation_count', 0), reverse=True)[:3]
-        
+
         return {
             'total_consultation_opportunities': total_consultations,
             'average_engagement_rate': avg_engagement,
             'top_performing_topics': [topic.get('topic', 'Unknown') for topic in top_topics],
             'best_entity_combinations': [
-                f"{pair.get('entity1', '')} + {pair.get('entity2', '')}" 
+                f"{pair.get('entity1', '')} + {pair.get('entity2', '')}"
                 for pair in top_entity_pairs
             ],
             'optimal_posting_times': [
-                f"{time.get('day', 'Unknown')} {time.get('hour', '00')}:30" 
+                f"{time.get('day', 'Unknown')} {time.get('hour', '00')}:30"
                 for time in optimal_times
             ],
             'business_impact_projection': {
@@ -692,7 +689,7 @@ class GraphRAGMemgraphIntegration:
                 f"Optimize posting time: {optimal_times[0].get('day', 'Unknown') if optimal_times else 'Analysis needed'}"
             ]
         }
-    
+
     def close_connection(self):
         """Close Memgraph connection"""
         if self.connection:
@@ -703,40 +700,40 @@ async def main():
     """Main execution function for Graph-RAG Memgraph integration testing"""
     print("🔗 Graph-RAG Memgraph Integration for Epic 3")
     print("=" * 60)
-    
+
     # Initialize integration
     integration = GraphRAGMemgraphIntegration()
-    
+
     print(f"📊 Connection Status: {'Memgraph' if not integration.fallback_mode else 'SQLite Fallback'}")
     print()
-    
+
     # Create graph schema if using Memgraph
     if not integration.fallback_mode:
         print("🏗️  Creating graph schema...")
         await integration.create_business_graph_schema()
-        
+
         print("📥 Loading business data...")
         await integration.load_business_data_to_graph()
         print()
-    
+
     # Run comprehensive analysis
     print("🧠 Running comprehensive graph analysis...")
     results = await integration.run_comprehensive_graph_analysis()
-    
+
     # Display results
     print("📈 Analysis Results:")
     print("-" * 40)
-    
+
     for pattern_id, result in results.items():
         if pattern_id == 'business_intelligence_summary':
             continue
-            
+
         print(f"\n🔍 {result['description']}")
         print(f"   Results: {result['results_count']}")
-        
+
         if result['results']:
             print(f"   Top Result: {list(result['results'][0].keys())[0] if result['results'][0] else 'N/A'}")
-    
+
     # Display business intelligence summary
     if 'business_intelligence_summary' in results:
         summary = results['business_intelligence_summary']
@@ -747,21 +744,21 @@ async def main():
         print(f"🎯 Top Topics: {', '.join(summary['top_performing_topics'][:2])}")
         print(f"⏰ Optimal Times: {', '.join(summary['optimal_posting_times'][:2])}")
         print()
-        
+
         print("🚀 Strategic Recommendations:")
         for rec in summary['strategic_recommendations']:
             print(f"   • {rec}")
         print()
-        
+
         print("💰 Business Impact Projection:")
         impact = summary['business_impact_projection']
         print(f"   • Current: {impact['current_performance']}")
         print(f"   • Potential: {impact['optimization_potential']}")
         print(f"   • Value: {impact['projected_additional_value']}")
-    
+
     print("\n✅ Graph-RAG Memgraph Integration Complete!")
     print("🔗 Advanced relationship analysis ready for business optimization")
-    
+
     # Close connection
     integration.close_connection()
 

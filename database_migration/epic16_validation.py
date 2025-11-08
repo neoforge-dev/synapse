@@ -17,15 +17,15 @@ Exit Codes:
     1 - Validation failures detected (ROLLBACK recommended)
 """
 
-import os
-import sys
-import sqlite3
 import json
+import os
 import random
-from typing import Dict, List, Tuple, Any, Optional
+import sqlite3
+import sys
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from decimal import Decimal
-from dataclasses import dataclass, asdict
+from typing import Any
 
 try:
     import psycopg2
@@ -62,8 +62,8 @@ class TableValidation:
     sample_data_match: bool
     json_structure_valid: bool
     business_logic_valid: bool
-    errors: List[str]
-    warnings: List[str]
+    errors: list[str]
+    warnings: list[str]
 
 
 class Epic16ValidationTool:
@@ -116,8 +116,8 @@ class Epic16ValidationTool:
         """Initialize validation tool"""
         self.quick_mode = quick_mode
         self.json_output = json_output
-        self.results: List[ValidationResult] = []
-        self.table_results: Dict[str, TableValidation] = {}
+        self.results: list[ValidationResult] = []
+        self.table_results: dict[str, TableValidation] = {}
         self.overall_status = "PASS"
 
         # PostgreSQL configuration
@@ -158,7 +158,7 @@ class Epic16ValidationTool:
     # 1. ROW COUNT VALIDATION
     # ========================================================================
 
-    def validate_row_counts(self, db_key: str, tables: List[str]) -> bool:
+    def validate_row_counts(self, db_key: str, tables: list[str]) -> bool:
         """
         Validate row counts match 100% between SQLite and PostgreSQL.
         Target: 0 tolerance for discrepancies.
@@ -215,7 +215,7 @@ class Epic16ValidationTool:
     # 2. FOREIGN KEY INTEGRITY VALIDATION
     # ========================================================================
 
-    def validate_foreign_keys(self, db_key: str, tables: List[str]) -> bool:
+    def validate_foreign_keys(self, db_key: str, tables: list[str]) -> bool:
         """
         Verify all foreign key references exist.
         Check for orphaned records and validate cascade relationships.
@@ -298,7 +298,7 @@ class Epic16ValidationTool:
     # 3. JSON STRUCTURE VALIDATION
     # ========================================================================
 
-    def validate_json_structures(self, db_key: str, tables: List[str]) -> bool:
+    def validate_json_structures(self, db_key: str, tables: list[str]) -> bool:
         """
         Validate JSONB column structures.
         Check for missing fields and validate data types within JSON.
@@ -538,7 +538,7 @@ class Epic16ValidationTool:
     # 5. BUSINESS LOGIC VALIDATION
     # ========================================================================
 
-    def validate_business_logic(self, db_key: str, tables: List[str]) -> bool:
+    def validate_business_logic(self, db_key: str, tables: list[str]) -> bool:
         """
         Validate business logic rules:
         - Acquisition scores within valid range (0-100)
@@ -636,7 +636,7 @@ class Epic16ValidationTool:
                     all_valid = False
                     self.overall_status = "FAIL"
 
-            except Exception as e:
+            except Exception:
                 # Table might not have these columns
                 pass
 
@@ -647,7 +647,7 @@ class Epic16ValidationTool:
     # 6. SAMPLE DATA COMPARISON
     # ========================================================================
 
-    def validate_sample_data(self, db_key: str, tables: List[str], sample_size: int = 5) -> bool:
+    def validate_sample_data(self, db_key: str, tables: list[str], sample_size: int = 5) -> bool:
         """
         Deep comparison of random sample records.
         Pick N random records from each table and compare field-by-field.
@@ -763,9 +763,9 @@ class Epic16ValidationTool:
         }
         return pk_mapping.get(table, 'id')
 
-    def _compare_records(self, sqlite_record: tuple, pg_record: tuple, columns: List[str]) -> bool:
+    def _compare_records(self, sqlite_record: tuple, pg_record: tuple, columns: list[str]) -> bool:
         """Compare two records field by field"""
-        for i, (sqlite_val, pg_val) in enumerate(zip(sqlite_record, pg_record)):
+        for i, (sqlite_val, pg_val) in enumerate(zip(sqlite_record, pg_record, strict=False)):
             # Handle type conversions
             if isinstance(sqlite_val, str) and isinstance(pg_val, str):
                 if sqlite_val != pg_val:
@@ -783,7 +783,7 @@ class Epic16ValidationTool:
     # MAIN VALIDATION ORCHESTRATION
     # ========================================================================
 
-    def run_validation(self, specific_table: Optional[str] = None) -> bool:
+    def run_validation(self, specific_table: str | None = None) -> bool:
         """
         Run complete validation suite.
         Returns True if all validations pass, False otherwise.

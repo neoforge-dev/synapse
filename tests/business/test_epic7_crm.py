@@ -9,14 +9,12 @@ MIGRATION STATUS: PostgreSQL-enabled via CRM Service Layer
 - Ensures $1.158M sales pipeline integrity on PostgreSQL
 """
 
-import pytest
-from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import Mock, patch
-from decimal import Decimal
-from uuid import uuid4
 import sys
-import os
+from datetime import datetime, timedelta
+from decimal import Decimal
+from pathlib import Path
+
+import pytest
 
 # Add project root to path for imports
 project_root = Path(__file__).parent.parent.parent
@@ -24,18 +22,14 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 # PostgreSQL CRM Service Layer
+# SQLAlchemy for test database setup
+
+from business_development.epic7_sales_automation import SalesAutomationEngine
+from graph_rag.infrastructure.persistence.models.base import Base
 from graph_rag.services.crm_service import (
     CRMService,
     DatabaseConfig,
-    ContactNotFoundError,
-    CRMServiceError,
 )
-from graph_rag.infrastructure.persistence.models.base import Base
-from business_development.epic7_sales_automation import SalesAutomationEngine, CRMContact
-
-# SQLAlchemy for test database setup
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 
 @pytest.fixture(scope="function")
@@ -461,6 +455,7 @@ class TestEpic7WebInterface:
         """Test client for Epic 7 web interface"""
         try:
             from fastapi.testclient import TestClient
+
             from business_development.epic7_web_interface import app
             return TestClient(app)
         except ImportError:

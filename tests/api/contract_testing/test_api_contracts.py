@@ -9,14 +9,13 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
 from graph_rag.api.main import create_app
-
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +25,8 @@ class EndpointContract(BaseModel):
     path: str
     method: str
     status_code: int
-    response_schema: Dict[str, Any]
-    request_schema: Dict[str, Any] | None = None
+    response_schema: dict[str, Any]
+    request_schema: dict[str, Any] | None = None
     performance_baseline_ms: float | None = None
 
 
@@ -45,16 +44,16 @@ class ContractTestResult(BaseModel):
 class APIContractTester:
     """Contract testing framework for API consolidation."""
 
-    def __init__(self, test_client: Optional[TestClient] = None):
+    def __init__(self, test_client: TestClient | None = None):
         if test_client is not None:
             self.client = test_client
         else:
             self.app = create_app()
             self.client = TestClient(self.app)
-        self.contracts: List[EndpointContract] = []
-        self.results: List[ContractTestResult] = []
-        
-    def load_existing_contracts(self, contracts_file: Optional[str] = None) -> None:
+        self.contracts: list[EndpointContract] = []
+        self.results: list[ContractTestResult] = []
+
+    def load_existing_contracts(self, contracts_file: str | None = None) -> None:
         """Load existing contracts from JSON file."""
         if contracts_file is None:
             contracts_file_path = Path(__file__).parent / "api_contracts.json"
@@ -62,17 +61,17 @@ class APIContractTester:
             contracts_file_path = Path(contracts_file)
 
         if contracts_file_path.exists():
-            with open(contracts_file_path, 'r') as f:
+            with open(contracts_file_path) as f:
                 contracts_data = json.load(f)
                 self.contracts = [EndpointContract(**contract) for contract in contracts_data]
             logger.info(f"Loaded {len(self.contracts)} existing contracts")
         else:
             logger.info("No existing contracts found, will generate new ones")
-    
-    def discover_endpoints(self) -> List[Dict[str, Any]]:
+
+    def discover_endpoints(self) -> list[dict[str, Any]]:
         """Discover all available API endpoints via direct router inspection."""
         endpoints = []
-        
+
         # Manually define known endpoints from current router architecture
         known_endpoints = [
             # Core Content Management
@@ -81,54 +80,54 @@ class APIContractTester:
             {"path": "/api/v1/chunks", "method": "GET", "spec": {}},
             {"path": "/api/v1/chunks", "method": "POST", "spec": {}},
             {"path": "/api/v1/ingestion/documents", "method": "POST", "spec": {}},
-            
+
             # Retrieval and Search
             {"path": "/api/v1/search", "method": "POST", "spec": {}},
             {"path": "/api/v1/query", "method": "POST", "spec": {}},
             {"path": "/api/v1/reasoning/analyze", "method": "POST", "spec": {}},
-            
+
             # Business Intelligence
             {"path": "/api/v1/dashboard/metrics", "method": "GET", "spec": {}},
             {"path": "/api/v1/audience/analyze", "method": "POST", "spec": {}},
             {"path": "/api/v1/concepts/extract", "method": "POST", "spec": {}},
-            
+
             # Graph Operations
             {"path": "/api/v1/graph/nodes", "method": "GET", "spec": {}},
             {"path": "/api/v1/graph/relationships", "method": "GET", "spec": {}},
             {"path": "/api/v1/monitoring/health", "method": "GET", "spec": {}},
-            
+
             # System Administration
             {"path": "/api/v1/auth/token", "method": "POST", "spec": {}},
             {"path": "/api/v1/admin/system", "method": "GET", "spec": {}},
-            
+
             # Specialized Features
             {"path": "/api/v1/hot-takes/generate", "method": "POST", "spec": {}},
             {"path": "/api/v1/brand-safety/check", "method": "POST", "spec": {}},
-            
+
             # Basic health endpoints
             {"path": "/health", "method": "GET", "spec": {}},
             {"path": "/ready", "method": "GET", "spec": {}},
         ]
-        
+
         endpoints = known_endpoints
         logger.info(f"Using known endpoints list: {len(endpoints)} API endpoints")
         return endpoints
-    
+
     def generate_contracts(self) -> None:
         """Generate contracts for all discovered endpoints."""
         endpoints = self.discover_endpoints()
-        
+
         for endpoint in endpoints:
             # Test the endpoint to get baseline contract
             contract = self._test_endpoint_for_contract(
-                endpoint["path"], 
+                endpoint["path"],
                 endpoint["method"],
                 endpoint["spec"]
             )
             if contract:
                 self.contracts.append(contract)
-    
-    def _test_endpoint_for_contract(self, path: str, method: str, spec: Dict) -> EndpointContract | None:
+
+    def _test_endpoint_for_contract(self, path: str, method: str, spec: dict) -> EndpointContract | None:
         """Test an endpoint to establish its contract."""
         try:
             start_time = time.time()
@@ -172,11 +171,11 @@ class APIContractTester:
         except Exception as e:
             logger.error(f"Failed to test endpoint {method} {path}: {e}")
             return None
-    
-    def _generate_test_data(self, spec: Dict) -> Dict[str, Any]:
+
+    def _generate_test_data(self, spec: dict) -> dict[str, Any]:
         """Generate test data for an endpoint based on its spec."""
         test_data = {}
-        
+
         # Handle request body
         request_body = spec.get("requestBody", {})
         if request_body:
@@ -185,7 +184,7 @@ class APIContractTester:
                 schema = content["application/json"].get("schema", {})
                 test_data["json"] = self._generate_sample_data(schema)
                 test_data["schema"] = schema
-        
+
         # Handle query parameters
         parameters = spec.get("parameters", [])
         params = {}
@@ -195,16 +194,16 @@ class APIContractTester:
                 param_schema = param.get("schema", {})
                 if param_name:
                     params[param_name] = self._generate_sample_value(param_schema)
-        
+
         if params:
             test_data["params"] = params
-            
+
         return test_data
-    
-    def _generate_sample_data(self, schema: Dict) -> Any:
+
+    def _generate_sample_data(self, schema: dict) -> Any:
         """Generate sample data based on JSON schema."""
         schema_type = schema.get("type", "object")
-        
+
         if schema_type == "object":
             obj = {}
             properties = schema.get("properties", {})
@@ -216,11 +215,11 @@ class APIContractTester:
             return [self._generate_sample_value(items)]
         else:
             return self._generate_sample_value(schema)
-    
-    def _generate_sample_value(self, schema: Dict) -> Any:
+
+    def _generate_sample_value(self, schema: dict) -> Any:
         """Generate a sample value based on schema type."""
         schema_type = schema.get("type", "string")
-        
+
         if schema_type == "string":
             return "test_string"
         elif schema_type == "integer":
@@ -235,8 +234,8 @@ class APIContractTester:
             return {}
         else:
             return "test_value"
-    
-    def _extract_schema(self, data: Any) -> Dict[str, Any]:
+
+    def _extract_schema(self, data: Any) -> dict[str, Any]:
         """Extract schema from response data."""
         if isinstance(data, dict):
             schema = {"type": "object", "properties": {}}
@@ -258,8 +257,8 @@ class APIContractTester:
             return {"type": "boolean"}
         else:
             return {"type": "unknown"}
-    
-    def save_contracts(self, contracts_file: Optional[str] = None) -> None:
+
+    def save_contracts(self, contracts_file: str | None = None) -> None:
         """Save contracts to JSON file."""
         if contracts_file is None:
             contracts_file_path = Path(__file__).parent / "api_contracts.json"
@@ -271,18 +270,18 @@ class APIContractTester:
             json.dump(contracts_data, f, indent=2)
 
         logger.info(f"Saved {len(self.contracts)} contracts to {contracts_file_path}")
-    
-    def test_contracts(self) -> List[ContractTestResult]:
+
+    def test_contracts(self) -> list[ContractTestResult]:
         """Test all contracts and return results."""
         results = []
-        
+
         for contract in self.contracts:
             result = self._test_single_contract(contract)
             results.append(result)
-            
+
         self.results = results
         return results
-    
+
     def _test_single_contract(self, contract: EndpointContract) -> ContractTestResult:
         """Test a single contract."""
         try:
@@ -339,17 +338,17 @@ class APIContractTester:
                 schema_valid=False,
                 error_message=str(e)
             )
-    
-    def generate_report(self) -> Dict[str, Any]:
+
+    def generate_report(self) -> dict[str, Any]:
         """Generate contract testing report."""
         if not self.results:
             return {"error": "No test results available"}
-        
+
         passed_tests = [r for r in self.results if r.passed]
         failed_tests = [r for r in self.results if not r.passed]
-        
+
         avg_response_time = sum(r.response_time_ms for r in self.results) / len(self.results)
-        
+
         report = {
             "summary": {
                 "total_tests": len(self.results),
@@ -370,7 +369,7 @@ class APIContractTester:
                 "slowest_endpoint": max(self.results, key=lambda x: x.response_time_ms)
             }
         }
-        
+
         return report
 
 

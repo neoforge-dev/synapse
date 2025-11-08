@@ -12,13 +12,11 @@ This module defines the comprehensive innovation labs network including:
 - R&D pipeline management and commercialization processes
 """
 
-import asyncio
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
-import json
+from typing import Any
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -59,14 +57,14 @@ class UniversityPartnership:
     university_name: str
     location: str
     partnership_level: PartnershipLevel
-    research_areas: List[ResearchArea]
+    research_areas: list[ResearchArea]
     annual_funding: float
     duration_years: int
-    key_contacts: List[str]
-    joint_programs: List[str]
-    talent_pipeline: Dict[str, int]  # {degree_level: annual_hires}
+    key_contacts: list[str]
+    joint_programs: list[str]
+    talent_pipeline: dict[str, int]  # {degree_level: annual_hires}
     ip_sharing_model: str
-    success_metrics: Dict[str, Any]
+    success_metrics: dict[str, Any]
 
 
 @dataclass
@@ -75,27 +73,27 @@ class InnovationProject:
     project_id: str
     name: str
     innovation_type: InnovationType
-    research_areas: List[ResearchArea]
+    research_areas: list[ResearchArea]
     start_date: datetime
     expected_completion: datetime
     budget: float
     team_size: int
-    
+
     # Collaboration details
-    customer_partner: Optional[str] = None
-    university_partner: Optional[str] = None
-    external_collaborators: List[str] = field(default_factory=list)
-    
+    customer_partner: str | None = None
+    university_partner: str | None = None
+    external_collaborators: list[str] = field(default_factory=list)
+
     # Progress tracking
-    milestones: List[Dict[str, Any]] = field(default_factory=list)
+    milestones: list[dict[str, Any]] = field(default_factory=list)
     current_phase: str = "research"
     completion_percentage: float = 0.0
-    
+
     # Business impact
     commercial_potential: str = "medium"  # low, medium, high
     expected_revenue_impact: float = 0.0
     patent_potential: bool = False
-    
+
     # Success metrics
     publications: int = 0
     patents_filed: int = 0
@@ -109,12 +107,12 @@ class InnovationLab:
     location: str
     region: str
     established_date: datetime
-    
+
     # Focus and capabilities
-    primary_focus_areas: List[ResearchArea]
-    innovation_types: List[InnovationType]
+    primary_focus_areas: list[ResearchArea]
+    innovation_types: list[InnovationType]
     lab_type: str  # research, applied, hybrid
-    
+
     # Infrastructure
     total_space_sqft: int
     research_labs: int
@@ -122,27 +120,27 @@ class InnovationLab:
     demo_environments: int
     high_performance_computing: bool
     quantum_access: bool
-    
+
     # Team and resources
     staff_count: int
     research_scientists: int
     engineers: int
     phd_students: int
     annual_budget: float
-    
+
     # External connections
-    university_partnerships: List[UniversityPartnership]
+    university_partnerships: list[UniversityPartnership]
     customer_partnerships: int
     industry_collaborations: int
-    
+
     # Facilities
     executive_briefing_center: bool
     customer_innovation_studio: bool
     prototype_lab: bool
     ai_training_infrastructure: bool
-    
+
     # Performance
-    active_projects: List[InnovationProject] = field(default_factory=list)
+    active_projects: list[InnovationProject] = field(default_factory=list)
     annual_publications: int = 0
     patents_portfolio: int = 0
     customer_co_innovations: int = 0
@@ -152,14 +150,14 @@ class InnovationLabsOrchestrator:
     """
     Orchestrates the global innovation labs network
     """
-    
+
     def __init__(self):
         self.innovation_labs = self._initialize_innovation_labs()
         self.university_partnerships = self._initialize_university_partnerships()
         self.innovation_pipeline = self._initialize_innovation_pipeline()
         self.research_roadmap = self._initialize_research_roadmap()
-    
-    def _initialize_innovation_labs(self) -> List[InnovationLab]:
+
+    def _initialize_innovation_labs(self) -> list[InnovationLab]:
         """Initialize regional innovation labs"""
         return [
             # Austin AI Innovation Center
@@ -203,7 +201,7 @@ class InnovationLabsOrchestrator:
                 patents_portfolio=8,
                 customer_co_innovations=15
             ),
-            
+
             # Dublin European Research Hub
             InnovationLab(
                 name="Dublin European Research Hub",
@@ -244,7 +242,7 @@ class InnovationLabsOrchestrator:
                 patents_portfolio=4,
                 customer_co_innovations=10
             ),
-            
+
             # Singapore Asia-Pacific Innovation Lab
             InnovationLab(
                 name="Singapore Asia-Pacific Innovation Lab",
@@ -286,8 +284,8 @@ class InnovationLabsOrchestrator:
                 customer_co_innovations=8
             )
         ]
-    
-    def _initialize_university_partnerships(self) -> List[UniversityPartnership]:
+
+    def _initialize_university_partnerships(self) -> list[UniversityPartnership]:
         """Initialize strategic university partnerships"""
         return [
             # Austin partnerships
@@ -325,10 +323,10 @@ class InnovationLabsOrchestrator:
                     "student_internships": 20
                 }
             ),
-            
+
             UniversityPartnership(
                 university_name="Rice University",
-                location="Houston, TX", 
+                location="Houston, TX",
                 partnership_level=PartnershipLevel.COLLABORATIVE,
                 research_areas=[
                     ResearchArea.AUTOMATED_COMPLIANCE,
@@ -357,7 +355,7 @@ class InnovationLabsOrchestrator:
                     "student_internships": 10
                 }
             ),
-            
+
             # Dublin partnerships
             UniversityPartnership(
                 university_name="Trinity College Dublin",
@@ -393,7 +391,7 @@ class InnovationLabsOrchestrator:
                     "student_internships": 15
                 }
             ),
-            
+
             UniversityPartnership(
                 university_name="University College Dublin",
                 location="Dublin, Ireland",
@@ -425,7 +423,7 @@ class InnovationLabsOrchestrator:
                     "student_internships": 8
                 }
             ),
-            
+
             # Singapore partnerships
             UniversityPartnership(
                 university_name="National University of Singapore",
@@ -461,7 +459,7 @@ class InnovationLabsOrchestrator:
                     "student_internships": 12
                 }
             ),
-            
+
             UniversityPartnership(
                 university_name="Nanyang Technological University",
                 location="Singapore",
@@ -494,8 +492,8 @@ class InnovationLabsOrchestrator:
                 }
             )
         ]
-    
-    def _initialize_innovation_pipeline(self) -> List[InnovationProject]:
+
+    def _initialize_innovation_pipeline(self) -> list[InnovationProject]:
         """Initialize active innovation projects"""
         return [
             InnovationProject(
@@ -519,7 +517,7 @@ class InnovationLabsOrchestrator:
                 expected_revenue_impact=5_000_000,
                 patent_potential=True
             ),
-            
+
             InnovationProject(
                 project_id="PROJ-002",
                 name="Privacy-Preserving Enterprise AI",
@@ -542,7 +540,7 @@ class InnovationLabsOrchestrator:
                 expected_revenue_impact=3_200_000,
                 patent_potential=True
             ),
-            
+
             InnovationProject(
                 project_id="PROJ-003",
                 name="Cultural AI Adaptation Framework",
@@ -566,8 +564,8 @@ class InnovationLabsOrchestrator:
                 patent_potential=False
             )
         ]
-    
-    def _initialize_research_roadmap(self) -> Dict[str, Any]:
+
+    def _initialize_research_roadmap(self) -> dict[str, Any]:
         """Initialize 5-year research and innovation roadmap"""
         return {
             "roadmap_overview": {
@@ -597,7 +595,7 @@ class InnovationLabsOrchestrator:
                 {
                     "wave": "Wave 2: Acceleration (2026-2027)",
                     "focus": "Commercialization and advanced research expansion",
-                    "budget": "$2.1M", 
+                    "budget": "$2.1M",
                     "key_projects": [
                         "Quantum-AI Hybrid Computing",
                         "Automated Compliance Verification",
@@ -628,7 +626,7 @@ class InnovationLabsOrchestrator:
                 },
                 {
                     "wave": "Wave 4: Innovation (2028-2029)",
-                    "focus": "Breakthrough technologies and market disruption", 
+                    "focus": "Breakthrough technologies and market disruption",
                     "budget": "$2.5M",
                     "key_projects": [
                         "Quantum-Enhanced Graph RAG",
@@ -660,18 +658,18 @@ class InnovationLabsOrchestrator:
                 }
             ]
         }
-    
-    def calculate_innovation_metrics(self) -> Dict[str, Any]:
+
+    def calculate_innovation_metrics(self) -> dict[str, Any]:
         """Calculate comprehensive innovation metrics and KPIs"""
         total_budget = sum(lab.annual_budget for lab in self.innovation_labs)
         total_staff = sum(lab.staff_count for lab in self.innovation_labs)
         total_partnerships = sum(len(lab.university_partnerships) for lab in self.innovation_labs)
-        
+
         # Research productivity metrics
         total_publications = sum(lab.annual_publications for lab in self.innovation_labs)
         total_patents = sum(lab.patents_portfolio for lab in self.innovation_labs)
         total_co_innovations = sum(lab.customer_co_innovations for lab in self.innovation_labs)
-        
+
         return {
             "investment_metrics": {
                 "total_annual_budget": total_budget,
@@ -702,8 +700,8 @@ class InnovationLabsOrchestrator:
                 "customer_pilot_projects": len([p for p in self.innovation_pipeline if p.customer_partner])
             }
         }
-    
-    def generate_customer_co_innovation_programs(self) -> Dict[str, Any]:
+
+    def generate_customer_co_innovation_programs(self) -> dict[str, Any]:
         """Generate customer co-innovation program frameworks"""
         return {
             "program_overview": {
@@ -728,7 +726,7 @@ class InnovationLabsOrchestrator:
                 },
                 "Gold Partnership": {
                     "target_clients": "Fortune 500",
-                    "annual_commitment": "$100,000 - $200,000", 
+                    "annual_commitment": "$100,000 - $200,000",
                     "dedicated_resources": "1 full-time researcher + support",
                     "ip_sharing": "Customer gets exclusive license",
                     "commercialization_rights": "Customer exclusive in their industry",
@@ -769,7 +767,7 @@ class InnovationLabsOrchestrator:
                 "Cultural AI Adaptation": {
                     "description": "AI systems adapted for global cultural contexts",
                     "target_regions": ["Asia-Pacific", "Europe", "Latin America", "Middle East"],
-                    "typical_timeline": "6-9 months", 
+                    "typical_timeline": "6-9 months",
                     "success_rate": "70%"
                 },
                 "Privacy-Preserving AI": {
@@ -787,8 +785,8 @@ class InnovationLabsOrchestrator:
                 "revenue_impact": "$1M+ per successful project"
             }
         }
-    
-    def generate_commercialization_framework(self) -> Dict[str, Any]:
+
+    def generate_commercialization_framework(self) -> dict[str, Any]:
         """Generate research commercialization and IP management framework"""
         return {
             "commercialization_pipeline": {
@@ -808,7 +806,7 @@ class InnovationLabsOrchestrator:
                 },
                 "stage_3_pilot": {
                     "description": "Customer pilot deployments and refinement",
-                    "duration": "6-12 months", 
+                    "duration": "6-12 months",
                     "success_criteria": "Successful pilot with measurable ROI",
                     "investment_level": "$100,000 - $300,000",
                     "decision_gate": "Commercial viability and scaling assessment"
@@ -849,7 +847,7 @@ class InnovationLabsOrchestrator:
             }
         }
 
-    def generate_implementation_plan(self) -> Dict[str, Any]:
+    def generate_implementation_plan(self) -> dict[str, Any]:
         """Generate detailed implementation plan for innovation labs network"""
         return {
             "implementation_overview": {
@@ -927,7 +925,7 @@ class InnovationLabsOrchestrator:
             "ongoing_operations": {
                 "annual_budget_per_lab": {
                     "Austin": "$800,000",
-                    "Dublin": "$600,000", 
+                    "Dublin": "$600,000",
                     "Singapore": "$500,000"
                 },
                 "key_performance_indicators": [
@@ -947,20 +945,20 @@ def main():
     """Main execution function for innovation labs network strategy"""
     print("🔬 Innovation Labs Network Strategy")
     print("=" * 60)
-    
+
     # Initialize innovation labs orchestrator
     orchestrator = InnovationLabsOrchestrator()
-    
+
     # Calculate innovation metrics
     metrics = orchestrator.calculate_innovation_metrics()
-    
-    print(f"\n📊 INNOVATION METRICS")
+
+    print("\n📊 INNOVATION METRICS")
     print(f"Total Annual Budget: ${metrics['investment_metrics']['total_annual_budget']:,}")
     print(f"Research Staff: {sum(lab.research_scientists for lab in orchestrator.innovation_labs)} scientists")
     print(f"Annual Publications: {metrics['research_productivity']['annual_publications']} papers")
     print(f"Patent Portfolio: {metrics['research_productivity']['patent_portfolio']} patents")
-    
-    print(f"\n🏢 INNOVATION LABS:")
+
+    print("\n🏢 INNOVATION LABS:")
     for lab in orchestrator.innovation_labs:
         status_emoji = "🚀" if lab.established_date <= datetime.now() else "📅"
         print(f"  {status_emoji} {lab.name}")
@@ -968,27 +966,27 @@ def main():
         print(f"    Focus: {', '.join([area.value for area in lab.primary_focus_areas[:2]])}...")
         print(f"    Team: {lab.staff_count} staff, Budget: ${lab.annual_budget:,}")
         print(f"    Facilities: {lab.research_labs} labs, {lab.demo_environments} demo environments")
-    
-    print(f"\n🎓 UNIVERSITY PARTNERSHIPS:")
+
+    print("\n🎓 UNIVERSITY PARTNERSHIPS:")
     for partnership in orchestrator.university_partnerships:
         level_emoji = "⭐⭐⭐" if partnership.partnership_level == PartnershipLevel.STRATEGIC else "⭐⭐"
         print(f"  {level_emoji} {partnership.university_name}")
         print(f"    Level: {partnership.partnership_level.value}")
         print(f"    Funding: ${partnership.annual_funding:,}/year for {partnership.duration_years} years")
         print(f"    Talent Pipeline: {sum(partnership.talent_pipeline.values())} students/year")
-    
+
     # Generate customer co-innovation programs
     co_innovation = orchestrator.generate_customer_co_innovation_programs()
-    
-    print(f"\n🤝 CUSTOMER CO-INNOVATION PROGRAMS:")
+
+    print("\n🤝 CUSTOMER CO-INNOVATION PROGRAMS:")
     for tier, details in co_innovation['program_tiers'].items():
         print(f"  • {tier}")
         print(f"    Target: {details['target_clients']}")
         print(f"    Commitment: {details['annual_commitment']}")
         print(f"    Resources: {details['dedicated_resources']}")
-    
+
     # Show active innovation projects
-    print(f"\n🚀 ACTIVE INNOVATION PROJECTS:")
+    print("\n🚀 ACTIVE INNOVATION PROJECTS:")
     for project in orchestrator.innovation_pipeline:
         completion_emoji = "🔬" if project.completion_percentage < 25 else "⚗️" if project.completion_percentage < 75 else "🎯"
         print(f"  {completion_emoji} {project.name}")
@@ -996,23 +994,23 @@ def main():
         print(f"    Budget: ${project.budget:,}, Team: {project.team_size}")
         print(f"    Partner: {project.university_partner or project.customer_partner or 'Internal'}")
         print(f"    Revenue Impact: ${project.expected_revenue_impact:,}")
-    
+
     # Generate implementation plan
     implementation = orchestrator.generate_implementation_plan()
-    
-    print(f"\n📅 IMPLEMENTATION PLAN:")
+
+    print("\n📅 IMPLEMENTATION PLAN:")
     print(f"Timeline: {implementation['implementation_overview']['timeline']}")
     print(f"Investment: {implementation['implementation_overview']['total_investment']}")
-    
+
     phases = [implementation['phase_1_austin'], implementation['phase_2_dublin'], implementation['phase_3_singapore']]
     for i, phase in enumerate(phases, 1):
         print(f"\n  Phase {i}: {phase['timeline']}")
         print(f"    Investment: {phase['investment']}")
         print(f"    Key Objectives: {len(phase['objectives'])} major objectives")
         print(f"    Success Metrics: {list(phase['success_metrics'].keys())[:2]}...")
-    
-    print(f"\n🌟 INNOVATION LABS NETWORK READY")
-    print(f"Ready to drive next-generation capabilities with 500+ Fortune 500 partnerships!")
+
+    print("\n🌟 INNOVATION LABS NETWORK READY")
+    print("Ready to drive next-generation capabilities with 500+ Fortune 500 partnerships!")
 
 
 if __name__ == "__main__":

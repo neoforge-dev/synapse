@@ -11,14 +11,11 @@ This module defines:
 - Financial performance tracking and optimization
 """
 
-import asyncio
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Union
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
-import json
-import math
+from typing import Any
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -58,7 +55,7 @@ class MetricThreshold:
     """Metric threshold configuration"""
     warning_threshold: float
     critical_threshold: float
-    emergency_threshold: Optional[float] = None
+    emergency_threshold: float | None = None
     comparison_operator: str = "greater_than"  # greater_than, less_than, equals
     threshold_type: str = "absolute"  # absolute, percentage
 
@@ -72,29 +69,29 @@ class PerformanceMetric:
     metric_type: MetricType
     description: str
     unit: str
-    
+
     # Calculation details
     calculation_method: str
-    data_sources: List[str]
+    data_sources: list[str]
     update_frequency: str  # real_time, hourly, daily, weekly
-    
+
     # Thresholds and alerting
-    thresholds: Optional[MetricThreshold] = None
+    thresholds: MetricThreshold | None = None
     enable_alerts: bool = True
-    
+
     # Targets and benchmarks
-    target_value: Optional[float] = None
-    benchmark_value: Optional[float] = None
-    industry_benchmark: Optional[float] = None
-    
+    target_value: float | None = None
+    benchmark_value: float | None = None
+    industry_benchmark: float | None = None
+
     # Historical tracking
     current_value: float = 0.0
     previous_value: float = 0.0
     trend: str = "stable"  # improving, declining, stable
-    
+
     # Business context
     business_impact: str = "medium"  # low, medium, high, critical
-    stakeholders: List[str] = field(default_factory=list)
+    stakeholders: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -103,27 +100,27 @@ class ClientSuccessMetrics:
     client_id: str
     client_name: str
     client_tier: str  # platinum, gold, silver, bronze
-    
+
     # Satisfaction metrics
     nps_score: float = 0.0
     csat_score: float = 0.0
     customer_effort_score: float = 0.0
-    
+
     # Engagement metrics
     platform_usage_hours: float = 0.0
     feature_adoption_rate: float = 0.0
     api_calls_per_day: int = 0
-    
+
     # Success metrics
     time_to_value: timedelta = timedelta(days=0)
     roi_achieved: float = 0.0
     business_outcomes_met: int = 0
-    
+
     # Support metrics
     support_tickets_opened: int = 0
     support_resolution_time: timedelta = timedelta(hours=0)
     escalation_rate: float = 0.0
-    
+
     # Retention indicators
     contract_health_score: float = 0.0
     renewal_probability: float = 0.0
@@ -135,23 +132,23 @@ class OperationalHealthSnapshot:
     """Operational health snapshot at a point in time"""
     timestamp: datetime
     overall_health_score: float
-    
+
     # System performance
     system_availability: float
     response_time_p95: float
     error_rate: float
     throughput: float
-    
+
     # Capacity metrics
     client_capacity_utilization: float
     resource_utilization: float
     staff_utilization: float
-    
+
     # Quality metrics
     sla_compliance: float
     incident_resolution_time: timedelta
     quality_score: float
-    
+
     # Financial indicators
     arr_per_client: float
     operational_margin: float
@@ -162,7 +159,7 @@ class PerformanceMetricsOrchestrator:
     """
     Orchestrates comprehensive performance metrics for Fortune 500 client management
     """
-    
+
     def __init__(self):
         self.operational_metrics = self._initialize_operational_metrics()
         self.client_success_metrics = self._initialize_client_success_metrics()
@@ -170,14 +167,14 @@ class PerformanceMetricsOrchestrator:
         self.capacity_metrics = self._initialize_capacity_metrics()
         self.quality_metrics = self._initialize_quality_metrics()
         self.innovation_metrics = self._initialize_innovation_metrics()
-        
+
         # Current system state
         self.current_client_count = 125
         self.target_client_count = 500
         self.current_arr = 10_500_000
         self.target_arr = 63_000_000
-    
-    def _initialize_operational_metrics(self) -> List[PerformanceMetric]:
+
+    def _initialize_operational_metrics(self) -> list[PerformanceMetric]:
         """Initialize core operational performance metrics"""
         return [
             PerformanceMetric(
@@ -203,7 +200,7 @@ class PerformanceMetricsOrchestrator:
                 business_impact="critical",
                 stakeholders=["Operations", "Customer Success", "Sales"]
             ),
-            
+
             PerformanceMetric(
                 name="system_availability",
                 display_name="System Availability",
@@ -227,7 +224,7 @@ class PerformanceMetricsOrchestrator:
                 business_impact="critical",
                 stakeholders=["Engineering", "Operations", "Customer Success"]
             ),
-            
+
             PerformanceMetric(
                 name="response_time_p95",
                 display_name="95th Percentile Response Time",
@@ -251,7 +248,7 @@ class PerformanceMetricsOrchestrator:
                 business_impact="high",
                 stakeholders=["Engineering", "Product", "Customer Success"]
             ),
-            
+
             PerformanceMetric(
                 name="incident_resolution_time",
                 display_name="Mean Time to Resolution (MTTR)",
@@ -276,8 +273,8 @@ class PerformanceMetricsOrchestrator:
                 stakeholders=["Engineering", "Operations", "Support"]
             )
         ]
-    
-    def _initialize_client_success_metrics(self) -> List[PerformanceMetric]:
+
+    def _initialize_client_success_metrics(self) -> list[PerformanceMetric]:
         """Initialize client success and satisfaction metrics"""
         return [
             PerformanceMetric(
@@ -303,7 +300,7 @@ class PerformanceMetricsOrchestrator:
                 business_impact="critical",
                 stakeholders=["Customer Success", "Product", "Executive"]
             ),
-            
+
             PerformanceMetric(
                 name="customer_satisfaction",
                 display_name="Customer Satisfaction (CSAT)",
@@ -327,7 +324,7 @@ class PerformanceMetricsOrchestrator:
                 business_impact="high",
                 stakeholders=["Customer Success", "Support", "Product"]
             ),
-            
+
             PerformanceMetric(
                 name="time_to_value",
                 display_name="Time to First Value",
@@ -351,7 +348,7 @@ class PerformanceMetricsOrchestrator:
                 business_impact="high",
                 stakeholders=["Customer Success", "Product", "Implementation"]
             ),
-            
+
             PerformanceMetric(
                 name="client_retention_rate",
                 display_name="Client Retention Rate",
@@ -376,8 +373,8 @@ class PerformanceMetricsOrchestrator:
                 stakeholders=["Customer Success", "Sales", "Executive"]
             )
         ]
-    
-    def _initialize_financial_metrics(self) -> List[PerformanceMetric]:
+
+    def _initialize_financial_metrics(self) -> list[PerformanceMetric]:
         """Initialize financial performance metrics"""
         return [
             PerformanceMetric(
@@ -403,7 +400,7 @@ class PerformanceMetricsOrchestrator:
                 business_impact="critical",
                 stakeholders=["Sales", "Finance", "Executive"]
             ),
-            
+
             PerformanceMetric(
                 name="gross_revenue_retention",
                 display_name="Gross Revenue Retention",
@@ -427,7 +424,7 @@ class PerformanceMetricsOrchestrator:
                 business_impact="critical",
                 stakeholders=["Finance", "Customer Success", "Sales"]
             ),
-            
+
             PerformanceMetric(
                 name="net_revenue_retention",
                 display_name="Net Revenue Retention",
@@ -451,7 +448,7 @@ class PerformanceMetricsOrchestrator:
                 business_impact="critical",
                 stakeholders=["Sales", "Customer Success", "Finance"]
             ),
-            
+
             PerformanceMetric(
                 name="operational_margin",
                 display_name="Operational Margin per Client",
@@ -476,8 +473,8 @@ class PerformanceMetricsOrchestrator:
                 stakeholders=["Finance", "Operations", "Executive"]
             )
         ]
-    
-    def _initialize_capacity_metrics(self) -> List[PerformanceMetric]:
+
+    def _initialize_capacity_metrics(self) -> list[PerformanceMetric]:
         """Initialize capacity and resource utilization metrics"""
         return [
             PerformanceMetric(
@@ -503,7 +500,7 @@ class PerformanceMetricsOrchestrator:
                 business_impact="high",
                 stakeholders=["Operations", "Sales", "Capacity Planning"]
             ),
-            
+
             PerformanceMetric(
                 name="staff_utilization",
                 display_name="Staff Utilization Rate",
@@ -527,7 +524,7 @@ class PerformanceMetricsOrchestrator:
                 business_impact="medium",
                 stakeholders=["HR", "Operations", "Finance"]
             ),
-            
+
             PerformanceMetric(
                 name="resource_efficiency",
                 display_name="Resource Efficiency Score",
@@ -552,8 +549,8 @@ class PerformanceMetricsOrchestrator:
                 stakeholders=["Operations", "Finance", "Executive"]
             )
         ]
-    
-    def _initialize_quality_metrics(self) -> List[PerformanceMetric]:
+
+    def _initialize_quality_metrics(self) -> list[PerformanceMetric]:
         """Initialize quality and service level metrics"""
         return [
             PerformanceMetric(
@@ -579,7 +576,7 @@ class PerformanceMetricsOrchestrator:
                 business_impact="high",
                 stakeholders=["Operations", "Customer Success", "Quality"]
             ),
-            
+
             PerformanceMetric(
                 name="defect_rate",
                 display_name="Service Defect Rate",
@@ -604,8 +601,8 @@ class PerformanceMetricsOrchestrator:
                 stakeholders=["Quality", "Engineering", "Customer Success"]
             )
         ]
-    
-    def _initialize_innovation_metrics(self) -> List[PerformanceMetric]:
+
+    def _initialize_innovation_metrics(self) -> list[PerformanceMetric]:
         """Initialize innovation and R&D metrics"""
         return [
             PerformanceMetric(
@@ -631,7 +628,7 @@ class PerformanceMetricsOrchestrator:
                 business_impact="high",
                 stakeholders=["Innovation", "Product", "Executive"]
             ),
-            
+
             PerformanceMetric(
                 name="patent_applications_annual",
                 display_name="Annual Patent Applications",
@@ -656,13 +653,13 @@ class PerformanceMetricsOrchestrator:
                 stakeholders=["Innovation", "Legal", "Executive"]
             )
         ]
-    
+
     def calculate_overall_health_score(self) -> float:
         """Calculate overall operational health score"""
-        all_metrics = (self.operational_metrics + self.client_success_metrics + 
-                      self.financial_metrics + self.capacity_metrics + 
+        all_metrics = (self.operational_metrics + self.client_success_metrics +
+                      self.financial_metrics + self.capacity_metrics +
                       self.quality_metrics + self.innovation_metrics)
-        
+
         # Weight categories by business impact
         category_weights = {
             MetricCategory.OPERATIONAL: 0.25,
@@ -672,7 +669,7 @@ class PerformanceMetricsOrchestrator:
             MetricCategory.CAPACITY: 0.10,
             MetricCategory.INNOVATION: 0.05
         }
-        
+
         category_scores = {}
         for category in MetricCategory:
             category_metrics = [m for m in all_metrics if m.category == category]
@@ -683,21 +680,21 @@ class PerformanceMetricsOrchestrator:
                     if metric.target_value and metric.target_value > 0:
                         normalized_score = min(100, (metric.current_value / metric.target_value) * 100)
                         metric_scores.append(normalized_score)
-                
+
                 if metric_scores:
                     category_scores[category] = sum(metric_scores) / len(metric_scores)
                 else:
                     category_scores[category] = 100  # Default if no target values
-        
+
         # Calculate weighted overall score
         weighted_score = 0
         for category, weight in category_weights.items():
             if category in category_scores:
                 weighted_score += category_scores[category] * weight
-        
+
         return round(weighted_score, 1)
-    
-    def generate_client_success_dashboard(self) -> Dict[str, Any]:
+
+    def generate_client_success_dashboard(self) -> dict[str, Any]:
         """Generate client success dashboard data"""
         # Simulate client success metrics for different tiers
         client_tiers = {
@@ -726,7 +723,7 @@ class PerformanceMetricsOrchestrator:
                 "expansion_rate": 110
             }
         }
-        
+
         return {
             "dashboard_title": "Client Success Performance - Fortune 500 Management",
             "last_updated": datetime.now().isoformat(),
@@ -755,14 +752,14 @@ class PerformanceMetricsOrchestrator:
                 "readiness_score": "68% (Needs improvement in automation and capacity)"
             }
         }
-    
-    def generate_capacity_planning_analysis(self) -> Dict[str, Any]:
+
+    def generate_capacity_planning_analysis(self) -> dict[str, Any]:
         """Generate capacity planning and resource analysis"""
         current_utilization = self.current_client_count / self.target_client_count * 100
-        
+
         # Resource scaling requirements
         scaling_factor = self.target_client_count / self.current_client_count
-        
+
         return {
             "capacity_overview": {
                 "current_clients": self.current_client_count,
@@ -827,21 +824,21 @@ class PerformanceMetricsOrchestrator:
                 "months_10_12": "Optimization - Full capacity achievement + efficiency gains"
             }
         }
-    
-    def generate_alerting_framework(self) -> Dict[str, Any]:
+
+    def generate_alerting_framework(self) -> dict[str, Any]:
         """Generate comprehensive alerting and notification framework"""
-        all_metrics = (self.operational_metrics + self.client_success_metrics + 
-                      self.financial_metrics + self.capacity_metrics + 
+        all_metrics = (self.operational_metrics + self.client_success_metrics +
+                      self.financial_metrics + self.capacity_metrics +
                       self.quality_metrics + self.innovation_metrics)
-        
+
         # Categorize alerts by severity
         critical_alerts = []
         warning_alerts = []
-        
+
         for metric in all_metrics:
             if metric.thresholds and metric.enable_alerts:
                 current_val = metric.current_value
-                
+
                 # Check thresholds based on comparison operator
                 if metric.thresholds.comparison_operator == "greater_than":
                     if metric.thresholds.emergency_threshold and current_val >= metric.thresholds.emergency_threshold:
@@ -887,7 +884,7 @@ class PerformanceMetricsOrchestrator:
                             "threshold": metric.thresholds.warning_threshold,
                             "severity": "warning"
                         })
-        
+
         return {
             "alerting_overview": {
                 "total_monitored_metrics": len(all_metrics),
@@ -921,12 +918,12 @@ class PerformanceMetricsOrchestrator:
             }
         }
 
-    def generate_comprehensive_dashboard(self) -> Dict[str, Any]:
+    def generate_comprehensive_dashboard(self) -> dict[str, Any]:
         """Generate comprehensive operational excellence dashboard"""
         overall_health = self.calculate_overall_health_score()
         client_success = self.generate_client_success_dashboard()
         capacity_analysis = self.generate_capacity_planning_analysis()
-        
+
         return {
             "dashboard_title": "Operational Excellence - Fortune 500 Client Management Platform",
             "last_updated": datetime.now().isoformat(),
@@ -941,19 +938,19 @@ class PerformanceMetricsOrchestrator:
             },
             "key_performance_indicators": {
                 "operational": [
-                    f"Onboarding Time: 8.5 days (Target: 2 days)",
-                    f"System Availability: 99.8% (Target: 99.99%)",
-                    f"Response Time: 145ms (Target: 100ms)"
+                    "Onboarding Time: 8.5 days (Target: 2 days)",
+                    "System Availability: 99.8% (Target: 99.99%)",
+                    "Response Time: 145ms (Target: 100ms)"
                 ],
                 "client_success": [
-                    f"NPS Score: 62 (Target: 70)",
-                    f"CSAT Score: 87.5% (Target: 95%)",
-                    f"Retention Rate: 94.2% (Target: 97%)"
+                    "NPS Score: 62 (Target: 70)",
+                    "CSAT Score: 87.5% (Target: 95%)",
+                    "Retention Rate: 94.2% (Target: 97%)"
                 ],
                 "financial": [
-                    f"ARR per Client: $84K (Target: $126K)",
-                    f"Net Revenue Retention: 115% (Target: 135%)",
-                    f"Operational Margin: 68% (Target: 75%)"
+                    "ARR per Client: $84K (Target: $126K)",
+                    "Net Revenue Retention: 115% (Target: 135%)",
+                    "Operational Margin: 68% (Target: 75%)"
                 ]
             },
             "scaling_readiness": capacity_analysis['capacity_overview'],
@@ -976,13 +973,13 @@ def main():
     """Main execution function for performance metrics framework"""
     print("📊 Performance Metrics Framework - Fortune 500 Client Management")
     print("=" * 70)
-    
+
     # Initialize performance metrics orchestrator
     orchestrator = PerformanceMetricsOrchestrator()
-    
+
     # Calculate overall health score
     health_score = orchestrator.calculate_overall_health_score()
-    
+
     print(f"\n🎯 OVERALL OPERATIONAL HEALTH SCORE: {health_score}/100")
     if health_score >= 80:
         print("Status: EXCELLENT - Ready for scaling")
@@ -992,21 +989,21 @@ def main():
         print("Status: FAIR - Improvement required before scaling")
     else:
         print("Status: NEEDS ATTENTION - Critical issues must be addressed")
-    
+
     # Show key metrics by category
-    print(f"\n📈 KEY PERFORMANCE METRICS:")
-    
-    print(f"\n  🔧 Operational Metrics:")
+    print("\n📈 KEY PERFORMANCE METRICS:")
+
+    print("\n  🔧 Operational Metrics:")
     for metric in orchestrator.operational_metrics[:3]:
         trend_emoji = "📈" if metric.current_value < metric.target_value else "📊"
         print(f"    {trend_emoji} {metric.display_name}: {metric.current_value}{metric.unit} (Target: {metric.target_value}{metric.unit})")
-    
-    print(f"\n  🎯 Client Success Metrics:")
+
+    print("\n  🎯 Client Success Metrics:")
     for metric in orchestrator.client_success_metrics[:3]:
         trend_emoji = "📈" if metric.current_value < metric.target_value else "📊"
         print(f"    {trend_emoji} {metric.display_name}: {metric.current_value}{metric.unit} (Target: {metric.target_value}{metric.unit})")
-    
-    print(f"\n  💰 Financial Metrics:")
+
+    print("\n  💰 Financial Metrics:")
     for metric in orchestrator.financial_metrics[:3]:
         if metric.unit == "dollars":
             current_display = f"${metric.current_value:,.0f}"
@@ -1016,50 +1013,50 @@ def main():
             target_display = f"{metric.target_value}{metric.unit}"
         trend_emoji = "📈" if metric.current_value < metric.target_value else "📊"
         print(f"    {trend_emoji} {metric.display_name}: {current_display} (Target: {target_display})")
-    
+
     # Generate client success dashboard
     client_dashboard = orchestrator.generate_client_success_dashboard()
-    
-    print(f"\n👥 CLIENT SUCCESS SUMMARY:")
+
+    print("\n👥 CLIENT SUCCESS SUMMARY:")
     print(f"  Total Clients: {client_dashboard['summary_metrics']['total_clients']}")
     print(f"  Average NPS: {client_dashboard['summary_metrics']['avg_nps_score']}")
     print(f"  Average CSAT: {client_dashboard['summary_metrics']['avg_csat_score']}%")
     print(f"  Retention Rate: {client_dashboard['summary_metrics']['overall_retention']}%")
-    
-    print(f"\n  Client Tier Breakdown:")
+
+    print("\n  Client Tier Breakdown:")
     for tier, data in client_dashboard['client_tier_breakdown'].items():
         print(f"    • {tier}: {data['client_count']} clients @ ${data['avg_arr']:,} ARR")
-    
+
     # Generate capacity planning analysis
     capacity_analysis = orchestrator.generate_capacity_planning_analysis()
-    
-    print(f"\n⚡ CAPACITY PLANNING:")
+
+    print("\n⚡ CAPACITY PLANNING:")
     overview = capacity_analysis['capacity_overview']
     print(f"  Current: {overview['current_clients']} clients ({overview['current_utilization']})")
     print(f"  Target: {overview['target_clients']} clients")
     print(f"  Scaling Required: {overview['scaling_required']}")
     print(f"  Timeline: {overview['timeline']}")
-    
-    print(f"\n  Critical Bottlenecks:")
+
+    print("\n  Critical Bottlenecks:")
     for bottleneck in capacity_analysis['bottleneck_analysis']:
         severity_emoji = "🚨" if bottleneck['bottleneck_severity'] == 'critical' else "⚠️"
         print(f"    {severity_emoji} {bottleneck['area']}: {bottleneck['current_capacity']} → {bottleneck['required_capacity']}")
-    
+
     # Generate alerting framework
     alerting = orchestrator.generate_alerting_framework()
-    
-    print(f"\n🔔 ALERTING STATUS:")
+
+    print("\n🔔 ALERTING STATUS:")
     print(f"  Monitored Metrics: {alerting['alerting_overview']['total_monitored_metrics']}")
     print(f"  Active Critical Alerts: {alerting['alerting_overview']['current_critical_alerts']}")
     print(f"  Active Warning Alerts: {alerting['alerting_overview']['current_warning_alerts']}")
-    
+
     if alerting['alert_categories']['critical']:
-        print(f"  🚨 Critical Alerts:")
+        print("  🚨 Critical Alerts:")
         for alert in alerting['alert_categories']['critical'][:3]:
             print(f"    • {alert['metric']}: {alert['current_value']} (Threshold: {alert['threshold']})")
-    
-    print(f"\n✅ PERFORMANCE METRICS FRAMEWORK READY")
-    print(f"Comprehensive monitoring system for 500+ Fortune 500 client management!")
+
+    print("\n✅ PERFORMANCE METRICS FRAMEWORK READY")
+    print("Comprehensive monitoring system for 500+ Fortune 500 client management!")
 
 
 if __name__ == "__main__":

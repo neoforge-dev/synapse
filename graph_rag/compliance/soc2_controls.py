@@ -1,9 +1,9 @@
 """SOC 2 Type II compliance controls and monitoring system."""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from uuid import UUID, uuid4
 
 logger = logging.getLogger(__name__)
@@ -29,15 +29,15 @@ class ControlStatus(str, Enum):
 
 class SOC2Control:
     """Individual SOC 2 control definition and monitoring."""
-    
+
     def __init__(
         self,
         control_id: str,
         principle: SOC2TrustPrinciple,
         title: str,
         description: str,
-        control_activities: List[str],
-        testing_procedures: List[str]
+        control_activities: list[str],
+        testing_procedures: list[str]
     ):
         self.id = control_id
         self.principle = principle
@@ -46,43 +46,43 @@ class SOC2Control:
         self.control_activities = control_activities
         self.testing_procedures = testing_procedures
         self.status = ControlStatus.DESIGNED
-        self.last_tested: Optional[datetime] = None
-        self.test_results: List[Dict[str, Any]] = []
-        self.exceptions: List[Dict[str, Any]] = []
-        self.evidence: List[Dict[str, Any]] = []
+        self.last_tested: datetime | None = None
+        self.test_results: list[dict[str, Any]] = []
+        self.exceptions: list[dict[str, Any]] = []
+        self.evidence: list[dict[str, Any]] = []
 
 
 class SOC2ComplianceFramework:
     """SOC 2 Type II compliance framework and control monitoring."""
-    
+
     def __init__(self):
-        self.controls: Dict[str, SOC2Control] = {}
-        self.control_tests: List[Dict[str, Any]] = []
+        self.controls: dict[str, SOC2Control] = {}
+        self.control_tests: list[dict[str, Any]] = []
         self.compliance_period_start = datetime(2024, 1, 1)
         self.compliance_period_end = datetime(2024, 12, 31)
         self._initialize_controls()
-    
+
     def _initialize_controls(self):
         """Initialize SOC 2 controls framework."""
-        
+
         # Security Controls (CC)
         self._add_security_controls()
-        
+
         # Availability Controls (A)
         self._add_availability_controls()
-        
+
         # Processing Integrity Controls (PI)
         self._add_processing_integrity_controls()
-        
+
         # Confidentiality Controls (C)
         self._add_confidentiality_controls()
-        
+
         # Privacy Controls (P)
         self._add_privacy_controls()
-    
+
     def _add_security_controls(self):
         """Add security principle controls."""
-        
+
         # CC1.0 - Control Environment
         self.controls["CC1.0"] = SOC2Control(
             "CC1.0",
@@ -104,7 +104,7 @@ class SOC2ComplianceFramework:
                 "Review background check procedures"
             ]
         )
-        
+
         # CC2.0 - Communication and Information
         self.controls["CC2.0"] = SOC2Control(
             "CC2.0",
@@ -126,7 +126,7 @@ class SOC2ComplianceFramework:
                 "Review information systems documentation"
             ]
         )
-        
+
         # CC3.0 - Risk Assessment
         self.controls["CC3.0"] = SOC2Control(
             "CC3.0",
@@ -148,7 +148,7 @@ class SOC2ComplianceFramework:
                 "Interview risk management personnel"
             ]
         )
-        
+
         # CC4.0 - Monitoring Activities
         self.controls["CC4.0"] = SOC2Control(
             "CC4.0",
@@ -170,7 +170,7 @@ class SOC2ComplianceFramework:
                 "Review independent assessment reports"
             ]
         )
-        
+
         # CC5.0 - Control Activities
         self.controls["CC5.0"] = SOC2Control(
             "CC5.0",
@@ -192,7 +192,7 @@ class SOC2ComplianceFramework:
                 "Test user deprovisioning process"
             ]
         )
-        
+
         # CC6.0 - Logical and Physical Access
         self.controls["CC6.0"] = SOC2Control(
             "CC6.0",
@@ -214,7 +214,7 @@ class SOC2ComplianceFramework:
                 "Test environmental monitoring systems"
             ]
         )
-        
+
         # CC7.0 - System Operations
         self.controls["CC7.0"] = SOC2Control(
             "CC7.0",
@@ -236,7 +236,7 @@ class SOC2ComplianceFramework:
                 "Test backup and recovery processes"
             ]
         )
-        
+
         # CC8.0 - Change Management
         self.controls["CC8.0"] = SOC2Control(
             "CC8.0",
@@ -258,10 +258,10 @@ class SOC2ComplianceFramework:
                 "Review emergency change procedures"
             ]
         )
-    
+
     def _add_availability_controls(self):
         """Add availability principle controls."""
-        
+
         # A1.0 - Availability
         self.controls["A1.0"] = SOC2Control(
             "A1.0",
@@ -283,10 +283,10 @@ class SOC2ComplianceFramework:
                 "Review capacity planning documentation"
             ]
         )
-    
+
     def _add_processing_integrity_controls(self):
         """Add processing integrity principle controls."""
-        
+
         # PI1.0 - Processing Integrity
         self.controls["PI1.0"] = SOC2Control(
             "PI1.0",
@@ -308,10 +308,10 @@ class SOC2ComplianceFramework:
                 "Test data integrity monitoring"
             ]
         )
-    
+
     def _add_confidentiality_controls(self):
         """Add confidentiality principle controls."""
-        
+
         # C1.0 - Confidentiality
         self.controls["C1.0"] = SOC2Control(
             "C1.0",
@@ -333,10 +333,10 @@ class SOC2ComplianceFramework:
                 "Review confidentiality agreements"
             ]
         )
-    
+
     def _add_privacy_controls(self):
         """Add privacy principle controls."""
-        
+
         # P1.0 - Privacy Notice
         self.controls["P1.0"] = SOC2Control(
             "P1.0",
@@ -358,7 +358,7 @@ class SOC2ComplianceFramework:
                 "Review data collection disclosures"
             ]
         )
-        
+
         # P2.0 - Collection and Retention
         self.controls["P2.0"] = SOC2Control(
             "P2.0",
@@ -380,22 +380,22 @@ class SOC2ComplianceFramework:
                 "Test data disposal procedures"
             ]
         )
-    
+
     def perform_control_test(
         self,
         control_id: str,
         tester: str,
         test_description: str,
-        test_results: Dict[str, Any]
+        test_results: dict[str, Any]
     ) -> UUID:
         """Perform and record a control test."""
-        
+
         if control_id not in self.controls:
             raise ValueError(f"Control {control_id} not found")
-        
+
         test_id = uuid4()
         control = self.controls[control_id]
-        
+
         test_record = {
             "test_id": test_id,
             "control_id": control_id,
@@ -407,37 +407,37 @@ class SOC2ComplianceFramework:
             "exceptions": test_results.get("exceptions", []),
             "evidence_collected": test_results.get("evidence", [])
         }
-        
+
         # Update control status based on test results
         if test_results.get("conclusion") == "satisfactory":
             control.status = ControlStatus.OPERATING_EFFECTIVELY
         elif test_results.get("conclusion") == "unsatisfactory":
             control.status = ControlStatus.DEFICIENT
-        
+
         control.last_tested = datetime.utcnow()
         control.test_results.append(test_record)
-        
+
         if test_results.get("exceptions"):
             control.exceptions.extend(test_results["exceptions"])
-        
+
         self.control_tests.append(test_record)
-        
+
         logger.info(f"Control test performed for {control_id}: {test_results.get('conclusion')}")
         return test_id
-    
+
     def add_control_evidence(
         self,
         control_id: str,
         evidence_type: str,
         description: str,
         file_path: str = None,
-        metadata: Dict[str, Any] = None
+        metadata: dict[str, Any] = None
     ):
         """Add evidence supporting a control."""
-        
+
         if control_id not in self.controls:
             raise ValueError(f"Control {control_id} not found")
-        
+
         evidence = {
             "evidence_id": str(uuid4()),
             "control_id": control_id,
@@ -447,13 +447,13 @@ class SOC2ComplianceFramework:
             "collected_date": datetime.utcnow(),
             "metadata": metadata or {}
         }
-        
+
         self.controls[control_id].evidence.append(evidence)
         logger.info(f"Evidence added for control {control_id}: {evidence_type}")
-    
-    def generate_control_testing_report(self) -> Dict[str, Any]:
+
+    def generate_control_testing_report(self) -> dict[str, Any]:
         """Generate comprehensive control testing report for SOC 2."""
-        
+
         total_controls = len(self.controls)
         tested_controls = sum(1 for c in self.controls.values() if c.last_tested)
         effective_controls = sum(
@@ -464,7 +464,7 @@ class SOC2ComplianceFramework:
             1 for c in self.controls.values()
             if c.status == ControlStatus.DEFICIENT
         )
-        
+
         # Group controls by principle
         controls_by_principle = {}
         for control in self.controls.values():
@@ -479,7 +479,7 @@ class SOC2ComplianceFramework:
                 "exceptions_count": len(control.exceptions),
                 "evidence_count": len(control.evidence)
             })
-        
+
         return {
             "report_date": datetime.utcnow().isoformat(),
             "compliance_period": {
@@ -503,10 +503,10 @@ class SOC2ComplianceFramework:
             },
             "remediation_status": self._get_remediation_status()
         }
-    
-    def _get_all_exceptions(self) -> List[Dict[str, Any]]:
+
+    def _get_all_exceptions(self) -> list[dict[str, Any]]:
         """Get all control exceptions for reporting."""
-        
+
         exceptions = []
         for control in self.controls.values():
             for exception in control.exceptions:
@@ -516,27 +516,27 @@ class SOC2ComplianceFramework:
                     "exception": exception,
                     "status": exception.get("status", "open")
                 })
-        
+
         return exceptions
-    
-    def _get_tests_by_month(self) -> Dict[str, int]:
+
+    def _get_tests_by_month(self) -> dict[str, int]:
         """Get number of tests performed by month."""
-        
+
         tests_by_month = {}
         for test in self.control_tests:
             month_key = test["test_date"].strftime("%Y-%m")
             tests_by_month[month_key] = tests_by_month.get(month_key, 0) + 1
-        
+
         return tests_by_month
-    
-    def _get_remediation_status(self) -> Dict[str, Any]:
+
+    def _get_remediation_status(self) -> dict[str, Any]:
         """Get remediation status for deficient controls."""
-        
+
         deficient_controls = [
             c for c in self.controls.values()
             if c.status == ControlStatus.DEFICIENT
         ]
-        
+
         return {
             "deficient_controls_count": len(deficient_controls),
             "deficient_controls": [
@@ -550,10 +550,10 @@ class SOC2ComplianceFramework:
                 for c in deficient_controls
             ]
         }
-    
-    def generate_management_assertion(self) -> Dict[str, Any]:
+
+    def generate_management_assertion(self) -> dict[str, Any]:
         """Generate management assertion for SOC 2 report."""
-        
+
         effective_controls = sum(
             1 for c in self.controls.values()
             if c.status == ControlStatus.OPERATING_EFFECTIVELY
@@ -562,9 +562,9 @@ class SOC2ComplianceFramework:
             1 for c in self.controls.values()
             if c.status != ControlStatus.NOT_APPLICABLE
         )
-        
+
         control_effectiveness = (effective_controls / total_applicable_controls) * 100
-        
+
         return {
             "assertion_date": datetime.utcnow().isoformat(),
             "management_assertion": {

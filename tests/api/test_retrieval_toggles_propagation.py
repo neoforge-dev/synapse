@@ -31,7 +31,9 @@ async def test_ask_request_search_type_propagates_to_engine():
     mock_engine.query = mock_query
 
     # Act
-    from graph_rag.api.routers.core_business_operations import create_core_business_operations_router
+    from graph_rag.api.routers.core_business_operations import (
+        create_core_business_operations_router,
+    )
     router = create_core_business_operations_router()
 
     # We need to manually call the ask function with our mocked engine
@@ -72,7 +74,9 @@ async def test_ask_request_all_retrieval_toggles_propagate():
     mock_engine.query = mock_query
 
     # Act
-    from graph_rag.api.routers.core_business_operations import create_core_business_operations_router
+    from graph_rag.api.routers.core_business_operations import (
+        create_core_business_operations_router,
+    )
     router = create_core_business_operations_router()
 
     for route in router.routes:

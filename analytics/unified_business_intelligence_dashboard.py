@@ -9,9 +9,8 @@ import asyncio
 import json
 import logging
 import sqlite3
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any
 
 try:
     import psycopg2
@@ -34,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 class UnifiedBusinessIntelligenceDashboard:
     """Unified dashboard for complete business intelligence and analytics"""
-    
+
     def __init__(self):
         self.analytics_engine = AdvancedGraphRAGAnalyticsEngine()
         self.postgres_config = {
@@ -44,7 +43,7 @@ class UnifiedBusinessIntelligenceDashboard:
             'user': 'synapse_app',
             'password': 'synapse_password'
         }
-        
+
         # Flask app for dashboard (if available)
         if FLASK_AVAILABLE:
             self.app = Flask(__name__)
@@ -52,12 +51,12 @@ class UnifiedBusinessIntelligenceDashboard:
         else:
             self.app = None
             logger.warning("Flask not available. Web interface disabled.")
-        
+
         # Initialize dashboard database
         self._init_dashboard_database()
-        
+
         logger.info("Unified Business Intelligence Dashboard initialized")
-    
+
     def _init_dashboard_database(self):
         """Initialize dashboard-specific database tables"""
         if POSTGRES_AVAILABLE:
@@ -65,7 +64,7 @@ class UnifiedBusinessIntelligenceDashboard:
                 # Try PostgreSQL first
                 conn = psycopg2.connect(**self.postgres_config)
                 cursor = conn.cursor()
-                
+
                 # Real-time business metrics table
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS real_time_business_metrics (
@@ -96,7 +95,7 @@ class UnifiedBusinessIntelligenceDashboard:
                     data_freshness_minutes REAL DEFAULT 0
                 )
                 ''')
-                
+
                 # Business funnel tracking
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS business_funnel_metrics (
@@ -126,7 +125,7 @@ class UnifiedBusinessIntelligenceDashboard:
                         proposal_to_close_rate REAL DEFAULT 0
                     )
                 ''')
-                
+
                 # Performance benchmarks
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS performance_benchmarks (
@@ -139,23 +138,23 @@ class UnifiedBusinessIntelligenceDashboard:
                         last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 ''')
-            
+
                 conn.commit()
                 conn.close()
                 logger.info("PostgreSQL dashboard tables initialized")
-                
+
             except Exception as e:
                 logger.warning(f"PostgreSQL initialization failed: {e}. Using SQLite fallback.")
                 self._init_sqlite_fallback()
         else:
             logger.info("PostgreSQL not available. Using SQLite fallback.")
             self._init_sqlite_fallback()
-    
+
     def _init_sqlite_fallback(self):
         """Initialize SQLite fallback for dashboard data"""
         conn = sqlite3.connect('unified_dashboard.db')
         cursor = conn.cursor()
-        
+
         # Same table structure for SQLite
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS real_time_business_metrics (
@@ -178,55 +177,55 @@ class UnifiedBusinessIntelligenceDashboard:
                 data_freshness_minutes REAL DEFAULT 0
             )
         ''')
-        
+
         conn.commit()
         conn.close()
-    
+
     def _setup_routes(self):
         """Setup Flask routes for dashboard API"""
-        
+
         @self.app.route('/')
         def dashboard_home():
             """Main dashboard view"""
             return render_template_string(DASHBOARD_HTML_TEMPLATE)
-        
+
         @self.app.route('/api/real-time-metrics')
         def real_time_metrics():
             """Get real-time business metrics"""
             metrics = self.get_real_time_metrics()
             return jsonify(metrics)
-        
+
         @self.app.route('/api/business-funnel')
         def business_funnel():
             """Get business funnel analytics"""
             funnel = self.get_business_funnel_metrics()
             return jsonify(funnel)
-        
+
         @self.app.route('/api/graph-insights')
         def graph_insights():
             """Get latest graph-based insights"""
             insights = self.get_latest_graph_insights()
             return jsonify(insights)
-        
+
         @self.app.route('/api/predictions')
         def predictions():
             """Get consultation predictions"""
             preds = self.get_consultation_predictions()
             return jsonify(preds)
-        
+
         @self.app.route('/api/optimizations')
         def optimizations():
             """Get autonomous optimizations"""
             opts = self.get_autonomous_optimizations()
             return jsonify(opts)
-        
+
         @self.app.route('/api/roi-dashboard')
         def roi_dashboard():
             """Get comprehensive ROI dashboard data"""
             roi_data = self.get_comprehensive_roi_data()
             return jsonify(roi_data)
-    
-    def get_real_time_metrics(self) -> Dict[str, Any]:
+
+    def get_real_time_metrics(self) -> dict[str, Any]:
         """Get real-time business metrics"""
         # Simulate real-time data collection
         current_metrics = {
@@ -257,10 +256,10 @@ class UnifiedBusinessIntelligenceDashboard:
                 'system_health_score': 95
             }
         }
-        
+
         return current_metrics
-    
-    def get_business_funnel_metrics(self) -> Dict[str, Any]:
+
+    def get_business_funnel_metrics(self) -> dict[str, Any]:
         """Get complete business funnel metrics"""
         funnel_data = {
             'period': 'Last 30 Days',
@@ -302,15 +301,15 @@ class UnifiedBusinessIntelligenceDashboard:
                 'Optimize proposal acceptance rate by 8% → +$28K monthly pipeline'
             ]
         }
-        
+
         return funnel_data
-    
-    def get_latest_graph_insights(self) -> Dict[str, Any]:
+
+    def get_latest_graph_insights(self) -> dict[str, Any]:
         """Get latest graph-based business insights"""
         # Query from analytics database
         conn = sqlite3.connect('advanced_graph_rag_analytics.db')
         cursor = conn.cursor()
-        
+
         try:
             cursor.execute('''
                 SELECT insight_type, insight_description, business_impact_score,
@@ -321,9 +320,9 @@ class UnifiedBusinessIntelligenceDashboard:
                 ORDER BY business_impact_score DESC
                 LIMIT 10
             ''')
-            
+
             results = cursor.fetchall()
-            
+
             insights = []
             for row in results:
                 insight_type, description, impact_score, confidence, recommendations, pipeline_value, priority = row
@@ -336,14 +335,14 @@ class UnifiedBusinessIntelligenceDashboard:
                     'pipeline_value': pipeline_value,
                     'priority': priority
                 })
-            
+
             return {
                 'total_insights': len(insights),
                 'high_priority_count': len([i for i in insights if i['priority'] in ['critical', 'high']]),
                 'total_pipeline_potential': sum(i['pipeline_value'] for i in insights),
                 'insights': insights[:5]  # Top 5 insights
             }
-            
+
         except Exception as e:
             logger.error(f"Failed to get graph insights: {e}")
             return {
@@ -354,12 +353,12 @@ class UnifiedBusinessIntelligenceDashboard:
             }
         finally:
             conn.close()
-    
-    def get_consultation_predictions(self) -> Dict[str, Any]:
+
+    def get_consultation_predictions(self) -> dict[str, Any]:
         """Get consultation predictions"""
         conn = sqlite3.connect('advanced_graph_rag_analytics.db')
         cursor = conn.cursor()
-        
+
         try:
             cursor.execute('''
                 SELECT content_id, predicted_inquiries, predicted_pipeline_value,
@@ -369,9 +368,9 @@ class UnifiedBusinessIntelligenceDashboard:
                 ORDER BY predicted_pipeline_value DESC
                 LIMIT 5
             ''')
-            
+
             results = cursor.fetchall()
-            
+
             predictions = []
             for row in results:
                 content_id, inquiries, pipeline_value, conf_lower, conf_upper, factors, timing = row
@@ -383,24 +382,24 @@ class UnifiedBusinessIntelligenceDashboard:
                     'success_factors': json.loads(factors) if factors else [],
                     'optimal_timing': json.loads(timing) if timing else {}
                 })
-            
+
             return {
                 'total_predictions': len(predictions),
                 'avg_predicted_value': sum(p['predicted_pipeline_value'] for p in predictions) / len(predictions) if predictions else 0,
                 'predictions': predictions
             }
-            
+
         except Exception as e:
             logger.error(f"Failed to get predictions: {e}")
             return {'total_predictions': 0, 'avg_predicted_value': 0, 'predictions': []}
         finally:
             conn.close()
-    
-    def get_autonomous_optimizations(self) -> Dict[str, Any]:
+
+    def get_autonomous_optimizations(self) -> dict[str, Any]:
         """Get autonomous optimization recommendations"""
         conn = sqlite3.connect('advanced_graph_rag_analytics.db')
         cursor = conn.cursor()
-        
+
         try:
             cursor.execute('''
                 SELECT optimization_type, improvement_percentage, expected_timeline,
@@ -409,9 +408,9 @@ class UnifiedBusinessIntelligenceDashboard:
                 WHERE created_at > datetime('now', '-7 days')
                 ORDER BY improvement_percentage DESC
             ''')
-            
+
             results = cursor.fetchall()
-            
+
             optimizations = []
             for row in results:
                 opt_type, improvement, timeline, steps, metrics, status = row
@@ -423,21 +422,21 @@ class UnifiedBusinessIntelligenceDashboard:
                     'success_metrics': json.loads(metrics) if metrics else [],
                     'status': status
                 })
-            
+
             return {
                 'total_optimizations': len(optimizations),
                 'avg_improvement': sum(o['improvement_percentage'] for o in optimizations) / len(optimizations) if optimizations else 0,
                 'ready_to_implement': len([o for o in optimizations if o['status'] == 'pending']),
                 'optimizations': optimizations
             }
-            
+
         except Exception as e:
             logger.error(f"Failed to get optimizations: {e}")
             return {'total_optimizations': 0, 'avg_improvement': 0, 'ready_to_implement': 0, 'optimizations': []}
         finally:
             conn.close()
-    
-    def get_comprehensive_roi_data(self) -> Dict[str, Any]:
+
+    def get_comprehensive_roi_data(self) -> dict[str, Any]:
         """Get comprehensive ROI dashboard data"""
         # Combine all data sources for complete ROI view
         real_time = self.get_real_time_metrics()
@@ -445,7 +444,7 @@ class UnifiedBusinessIntelligenceDashboard:
         insights = self.get_latest_graph_insights()
         predictions = self.get_consultation_predictions()
         optimizations = self.get_autonomous_optimizations()
-        
+
         # Calculate comprehensive ROI metrics
         roi_data = {
             'executive_summary': {
@@ -499,19 +498,19 @@ class UnifiedBusinessIntelligenceDashboard:
                 ]
             }
         }
-        
+
         return roi_data
-    
+
     async def update_real_time_metrics(self):
         """Update real-time metrics from all data sources"""
         logger.info("Updating real-time business metrics...")
-        
+
         # Collect data from all sources
         try:
             # LinkedIn automation data
             linkedin_conn = sqlite3.connect('linkedin_business_development.db')
             linkedin_cursor = linkedin_conn.cursor()
-            
+
             # Get today's metrics
             today = datetime.now().date().isoformat()
             linkedin_cursor.execute('''
@@ -523,28 +522,28 @@ class UnifiedBusinessIntelligenceDashboard:
                 FROM linkedin_posts
                 WHERE date(posted_at) = ?
             ''', (today,))
-            
+
             linkedin_data = linkedin_cursor.fetchone()
             linkedin_conn.close()
-            
+
             # Store in dashboard database
             dashboard_conn = sqlite3.connect('unified_dashboard.db')
             dashboard_cursor = dashboard_conn.cursor()
-            
+
             dashboard_cursor.execute('''
                 INSERT INTO real_time_business_metrics
                 (daily_posts, avg_engagement_rate, total_impressions, consultation_inquiries)
                 VALUES (?, ?, ?, ?)
             ''', linkedin_data)
-            
+
             dashboard_conn.commit()
             dashboard_conn.close()
-            
+
             logger.info("Real-time metrics updated successfully")
-            
+
         except Exception as e:
             logger.error(f"Failed to update real-time metrics: {e}")
-    
+
     def run_dashboard(self, host='127.0.0.1', port=5000, debug=False):
         """Run the dashboard server"""
         if self.app:
@@ -552,32 +551,32 @@ class UnifiedBusinessIntelligenceDashboard:
             self.app.run(host=host, port=port, debug=debug)
         else:
             logger.error("Cannot run dashboard - Flask not available")
-    
+
     def generate_text_dashboard(self) -> str:
         """Generate text-based dashboard for environments without Flask"""
         metrics = self.get_real_time_metrics()
         funnel = self.get_business_funnel_metrics()
         insights = self.get_latest_graph_insights()
         roi_data = self.get_comprehensive_roi_data()
-        
+
         dashboard_text = []
         dashboard_text.append("=" * 80)
         dashboard_text.append("🧠 UNIFIED BUSINESS INTELLIGENCE DASHBOARD - EPIC 3")
         dashboard_text.append("=" * 80)
         dashboard_text.append("")
-        
+
         # Real-time metrics
         dashboard_text.append("📊 REAL-TIME METRICS")
         dashboard_text.append("-" * 40)
         content = metrics['content_performance']
         business = metrics['business_development']
-        
+
         dashboard_text.append(f"📈 Today's Engagement Rate: {content['avg_engagement_rate']:.1%}")
         dashboard_text.append(f"💼 Consultation Inquiries: {business['consultation_inquiries_today']}")
         dashboard_text.append(f"💰 Pipeline Value Today: ${business['pipeline_value_today']:,}")
         dashboard_text.append(f"🎯 Posts Published: {content['posts_today']}")
         dashboard_text.append("")
-        
+
         # Business funnel
         dashboard_text.append("🔄 BUSINESS FUNNEL PERFORMANCE")
         dashboard_text.append("-" * 40)
@@ -587,7 +586,7 @@ class UnifiedBusinessIntelligenceDashboard:
         dashboard_text.append(f"📞 Consultation Inquiries: {funnel_stages['interest']['consultation_inquiries']}")
         dashboard_text.append(f"💵 Revenue Generated: ${funnel_stages['action']['revenue_generated']:,}")
         dashboard_text.append("")
-        
+
         # ROI projections
         dashboard_text.append("💰 ROI PROJECTIONS")
         dashboard_text.append("-" * 40)
@@ -597,7 +596,7 @@ class UnifiedBusinessIntelligenceDashboard:
         dashboard_text.append(f"📈 Additional Monthly Value: ${roi_summary['additional_monthly_value']:,}")
         dashboard_text.append(f"🎯 ROI Percentage: {roi_summary['roi_percentage']}%")
         dashboard_text.append("")
-        
+
         # Graph insights
         dashboard_text.append("🔍 LATEST GRAPH-RAG INSIGHTS")
         dashboard_text.append("-" * 40)
@@ -606,7 +605,7 @@ class UnifiedBusinessIntelligenceDashboard:
                 dashboard_text.append(f"• {insight['description'][:80]}...")
                 dashboard_text.append(f"  Priority: {insight['priority']} | Pipeline: ${insight['pipeline_value']:,.0f}")
         dashboard_text.append("")
-        
+
         # Implementation roadmap
         dashboard_text.append("🗺️  IMPLEMENTATION ROADMAP")
         dashboard_text.append("-" * 40)
@@ -615,11 +614,11 @@ class UnifiedBusinessIntelligenceDashboard:
             for action in phase['actions']:
                 dashboard_text.append(f"   • {action}")
         dashboard_text.append("")
-        
+
         dashboard_text.append("✅ Epic 3: Advanced Business Intelligence OPERATIONAL")
         dashboard_text.append("🎯 20-30% Consultation Pipeline Growth Capability Active")
         dashboard_text.append("=" * 80)
-        
+
         return "\n".join(dashboard_text)
 
 # HTML Template for Dashboard
@@ -902,28 +901,28 @@ def main():
     """Main function to run the dashboard"""
     print("🚀 Starting Unified Business Intelligence Dashboard")
     print("=" * 60)
-    
+
     dashboard = UnifiedBusinessIntelligenceDashboard()
-    
+
     # Update metrics before starting
     asyncio.run(dashboard.update_real_time_metrics())
-    
+
     print("✅ Dashboard initialized with:")
     print("  • Real-time business metrics")
     print("  • Complete business funnel tracking")
     print("  • Graph-RAG insights integration")
     print("  • ROI projections and optimization recommendations")
     print()
-    
+
     if FLASK_AVAILABLE:
         print("🌐 Web Dashboard available at: http://127.0.0.1:5000")
         print("📊 API endpoints:")
         print("  • /api/real-time-metrics")
-        print("  • /api/business-funnel") 
+        print("  • /api/business-funnel")
         print("  • /api/graph-insights")
         print("  • /api/roi-dashboard")
         print()
-        
+
         # Run the dashboard
         dashboard.run_dashboard(debug=True)
     else:

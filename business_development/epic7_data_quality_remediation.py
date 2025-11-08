@@ -3,11 +3,9 @@ Epic 7 Data Quality Remediation
 Fixes missing contact data and reconciles $1.158M pipeline target
 """
 
-import sqlite3
-import json
 import logging
+import sqlite3
 from pathlib import Path
-from typing import Dict, List
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -269,7 +267,7 @@ class Epic7DataQualityRemediation:
 
         success = (still_missing == 0 and final_value >= self.target_pipeline_value)
 
-        logger.info(f"Validation results:")
+        logger.info("Validation results:")
         logger.info(f"- Contacts with missing data: {still_missing}")
         logger.info(f"- Final pipeline value: ${final_value:,}")
         logger.info(f"- Target met: {final_value >= self.target_pipeline_value}")

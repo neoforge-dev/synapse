@@ -19,16 +19,17 @@ Databases to Consolidate:
 11. advanced_graph_rag_analytics.db - Graph RAG performance analytics
 """
 
-import os
-import sys
+import json
 import logging
+import os
 import sqlite3
-import psycopg2
-import psycopg2.extras
+import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Optional
-import json
+from typing import Any
+
+import psycopg2
+import psycopg2.extras
 
 # Configure logging
 logging.basicConfig(
@@ -140,7 +141,7 @@ class AnalyticsConsolidationMigrator:
             if conn is not None:
                 conn.close()
 
-    def migrate_database(self, db_name: str, table_mapping: Dict[str, str]) -> Dict[str, int]:
+    def migrate_database(self, db_name: str, table_mapping: dict[str, str]) -> dict[str, int]:
         """Migrate a single database with table mapping"""
         logger.info(f"Migrating database: {db_name}")
 
@@ -219,7 +220,7 @@ class AnalyticsConsolidationMigrator:
                 # Transform and insert into PostgreSQL
                 transformed_rows = []
                 for row in rows:
-                    row_dict = dict(zip(sqlite_columns, row))
+                    row_dict = dict(zip(sqlite_columns, row, strict=False))
                     transformed_row = self.transform_row_for_table(row_dict, pg_table)
                     if transformed_row:
                         transformed_rows.append(transformed_row)
@@ -250,7 +251,7 @@ class AnalyticsConsolidationMigrator:
             pg_conn.rollback()
             return 0
 
-    def transform_row_for_table(self, row_dict: Dict[str, Any], pg_table: str) -> Optional[tuple]:
+    def transform_row_for_table(self, row_dict: dict[str, Any], pg_table: str) -> tuple | None:
         """Transform row data based on target table requirements"""
         try:
             # Table-specific transformations
@@ -277,7 +278,7 @@ class AnalyticsConsolidationMigrator:
             logger.warning(f"Failed to transform row for {pg_table}: {e}")
             return None
 
-    def transform_posts_row(self, row_dict: Dict[str, Any]) -> tuple:
+    def transform_posts_row(self, row_dict: dict[str, Any]) -> tuple:
         """Transform posts table row"""
         return (
             row_dict.get('post_id'),
@@ -305,7 +306,7 @@ class AnalyticsConsolidationMigrator:
             row_dict.get('created_at')
         )
 
-    def transform_weekly_performance_row(self, row_dict: Dict[str, Any]) -> tuple:
+    def transform_weekly_performance_row(self, row_dict: dict[str, Any]) -> tuple:
         """Transform weekly_performance table row"""
         # Skip performance_id (SERIAL PRIMARY KEY, auto-generated)
         return (
@@ -327,7 +328,7 @@ class AnalyticsConsolidationMigrator:
             row_dict.get('created_at')
         )
 
-    def transform_performance_row(self, row_dict: Dict[str, Any], table: str) -> tuple:
+    def transform_performance_row(self, row_dict: dict[str, Any], table: str) -> tuple:
         """Transform performance analytics row"""
         if table == 'content_patterns':
             return (
@@ -359,7 +360,7 @@ class AnalyticsConsolidationMigrator:
         # Add other performance table transformations as needed
         return tuple(row_dict.values())
 
-    def transform_revenue_row(self, row_dict: Dict[str, Any], table: str) -> tuple:
+    def transform_revenue_row(self, row_dict: dict[str, Any], table: str) -> tuple:
         """Transform revenue analytics row"""
         if table == 'revenue_opportunities':
             # Ensure scores are within valid range for DECIMAL(3,2)
@@ -413,7 +414,7 @@ class AnalyticsConsolidationMigrator:
         # Add other revenue table transformations as needed
         return tuple(row_dict.values())
 
-    def transform_ab_testing_row(self, row_dict: Dict[str, Any], table: str) -> tuple:
+    def transform_ab_testing_row(self, row_dict: dict[str, Any], table: str) -> tuple:
         """Transform A/B testing row"""
         if table == 'ab_tests':
             return (
@@ -461,7 +462,7 @@ class AnalyticsConsolidationMigrator:
         # Add other A/B testing table transformations as needed
         return tuple(row_dict.values())
 
-    def transform_conversion_paths_row(self, row_dict: Dict[str, Any]) -> tuple:
+    def transform_conversion_paths_row(self, row_dict: dict[str, Any]) -> tuple:
         """Transform conversion_paths table row"""
         # Handle JSON fields - ensure they're valid JSON or None
         touchpoints = row_dict.get('touchpoints')
@@ -491,7 +492,7 @@ class AnalyticsConsolidationMigrator:
             # created_at will be set by DEFAULT NOW()
         )
 
-    def transform_cross_platform_row(self, row_dict: Dict[str, Any], table: str) -> tuple:
+    def transform_cross_platform_row(self, row_dict: dict[str, Any], table: str) -> tuple:
         """Transform cross-platform analytics row"""
         if table == 'attribution_tracking':
             return (
@@ -509,7 +510,7 @@ class AnalyticsConsolidationMigrator:
         # Add other cross-platform table transformations as needed
         return tuple(row_dict.values())
 
-    def insert_batch_to_postgres(self, pg_cursor, table: str, columns: List[str], rows: List[tuple]):
+    def insert_batch_to_postgres(self, pg_cursor, table: str, columns: list[str], rows: list[tuple]):
         """Insert batch of rows into PostgreSQL"""
         if not rows:
             return
@@ -529,7 +530,7 @@ class AnalyticsConsolidationMigrator:
 
         pg_cursor.executemany(query, rows)
 
-    def get_postgres_columns(self, table: str) -> List[str]:
+    def get_postgres_columns(self, table: str) -> list[str]:
         """Get the correct column names for PostgreSQL tables"""
         column_mappings = {
             'posts': ['post_id', 'date', 'day_of_week', 'content_type', 'signature_series', 'headline', 'platform', 'posting_time', 'content', 'views', 'likes', 'comments', 'shares', 'saves', 'engagement_rate', 'profile_views', 'connection_requests', 'consultation_inquiries', 'discovery_calls', 'click_through_rate', 'comment_quality_score', 'business_relevance_score', 'created_at'],
@@ -569,7 +570,7 @@ class AnalyticsConsolidationMigrator:
 
         return conflict_strategies.get(table, 'ON CONFLICT DO NOTHING')
 
-    def migrate_all_databases(self) -> Dict[str, Dict[str, int]]:
+    def migrate_all_databases(self) -> dict[str, dict[str, int]]:
         """Migrate all analytics databases"""
         logger.info("Starting migration of all analytics databases...")
 
@@ -645,7 +646,7 @@ class AnalyticsConsolidationMigrator:
 
         return migration_results
 
-    def validate_consolidation(self) -> Dict[str, Any]:
+    def validate_consolidation(self) -> dict[str, Any]:
         """Validate that consolidation was successful"""
         logger.info("Validating analytics consolidation...")
 

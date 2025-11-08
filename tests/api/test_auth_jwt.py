@@ -10,7 +10,6 @@ from uuid import uuid4
 
 import jwt
 import pytest
-from freezegun import freeze_time
 
 from graph_rag.api.auth.jwt_handler import JWTHandler, JWTSettings
 from graph_rag.api.auth.models import TokenData, User, UserRole
@@ -292,13 +291,13 @@ class TestJWTHandler:
         """Test that token expiration time is set correctly."""
         # Record time before token creation (truncated to seconds for comparison)
         before_creation = datetime.utcnow().replace(microsecond=0)
-        
+
         token = jwt_handler.create_access_token(sample_user)
         token_data = jwt_handler.decode_token(token)
-        
+
         # Record time after token creation (truncated to seconds for comparison)
         after_creation = datetime.utcnow().replace(microsecond=0)
-        
+
         expected_min_exp = before_creation + timedelta(
             minutes=jwt_handler.settings.access_token_expire_minutes
         )

@@ -4,18 +4,12 @@ Epic 18 Thought Leadership Dominance System
 Establishes industry authority through global conference speaking and research publications
 """
 
-import asyncio
 import json
 import logging
 import sqlite3
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-from uuid import uuid4
-
-import numpy as np
-import pandas as pd
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -28,15 +22,15 @@ class ThoughtLeadershipInitiative:
     initiative_type: str  # conference_speaking, research_publication, industry_report, webinar_series
     title: str
     target_audience: str
-    industry_focus: List[str]
+    industry_focus: list[str]
     global_reach: bool
     investment_required: int
     timeline_months: int
     expected_leads: int
     brand_value_impact: float  # 0-1 scale
     competitive_advantage: str
-    deliverables: List[str]
-    success_metrics: Dict[str, float]
+    deliverables: list[str]
+    success_metrics: dict[str, float]
     status: str = "planning"  # planning, development, launched, completed
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
 
@@ -55,8 +49,8 @@ class ConferenceOpportunity:
     preparation_hours: int
     expected_leads: int
     brand_exposure_value: float
-    competitive_speakers: List[str]
-    speaking_topics: List[str]
+    competitive_speakers: list[str]
+    speaking_topics: list[str]
     conference_date: str
     application_deadline: str
     acceptance_probability: float
@@ -71,9 +65,9 @@ class ResearchPublication:
     publication_type: str  # whitepaper, industry_report, academic_paper, case_study
     title: str
     research_focus: str
-    target_publications: List[str]
+    target_publications: list[str]
     research_methodology: str
-    data_requirements: List[str]
+    data_requirements: list[str]
     research_timeline_months: int
     publication_timeline_months: int
     investment_required: int
@@ -82,7 +76,7 @@ class ResearchPublication:
     media_coverage_potential: int
     lead_generation_potential: int
     competitive_positioning: str
-    strategic_insights: List[str]
+    strategic_insights: list[str]
     status: str = "concept"
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
 
@@ -97,7 +91,7 @@ class IndustryAuthority:
     global_recognition: bool
     application_required: bool
     nomination_process: str
-    criteria: List[str]
+    criteria: list[str]
     timeline_months: int
     investment_required: int
     brand_value_impact: float
@@ -108,17 +102,17 @@ class IndustryAuthority:
 
 class ThoughtLeadershipEngine:
     """Master orchestrator for thought leadership dominance"""
-    
+
     def __init__(self):
         self.db_path = 'business_development/epic18_thought_leadership.db'
         self._init_database()
-        
+
         # Thought leadership strategy components
         self.conference_opportunities = self._initialize_conference_opportunities()
         self.research_publications = self._initialize_research_publications()
         self.industry_authorities = self._initialize_industry_authorities()
         self.content_calendar = self._create_content_calendar()
-        
+
         # Performance tracking
         self.leadership_metrics = {
             "current_authority_score": 6.8,
@@ -127,12 +121,12 @@ class ThoughtLeadershipEngine:
             "media_mentions": 12,
             "speaking_engagements": 3
         }
-        
+
     def _init_database(self):
         """Initialize thought leadership database"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Conference opportunities table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS conference_opportunities (
@@ -158,7 +152,7 @@ class ThoughtLeadershipEngine:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # Research publications table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS research_publications (
@@ -182,7 +176,7 @@ class ThoughtLeadershipEngine:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # Industry authority tracking table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS industry_authority (
@@ -204,7 +198,7 @@ class ThoughtLeadershipEngine:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # Content calendar table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS content_calendar (
@@ -222,7 +216,7 @@ class ThoughtLeadershipEngine:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # Authority metrics tracking table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS authority_metrics (
@@ -239,12 +233,12 @@ class ThoughtLeadershipEngine:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         conn.commit()
         conn.close()
         logger.info("Epic 18 thought leadership database initialized")
-        
-    def _initialize_conference_opportunities(self) -> List[ConferenceOpportunity]:
+
+    def _initialize_conference_opportunities(self) -> list[ConferenceOpportunity]:
         """Initialize major conference speaking opportunities"""
         return [
             ConferenceOpportunity(
@@ -392,8 +386,8 @@ class ThoughtLeadershipEngine:
                 strategic_value=9.3
             )
         ]
-        
-    def _initialize_research_publications(self) -> List[ResearchPublication]:
+
+    def _initialize_research_publications(self) -> list[ResearchPublication]:
         """Initialize industry research publications"""
         return [
             ResearchPublication(
@@ -513,8 +507,8 @@ class ThoughtLeadershipEngine:
                 ]
             )
         ]
-        
-    def _initialize_industry_authorities(self) -> List[IndustryAuthority]:
+
+    def _initialize_industry_authorities(self) -> list[IndustryAuthority]:
         """Initialize industry authority and recognition opportunities"""
         return [
             IndustryAuthority(
@@ -602,8 +596,8 @@ class ThoughtLeadershipEngine:
                 success_probability=0.7
             )
         ]
-        
-    def _create_content_calendar(self) -> Dict[str, List[Dict]]:
+
+    def _create_content_calendar(self) -> dict[str, list[dict]]:
         """Create comprehensive content calendar for thought leadership"""
         return {
             "Q1_2025": [
@@ -659,32 +653,32 @@ class ThoughtLeadershipEngine:
                 }
             ]
         }
-        
-    def execute_thought_leadership_strategy(self) -> Dict[str, Any]:
+
+    def execute_thought_leadership_strategy(self) -> dict[str, Any]:
         """Execute comprehensive thought leadership dominance strategy"""
-        
+
         logger.info("🎤 Epic 18: Thought Leadership Dominance Strategy")
-        
+
         # Phase 1: Conference speaking circuit
         logger.info("📊 Phase 1: Global conference speaking strategy")
         conference_strategy = self._develop_conference_strategy()
-        
+
         # Phase 2: Research publication program
         logger.info("📖 Phase 2: Industry research publication program")
         research_program = self._execute_research_program()
-        
+
         # Phase 3: Industry authority building
         logger.info("🏆 Phase 3: Industry authority and recognition")
         authority_building = self._build_industry_authority()
-        
+
         # Phase 4: Content marketing amplification
         logger.info("📢 Phase 4: Content marketing amplification")
         content_amplification = self._amplify_content_marketing()
-        
+
         # Phase 5: Media and PR strategy
         logger.info("📺 Phase 5: Media relations and PR strategy")
         media_strategy = self._execute_media_strategy()
-        
+
         # Save all components to database
         self._save_thought_leadership_components(
             conference_strategy,
@@ -693,7 +687,7 @@ class ThoughtLeadershipEngine:
             content_amplification,
             media_strategy
         )
-        
+
         # Calculate comprehensive metrics
         leadership_metrics = self._calculate_thought_leadership_metrics(
             conference_strategy,
@@ -701,7 +695,7 @@ class ThoughtLeadershipEngine:
             authority_building,
             content_amplification
         )
-        
+
         return {
             "thought_leadership_execution": {
                 "conference_strategy": conference_strategy,
@@ -713,19 +707,19 @@ class ThoughtLeadershipEngine:
             "leadership_metrics": leadership_metrics,
             "execution_timestamp": datetime.now().isoformat()
         }
-        
-    def _develop_conference_strategy(self) -> Dict[str, Any]:
+
+    def _develop_conference_strategy(self) -> dict[str, Any]:
         """Develop global conference speaking strategy"""
-        
+
         # Prioritize conferences by strategic value and ROI
         conference_priorities = []
         total_investment = 0
         total_leads = 0
-        
+
         for conference in self.conference_opportunities:
             roi = (conference.expected_leads * 2000 - conference.travel_cost - (conference.preparation_hours * 200)) / max(conference.travel_cost + (conference.preparation_hours * 200), 1)
             total_cost = conference.travel_cost + (conference.preparation_hours * 200)
-            
+
             conference_priorities.append({
                 "conference": conference.conference_name,
                 "type": conference.conference_type,
@@ -739,22 +733,22 @@ class ThoughtLeadershipEngine:
                 "industry_focus": conference.industry_focus,
                 "speaking_topics": conference.speaking_topics
             })
-            
+
             total_investment += total_cost
             total_leads += conference.expected_leads
-        
+
         # Sort by strategic value and ROI
         conference_priorities.sort(key=lambda x: (x["strategic_value"], x["roi"]), reverse=True)
-        
+
         # Create speaking calendar for top conferences
         speaking_calendar = []
         cumulative_cost = 0
         cumulative_leads = 0
-        
+
         for i, conference in enumerate(conference_priorities[:8]):  # Top 8 conferences
             cumulative_cost += conference["total_cost"]
             cumulative_leads += conference["expected_leads"]
-            
+
             speaking_calendar.append({
                 "priority": i + 1,
                 "conference": conference["conference"],
@@ -767,7 +761,7 @@ class ThoughtLeadershipEngine:
                 "strategic_value": conference["strategic_value"],
                 "key_topics": conference["speaking_topics"][:2]
             })
-        
+
         return {
             "conference_opportunity": {
                 "total_conferences_identified": len(self.conference_opportunities),
@@ -792,15 +786,15 @@ class ThoughtLeadershipEngine:
                 "authority": "Technical depth combined with business impact"
             }
         }
-        
-    def _execute_research_program(self) -> Dict[str, Any]:
+
+    def _execute_research_program(self) -> dict[str, Any]:
         """Execute industry research publication program"""
-        
+
         # Calculate research impact and prioritization
         research_priorities = []
         total_research_investment = 0
         total_expected_impact = 0
-        
+
         for publication in self.research_publications:
             impact_score = (
                 publication.expected_downloads * 0.1 +
@@ -808,9 +802,9 @@ class ThoughtLeadershipEngine:
                 publication.media_coverage_potential * 5 +
                 publication.lead_generation_potential * 2
             )
-            
+
             roi = impact_score / publication.investment_required
-            
+
             research_priorities.append({
                 "publication": publication.title,
                 "type": publication.publication_type,
@@ -825,21 +819,21 @@ class ThoughtLeadershipEngine:
                 "competitive_positioning": publication.competitive_positioning,
                 "target_publications": publication.target_publications
             })
-            
+
             total_research_investment += publication.investment_required
             total_expected_impact += impact_score
-        
+
         research_priorities.sort(key=lambda x: x["roi"], reverse=True)
-        
+
         # Create research roadmap
         research_roadmap = []
         cumulative_investment = 0
         cumulative_leads = 0
-        
+
         for i, research in enumerate(research_priorities):
             cumulative_investment += research["investment"]
             cumulative_leads += research["lead_potential"]
-            
+
             research_roadmap.append({
                 "phase": i + 1,
                 "publication": research["publication"],
@@ -851,7 +845,7 @@ class ThoughtLeadershipEngine:
                 "cumulative_leads": cumulative_leads,
                 "competitive_advantage": research["competitive_positioning"]
             })
-        
+
         return {
             "research_program_scope": {
                 "total_publications_planned": len(self.research_publications),
@@ -876,18 +870,18 @@ class ThoughtLeadershipEngine:
                 "publication_process": "Academic rigor + business relevance"
             }
         }
-        
-    def _build_industry_authority(self) -> Dict[str, Any]:
+
+    def _build_industry_authority(self) -> dict[str, Any]:
         """Build industry authority and recognition"""
-        
+
         # Calculate authority building impact
         authority_priorities = []
         total_authority_investment = 0
-        
+
         for authority in self.industry_authorities:
             impact_value = authority.brand_value_impact * authority.success_probability * 100000  # Brand value in dollars
             roi = impact_value / authority.investment_required
-            
+
             authority_priorities.append({
                 "recognition": authority.recognition_title,
                 "organization": authority.organization,
@@ -901,20 +895,20 @@ class ThoughtLeadershipEngine:
                 "competitive_advantage": authority.competitive_advantage,
                 "application_required": authority.application_required
             })
-            
+
             total_authority_investment += authority.investment_required
-        
+
         authority_priorities.sort(key=lambda x: x["roi"], reverse=True)
-        
+
         # Create authority building roadmap
         authority_roadmap = []
         cumulative_investment = 0
         cumulative_brand_impact = 0
-        
+
         for i, authority in enumerate(authority_priorities):
             cumulative_investment += authority["investment"]
             cumulative_brand_impact += authority["brand_impact"] * authority["success_probability"]
-            
+
             authority_roadmap.append({
                 "phase": i + 1,
                 "recognition": authority["recognition"],
@@ -932,7 +926,7 @@ class ThoughtLeadershipEngine:
                     "Recognition pursuit"
                 ]
             })
-        
+
         return {
             "authority_building_scope": {
                 "total_recognitions_targeted": len(self.industry_authorities),
@@ -956,10 +950,10 @@ class ThoughtLeadershipEngine:
                 "business_impact": "Measurable ROI and transformation outcomes"
             }
         }
-        
-    def _amplify_content_marketing(self) -> Dict[str, Any]:
+
+    def _amplify_content_marketing(self) -> dict[str, Any]:
         """Amplify content marketing for thought leadership"""
-        
+
         # Calculate content impact across calendar
         content_metrics = {
             "total_content_pieces": 0,
@@ -967,13 +961,13 @@ class ThoughtLeadershipEngine:
             "content_investment": 0,
             "distribution_channels": set()
         }
-        
+
         quarterly_content = []
-        
+
         for quarter, content_list in self.content_calendar.items():
             quarter_leads = sum(content.get("lead_target", 0) for content in content_list)
             quarter_investment = len(content_list) * 15000  # Average content creation cost
-            
+
             quarterly_content.append({
                 "quarter": quarter,
                 "content_count": len(content_list),
@@ -982,16 +976,16 @@ class ThoughtLeadershipEngine:
                 "content_types": list(set(content["content_type"] for content in content_list)),
                 "key_themes": [content["title"] for content in content_list]
             })
-            
+
             content_metrics["total_content_pieces"] += len(content_list)
             content_metrics["total_lead_target"] += quarter_leads
             content_metrics["content_investment"] += quarter_investment
-            
+
             for content in content_list:
                 content_metrics["distribution_channels"].update(content["distribution_channels"])
-        
+
         content_metrics["distribution_channels"] = list(content_metrics["distribution_channels"])
-        
+
         # Content amplification strategy
         amplification_strategy = {
             "owned_media": {
@@ -1019,7 +1013,7 @@ class ThoughtLeadershipEngine:
                 "lead_conversion": 0.08
             }
         }
-        
+
         return {
             "content_marketing_scope": {
                 "annual_content_pieces": content_metrics["total_content_pieces"],
@@ -1032,7 +1026,7 @@ class ThoughtLeadershipEngine:
             "amplification_strategy": amplification_strategy,
             "content_themes": {
                 "thought_leadership": "Industry insights and future trends",
-                "technical_expertise": "Implementation guides and best practices", 
+                "technical_expertise": "Implementation guides and best practices",
                 "customer_success": "Case studies and ROI validation",
                 "innovation": "Technology advancement and competitive differentiation"
             },
@@ -1042,10 +1036,10 @@ class ThoughtLeadershipEngine:
                 "projected_leads": sum(strategy["reach"] * strategy["engagement_rate"] * strategy["lead_conversion"] for strategy in amplification_strategy.values())
             }
         }
-        
-    def _execute_media_strategy(self) -> Dict[str, Any]:
+
+    def _execute_media_strategy(self) -> dict[str, Any]:
         """Execute media relations and PR strategy"""
-        
+
         media_strategy = {
             "media_targets": {
                 "tier_1_media": [
@@ -1103,11 +1097,11 @@ class ThoughtLeadershipEngine:
                 "media_training": "Executive media relations training"
             }
         }
-        
+
         # Calculate media impact metrics
         total_pr_investment = sum(campaign["investment"] for campaign in media_strategy["pr_campaigns"])
         total_expected_coverage = sum(campaign["expected_coverage"] for campaign in media_strategy["pr_campaigns"])
-        
+
         return {
             "media_strategy_scope": {
                 "total_pr_investment": total_pr_investment,
@@ -1124,12 +1118,12 @@ class ThoughtLeadershipEngine:
                 "media_roi": (total_expected_coverage * 5000) / total_pr_investment
             }
         }
-        
+
     def _save_thought_leadership_components(self, *components):
         """Save thought leadership components to database"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         # Save conference opportunities
         for conference in self.conference_opportunities:
             cursor.execute('''
@@ -1148,7 +1142,7 @@ class ThoughtLeadershipEngine:
                 conference.conference_date, conference.application_deadline,
                 conference.acceptance_probability, conference.strategic_value
             ))
-        
+
         # Save research publications
         for publication in self.research_publications:
             cursor.execute('''
@@ -1169,7 +1163,7 @@ class ThoughtLeadershipEngine:
                 publication.lead_generation_potential, publication.competitive_positioning,
                 json.dumps(publication.strategic_insights)
             ))
-        
+
         # Save industry authority opportunities
         for authority in self.industry_authorities:
             cursor.execute('''
@@ -1187,15 +1181,15 @@ class ThoughtLeadershipEngine:
                 authority.investment_required, authority.brand_value_impact,
                 authority.competitive_advantage, authority.success_probability
             ))
-        
+
         conn.commit()
         conn.close()
-        
-    def _calculate_thought_leadership_metrics(self, *components) -> Dict[str, Any]:
+
+    def _calculate_thought_leadership_metrics(self, *components) -> dict[str, Any]:
         """Calculate comprehensive thought leadership metrics"""
-        
+
         conference_strategy, research_program, authority_building, content_amplification = components[:4]
-        
+
         # Financial impact
         total_investment = (
             conference_strategy["conference_opportunity"]["total_investment_required"] +
@@ -1203,21 +1197,21 @@ class ThoughtLeadershipEngine:
             authority_building["authority_building_scope"]["total_investment_required"] +
             content_amplification["content_marketing_scope"]["content_investment"]
         )
-        
+
         total_lead_potential = (
             conference_strategy["conference_opportunity"]["total_expected_leads"] +
             research_program["research_program_scope"]["total_lead_potential"] +
             content_amplification["content_marketing_scope"]["total_lead_target"] +
             content_amplification["performance_metrics"]["projected_leads"]
         )
-        
+
         # Brand and authority impact
         brand_authority_score = (
             conference_strategy["conference_opportunity"]["brand_authority_impact"] * 0.3 +
             authority_building["authority_building_scope"]["expected_brand_impact"] * 0.4 +
             research_program["research_program_scope"]["program_roi"] * 0.1 * 0.3
         )
-        
+
         return {
             "financial_impact": {
                 "total_investment_required": total_investment,
@@ -1258,67 +1252,67 @@ def run_epic18_thought_leadership_demo():
     """Run Epic 18 thought leadership demonstration"""
     print("🎤 Epic 18: Thought Leadership Dominance System")
     print("Establishing industry authority through global conference speaking and research publications\n")
-    
+
     # Initialize thought leadership engine
     leadership_engine = ThoughtLeadershipEngine()
-    
+
     # Execute thought leadership strategy
     print("🚀 Executing Thought Leadership Dominance Strategy...")
     results = leadership_engine.execute_thought_leadership_strategy()
-    
+
     # Display results
     execution = results["thought_leadership_execution"]
     metrics = results["leadership_metrics"]
-    
-    print(f"\n📊 Thought Leadership Execution Results:")
+
+    print("\n📊 Thought Leadership Execution Results:")
     print(f"  🎤 Conference Speaking: {metrics['authority_metrics']['speaking_engagements_target']} major conferences")
     print(f"  📖 Research Publications: {metrics['authority_metrics']['research_publications_target']} industry publications")
     print(f"  🏆 Industry Recognitions: {metrics['authority_metrics']['industry_recognitions_target']} authority recognitions")
     print(f"  📢 Content Marketing: {metrics['authority_metrics']['content_pieces_annual']} content pieces annually")
     print(f"  📺 Media Coverage: {metrics['market_impact']['media_coverage_target']} media mentions target")
-    
-    print(f"\n💰 Financial Impact Analysis:")
+
+    print("\n💰 Financial Impact Analysis:")
     financial = metrics["financial_impact"]
     print(f"  💵 Total Investment: ${financial['total_investment_required']:,}")
     print(f"  🎯 Lead Potential: {financial['total_lead_potential']:,} qualified leads")
     print(f"  📊 Cost per Lead: ${financial['lead_cost_per_acquisition']:.0f}")
     print(f"  📈 Thought Leadership ROI: {financial['thought_leadership_roi']:.1f}x")
     print(f"  💎 Brand Value Creation: ${financial['brand_value_creation']:,}")
-    
-    print(f"\n🎤 Conference Speaking Strategy:")
+
+    print("\n🎤 Conference Speaking Strategy:")
     conference_strategy = execution["conference_strategy"]
     for conference in conference_strategy["speaking_calendar"][:5]:
         print(f"  {conference['priority']}. {conference['conference']} - {conference['expected_leads']} leads ({conference['date']})")
-    
-    print(f"\n📖 Research Publication Program:")
+
+    print("\n📖 Research Publication Program:")
     research_program = execution["research_program"]
     for research in research_program["research_roadmap"][:3]:
         print(f"  Phase {research['phase']}: {research['publication']} - {research['lead_potential']} leads")
-    
-    print(f"\n🏆 Industry Authority Building:")
+
+    print("\n🏆 Industry Authority Building:")
     authority_building = execution["authority_building"]
     for authority in authority_building["authority_roadmap"][:3]:
         print(f"  {authority['recognition']} ({authority['organization']}) - {authority['brand_impact']:.1f} brand impact")
-    
-    print(f"\n📢 Content Marketing Amplification:")
+
+    print("\n📢 Content Marketing Amplification:")
     content_amplification = execution["content_amplification"]
     for quarter in content_amplification["quarterly_content"]:
         print(f"  {quarter['quarter']}: {quarter['content_count']} pieces, {quarter['lead_target']} leads")
-    
-    print(f"\n🌟 Market Impact Metrics:")
+
+    print("\n🌟 Market Impact Metrics:")
     market_impact = metrics["market_impact"]
     print(f"  📊 Conference Reach: {market_impact['conference_reach']:,} professionals")
     print(f"  📥 Research Downloads: {market_impact['research_downloads']:,} downloads")
     print(f"  📱 Content Reach: {market_impact['content_reach']:,} total reach")
     print(f"  🎯 Authority Score Target: {metrics['authority_metrics']['projected_authority_score']}/10")
-    
-    print(f"\n🏆 Competitive Positioning:")
+
+    print("\n🏆 Competitive Positioning:")
     positioning = metrics["competitive_positioning"]
     print(f"  👑 Industry Authority: {positioning['industry_authority_rank']}")
     print(f"  🎤 Speaking Rank: {positioning['conference_speaking_rank']}")
     print(f"  📊 Research Influence: {positioning['research_influence']}")
     print(f"  📺 Media Presence: {positioning['media_presence']}")
-    
+
     # Success criteria assessment
     success_metrics = {
         "conference_speaking": metrics["authority_metrics"]["speaking_engagements_target"] >= 6,
@@ -1330,26 +1324,26 @@ def run_epic18_thought_leadership_demo():
         "brand_value_creation": financial["brand_value_creation"] >= 5000000,
         "authority_score": metrics["authority_metrics"]["projected_authority_score"] >= 9.0
     }
-    
+
     success_count = sum(success_metrics.values())
     total_criteria = len(success_metrics)
-    
-    print(f"\n🎯 Thought Leadership Success Criteria:")
+
+    print("\n🎯 Thought Leadership Success Criteria:")
     for criterion, achieved in success_metrics.items():
         status = "✅" if achieved else "❌"
         print(f"  {status} {criterion.replace('_', ' ').title()}")
-    
+
     print(f"\n📋 Thought Leadership Success Rate: {success_count}/{total_criteria} ({success_count/total_criteria*100:.0f}%)")
-    
+
     if success_count >= total_criteria * 0.85:  # 85% success threshold
-        print(f"\n🏆 THOUGHT LEADERSHIP DOMINANCE ACHIEVED!")
-        print(f"   Industry authority established through comprehensive strategy")
-        print(f"   Synapse positioned as definitive thought leader in enterprise AI transformation")
-        print(f"   Global recognition and competitive differentiation secured")
+        print("\n🏆 THOUGHT LEADERSHIP DOMINANCE ACHIEVED!")
+        print("   Industry authority established through comprehensive strategy")
+        print("   Synapse positioned as definitive thought leader in enterprise AI transformation")
+        print("   Global recognition and competitive differentiation secured")
     else:
         print(f"\n⚠️  Thought leadership partially established ({success_count}/{total_criteria} criteria met)")
-        print(f"   Additional optimization required for complete industry authority")
-    
+        print("   Additional optimization required for complete industry authority")
+
     return {
         "execution_results": results,
         "success_metrics": success_metrics,
@@ -1359,22 +1353,22 @@ def run_epic18_thought_leadership_demo():
 def main():
     """Main execution for Epic 18 thought leadership"""
     results = run_epic18_thought_leadership_demo()
-    
+
     metrics = results["execution_results"]["leadership_metrics"]
-    
-    print(f"\n📊 Epic 18 Thought Leadership Summary:")
+
+    print("\n📊 Epic 18 Thought Leadership Summary:")
     print(f"  🎤 Speaking Engagements: {metrics['authority_metrics']['speaking_engagements_target']}")
     print(f"  📖 Research Publications: {metrics['authority_metrics']['research_publications_target']}")
     print(f"  💰 Total Investment: ${metrics['financial_impact']['total_investment_required']:,}")
     print(f"  🎯 Lead Generation: {metrics['financial_impact']['total_lead_potential']:,}")
     print(f"  📈 ROI: {metrics['financial_impact']['thought_leadership_roi']:.1f}x")
-    
+
     if results["success_rate"] >= 0.85:
-        print(f"\n🎉 THOUGHT LEADERSHIP DOMINANCE COMPLETE!")
-        print(f"   Industry authority established through global strategy")
-        print(f"   Synapse positioned as definitive expert in enterprise AI transformation")
-        print(f"   Competitive differentiation through thought leadership achieved")
-    
+        print("\n🎉 THOUGHT LEADERSHIP DOMINANCE COMPLETE!")
+        print("   Industry authority established through global strategy")
+        print("   Synapse positioned as definitive expert in enterprise AI transformation")
+        print("   Competitive differentiation through thought leadership achieved")
+
     return results
 
 if __name__ == "__main__":

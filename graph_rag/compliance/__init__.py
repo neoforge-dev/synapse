@@ -2,18 +2,18 @@
 
 __version__ = "1.0.0"
 
-from .audit_logging import ComplianceAuditLogger, AuditEvent, AuditEventType
-from .data_governance import DataGovernanceManager, DataClassification, RetentionPolicy
-from .access_controls import ComplianceAccessController, AccessControlPolicy
-from .reporting import ComplianceReportGenerator, ComplianceFramework
+from .access_controls import AccessControlPolicy, ComplianceAccessController
+from .audit_logging import AuditEvent, AuditEventType, ComplianceAuditLogger
+from .data_governance import DataClassification, DataGovernanceManager, RetentionPolicy
+from .reporting import ComplianceFramework, ComplianceReportGenerator
 
 __all__ = [
     "ComplianceAuditLogger",
-    "AuditEvent", 
+    "AuditEvent",
     "AuditEventType",
     "DataGovernanceManager",
     "DataClassification",
-    "RetentionPolicy", 
+    "RetentionPolicy",
     "ComplianceAccessController",
     "AccessControlPolicy",
     "ComplianceReportGenerator",

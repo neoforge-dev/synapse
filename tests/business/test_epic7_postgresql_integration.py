@@ -28,35 +28,25 @@ Usage:
     SYNAPSE_POSTGRES_HOST=localhost pytest tests/business/test_epic7_postgresql_integration.py -v
 """
 
-import asyncio
 import os
-import pytest
+import time
+from collections.abc import Generator
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import List, Generator
 from uuid import UUID, uuid4
-import time
 
-from sqlalchemy import create_engine, text, inspect
-from sqlalchemy.orm import Session, sessionmaker
+import pytest
+from sqlalchemy import create_engine, inspect
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
+
+from graph_rag.infrastructure.persistence.models.base import Base
 
 # Import CRM service and models
 from graph_rag.services.crm_service import (
     CRMService,
     DatabaseConfig,
-    CRMServiceError,
-    ContactNotFoundError,
 )
-from graph_rag.infrastructure.persistence.models.crm import (
-    ContactModel,
-    SalesPipelineModel,
-    LeadQualificationModel,
-    ProposalModel,
-    ABTestCampaignModel,
-    RevenueForecastModel,
-)
-from graph_rag.infrastructure.persistence.models.base import Base
 
 # =============================================================================
 # Test Configuration and Fixtures

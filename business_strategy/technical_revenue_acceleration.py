@@ -8,8 +8,8 @@ import json
 import logging
 import sqlite3
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -23,7 +23,7 @@ class RevenueOpportunity:
     customer_segment: str  # startup_founder, scale_up_cto, enterprise_leader
     revenue_potential: float
     confidence_score: float
-    engagement_history: List[Dict[str, Any]]
+    engagement_history: list[dict[str, Any]]
     qualification_score: int  # 1-10
     recommended_offering: str
     next_action: str
@@ -46,7 +46,7 @@ class TechnicalRevenueAccelerator:
     def __init__(self):
         self.db_path = "revenue_acceleration.db"
         self._init_database()
-        
+
         # Revenue optimization models
         self.customer_segments = {
             'startup_founder': {
@@ -74,7 +74,7 @@ class TechnicalRevenueAccelerator:
                 'lifetime_value': 450000
             }
         }
-        
+
         logger.info("Technical Revenue Accelerator initialized")
 
     def _init_database(self):
@@ -155,9 +155,9 @@ class TechnicalRevenueAccelerator:
         conn.close()
         logger.info("Revenue acceleration database initialized")
 
-    def analyze_existing_pipeline_potential(self) -> Dict[str, Any]:
+    def analyze_existing_pipeline_potential(self) -> dict[str, Any]:
         """Analyze existing $290K pipeline for revenue acceleration opportunities"""
-        
+
         # Simulate analysis of existing LinkedIn engagement data
         pipeline_analysis = {
             'current_pipeline_value': 290000,
@@ -174,11 +174,11 @@ class TechnicalRevenueAccelerator:
             },
             'recommended_actions': []
         }
-        
+
         # Calculate specific recommendations
         for segment, data in pipeline_analysis['estimated_segments'].items():
             segment_info = self.customer_segments[segment]
-            
+
             # Upselling opportunities
             upsell_potential = data['total'] * 0.6  # 60% upsell potential
             pipeline_analysis['recommended_actions'].append({
@@ -187,7 +187,7 @@ class TechnicalRevenueAccelerator:
                 'implementation_effort': 'medium',
                 'timeline_days': 30
             })
-            
+
             # Product recommendations
             if segment == 'startup_founder':
                 pipeline_analysis['recommended_actions'].append({
@@ -203,14 +203,14 @@ class TechnicalRevenueAccelerator:
                     'implementation_effort': 'medium',
                     'timeline_days': 45
                 })
-        
+
         return pipeline_analysis
 
-    def implement_advanced_lead_scoring(self, linkedin_engagement_data: Dict[str, Any]) -> List[RevenueOpportunity]:
+    def implement_advanced_lead_scoring(self, linkedin_engagement_data: dict[str, Any]) -> list[RevenueOpportunity]:
         """Implement advanced lead scoring using existing engagement data"""
-        
+
         opportunities = []
-        
+
         # Simulate processing LinkedIn engagement data (would integrate with real data)
         high_value_engagements = [
             {
@@ -222,7 +222,7 @@ class TechnicalRevenueAccelerator:
                 'urgency_signals': ['hiring', 'scaling team', 'performance issues']
             },
             {
-                'user_id': 'linkedin_user_002', 
+                'user_id': 'linkedin_user_002',
                 'engagement_score': 7.2,
                 'content_interactions': ['startup_scaling', 'technical_debt', 'hiring'],
                 'role_indicators': ['Founder', 'Technical Founder'],
@@ -230,21 +230,21 @@ class TechnicalRevenueAccelerator:
                 'urgency_signals': ['rapid growth', 'technical challenges']
             }
         ]
-        
+
         for engagement in high_value_engagements:
             # Calculate qualification score
             qualification_score = self._calculate_qualification_score(engagement)
-            
+
             # Determine customer segment
             segment = self._classify_customer_segment(engagement)
-            
+
             # Calculate revenue potential
             revenue_potential = self.customer_segments[segment]['lifetime_value']
             confidence_score = min(qualification_score / 10.0, 1.0)
-            
+
             # Recommend appropriate offering
             recommended_offering = self._recommend_offering(segment, engagement)
-            
+
             opportunity = RevenueOpportunity(
                 opportunity_id=f"opp_{engagement['user_id']}_{datetime.now().strftime('%Y%m%d')}",
                 lead_source='linkedin',
@@ -256,18 +256,18 @@ class TechnicalRevenueAccelerator:
                 recommended_offering=recommended_offering,
                 next_action=self._determine_next_action(segment, qualification_score)
             )
-            
+
             opportunities.append(opportunity)
-        
+
         # Save opportunities
         self._save_revenue_opportunities(opportunities)
-        
+
         return opportunities
 
-    def _calculate_qualification_score(self, engagement: Dict[str, Any]) -> int:
+    def _calculate_qualification_score(self, engagement: dict[str, Any]) -> int:
         """Calculate lead qualification score (1-10)"""
         score = 0
-        
+
         # Engagement quality (0-3 points)
         if engagement['engagement_score'] > 8:
             score += 3
@@ -275,7 +275,7 @@ class TechnicalRevenueAccelerator:
             score += 2
         elif engagement['engagement_score'] > 4:
             score += 1
-        
+
         # Role authority (0-3 points)
         if any(role in str(engagement['role_indicators']) for role in ['CTO', 'VP', 'Director']):
             score += 3
@@ -283,26 +283,26 @@ class TechnicalRevenueAccelerator:
             score += 2
         elif any(role in str(engagement['role_indicators']) for role in ['Founder']):
             score += 2
-        
+
         # Company size/stage (0-2 points)
         if any(size in str(engagement['company_size_indicators']) for size in ['Series B', 'Series C', '100+']):
             score += 2
         elif any(size in str(engagement['company_size_indicators']) for size in ['Series A', '50-100']):
             score += 1
-        
+
         # Urgency signals (0-2 points)
         urgency_keywords = ['hiring', 'scaling', 'performance', 'growth', 'challenges']
-        urgency_count = sum(1 for keyword in urgency_keywords 
+        urgency_count = sum(1 for keyword in urgency_keywords
                           if keyword in str(engagement['urgency_signals']).lower())
         score += min(urgency_count, 2)
-        
+
         return min(score, 10)
 
-    def _classify_customer_segment(self, engagement: Dict[str, Any]) -> str:
+    def _classify_customer_segment(self, engagement: dict[str, Any]) -> str:
         """Classify customer segment based on engagement data"""
         role_indicators = str(engagement['role_indicators']).lower()
         company_indicators = str(engagement['company_size_indicators']).lower()
-        
+
         if 'founder' in role_indicators and any(stage in company_indicators for stage in ['seed', 'pre-seed', '10-50']):
             return 'startup_founder'
         elif any(role in role_indicators for role in ['cto', 'vp', 'director']) and any(stage in company_indicators for stage in ['series a', 'series b', '50-200']):
@@ -312,11 +312,11 @@ class TechnicalRevenueAccelerator:
         else:
             return 'scale_up_cto'  # Default classification
 
-    def _recommend_offering(self, segment: str, engagement: Dict[str, Any]) -> str:
+    def _recommend_offering(self, segment: str, engagement: dict[str, Any]) -> str:
         """Recommend appropriate offering based on segment and engagement"""
         segment_info = self.customer_segments[segment]
         content_interests = engagement['content_interactions']
-        
+
         if segment == 'startup_founder':
             if 'team_building' in content_interests:
                 return 'Technical Leadership Accelerator (8-week group program) - $2,997'
@@ -324,7 +324,7 @@ class TechnicalRevenueAccelerator:
                 return 'Technical Hiring Blueprint + 3-month support - $1,497 + $297/month'
             else:
                 return 'Startup CTO Advisory Call + Assessment - $497'
-                
+
         elif segment == 'scale_up_cto':
             if 'scaling' in content_interests:
                 return 'Team Transformation Consulting (3-month retainer) - $15K/month'
@@ -332,7 +332,7 @@ class TechnicalRevenueAccelerator:
                 return 'CTO Mastermind + Individual Coaching - $997/month + $5K setup'
             else:
                 return 'Technical Leadership Assessment + Strategy Session - $2,497'
-                
+
         elif segment == 'enterprise_leader':
             if 'organizational' in str(content_interests):
                 return 'Enterprise Transformation Program (6-month engagement) - $250K'
@@ -340,7 +340,7 @@ class TechnicalRevenueAccelerator:
                 return 'Corporate Workshop + Implementation Support - $50K + $15K/month'
             else:
                 return 'Enterprise Advisory Retainer - $25K/month'
-        
+
         return 'Strategic Technical Leadership Consultation - $2,497'
 
     def _determine_next_action(self, segment: str, qualification_score: int) -> str:
@@ -359,11 +359,11 @@ class TechnicalRevenueAccelerator:
         else:
             return 'Add to general newsletter + community invitation'
 
-    def _save_revenue_opportunities(self, opportunities: List[RevenueOpportunity]):
+    def _save_revenue_opportunities(self, opportunities: list[RevenueOpportunity]):
         """Save revenue opportunities to database"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         for opp in opportunities:
             cursor.execute('''
                 INSERT OR REPLACE INTO revenue_opportunities
@@ -376,13 +376,13 @@ class TechnicalRevenueAccelerator:
                 opp.revenue_potential, opp.confidence_score, opp.qualification_score,
                 json.dumps(opp.engagement_history), opp.recommended_offering, opp.next_action
             ))
-        
+
         conn.commit()
         conn.close()
 
-    def create_product_revenue_projections(self) -> Dict[str, Any]:
+    def create_product_revenue_projections(self) -> dict[str, Any]:
         """Create revenue projections for new product offerings"""
-        
+
         product_projections = {
             'technical_leadership_accelerator': {
                 'name': 'Technical Leadership Accelerator',
@@ -425,12 +425,12 @@ class TechnicalRevenueAccelerator:
                 'marketing_budget_monthly': 10000
             }
         }
-        
+
         # Calculate overall projections
         total_monthly_revenue = sum(p['projected_monthly_revenue'] for p in product_projections.values())
         total_annual_revenue = total_monthly_revenue * 12
         total_marketing_budget = sum(p['marketing_budget_monthly'] for p in product_projections.values())
-        
+
         roi_analysis = {
             'total_monthly_revenue': total_monthly_revenue,
             'total_annual_revenue': total_annual_revenue,
@@ -438,16 +438,16 @@ class TechnicalRevenueAccelerator:
             'marketing_roi': total_monthly_revenue / total_marketing_budget if total_marketing_budget > 0 else 0,
             'profit_margin': (total_monthly_revenue - total_marketing_budget) / total_monthly_revenue
         }
-        
+
         return {
             'product_projections': product_projections,
             'roi_analysis': roi_analysis,
             'implementation_sequence': self._create_implementation_sequence(product_projections)
         }
 
-    def _create_implementation_sequence(self, products: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _create_implementation_sequence(self, products: dict[str, Any]) -> list[dict[str, Any]]:
         """Create optimal implementation sequence for products"""
-        
+
         # Sort by ROI potential and development time
         sequence = [
             {
@@ -479,22 +479,22 @@ class TechnicalRevenueAccelerator:
                 'immediate_revenue_potential': 149100
             }
         ]
-        
+
         return sequence
 
-    def generate_revenue_acceleration_plan(self) -> Dict[str, Any]:
+    def generate_revenue_acceleration_plan(self) -> dict[str, Any]:
         """Generate comprehensive revenue acceleration plan"""
-        
+
         # Analyze existing pipeline
         pipeline_analysis = self.analyze_existing_pipeline_potential()
-        
+
         # Implement advanced lead scoring
         sample_linkedin_data = {}  # Would use real data
         revenue_opportunities = self.implement_advanced_lead_scoring(sample_linkedin_data)
-        
+
         # Create product projections
         product_projections = self.create_product_revenue_projections()
-        
+
         # Generate comprehensive plan
         acceleration_plan = {
             'current_state': {
@@ -547,62 +547,62 @@ class TechnicalRevenueAccelerator:
                 }
             }
         }
-        
+
         return acceleration_plan
 
 def main():
     """Demonstrate technical revenue acceleration system"""
     print("🚀 Technical Revenue Acceleration System")
     print("=" * 55)
-    
+
     # Initialize revenue accelerator
     accelerator = TechnicalRevenueAccelerator()
-    
+
     print("📊 Analyzing existing $290K pipeline for acceleration opportunities...")
-    
+
     # Generate comprehensive acceleration plan
     plan = accelerator.generate_revenue_acceleration_plan()
-    
-    print(f"\n💰 Current State Analysis:")
+
+    print("\n💰 Current State Analysis:")
     print(f"   Pipeline Value: ${plan['current_state']['pipeline_value']:,}")
     print(f"   Monthly Potential: ${plan['current_state']['monthly_revenue_potential']:,}")
     print(f"   Optimization Opportunity: ${plan['current_state']['conversion_optimization_potential']:,}")
-    
-    print(f"\n🎯 Phase 1 (30 days) - Pipeline Optimization:")
+
+    print("\n🎯 Phase 1 (30 days) - Pipeline Optimization:")
     print(f"   Revenue Impact: ${plan['phase_1_optimization']['revenue_impact']:,}")
-    print(f"   Key Actions:")
+    print("   Key Actions:")
     for action in plan['phase_1_optimization']['key_actions']:
         print(f"      • {action}")
-    
-    print(f"\n📈 Phase 2 (90 days) - Product Launch:")
+
+    print("\n📈 Phase 2 (90 days) - Product Launch:")
     print(f"   Monthly Recurring: ${plan['phase_2_product_launch']['revenue_impact']:,}")
-    print(f"   Key Actions:")
+    print("   Key Actions:")
     for action in plan['phase_2_product_launch']['key_actions']:
         print(f"      • {action}")
-    
-    print(f"\n🚀 Phase 3 (180 days) - Platform Scaling:")
+
+    print("\n🚀 Phase 3 (180 days) - Platform Scaling:")
     print(f"   Monthly Recurring: ${plan['phase_3_platform_scaling']['revenue_impact']:,}")
-    print(f"   Key Actions:")
+    print("   Key Actions:")
     for action in plan['phase_3_platform_scaling']['key_actions']:
         print(f"      • {action}")
-    
-    print(f"\n💡 Annual Revenue Projections:")
+
+    print("\n💡 Annual Revenue Projections:")
     projections = plan['annual_projections']
     print(f"   Year 1: ${projections['year_1_revenue']:,}")
     print(f"   Year 2: ${projections['year_2_revenue']:,}")
     print(f"   Year 3: ${projections['year_3_revenue']:,}")
     print(f"   Target MRR: ${projections['key_metrics']['monthly_recurring_revenue_target']:,}")
     print(f"   Customer LTV: ${projections['key_metrics']['customer_lifetime_value']:,}")
-    
-    print(f"\n🎯 Immediate Actions (Next 7 Days):")
-    print(f"   1. Deploy advanced lead scoring on existing LinkedIn engagement")
-    print(f"   2. Create tiered consultation packages ($2.5K → $15K → $50K)")
-    print(f"   3. Launch corporate workshop inquiry form")
-    print(f"   4. Begin CTO mastermind waitlist building")
-    print(f"   5. Implement premium newsletter signup flow")
-    
-    print(f"\n✅ Technical Revenue Acceleration System Ready!")
-    print(f"From $290K pipeline → $15M annual revenue through systematic optimization")
+
+    print("\n🎯 Immediate Actions (Next 7 Days):")
+    print("   1. Deploy advanced lead scoring on existing LinkedIn engagement")
+    print("   2. Create tiered consultation packages ($2.5K → $15K → $50K)")
+    print("   3. Launch corporate workshop inquiry form")
+    print("   4. Begin CTO mastermind waitlist building")
+    print("   5. Implement premium newsletter signup flow")
+
+    print("\n✅ Technical Revenue Acceleration System Ready!")
+    print("From $290K pipeline → $15M annual revenue through systematic optimization")
 
 if __name__ == "__main__":
     main()

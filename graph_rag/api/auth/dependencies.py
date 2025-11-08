@@ -6,10 +6,10 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from ...config import Settings, get_settings
+from .enterprise_providers import EnterpriseAuthProvider
 from .jwt_handler import JWTHandler, JWTSettings
 from .models import User, UserRole
 from .providers import AuthProvider, InMemoryAuthProvider
-from .enterprise_providers import EnterpriseAuthProvider
 
 logger = logging.getLogger(__name__)
 

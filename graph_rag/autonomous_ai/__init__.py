@@ -10,15 +10,15 @@ Track 1 Components:
 - Autonomous client success management system
 """
 
-from .autonomous_knowledge_graph import AutonomousKnowledgeGraphBuilder
-from .predictive_transformation_engine import PredictiveTransformationEngine  
-from .autonomous_client_success import AutonomousClientSuccessManager
 from .ai_pattern_analyzer import DataPatternAnalyzer, GraphPatternRecognizer
+from .autonomous_client_success import AutonomousClientSuccessManager
+from .autonomous_knowledge_graph import AutonomousKnowledgeGraphBuilder
 from .autonomous_schema_generator import AdaptiveSchemaGenerator
+from .predictive_transformation_engine import PredictiveTransformationEngine
 
 __all__ = [
     "AutonomousKnowledgeGraphBuilder",
-    "PredictiveTransformationEngine", 
+    "PredictiveTransformationEngine",
     "AutonomousClientSuccessManager",
     "DataPatternAnalyzer",
     "GraphPatternRecognizer",

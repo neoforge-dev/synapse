@@ -38,41 +38,40 @@ Environment Variables:
     POSTGRES_PASSWORD: PostgreSQL password (required)
 """
 
-import os
-import sys
-import logging
-import sqlite3
-import json
 import argparse
+import json
+import logging
+import os
+import sqlite3
+import sys
 import uuid
 from datetime import datetime
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple
 from decimal import Decimal
+from pathlib import Path
+from typing import Any
 
 # SQLAlchemy imports
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session, sessionmaker
 
 # Import Epic 16 models
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from graph_rag.infrastructure.persistence.models.epic16 import (
-    Base,
-    Fortune500ProspectModel,
-    F500LeadScoringModel,
-    F500BusinessCaseModel,
-    F500SalesSequenceModel,
-    F500ROITrackingModel,
     ABMCampaignModel,
     ABMContentAssetModel,
-    ABMTouchpointModel,
     ABMPerformanceModel,
+    ABMTouchpointModel,
+    Base,
+    F500BusinessCaseModel,
+    F500LeadScoringModel,
+    F500ROITrackingModel,
+    F500SalesSequenceModel,
+    Fortune500ProspectModel,
     OnboardingClientModel,
-    OnboardingMilestoneModel,
-    OnboardingHealthMetricModel,
-    OnboardingSuccessTemplateModel,
     OnboardingCommunicationModel,
+    OnboardingHealthMetricModel,
+    OnboardingMilestoneModel,
+    OnboardingSuccessTemplateModel,
 )
 
 # Configure logging
@@ -115,7 +114,7 @@ class Epic16PostgreSQLMigrator:
         }
 
         # UUID mapping: old TEXT ID → new UUID
-        self.uuid_mapping: Dict[str, uuid.UUID] = {}
+        self.uuid_mapping: dict[str, uuid.UUID] = {}
 
         # Migration statistics
         self.stats = {
@@ -128,7 +127,7 @@ class Epic16PostgreSQLMigrator:
 
         # PostgreSQL engine and session
         self.pg_engine = None
-        self.pg_session: Optional[Session] = None
+        self.pg_session: Session | None = None
 
     def validate_environment(self) -> bool:
         """Validate migration environment and prerequisites"""
@@ -163,7 +162,7 @@ class Epic16PostgreSQLMigrator:
             with engine.connect() as conn:
                 result = conn.execute(text("SELECT version()"))
                 version = result.fetchone()[0]
-                logger.info(f"✅ PostgreSQL connection validated")
+                logger.info("✅ PostgreSQL connection validated")
                 logger.debug(f"PostgreSQL version: {version}")
             engine.dispose()
         except Exception as e:
@@ -209,7 +208,7 @@ class Epic16PostgreSQLMigrator:
             logger.error(f"❌ Schema creation failed: {e}")
             raise
 
-    def transform_timestamp(self, value: Optional[str]) -> Optional[datetime]:
+    def transform_timestamp(self, value: str | None) -> datetime | None:
         """Transform SQLite TEXT timestamp to Python datetime"""
         if not value:
             return None
@@ -232,7 +231,7 @@ class Epic16PostgreSQLMigrator:
         logger.warning(f"Could not parse timestamp: {value}")
         return None
 
-    def transform_json(self, value: Optional[str]) -> Any:
+    def transform_json(self, value: str | None) -> Any:
         """Transform SQLite TEXT JSON to Python dict/list"""
         if not value:
             return None
@@ -258,7 +257,7 @@ class Epic16PostgreSQLMigrator:
             return value.lower() in ('true', '1', 'yes', 't')
         return False
 
-    def get_or_create_uuid(self, old_id: Optional[str]) -> uuid.UUID:
+    def get_or_create_uuid(self, old_id: str | None) -> uuid.UUID:
         """Get existing UUID mapping or create new one"""
         if not old_id:
             return uuid.uuid4()
@@ -939,7 +938,7 @@ class Epic16PostgreSQLMigrator:
 
         duration = (self.stats['end_time'] - self.stats['start_time']).total_seconds()
 
-        logger.info(f"\n📊 Migration Statistics:")
+        logger.info("\n📊 Migration Statistics:")
         logger.info(f"   - Total Tables Migrated: {self.stats['tables_migrated']}")
         logger.info(f"   - Total Rows Migrated: {self.stats['rows_migrated']}")
         logger.info(f"   - Total UUIDs Generated: {len(self.uuid_mapping)}")
@@ -947,7 +946,7 @@ class Epic16PostgreSQLMigrator:
         logger.info(f"   - Errors: {len(self.stats['errors'])}")
 
         if self.stats['errors']:
-            logger.warning(f"\n⚠️  Errors Encountered:")
+            logger.warning("\n⚠️  Errors Encountered:")
             for error in self.stats['errors'][:10]:  # Show first 10 errors
                 logger.warning(f"   - {error}")
             if len(self.stats['errors']) > 10:

@@ -3,24 +3,26 @@ Business Development Test Configuration and Fixtures
 Provides shared test fixtures for business development components
 """
 
-import pytest
-import sqlite3
-import tempfile
 import sys
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import Mock, patch
-from factory import Factory, Faker, SubFactory, Sequence
-import faker
+
+import pytest
 
 # Add the project root to Python path to import business_development
 project_root = Path(__file__).parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from business_development.consultation_inquiry_detector import ConsultationInquiryDetector, InquiryPattern
-from business_development.linkedin_posting_system import LinkedInBusinessDevelopmentEngine, LinkedInPost, ConsultationInquiry
-
+from business_development.consultation_inquiry_detector import (
+    ConsultationInquiryDetector,
+    InquiryPattern,
+)
+from business_development.linkedin_posting_system import (
+    LinkedInBusinessDevelopmentEngine,
+)
 
 # ============================================================================
 # TEST DATABASE FIXTURES
@@ -31,11 +33,11 @@ def temp_business_db():
     """Create temporary business development database for testing"""
     with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
         db_path = tmp.name
-    
+
     # Initialize the database with proper schema
     engine = LinkedInBusinessDevelopmentEngine(db_path=db_path)
     yield db_path
-    
+
     # Cleanup
     Path(db_path).unlink(missing_ok=True)
 
@@ -214,7 +216,7 @@ def sample_linkedin_posts():
 
 
 # ============================================================================
-# BUSINESS LOGIC FIXTURES  
+# BUSINESS LOGIC FIXTURES
 # ============================================================================
 
 @pytest.fixture
@@ -229,7 +231,7 @@ def mock_inquiry_patterns():
         ),
         InquiryPattern(
             keywords=["fractional cto", "part time cto", "interim cto", "technical advisor"],
-            inquiry_type="fractional_cto", 
+            inquiry_type="fractional_cto",
             priority_boost=5,
             estimated_value_base=75000
         ),
@@ -272,11 +274,11 @@ def automation_dashboard(temp_business_db):
     """Automation dashboard with mocked dependencies"""
     # Import AutomationDashboard dynamically to avoid circular import issues
     from business_development.automation_dashboard import AutomationDashboard
-    
+
     with patch('business_development.automation_dashboard.LinkedInAPIClient') as mock_api, \
          patch('business_development.automation_dashboard.ContentAutomationPipeline') as mock_pipeline, \
          patch('business_development.automation_dashboard.LinkedInContentGenerator') as mock_generator:
-        
+
         # Configure mocks
         mock_api.return_value.api_available = True
         mock_pipeline.return_value.get_automation_status.return_value = {
@@ -285,7 +287,7 @@ def automation_dashboard(temp_business_db):
             'next_post_time': '2025-01-22T06:30:00'
         }
         mock_generator.return_value.generate_content.return_value = Mock()
-        
+
         dashboard = AutomationDashboard()
         dashboard.business_engine.db_path = temp_business_db
         return dashboard
@@ -329,7 +331,7 @@ def high_priority_inquiries():
             'status': 'new'
         },
         {
-            'inquiry_id': 'urgent-inquiry-2', 
+            'inquiry_id': 'urgent-inquiry-2',
             'contact_name': 'Maria Garcia',
             'company': 'GrowthStartup',
             'inquiry_type': 'team_building',
@@ -412,7 +414,7 @@ def pipeline_value_scenarios():
         ],  # Total: $45K (below $50K target)
         'on_target': [
             {'estimated_value': 25000, 'status': 'new'},
-            {'estimated_value': 30000, 'status': 'contacted'}, 
+            {'estimated_value': 30000, 'status': 'contacted'},
             {'estimated_value': 20000, 'status': 'discovery_scheduled'}
         ],  # Total: $75K (above target)
         'high_value': [

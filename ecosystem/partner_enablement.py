@@ -11,13 +11,12 @@ import asyncio
 import json
 import logging
 import uuid
-from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol, Union
+from typing import Any
 
-from pydantic import BaseModel, Field, validator
-from sqlalchemy import Column, DateTime, String, Text, Boolean, Integer, Float, JSON
+from pydantic import BaseModel
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
 
 logger = logging.getLogger(__name__)
@@ -68,41 +67,41 @@ class CertificationRequirementType(str, Enum):
 class Partner(Base):
     """Partner profile in the ecosystem"""
     __tablename__ = "partners"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(255), nullable=False)
     partner_type = Column(String(50), nullable=False)
     certification_level = Column(String(20), default="bronze")
     onboarding_stage = Column(String(50), default="application")
-    
+
     # Contact information
     primary_contact_name = Column(String(255), nullable=False)
     primary_contact_email = Column(String(255), nullable=False)
     technical_contact_name = Column(String(255))
     technical_contact_email = Column(String(255))
-    
+
     # Business information
     company_size = Column(String(50))  # startup, sme, enterprise
     industry_focus = Column(JSON)  # List of industries
     target_market = Column(String(100))
     annual_revenue = Column(String(50))
-    
+
     # Technical capabilities
     technical_stack = Column(JSON)
     specializations = Column(JSON)
     integration_experience = Column(Text)
-    
+
     # Partnership details
     partnership_goals = Column(Text)
     expected_volume = Column(String(50))
     go_to_market_timeline = Column(String(50))
-    
+
     # Status and metrics
     is_active = Column(Boolean, default=True)
     success_score = Column(Float, default=0.0)
     revenue_generated = Column(Float, default=0.0)
     customer_satisfaction = Column(Float, default=0.0)
-    
+
     # Timestamps
     applied_at = Column(DateTime, default=datetime.utcnow)
     onboarded_at = Column(DateTime)
@@ -113,7 +112,7 @@ class Partner(Base):
 class CertificationRequirement(Base):
     """Certification requirements for different partner levels"""
     __tablename__ = "certification_requirements"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     partner_type = Column(String(50), nullable=False)
     certification_level = Column(String(20), nullable=False)
@@ -128,7 +127,7 @@ class CertificationRequirement(Base):
 class PartnerCertification(Base):
     """Partner certification status and progress"""
     __tablename__ = "partner_certifications"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     partner_id = Column(String, nullable=False)
     certification_level = Column(String(20), nullable=False)
@@ -136,13 +135,13 @@ class PartnerCertification(Base):
     completed_requirements = Column(Integer, default=0)
     total_points_possible = Column(Integer, nullable=False)
     points_earned = Column(Integer, default=0)
-    
+
     # Status
     status = Column(String(20), default="in_progress")  # in_progress, passed, failed
     started_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime)
     expires_at = Column(DateTime)
-    
+
     # Results
     test_results = Column(JSON)
     reviewer_notes = Column(Text)
@@ -156,34 +155,34 @@ class PartnerApplication(BaseModel):
     company_name: str
     partner_type: PartnerType
     company_size: str
-    industry_focus: List[str]
+    industry_focus: list[str]
     annual_revenue: str
     website: str
-    
+
     # Contact information
     primary_contact_name: str
     primary_contact_email: str
     primary_contact_phone: str
-    technical_contact_name: Optional[str] = None
-    technical_contact_email: Optional[str] = None
-    
+    technical_contact_name: str | None = None
+    technical_contact_email: str | None = None
+
     # Technical capabilities
-    technical_stack: List[str]
-    specializations: List[str]
+    technical_stack: list[str]
+    specializations: list[str]
     integration_experience: str
-    previous_integrations: List[str]
-    
+    previous_integrations: list[str]
+
     # Partnership goals
     partnership_goals: str
     expected_integration_timeline: str
     expected_volume: str
     target_market: str
     go_to_market_plan: str
-    
+
     # Additional information
-    case_studies: Optional[List[str]] = None
-    certifications_held: Optional[List[str]] = None
-    references: Optional[List[Dict[str, str]]] = None
+    case_studies: list[str] | None = None
+    certifications_held: list[str] | None = None
+    references: list[dict[str, str]] | None = None
 
 class CertificationRequirementSpec(BaseModel):
     """Specification for a certification requirement"""
@@ -193,8 +192,8 @@ class CertificationRequirementSpec(BaseModel):
     requirement_type: CertificationRequirementType
     is_mandatory: bool
     points_value: int
-    validation_criteria: Dict[str, Any]
-    resources: List[str]  # URLs to helpful resources
+    validation_criteria: dict[str, Any]
+    resources: list[str]  # URLs to helpful resources
     estimated_effort_hours: int
 
 class OnboardingPlan(BaseModel):
@@ -203,46 +202,46 @@ class OnboardingPlan(BaseModel):
     partner_type: PartnerType
     target_certification_level: CertificationLevel
     estimated_duration_weeks: int
-    
+
     # Phases
-    phases: List[Dict[str, Any]]
-    milestones: List[Dict[str, Any]]
-    requirements: List[CertificationRequirementSpec]
-    
+    phases: list[dict[str, Any]]
+    milestones: list[dict[str, Any]]
+    requirements: list[CertificationRequirementSpec]
+
     # Support
     assigned_success_manager: str
     technical_contact: str
     escalation_contact: str
-    
+
     # Resources
-    documentation_links: List[str]
-    training_materials: List[str]
-    sample_code_repositories: List[str]
+    documentation_links: list[str]
+    training_materials: list[str]
+    sample_code_repositories: list[str]
 
 class PartnerPerformanceMetrics(BaseModel):
     """Partner performance and success metrics"""
     partner_id: str
     reporting_period_start: datetime
     reporting_period_end: datetime
-    
+
     # Business metrics
     revenue_generated: float
     customers_acquired: int
     deals_closed: int
     pipeline_value: float
-    
+
     # Technical metrics
     api_calls_made: int
     uptime_percentage: float
     average_response_time_ms: float
     error_rate_percentage: float
-    
+
     # Quality metrics
     customer_satisfaction_score: float
     support_ticket_count: int
     bug_reports: int
     feature_requests: int
-    
+
     # Growth metrics
     month_over_month_growth: float
     user_adoption_rate: float
@@ -253,12 +252,12 @@ class PartnerPerformanceMetrics(BaseModel):
 
 class CertificationFramework:
     """Framework for managing partner certifications"""
-    
+
     def __init__(self):
         self.requirements = self._initialize_requirements()
         self.test_suites = self._initialize_test_suites()
-        
-    def _initialize_requirements(self) -> Dict[str, List[CertificationRequirementSpec]]:
+
+    def _initialize_requirements(self) -> dict[str, list[CertificationRequirementSpec]]:
         """Initialize certification requirements for each level"""
         requirements = {
             "bronze": [
@@ -409,17 +408,17 @@ class CertificationFramework:
                 )
             ]
         }
-        
+
         return requirements
-    
-    def _initialize_test_suites(self) -> Dict[str, Dict[str, Any]]:
+
+    def _initialize_test_suites(self) -> dict[str, dict[str, Any]]:
         """Initialize automated test suites for certification"""
         return {
             "api_integration": {
                 "name": "API Integration Test Suite",
                 "tests": [
                     "test_authentication",
-                    "test_basic_crud_operations", 
+                    "test_basic_crud_operations",
                     "test_error_handling",
                     "test_rate_limiting_compliance"
                 ]
@@ -443,15 +442,15 @@ class CertificationFramework:
                 ]
             }
         }
-    
+
     async def evaluate_partner_certification(
-        self, 
-        partner_id: str, 
+        self,
+        partner_id: str,
         target_level: CertificationLevel
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Evaluate partner for certification level"""
         requirements = self.requirements.get(target_level.value, [])
-        
+
         evaluation_results = {
             "partner_id": partner_id,
             "target_level": target_level,
@@ -462,38 +461,38 @@ class CertificationFramework:
             "requirement_results": [],
             "overall_status": "pending"
         }
-        
+
         for requirement in requirements:
             # Simulate requirement evaluation
             result = await self._evaluate_requirement(partner_id, requirement)
             evaluation_results["requirement_results"].append(result)
-            
+
             if result["passed"]:
                 evaluation_results["completed_requirements"] += 1
                 evaluation_results["points_earned"] += requirement.points_value
-        
+
         # Calculate overall status
         completion_rate = evaluation_results["completed_requirements"] / evaluation_results["total_requirements"]
         points_rate = evaluation_results["points_earned"] / evaluation_results["total_points_possible"]
-        
+
         if completion_rate >= 0.8 and points_rate >= 0.75:
             evaluation_results["overall_status"] = "passed"
         elif completion_rate >= 0.6:
             evaluation_results["overall_status"] = "needs_improvement"
         else:
             evaluation_results["overall_status"] = "failed"
-        
+
         return evaluation_results
-    
+
     async def _evaluate_requirement(
-        self, 
-        partner_id: str, 
+        self,
+        partner_id: str,
         requirement: CertificationRequirementSpec
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Evaluate a single certification requirement"""
         # Simulate requirement evaluation logic
         # In real implementation, this would run actual tests and validations
-        
+
         result = {
             "requirement_id": requirement.requirement_id,
             "requirement_name": requirement.name,
@@ -505,39 +504,39 @@ class CertificationFramework:
             },
             "evaluated_at": datetime.utcnow().isoformat()
         }
-        
+
         return result
 
 # ===== PARTNER SUCCESS MANAGEMENT =====
 
 class PartnerSuccessManager:
     """Manages partner onboarding and ongoing success"""
-    
+
     def __init__(self):
         self.certification_framework = CertificationFramework()
-        self.partners: Dict[str, Partner] = {}
-        self.onboarding_plans: Dict[str, OnboardingPlan] = {}
-    
+        self.partners: dict[str, Partner] = {}
+        self.onboarding_plans: dict[str, OnboardingPlan] = {}
+
     async def process_partner_application(
-        self, 
+        self,
         application: PartnerApplication
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Process a new partner application"""
         # Create partner record
         partner_id = str(uuid.uuid4())
-        
+
         # Generate customized onboarding plan
         onboarding_plan = await self._create_onboarding_plan(
-            partner_id, 
+            partner_id,
             application.partner_type,
             application
         )
-        
+
         self.onboarding_plans[partner_id] = onboarding_plan
-        
+
         # Assign success manager
         success_manager = await self._assign_success_manager(application.partner_type)
-        
+
         return {
             "partner_id": partner_id,
             "status": "application_received",
@@ -550,26 +549,26 @@ class PartnerSuccessManager:
             "onboarding_plan": onboarding_plan.dict(),
             "estimated_time_to_certification": f"{onboarding_plan.estimated_duration_weeks} weeks"
         }
-    
+
     async def _create_onboarding_plan(
-        self, 
-        partner_id: str, 
+        self,
+        partner_id: str,
         partner_type: PartnerType,
         application: PartnerApplication
     ) -> OnboardingPlan:
         """Create customized onboarding plan for partner"""
         # Determine target certification level based on partner profile
         target_level = self._determine_target_certification_level(application)
-        
+
         # Get requirements for target level
         requirements = self.certification_framework.requirements.get(target_level.value, [])
-        
+
         # Create phases based on partner type and requirements
         phases = self._create_onboarding_phases(partner_type, target_level)
-        
+
         # Create milestones
         milestones = self._create_onboarding_milestones(partner_type, target_level)
-        
+
         return OnboardingPlan(
             partner_id=partner_id,
             partner_type=partner_type,
@@ -597,15 +596,15 @@ class PartnerSuccessManager:
                 "https://github.com/synapse-ai/testing-frameworks"
             ]
         )
-    
+
     def _determine_target_certification_level(
-        self, 
+        self,
         application: PartnerApplication
     ) -> CertificationLevel:
         """Determine appropriate certification level based on partner profile"""
         # Simple scoring algorithm
         score = 0
-        
+
         # Company size scoring
         if application.company_size == "enterprise":
             score += 3
@@ -613,23 +612,23 @@ class PartnerSuccessManager:
             score += 2
         else:
             score += 1
-        
+
         # Experience scoring
         if len(application.previous_integrations) >= 5:
             score += 2
         elif len(application.previous_integrations) >= 2:
             score += 1
-        
+
         # Specialization scoring
         if len(application.specializations) >= 3:
             score += 1
-        
+
         # Revenue scoring
         if "10M+" in application.annual_revenue:
             score += 2
         elif "1M+" in application.annual_revenue:
             score += 1
-        
+
         # Determine level
         if score >= 8:
             return CertificationLevel.PLATINUM
@@ -639,12 +638,12 @@ class PartnerSuccessManager:
             return CertificationLevel.SILVER
         else:
             return CertificationLevel.BRONZE
-    
+
     def _create_onboarding_phases(
-        self, 
-        partner_type: PartnerType, 
+        self,
+        partner_type: PartnerType,
         target_level: CertificationLevel
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Create onboarding phases"""
         base_phases = [
             {
@@ -652,7 +651,7 @@ class PartnerSuccessManager:
                 "duration_weeks": 1,
                 "activities": [
                     "Technical architecture review",
-                    "Security compliance assessment", 
+                    "Security compliance assessment",
                     "API access provisioning",
                     "Development environment setup"
                 ]
@@ -698,7 +697,7 @@ class PartnerSuccessManager:
                 ]
             }
         ]
-        
+
         # Add specialized phases based on partner type
         if partner_type == PartnerType.AI_MODEL_PROVIDER:
             base_phases[1]["activities"].extend([
@@ -717,14 +716,14 @@ class PartnerSuccessManager:
                     "Business case documentation"
                 ]
             })
-        
+
         return base_phases
-    
+
     def _create_onboarding_milestones(
-        self, 
-        partner_type: PartnerType, 
+        self,
+        partner_type: PartnerType,
         target_level: CertificationLevel
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Create onboarding milestones"""
         milestones = [
             {
@@ -773,17 +772,17 @@ class PartnerSuccessManager:
                 ]
             }
         ]
-        
+
         return milestones
-    
+
     def _calculate_duration(
-        self, 
-        partner_type: PartnerType, 
+        self,
+        partner_type: PartnerType,
         target_level: CertificationLevel
     ) -> int:
         """Calculate estimated onboarding duration in weeks"""
         base_duration = 8
-        
+
         # Adjust based on certification level
         level_adjustments = {
             CertificationLevel.BRONZE: 0,
@@ -791,7 +790,7 @@ class PartnerSuccessManager:
             CertificationLevel.GOLD: 4,
             CertificationLevel.PLATINUM: 8
         }
-        
+
         # Adjust based on partner type complexity
         type_adjustments = {
             PartnerType.AI_MODEL_PROVIDER: 2,
@@ -802,33 +801,33 @@ class PartnerSuccessManager:
             PartnerType.TECHNOLOGY_VENDOR: 2,
             PartnerType.CONSULTING_FIRM: 2
         }
-        
+
         return base_duration + level_adjustments[target_level] + type_adjustments[partner_type]
-    
+
     async def _assign_success_manager(self, partner_type: PartnerType) -> str:
         """Assign appropriate success manager based on partner type"""
         success_managers = {
             PartnerType.AI_MODEL_PROVIDER: "dr.sarah.johnson@synapse.ai",
-            PartnerType.ENTERPRISE_PARTNER: "michael.rodriguez@synapse.ai", 
+            PartnerType.ENTERPRISE_PARTNER: "michael.rodriguez@synapse.ai",
             PartnerType.SYSTEM_INTEGRATOR: "lisa.thompson@synapse.ai",
             PartnerType.INDUSTRY_SOLUTION: "david.kim@synapse.ai",
             PartnerType.DEVELOPER_TOOL: "alex.chen@synapse.ai",
             PartnerType.TECHNOLOGY_VENDOR: "jennifer.williams@synapse.ai",
             PartnerType.CONSULTING_FIRM: "robert.davis@synapse.ai"
         }
-        
+
         return success_managers.get(partner_type, "partner-success@synapse.ai")
-    
+
     async def track_partner_progress(
-        self, 
+        self,
         partner_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Track partner progress through onboarding"""
         if partner_id not in self.onboarding_plans:
             raise ValueError("Partner not found in onboarding system")
-        
+
         plan = self.onboarding_plans[partner_id]
-        
+
         # Simulate progress tracking
         progress = {
             "partner_id": partner_id,
@@ -843,7 +842,7 @@ class PartnerSuccessManager:
                     "total_activities": 4
                 },
                 {
-                    "name": "Development", 
+                    "name": "Development",
                     "status": "in_progress",
                     "completion_percentage": 75,
                     "completed_activities": 3,
@@ -878,12 +877,12 @@ class PartnerSuccessManager:
             "success_manager": plan.assigned_success_manager,
             "last_updated": datetime.utcnow().isoformat()
         }
-        
+
         return progress
-    
+
     async def generate_partner_success_report(
-        self, 
-        partner_id: str, 
+        self,
+        partner_id: str,
         period_start: datetime,
         period_end: datetime
     ) -> PartnerPerformanceMetrics:
@@ -893,60 +892,60 @@ class PartnerSuccessManager:
             partner_id=partner_id,
             reporting_period_start=period_start,
             reporting_period_end=period_end,
-            
-            # Business metrics  
+
+            # Business metrics
             revenue_generated=125000.0,
             customers_acquired=15,
             deals_closed=12,
             pipeline_value=350000.0,
-            
+
             # Technical metrics
             api_calls_made=2500000,
             uptime_percentage=99.7,
             average_response_time_ms=145.2,
             error_rate_percentage=0.3,
-            
+
             # Quality metrics
             customer_satisfaction_score=4.6,
             support_ticket_count=8,
             bug_reports=2,
             feature_requests=5,
-            
+
             # Growth metrics
             month_over_month_growth=22.5,
             user_adoption_rate=78.3,
             retention_rate=94.2,
             expansion_revenue=45000.0
         )
-        
+
         return metrics
 
 # ===== PARTNER ENABLEMENT ROUTER =====
 
 async def create_partner_enablement_router():
     """Create FastAPI router for partner enablement"""
-    from fastapi import APIRouter, Depends, HTTPException
-    
+    from fastapi import APIRouter, HTTPException
+
     router = APIRouter(prefix="/partner-enablement", tags=["Partner Enablement"])
-    
+
     success_manager = PartnerSuccessManager()
-    
+
     @router.post("/apply")
     async def submit_partner_application(application: PartnerApplication):
         """Submit a new partner application"""
         result = await success_manager.process_partner_application(application)
         return result
-    
+
     @router.get("/certification-requirements/{partner_type}/{level}")
     async def get_certification_requirements(partner_type: str, level: str):
         """Get certification requirements for partner type and level"""
         try:
             partner_type_enum = PartnerType(partner_type)
             level_enum = CertificationLevel(level)
-            
+
             framework = CertificationFramework()
             requirements = framework.requirements.get(level, [])
-            
+
             return {
                 "partner_type": partner_type,
                 "certification_level": level,
@@ -956,7 +955,7 @@ async def create_partner_enablement_router():
             }
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
-    
+
     @router.get("/partners/{partner_id}/progress")
     async def get_partner_progress(partner_id: str):
         """Get partner onboarding progress"""
@@ -965,17 +964,17 @@ async def create_partner_enablement_router():
             return progress
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
-    
+
     @router.post("/partners/{partner_id}/evaluate")
     async def evaluate_partner_certification(
-        partner_id: str, 
+        partner_id: str,
         target_level: CertificationLevel
     ):
         """Evaluate partner for certification level"""
         framework = CertificationFramework()
         evaluation = await framework.evaluate_partner_certification(partner_id, target_level)
         return evaluation
-    
+
     @router.get("/partners/{partner_id}/performance")
     async def get_partner_performance(
         partner_id: str,
@@ -984,12 +983,12 @@ async def create_partner_enablement_router():
         """Get partner performance metrics"""
         period_end = datetime.utcnow()
         period_start = period_end - timedelta(days=period_days)
-        
+
         metrics = await success_manager.generate_partner_success_report(
             partner_id, period_start, period_end
         )
         return metrics.dict()
-    
+
     @router.get("/certification-levels")
     async def get_certification_levels():
         """Get available certification levels and their benefits"""
@@ -1007,7 +1006,7 @@ async def create_partner_enablement_router():
                     "estimated_duration_weeks": 2
                 },
                 {
-                    "level": "silver", 
+                    "level": "silver",
                     "name": "Silver Partner",
                     "benefits": [
                         "Featured marketplace placement",
@@ -1019,7 +1018,7 @@ async def create_partner_enablement_router():
                 },
                 {
                     "level": "gold",
-                    "name": "Gold Partner", 
+                    "name": "Gold Partner",
                     "benefits": [
                         "Priority marketplace listing",
                         "Dedicated success manager",
@@ -1042,14 +1041,14 @@ async def create_partner_enablement_router():
                 }
             ]
         }
-    
+
     return router
 
 if __name__ == "__main__":
     # Example usage
     async def main():
         success_manager = PartnerSuccessManager()
-        
+
         # Create sample partner application
         application = PartnerApplication(
             company_name="AI Innovations Inc",
@@ -1073,18 +1072,18 @@ if __name__ == "__main__":
             target_market="Healthcare and Financial Services",
             go_to_market_plan="Direct sales and partner channel"
         )
-        
+
         # Process application
         result = await success_manager.process_partner_application(application)
         print("Application processed:")
         print(json.dumps(result, indent=2, default=str))
-        
+
         # Track progress
         partner_id = result["partner_id"]
         progress = await success_manager.track_partner_progress(partner_id)
         print("\nPartner progress:")
         print(json.dumps(progress, indent=2, default=str))
-        
+
         # Evaluate certification
         framework = CertificationFramework()
         evaluation = await framework.evaluate_partner_certification(
@@ -1092,7 +1091,7 @@ if __name__ == "__main__":
         )
         print("\nCertification evaluation:")
         print(json.dumps(evaluation, indent=2, default=str))
-        
+
         # Generate performance report
         period_end = datetime.utcnow()
         period_start = period_end - timedelta(days=30)
@@ -1101,6 +1100,6 @@ if __name__ == "__main__":
         )
         print("\nPerformance metrics:")
         print(json.dumps(metrics.dict(), indent=2, default=str))
-    
+
     # Run example
     asyncio.run(main())

@@ -3,15 +3,16 @@ from __future__ import annotations
 import math
 import re
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass
 from statistics import mean
-from typing import Any, Iterable, Optional
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from graph_rag.core.interfaces import ChunkData, VectorStore
 from graph_rag.domain.models import Chunk, Document, Entity, Relationship
-from graph_rag.observability import get_component_logger, ComponentType
+from graph_rag.observability import ComponentType, get_component_logger
 
 logger = get_component_logger(ComponentType.SERVICE, "advanced_features_service")
 
@@ -291,7 +292,7 @@ class AdvancedFeaturesService:
             if relationship.source_id == chunk_id or relationship.target_id == chunk_id
         ]
 
-        chunk_data: Optional[ChunkData] = None
+        chunk_data: ChunkData | None = None
         if self._vector_store:
             chunk_data = await self._vector_store.get_chunk_by_id(chunk_id)
 
@@ -501,7 +502,7 @@ class AdvancedFeaturesService:
             compliance_status=compliance_status,
         )
 
-    async def reason(self, query: str, context: Optional[str] = None, reasoning_type: str = "logical") -> ReasoningPlan:
+    async def reason(self, query: str, context: str | None = None, reasoning_type: str = "logical") -> ReasoningPlan:
         context_tokens = self._tokenize(context or "")
         query_tokens = self._tokenize(query)
 
