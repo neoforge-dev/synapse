@@ -17,10 +17,9 @@ homebrew-tap/
         └── update-formula.yml   # Auto-update workflow
 ```
 
-### **2. Publishing Tools**
-- **`publish-tap.sh`** - Automated tap publisher script
-- **`HOMEBREW_TAP_GUIDE.md`** - Complete publishing guide
-- **`Formula/synapse.rb`** - Local formula for testing
+### **2. Publishing Assets**
+- **`HOMEBREW_TAP_GUIDE.md`** – Complete publishing guide
+- **`Formula/synapse.rb`** – Local formula for testing
 
 ### **3. Documentation**
 - **`INSTALL.md`** - Simple installation instructions
@@ -29,42 +28,39 @@ homebrew-tap/
 
 ## 🚀 How to Publish
 
-### **Option 1: Automated (Recommended)**
-```bash
-# Run the publisher script
-./publish-tap.sh
-```
+### **Option 1: Automation (GitHub Actions)**
 
-The script will:
-- Ask for your GitHub username/organization
-- Create the tap repository
-- Set up all files
-- Test the formula
-- Show you the final commands
+We ship `homebrew-tap/.github/workflows/update-formula.yml`. Trigger it by publishing a GitHub release or via the manual workflow input. The job:
+
+1. Calculates the tarball URL `https://github.com/neoforge-ai/synapse-graph-rag/archive/refs/tags/<version>.tar.gz`
+2. Updates `Formula/synapse.rb` with the new `url`, `sha256`, and `version`
+3. Runs `brew style`/`brew audit`
+4. Commits the change (and optionally opens a PR)
 
 ### **Option 2: Manual Setup**
-Follow the detailed steps in `HOMEBREW_TAP_GUIDE.md`
+Follow the detailed steps in `HOMEBREW_TAP_GUIDE.md`.
 
-## 🎯 What Users Will See
+> **Note:** This document describes an aspirational automation flow. The current recommended approach is to install directly from the repository (`brew install ./homebrew-tap/Formula/synapse.rb`). Retain the steps below only if you plan to host a public tap.
+
+## 🎯 What Users Will See (after publishing a public tap)
 
 After publishing, users can install Synapse with:
 
 ```bash
-# Add the tap
-brew tap neoforge-dev/synapse
-
-# Install Synapse
-brew install synapse
+# Clone the repo locally if no public tap is available
+git clone https://github.com/neoforge-ai/synapse-graph-rag.git
+cd synapse-graph-rag
+brew install ./homebrew-tap/Formula/synapse.rb
 ```
 
-## ✅ What's Ready
+## ✅ What Exists Today
 
-- [x] **Formula passes style checks** - No offenses detected
-- [x] **Formula structure** - Proper Homebrew format
-- [x] **Documentation** - Complete README and guides
-- [x] **Auto-update workflow** - GitHub Actions for releases
-- [x] **Publishing script** - Automated setup
-- [x] **Testing tools** - Local validation
+- [x] **Formula passes style checks** – Homebrew format verified locally
+- [x] **Documentation** – Installation guides inside the main repo
+- [x] **Testing commands** – `brew style`, `brew audit`, local install instructions
+- [ ] **Public tap repository** – To be created if we decide to host one
+- [ ] **Auto-update workflow** – Not yet implemented
+- [ ] **Publisher script** – Not included in the current codebase
 
 ## 🔄 Auto-Updates
 
@@ -86,32 +82,33 @@ brew audit --strict Formula/synapse.rb
 brew install ./Formula/synapse.rb
 ```
 
-## 📋 Publishing Checklist
+## 📋 Publishing Checklist (if creating a public tap)
 
 - [x] Formula passes `brew style`
 - [x] Formula structure is correct
 - [x] README is complete
-- [x] GitHub Action is configured
-- [x] Publishing script is ready
-- [ ] **Create tap repository** (run `./publish-tap.sh`)
-- [ ] **Test installation from tap**
-- [ ] **Create first release** to test auto-updates
+- [ ] GitHub Action configured
+- [ ] Publisher automation implemented
+- [ ] Tap repository created and tested
 
 ## 🎉 Expected Result
 
-After publishing, users will be able to install Synapse with just:
+After you host a tap, users will be able to run:
 ```bash
-brew tap neoforge-dev/synapse && brew install synapse
+brew tap <your-org>/synapse && brew install synapse
 ```
 
-This makes Synapse as easy to install as any other popular tool!
+Until then, the recommended command remains:
+```bash
+brew install ./homebrew-tap/Formula/synapse.rb
+```
 
-## 🚀 Next Steps
+## 🚀 Suggested Next Steps (if pursuing a public tap)
 
-1. **Run the publisher**: `./publish-tap.sh`
-2. **Test the tap**: Install from the published tap
-3. **Create a release**: Test the auto-update workflow
-4. **Share**: Let users know they can now `brew install synapse`
+1. Create a dedicated tap repository under your GitHub organisation.
+2. Copy `homebrew-tap/Formula/synapse.rb` into that repository and commit.
+3. Configure a release workflow to update `url`/`sha256` whenever new versions ship.
+4. Update this documentation with the final tap coordinates.
 
 ---
 

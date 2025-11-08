@@ -39,6 +39,7 @@ class ComponentType(Enum):
     INGESTION = "ingestion"
     AUTHENTICATION = "authentication"
     MONITORING = "monitoring"
+    SERVICE = "service"
 
 
 @dataclass

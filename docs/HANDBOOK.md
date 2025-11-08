@@ -65,7 +65,7 @@ Key CLI guarantees and UX:
 - `SYNAPSE_EMBEDDING_PROVIDER`: `sentence-transformers` or `mock`
 - `SYNAPSE_MEMGRAPH_HOST`/`SYNAPSE_MEMGRAPH_PORT`
 - `SYNAPSE_API_HOST`/`SYNAPSE_API_PORT`
-- `SYNAPSE_API_BASE_URL` (CLI admin/search commands): e.g., `http://localhost:8000/api/v1`
+- `SYNAPSE_API_BASE_URL` (CLI admin/search commands): e.g., `http://localhost:18888/api/v1`
 - `SYNAPSE_API_LOG_JSON`, `SYNAPSE_ENABLE_METRICS`
 
 ### Development Workflow
@@ -140,4 +140,3 @@ Deleted (approved):
 - Machine index: `docs/index.json`
 - Code roots: `graph_rag/*`
 - Tests: `tests/*`
-

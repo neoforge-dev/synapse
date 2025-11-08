@@ -6,7 +6,7 @@
 - **Graph Analysis**: 351 entities, 639 chunks across 11 documents
 - **Entity Discovery**: Can find and explore specific entities by ID
 - **Relationship Mapping**: Graph neighbors command working
-- **Graph Visualization**: Browser-based viz at localhost:8000/api/v1/graph/viz
+- **Graph Visualization**: Browser-based viz at localhost:18888/api/v1/graph/viz
 - **Stream-Safe Analysis**: Prevents CLI overflow for large datasets
 
 ### 🔧 Needs Fixing

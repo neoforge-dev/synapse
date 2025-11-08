@@ -2,12 +2,12 @@ class Synapse < Formula
   include Language::Python::Virtualenv
 
   desc "Graph-enhanced RAG system with MCP integration for IDE workflows"
-  homepage "https://github.com/neoforge-dev/synapse"
-  url "https://github.com/neoforge-dev/synapse/archive/refs/heads/main.tar.gz"
+  homepage "https://github.com/neoforge-ai/synapse-graph-rag"
+  url "https://github.com/neoforge-ai/synapse-graph-rag/archive/refs/heads/main.tar.gz"
   version "0.1.0"
-  sha256 "2ff8db52b496220501013fdf11df8be7c2d9176255b22c4f37b6adef4d21dd83"
+  sha256 "0019dfc4b32d63c1392aa264aed2253c1e0c2fb09216f8e2cc269bbfb8bb49b5"
   license "MIT"
-  head "https://github.com/neoforge-dev/synapse.git", branch: "main"
+  head "https://github.com/neoforge-ai/synapse-graph-rag.git", branch: "main"
 
   depends_on "python@3.12"
   depends_on "cmake" => :build  # For building mgclient

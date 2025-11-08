@@ -127,7 +127,7 @@ from business_development.synapse_enhanced_content_creator import SynapseEnhance
 
 # Initialize content creator with Synapse insights
 content_creator = SynapseEnhancedContentCreator(
-    synapse_host="localhost:8000",
+    synapse_host="localhost:18888",
     knowledge_domains=["technical-leadership", "agentic-development"]
 )
 

@@ -69,7 +69,7 @@ create_tap_repo() {
     if gh repo create "$org_name/$repo_name" \
         --public \
         --description "Homebrew tap for Synapse" \
-        --homepage "https://github.com/neoforge-dev/synapse" \
+        --homepage "https://github.com/neoforge-ai/synapse-graph-rag" \
         --confirm; then
         
         print_success "Repository created successfully!"

@@ -44,8 +44,8 @@ Once configured with a valid API key, the system will:
 ### Testing Integration
 
 ```bash
-# Test that configuration is recognized
-curl -X POST "http://localhost:8000/api/v1/search/query" \
+# Test that configuration is recognised
+curl -X POST "http://localhost:18888/api/v1/search/query" \
   -H "Content-Type: application/json" \
   -d '{
     "query": "What are the key business strategies?",
@@ -54,8 +54,17 @@ curl -X POST "http://localhost:8000/api/v1/search/query" \
   }'
 ```
 
-### Current Status: ✅ READY FOR PRODUCTION
+### Current Status
 
-The LLM integration infrastructure is **fully implemented and tested**. Simply add your API key to enable real LLM functionality.
+By default the application runs in a **mock** mode:
 
-🎯 **Phase 1 LLM Integration: Complete**
+- `create_graph_repository` falls back to `MockGraphRepository` unless Memgraph is available and enabled.
+- `create_llm_service` uses `MockLLMService` unless you set `SYNAPSE_LLM_TYPE=openai` (or another provider) and provide credentials.
+
+To enable full production behaviour:
+
+1. Run `synapse up` (or your own Memgraph instance) and set `SYNAPSE_DISABLE_GRAPH=false`.
+2. Export your provider credentials, e.g. `export SYNAPSE_LLM_TYPE=openai` and `export OPENAI_API_KEY=...`.
+3. Restart the API and re-run the health checks above.
+
+🎯 **Phase 1 LLM Integration:** routing, dependency wiring, and fallbacks are complete. Production scenarios still require real credentials and Memgraph connectivity.

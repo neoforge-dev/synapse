@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "18888:8000"
     environment:
       MEMGRAPH_URI: ${MEMGRAPH_URI:-bolt://memgraph:7687}
       MEMGRAPH_USERNAME: ${MEMGRAPH_USERNAME:-}
@@ -28,8 +28,8 @@ services:
   memgraph:
     image: memgraph/memgraph:latest
     ports:
-      - "7687:7687"
-      - "7444:7444"
+      - "17687:7687"
+      - "17444:7444"
     command: --bolt-port=7687 --log-level=TRACE
     networks:
       - graph-network
@@ -37,7 +37,7 @@ services:
   postgres:
     image: postgres:16-alpine
     ports:
-      - "5432:5432"
+      - "15432:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-synapse}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-synapse_password}

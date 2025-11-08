@@ -79,6 +79,7 @@ from graph_rag.llm.protocols import LLMService
 # from graph_rag.core.persistent_kg_builder import PersistentKnowledgeGraphBuilder
 # Service Import
 from graph_rag.services.ingestion import IngestionService
+from graph_rag.services.advanced_features import AdvancedFeaturesService
 from graph_rag.services.search import SearchService
 
 # Removed incorrect import for SpacyEntityExtractor
@@ -172,10 +173,6 @@ def create_graph_repository(settings: Settings) -> GraphRepository:
         logger.info("Graph functionality disabled via settings, using MockGraphRepository")
         return MockGraphRepository()
         
-    # Force mock mode for Epic 11 System Stabilization - prioritize reliability 
-    logger.info("Using MockGraphRepository for system reliability during Epic 11 stabilization")
-    return MockGraphRepository()
-
     # Check if auto-fallback is disabled
     auto_fallback = getattr(settings, 'auto_fallback_vector_mode', True)
 
@@ -705,6 +702,17 @@ async def get_search_service(
     """Dependency getter for SearchService."""
     # Typically create per request
     return create_search_service(graph_repo=graph_repo, vector_store=vector_store)
+
+
+async def get_advanced_features_service(
+    graph_repo: GraphRepository = Depends(get_graph_repository),
+    vector_store: VectorStore = Depends(get_vector_store),
+) -> AdvancedFeaturesService:
+    """Provide shared advanced features analytics service."""
+    key = "advanced_features_service"
+    if key not in _singletons:
+        _singletons[key] = AdvancedFeaturesService(graph_repo=graph_repo, vector_store=vector_store)
+    return _singletons[key]
 
 
 # --- Concept Mapping Dependencies ---

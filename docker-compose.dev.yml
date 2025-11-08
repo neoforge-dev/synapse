@@ -15,7 +15,7 @@ services:
       - MEMGRAPH_HOST=memgraph
       - MEMGRAPH_PORT=7687
     ports:
-      - "8000:8000"
+      - "18888:8000"
     depends_on:
       memgraph:
         condition: service_started
@@ -24,8 +24,8 @@ services:
   memgraph:
     image: memgraph/memgraph:latest
     ports:
-      - "7687:7687" # Bolt protocol
-      - "7444:7444" # HTTP API
+      - "17687:7687" # Bolt protocol
+      - "17444:7444" # HTTP API
     volumes:
       - memgraph-data:/var/lib/memgraph
     environment:

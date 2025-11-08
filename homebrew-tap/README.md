@@ -1,15 +1,15 @@
 # 🍺 Synapse Homebrew Tap
 
-This is the official Homebrew tap for [Synapse](https://github.com/neoforge-dev/synapse) - a system demonstrating Retrieval-Augmented Generation (RAG) enhanced with a Knowledge Graph.
+> **Note:** The Synapse team currently recommends installing straight from the repository. These instructions show how you can host your own tap using the assets in `homebrew-tap/`.
+
+This repository accompanies [Synapse](https://github.com/neoforge-ai/synapse-graph-rag), a graph‑augmented RAG system.
 
 ## 🚀 Quick Install
 
 ```bash
-# Add the tap
-brew tap neoforge-dev/synapse
-
-# Install Synapse
-brew install synapse
+git clone https://github.com/neoforge-ai/synapse-graph-rag.git
+cd synapse-graph-rag
+brew install ./homebrew-tap/Formula/synapse.rb
 ```
 
 ## 🔧 What Gets Installed
@@ -65,9 +65,9 @@ brew info synapse
 
 ## 📚 More Information
 
-- **Documentation**: [Synapse](https://github.com/neoforge-dev/synapse)
-- **Issues**: [GitHub Issues](https://github.com/neoforge-dev/synapse/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/neoforge-dev/synapse/discussions)
+- **Documentation**: [Synapse](https://github.com/neoforge-ai/synapse-graph-rag)
+- **Issues**: [GitHub Issues](https://github.com/neoforge-ai/synapse-graph-rag/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/neoforge-ai/synapse-graph-rag/discussions)
 
 ## 🏗️ Development
 

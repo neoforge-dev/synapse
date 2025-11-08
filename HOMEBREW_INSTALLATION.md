@@ -1,13 +1,13 @@
 # 🍺 Homebrew Installation for Synapse
 
-## Quick Install
+> **Current Status:** Synapse does not yet publish a public Homebrew tap. Use the commands below to install directly from the repository or adapt them for your own tap.
+
+## Quick Install (local formula)
 
 ```bash
-# Add the tap
-brew tap neoforge-dev/synapse
-
-# Install Synapse
-brew install synapse
+git clone https://github.com/neoforge-ai/synapse-graph-rag.git
+cd synapse-graph-rag
+brew install ./homebrew-tap/Formula/synapse.rb
 ```
 
 ## What This Installs
@@ -37,9 +37,8 @@ synapse up
 
 ## Tap Information
 
-- **Tap Repository**: `neoforge-dev/synapse`
-- **Formula Location**: `/opt/homebrew/Library/Taps/neoforge-dev/homebrew-synapse/Formula/synapse.rb`
-- **Homepage**: https://github.com/neoforge-dev/synapse
+- **Formula Location**: `homebrew-tap/Formula/synapse.rb`
+- **Homepage**: https://github.com/neoforge-ai/synapse-graph-rag
 
 ## Manual Installation (if Homebrew fails)
 
@@ -47,8 +46,8 @@ If the Homebrew installation encounters issues:
 
 ```bash
 # Clone the repository
-git clone https://github.com/neoforge-dev/synapse.git
-cd synapse
+git clone https://github.com/neoforge-ai/synapse-graph-rag.git
+cd synapse-graph-rag
 
 # Install with uv (recommended)
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -62,7 +61,7 @@ pip install -e .
 
 ```bash
 # Update Synapse
-brew upgrade synapse
+brew upgrade synapse  # works if you host your tap; otherwise reinstall from the formula path
 
 # Update the tap
 brew update
@@ -80,8 +79,8 @@ brew doctor
 brew uninstall synapse
 brew install synapse
 
-# Check formula info
-brew info neoforge-dev/synapse/synapse
+# Check formula info (replace with your tap if you publish one)
+brew info synapse
 ```
 
 ### macOS Beta Compatibility
@@ -90,17 +89,16 @@ If you're running macOS beta (26.x), Homebrew may show warnings and installation
 
 ```bash
 # Clone and install manually
-git clone https://github.com/neoforge-dev/synapse.git
-cd synapse
+git clone https://github.com/neoforge-ai/synapse-graph-rag.git
+cd synapse-graph-rag
 uv pip install -e .
 ```
 
 ### Installation Status
 
-✅ **Homebrew tap published**: `neoforge-dev/synapse`  
-✅ **Formula available**: `brew install neoforge-dev/synapse/synapse`  
+✅ **Local formula available**: `homebrew-tap/Formula/synapse.rb`  
 ⚠️ **macOS 26 compatibility**: Use manual installation for beta macOS versions
 
 ---
 
-**Generated with ❤️ by [Synapse](https://github.com/neoforge-dev/synapse)**
+**Generated with ❤️ by [Synapse](https://github.com/neoforge-ai/synapse-graph-rag)**
