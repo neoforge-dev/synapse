@@ -9,10 +9,10 @@ Synapse is a graph-augmented Retrieval-Augmented Generation (RAG) platform built
 ```
 CLI (Typer) ─┬─ synapse ingest / search / up
              └─ synapse mcp …
-FastAPI      ─┬─ /api/v1/core-business-operations
-             ├─ /api/v1/enterprise-platform
-             ├─ /api/v1/analytics-intelligence
-             └─ /api/v1/advanced-features
+FastAPI      ─┬─ /api/v1/query/* (Core Business Operations)
+             ├─ /api/v1/auth/*, /admin/*, /compliance/*, /health/* (Enterprise Platform)
+             ├─ /api/v1/dashboard/*, /audience/*, /concepts/*, /content/* (Analytics Intelligence)
+             └─ /api/v1/graph/*, /hot-takes/*, /viral/*, /brand-safety/*, /reasoning/*, /chunks/* (Advanced Features)
 Services     ─┬─ IngestionService (documents → graph/vector)
              ├─ SearchService (graph + vector retrieval)
              └─ AdvancedFeaturesService (analytics, brand safety, reasoning)
@@ -62,7 +62,7 @@ The container ports remain standard to ease intra-container communication; host 
 ## Request Flow (example)
 
 1. `synapse ingest ./docs` (CLI) → `IngestionService` via in-process call → document chunks stored in Memgraph + vector store.
-2. `curl http://localhost:18888/api/v1/advanced/graph/stats` → Advanced router → `AdvancedFeaturesService.graph_stats()` → Memgraph repository + vector store analysed → JSON response.
+2. `curl http://localhost:18888/api/v1/graph/stats` → Advanced Features router → `AdvancedFeaturesService.graph_stats()` → Memgraph repository + vector store analysed → JSON response.
 3. MCP clients call the same services through the MCP server wrapper (`graph_rag/mcp/server.py`).
 
 ---
