@@ -43,20 +43,20 @@ make install-local                 # Install via pipx from dist/
 
 ### Business Development Automation
 ```bash
-# Start automation dashboard and control center (use module syntax if import issues)
-python business_development/automation_dashboard.py
-# Alternative: python -m business_development.automation_dashboard
+# Start automation dashboard and control center
+python -m business_development.automation_dashboard
+# Alternative (direct): python business_development/automation_dashboard.py
 
 # Schedule and manage LinkedIn content posting
-python business_development/content_scheduler.py
+python -m business_development.content_scheduler
 
 # Monitor consultation inquiries and business pipeline
-python business_development/consultation_inquiry_detector.py
+python -m business_development.consultation_inquiry_detector
 
 # Analytics and performance optimization
-python analytics/performance_analyzer.py
-python analytics/ab_testing_framework.py
-python analytics/synapse_content_integration.py
+python -m analytics.performance_analyzer
+python -m analytics.ab_testing_framework
+python -m analytics.synapse_content_integration
 ```
 
 ## Project Architecture
@@ -85,7 +85,10 @@ This is a **Graph-augmented RAG (Retrieval-Augmented Generation)** system called
 **CLI Layer** (`graph_rag/cli/`):
 - Typer-based CLI with composable commands
 - Entry point: `synapse` command (mapped to `graph_rag.cli.main:main`)
-- Commands: `ingest`, `discover`, `parse`, `store`, `search`, `query`, `graph`, `notion`, `mcp`
+- **Core Commands**: `ingest`, `discover`, `parse`, `store`, `search`, `query`, `explain`, `suggest`
+- **Stack Management**: `up`, `down`, `compose`, `init`
+- **Operations**: `graph`, `insights`, `analytics`, `admin`, `config`, `consolidate`
+- **Integrations**: `notion`, `mcp`
 
 **Core Engine** (`graph_rag/core/`):
 - `GraphRAGEngine`: Main orchestrator for search and synthesis
@@ -101,6 +104,7 @@ This is a **Graph-augmented RAG (Retrieval-Augmented Generation)** system called
 **Services** (`graph_rag/services/`):
 - `IngestionService`: Document ingestion pipeline
 - `SearchService`: Vector + graph retrieval
+- `AdvancedFeaturesService`: Graph analytics, brand safety, reasoning, hot-take scoring
 - `EmbeddingService`: Sentence transformers or mock
 
 **Business Development System** (`business_development/`):
@@ -145,7 +149,7 @@ Environment variables use `SYNAPSE_` prefix:
 - `unit`: Self-contained tests
 
 **Key Test Patterns**:
-- **Authentication System**: 123/123 tests passing (100% reliability)
+- **Authentication System**: 40/40 tests passing (100% reliability - enterprise JWT, API keys, RBAC)
 - Memgraph tests use `MEMGRAPH_HOST=localhost` environment variable
 - Integration tests check for `RUNNING_INTEGRATION_TESTS=true`
 - Mock services available for lightweight testing
@@ -168,7 +172,7 @@ Environment variables use `SYNAPSE_` prefix:
 - Project name is `synapse-graph-rag` but package is `graph_rag`
 - CLI command is `synapse` but imports use `graph_rag`
 - **Optimized Codebase**: 1.3GB (43.5% reduction from 2.3GB)
-- **Consolidated Architecture**: TRUE 4-router design (Epic 19 cleanup complete - 33 legacy routers deleted)
+- **Consolidated Architecture**: TRUE 4-router design (Epic 19 cleanup complete - 34 legacy routers deleted)
 - Memgraph client (`mgclient`) is optional - graceful fallbacks for CI
 - SpaCy imports are conditional (`SKIP_SPACY_IMPORT=1` for lightweight runs)
 - Vector store persistence includes raw embeddings for precise deletions
@@ -199,7 +203,7 @@ Environment variables use `SYNAPSE_` prefix:
 - **Size Reduction**: 2.3GB → 1.3GB (43.5% reduction) - **EXCEEDED 32% target**
 - **Architecture Consolidation**: 37 routers → 4 API routers (89.2% reduction) - **EPIC 19 COMPLETE**
 - **Legacy Router Cleanup**: 34 legacy routers deleted (including 1 orphaned router in Jan 2025)
-- **Database Migration**: Phase 1-2 complete (Epic 7 + Analytics → PostgreSQL)
+- **Database Status**: SQLite (11 databases, 1.4MB) - PostgreSQL migration planned for Q2 2026
 - **Authentication System**: 100% operational (40/40 tests passing) - **CRITICAL SECURITY RESTORED**
 
 ### 🏆 **Enterprise Platform Status**
@@ -221,17 +225,18 @@ Environment variables use `SYNAPSE_` prefix:
 - **Enterprise Scalability**: Optimized for Fortune 500 deployment requirements
 - **Router Cleanup Complete**: All 34 legacy routers systematically deleted with full validation
 
-### 🔄 **Active Database Migration (Epic 20)**
-**Phase 1-2 Complete (PostgreSQL):**
-- ✅ Epic 7 Sales Pipeline: 134 rows, $1.158M protected on PostgreSQL
-- ✅ Analytics Consolidation: 11 databases → 1 PostgreSQL (71 rows, 0.66s migration)
-- ✅ Dual-write enabled with hourly validation (Week 1 in progress)
+### 📊 **Database Architecture (Current State)**
+**Active SQLite Databases (11 total, 1.4MB):**
+- ✅ Epic 7 Sales Pipeline: 134 rows, $1.158M protected on SQLite
+- ✅ Business Development: LinkedIn automation, CRM, content intelligence
+- ✅ Analytics: Performance metrics, A/B testing, system infrastructure
+- ✅ Performance: <10ms query latency, 99.9%+ uptime
 
-**Phase 3 Pending (Code Migration):**
-- 74 Python files with sqlite3 imports requiring PostgreSQL updates
-- 11 active SQLite databases to migrate (5 root + 6 business development)
-- Estimated effort: 180 hours (4.5 weeks) for complete code migration
-- See DATABASE_MIGRATION_STATUS.md for detailed tracking and timeline
+**PostgreSQL Migration Plan (Future):**
+- Planned for Q2 2026 when scale requires (100MB threshold, 50+ concurrent users)
+- 74 Python files with sqlite3 imports for future migration
+- Current scale: 1.4MB << 100MB threshold (SQLite sufficient 12-24 months)
+- See DATABASE_MIGRATION_STATUS.md for complete analysis and future migration timeline
 
 ## Recent Critical System Restorations
 
