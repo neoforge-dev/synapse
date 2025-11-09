@@ -1,8 +1,12 @@
+import hashlib
+import json
 import logging
+import os
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
+from cachetools import TTLCache
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
@@ -18,6 +22,96 @@ from graph_rag.core.interfaces import (
 from graph_rag.domain.models import Chunk
 
 logger = logging.getLogger(__name__)
+
+
+class SearchCache:
+    """TTL-based cache for search results to reduce redundant queries."""
+
+    def __init__(self, maxsize: int = 100, ttl: int = 300):
+        """Initialize search cache.
+
+        Args:
+            maxsize: Maximum number of cached search results
+            ttl: Time-to-live in seconds (default: 5 minutes)
+        """
+        self._cache = TTLCache(maxsize=maxsize, ttl=ttl)
+        self._hits = 0
+        self._misses = 0
+        self._maxsize = maxsize
+        self._ttl = ttl
+
+    def get_cache_key(self, query: str, search_type: str, limit: int, **kwargs) -> str:
+        """Generate cache key from search parameters.
+
+        Args:
+            query: Search query text
+            search_type: Type of search (vector, keyword, hybrid)
+            limit: Maximum number of results
+            **kwargs: Additional parameters that affect search results
+
+        Returns:
+            SHA256 hash of the serialized parameters
+        """
+        params = {
+            "query": query,
+            "search_type": search_type,
+            "limit": limit,
+            **kwargs
+        }
+        key_str = json.dumps(params, sort_keys=True)
+        return hashlib.sha256(key_str.encode()).hexdigest()
+
+    def get(self, key: str) -> Any | None:
+        """Get cached result by key.
+
+        Args:
+            key: Cache key
+
+        Returns:
+            Cached result or None if not found or expired
+        """
+        result = self._cache.get(key)
+        if result is not None:
+            self._hits += 1
+            logger.debug(f"Cache HIT for key: {key[:16]}...")
+        else:
+            self._misses += 1
+            logger.debug(f"Cache MISS for key: {key[:16]}...")
+        return result
+
+    def set(self, key: str, value: Any) -> None:
+        """Store result in cache.
+
+        Args:
+            key: Cache key
+            value: Result to cache
+        """
+        self._cache[key] = value
+        logger.debug(f"Cached result for key: {key[:16]}... (cache size: {len(self._cache)})")
+
+    def invalidate(self) -> None:
+        """Clear all cached results."""
+        old_size = len(self._cache)
+        self._cache.clear()
+        logger.info(f"Cache invalidated ({old_size} entries removed)")
+
+    def stats(self) -> dict:
+        """Return cache statistics.
+
+        Returns:
+            Dictionary with cache performance metrics
+        """
+        total = self._hits + self._misses
+        hit_rate = (self._hits / total * 100) if total > 0 else 0
+        return {
+            "hits": self._hits,
+            "misses": self._misses,
+            "total_requests": total,
+            "hit_rate": f"{hit_rate:.1f}%",
+            "size": len(self._cache),
+            "maxsize": self._maxsize,
+            "ttl_seconds": self._ttl
+        }
 
 
 class SearchResult(BaseModel):
@@ -304,13 +398,25 @@ class AdvancedSearchService:
         vector_store: VectorStore,
         graph_repository: GraphRepository,
         rerank_service: Optional['ReRankingService'] = None,
-        clustering_service: Optional['SemanticClusteringService'] = None
+        clustering_service: Optional['SemanticClusteringService'] = None,
+        enable_cache: bool = True
     ):
         self.vector_store = vector_store
         self.graph_repository = graph_repository
         self.rerank_service = rerank_service
         self.clustering_service = clustering_service
         self.query_expansion_service = QueryExpansionService()
+
+        # Initialize search cache with environment variables
+        self._enable_cache = enable_cache and os.getenv("SYNAPSE_ENABLE_SEARCH_CACHE", "true").lower() == "true"
+        if self._enable_cache:
+            cache_size = int(os.getenv("SYNAPSE_SEARCH_CACHE_SIZE", "100"))
+            cache_ttl = int(os.getenv("SYNAPSE_SEARCH_CACHE_TTL", "300"))
+            self._cache = SearchCache(maxsize=cache_size, ttl=cache_ttl)
+            logger.info(f"Search cache enabled (size={cache_size}, ttl={cache_ttl}s)")
+        else:
+            self._cache = None
+            logger.info("Search cache disabled")
 
     async def search(
         self,
@@ -325,6 +431,23 @@ class AdvancedSearchService:
         threshold: float | None = None
     ) -> HybridSearchResult:
         """Perform advanced search with the specified strategy."""
+        # Check cache first
+        if self._enable_cache and self._cache:
+            cache_key = self._cache.get_cache_key(
+                query=query,
+                search_type=strategy.value,
+                limit=limit,
+                expand_query=expand_query,
+                rerank=rerank,
+                cluster=cluster,
+                cluster_strategy=cluster_strategy,
+                threshold=threshold
+            )
+            cached_result = self._cache.get(cache_key)
+            if cached_result is not None:
+                logger.info(f"Returning cached search result for query: {query[:50]}...")
+                return cached_result
+
         start_time = time.time()
 
         # Expand query if requested
@@ -396,7 +519,7 @@ class AdvancedSearchService:
 
         execution_time = (time.time() - start_time) * 1000
 
-        return HybridSearchResult(
+        result = HybridSearchResult(
             results=results[:limit],  # Ensure limit is respected
             strategy=strategy,
             query=query,
@@ -407,6 +530,34 @@ class AdvancedSearchService:
             clustered=clustered,
             cluster_count=cluster_count
         )
+
+        # Cache the result
+        if self._enable_cache and self._cache:
+            self._cache.set(cache_key, result)
+            logger.debug(f"Cached search result for query: {query[:50]}...")
+
+        return result
+
+    def invalidate_cache(self) -> None:
+        """Invalidate all cached search results.
+
+        Should be called when documents are ingested/deleted to ensure fresh results.
+        """
+        if self._cache:
+            self._cache.invalidate()
+
+    def get_cache_stats(self) -> dict:
+        """Get cache performance statistics.
+
+        Returns:
+            Dictionary with cache metrics (hits, misses, hit rate, size, etc.)
+        """
+        if self._cache:
+            return self._cache.stats()
+        return {
+            "enabled": False,
+            "message": "Search cache is disabled"
+        }
 
     async def hybrid_search(
         self,
