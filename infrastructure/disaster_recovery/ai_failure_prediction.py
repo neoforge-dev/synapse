@@ -267,7 +267,7 @@ class AIFailurePredictionSystem:
 
             # Get anomaly score
             anomaly_score = model['anomaly_detector'].decision_function(features_scaled)[0]
-            model['anomaly_detector'].predict(features_scaled)[0] == -1
+            is_anomaly = model['anomaly_detector'].predict(features_scaled)[0] == -1
 
             # Calculate failure probability based on various indicators
             failure_probability = self._calculate_failure_probability(metrics, anomaly_score)
