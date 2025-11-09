@@ -26,6 +26,9 @@ Welcome to the Synapse Graph-RAG documentation. This guide will help you find wh
 #### Content Strategy
 - [**Content Strategy Guide**](./guides/CONTENT_STRATEGY_GUIDE.md) - LinkedIn automation and business development
 
+#### Troubleshooting
+- [**Troubleshooting Guide**](./guides/TROUBLESHOOTING.md) - Comprehensive error solutions and debugging guide
+
 ### 📘 Reference
 **Technical specifications and API documentation.**
 
@@ -93,7 +96,7 @@ Welcome to the Synapse Graph-RAG documentation. This guide will help you find wh
 → [Configuration Reference](./reference/CONFIGURATION.md) (100+ variables)
 
 **Troubleshoot issues**
-→ [HANDBOOK.md - Troubleshooting](./HANDBOOK.md#troubleshooting)
+→ [Troubleshooting Guide](./guides/TROUBLESHOOTING.md) (comprehensive) or [HANDBOOK.md - Troubleshooting](./HANDBOOK.md#troubleshooting)
 
 **Ingest LinkedIn data**
 → [LinkedIn CSV Ingestion Quickstart](./guides/LINKEDIN_CSV_INGESTION_QUICKSTART.md)
@@ -199,7 +202,7 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) in the project root for contribution g
 - **Primary reference docs**: 3 comprehensive files (HANDBOOK, ARCHITECTURE, CONFIGURATION)
 - **Lines of documentation**: 5000+ (primary docs)
 - **Getting started**: 2 files
-- **Guides**: 8 files
+- **Guides**: 9 files
 - **Reference**: 4 files (includes HANDBOOK, ARCHITECTURE, CONFIGURATION, PRD)
 - **Advanced**: 2 files
 - **Experimental**: 5 files
@@ -212,4 +215,4 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) in the project root for contribution g
 - ✅ All 44+ API endpoints documented
 - ✅ All 16+ services documented
 
-**Last updated**: 2025-11-08
+**Last updated**: 2025-11-09
