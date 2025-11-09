@@ -282,7 +282,6 @@ def mock_doc_no_entities() -> Document:
 
 
 # Note: Original test cases for MockEntityExtractor defined earlier (lines 209-244) are used
-    assert len(processed_doc.relationships) == 0
 
 
 # TODO: Add tests for SpacyEntityExtractor if/when implemented
