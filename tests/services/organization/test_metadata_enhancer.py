@@ -1,7 +1,8 @@
 """Comprehensive tests for MetadataEnhancer service."""
 
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 
 from graph_rag.services.organization.metadata_enhancer import MetadataEnhancer
 

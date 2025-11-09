@@ -249,7 +249,7 @@ class ComprehensiveLinkedInExtractor:
                     # Try to parse date, but handle malformed entries
                     try:
                         created_at = datetime.strptime(row['Date'], '%Y-%m-%d %H:%M:%S')
-                    except (ValueError, KeyError, TypeError) as e:
+                    except (ValueError, KeyError, TypeError):
                         created_at = datetime.now()
 
                     # Comments often contain quick beliefs and preferences

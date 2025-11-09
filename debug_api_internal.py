@@ -2,6 +2,7 @@
 """Debug script to check API internal state via request debug endpoint."""
 
 import json
+
 from fastapi import Request
 from fastapi.routing import APIRouter
 

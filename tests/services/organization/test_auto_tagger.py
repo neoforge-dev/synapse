@@ -205,7 +205,6 @@ class TestTagsWithConfidence:
         content = "API development and API testing with API design"
         tags_with_confidence = auto_tagger.extract_tags_with_confidence(content)
 
-        tag_dict = dict(tags_with_confidence)
         # Should only have one 'api' entry with highest confidence
         api_count = sum(1 for tag, _ in tags_with_confidence if tag == "api")
         assert api_count <= 1

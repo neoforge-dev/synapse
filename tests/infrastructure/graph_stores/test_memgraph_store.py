@@ -884,7 +884,7 @@ async def test_concurrent_read_write(memgraph_repo: MemgraphGraphRepository):
 
     # Execute mixed operations concurrently
     tasks = [read_node(), update_node(1), read_node(), update_node(2), read_node()]
-    results = await asyncio.gather(*tasks)
+    await asyncio.gather(*tasks)
 
     # Verify operations completed (final state should have counter=2)
     final = await memgraph_repo.get_node_by_id(node_id)

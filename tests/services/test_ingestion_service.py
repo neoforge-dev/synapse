@@ -16,10 +16,10 @@ from graph_rag.core.interfaces import (
 
 # Domain Models
 from graph_rag.domain.models import Chunk, Document, Edge, Entity, Relationship
-from graph_rag.models import ProcessedDocument
 
 # Correct implementation import
 from graph_rag.infrastructure.document_processor.simple_processor import ChunkSplitter
+from graph_rag.models import ProcessedDocument
 
 # Service Under Test
 from graph_rag.services.ingestion import IngestionResult, IngestionService
