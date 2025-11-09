@@ -67,7 +67,7 @@ async def test_create_document(test_client: AsyncClient, mock_graph_repo: AsyncM
     try:
         uuid.UUID(created_id, version=4)
         assert True
-    except ValueError:
+    except ValueError as e:
         raise AssertionError(f"Returned ID '{created_id}' is not a valid UUID4") from e
 
     # Verify the correct repository method was called

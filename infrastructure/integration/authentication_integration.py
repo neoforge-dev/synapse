@@ -105,7 +105,7 @@ class ProductionJWTHandler:
                 issuer=self.settings.issuer
             )
             return payload
-        except jwt.ExpiredSignatureError:
+        except jwt.ExpiredSignatureError as e:
             raise ValueError("Token has expired") from e
         except jwt.InvalidTokenError as e:
             raise ValueError(f"Invalid token: {str(e)}") from e
