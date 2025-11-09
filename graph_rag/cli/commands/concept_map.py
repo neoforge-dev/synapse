@@ -2430,7 +2430,10 @@ def strategy_import_cli(
     """Import content strategy from external files and formats."""
 
     async def import_async():
-        console.print(Panel(f"📥 Epic 9.4: Strategy Import - {import_format.upper()}", style="bold magenta"))
+        # Use local variable to avoid referencing parameter before assignment
+        detected_format = import_format
+
+        console.print(Panel(f"📥 Epic 9.4: Strategy Import - {detected_format.upper()}", style="bold magenta"))
 
         try:
             import_path = Path(import_file)
@@ -2439,16 +2442,16 @@ def strategy_import_cli(
                 return
 
             # Auto-detect format if needed
-            if import_format == "auto":
-                import_format = _detect_import_format(import_file)
-                console.print(f"🔍 Auto-detected format: {import_format}")
+            if detected_format == "auto":
+                detected_format = _detect_import_format(import_file)
+                console.print(f"🔍 Auto-detected format: {detected_format}")
 
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
                 console=console
             ) as progress:
-                task = progress.add_task(f"Importing from {import_format}...", total=None)
+                task = progress.add_task(f"Importing from {detected_format}...", total=None)
 
                 # Initialize optimizer for import functionality
                 optimizer = ContentStrategyOptimizer()
@@ -2456,7 +2459,7 @@ def strategy_import_cli(
                 # Perform import
                 import_result = await optimizer.import_strategy(
                     import_file=import_file,
-                    format=import_format,
+                    format=detected_format,
                     validate=validate,
                     normalize=normalize
                 )
@@ -2479,7 +2482,7 @@ def strategy_import_cli(
 
             # Display import summary
             console.print("\n✅ Strategy imported successfully!")
-            console.print(f"   • Source format: {import_format}")
+            console.print(f"   • Source format: {detected_format}")
             console.print(f"   • Output file: {output_file}")
             console.print(f"   • Items imported: {import_result.get('items_count', 0)}")
             console.print(f"   • Data quality: {import_result.get('quality_score', 0):.2f}/1.00")
