@@ -2,7 +2,6 @@ import logging
 from functools import lru_cache
 from typing import Any
 
-import numpy as np  # Add numpy import
 from fastapi import Depends, HTTPException, Request
 
 # Remove if unused
@@ -93,6 +92,7 @@ class MockEmbeddingService(EmbeddingService):
     """Minimal implementation of a mock EmbeddingService."""
 
     def __init__(self, dimension: int = 10):  # Add dimension
+        import numpy as np  # Lazy load numpy only when creating mock service
         self.dimension = dimension
         # Create a constant normalized vector
         self._dummy_vector = np.zeros(self.dimension)
