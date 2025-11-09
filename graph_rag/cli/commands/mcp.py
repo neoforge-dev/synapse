@@ -57,7 +57,7 @@ def start_server(
         serve(host=host, port=port, transport=transport)
     except RuntimeError as e:
         console.print(f"[red]Error: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
     except KeyboardInterrupt:
         console.print("\n[yellow]MCP server stopped[/yellow]")
 
@@ -160,7 +160,7 @@ def info():
 
     except Exception as e:
         console.print(f"[red]Error loading tools: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 @app.command("config")
@@ -290,7 +290,7 @@ def test_tools(
 
     except Exception as e:
         console.print(f"[red]Error testing tools: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 # Alias for backward compatibility

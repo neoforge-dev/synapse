@@ -153,7 +153,7 @@ def main_callback(
         logger.debug(f"Invoking command: {ctx.invoked_subcommand}")
     except Exception as e:
         logger.error(f"Error in CLI: {e!s}", exc_info=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 def main():
@@ -162,7 +162,7 @@ def main():
         app()
     except Exception as e:
         logger.error(f"Fatal error in CLI: {e!s}", exc_info=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 if __name__ == "__main__":

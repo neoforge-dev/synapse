@@ -104,7 +104,7 @@ def search_query(
             f"Error: Failed to connect to the API at {api_url}. Is it running?",
             file=sys.stderr,
         )
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
     except httpx.HTTPStatusError as exc:
         logger.error(
             f"API returned an error: {exc.response.status_code} - {exc.response.text}"
@@ -120,11 +120,11 @@ def search_query(
             f"Error: API returned status {exc.response.status_code}. Detail: {detail}",
             file=sys.stderr,
         )
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e}", exc_info=True)
         print(f"An unexpected error occurred: {e}", file=sys.stderr)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 # Add other search commands later if needed

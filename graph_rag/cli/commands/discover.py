@@ -73,7 +73,7 @@ def discover_command(
                     roots.append(p)
         except Exception as e:
             typer.echo(f"Error: failed to read directories from stdin: {e}", err=True)
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
     if not roots:
         typer.echo(

@@ -59,12 +59,12 @@ def make_api_request(
         error_msg = f"Error: Failed to connect to the API at {url}. Is it running? Details: {exc}"
         logger.error(error_msg)
         console.print(f"[bold red]{error_msg}[/bold red]")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
     except httpx.HTTPStatusError as exc:
         error_msg = f"Error: API returned status {exc.response.status_code}. Response: {exc.response.text}"
         logger.error(error_msg)
         console.print(f"[bold red]{error_msg}[/bold red]")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
     except json.JSONDecodeError as e:
         # Access response text carefully
         response_text = "N/A"
@@ -76,12 +76,12 @@ def make_api_request(
         error_msg = f"Error: Could not decode JSON response from API. Details: {e}. Response text: {response_text}"
         logger.error(error_msg)
         console.print(f"[bold red]{error_msg}[/bold red]")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
     except Exception as e:
         error_msg = f"An unexpected error occurred during API request: {e}"
         logger.error(error_msg, exc_info=True)
         console.print(f"[bold red]{error_msg}[/bold red]")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 # --- Typer App for Query Commands ---
@@ -142,12 +142,12 @@ def ask_query(
             error_msg = f"Error: API returned status {exc.response.status_code}. Response: {exc.response.text}"
             logger.error(error_msg)
             console.print(f"[bold red]{error_msg}[/bold red]")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
         except Exception as e:
             error_msg = f"An unexpected error occurred during streaming: {e}"
             logger.error(error_msg, exc_info=True)
             console.print(f"[bold red]{error_msg}[/bold red]")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
         return
     else:
         try:

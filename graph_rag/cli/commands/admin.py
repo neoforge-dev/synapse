@@ -48,7 +48,7 @@ def check_health(
             f"Error: Failed to connect to the API at {api_url}. Is it running?",
             file=sys.stderr,
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from None
     except httpx.HTTPStatusError as exc:
         logger.error(
             f"API returned an error: {exc.response.status_code} - {exc.response.text}"
@@ -63,13 +63,13 @@ def check_health(
             f"Error: API health check failed with status {exc.response.status_code}. Detail: {detail}",
             file=sys.stderr,
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from None
     except Exception as e:
         logger.error(
             f"An unexpected error occurred during health check: {e}", exc_info=True
         )
         print(f"An unexpected error occurred: {e}", file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(1) from None
 
 
 @app.command("vector-stats")
@@ -83,7 +83,7 @@ def vector_stats(
             print(json.dumps(r.json(), indent=2))
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(1) from None
 
 
 @app.command("vector-rebuild")
@@ -97,7 +97,7 @@ def vector_rebuild(
             print(json.dumps(r.json(), indent=2))
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(1) from None
 
 
 @app.command("integrity-check")
@@ -111,7 +111,7 @@ def integrity_check(
             print(json.dumps(r.json(), indent=2))
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(1) from None
 
 
 @app.command("up")
@@ -141,7 +141,7 @@ def up(
         _ensure_docker_running(start_docker=start_docker, timeout_seconds=max(5, wait_timeout))
     except Exception as e:
         typer.echo(f"Docker preflight failed: {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
     args = ["docker", "compose", "-f", compose, "up"]
     if detached:
         args.append("-d")
@@ -154,7 +154,7 @@ def up(
             raise RuntimeError(f"compose exited with {proc.returncode}")
     except Exception as e:
         typer.echo(f"Failed to run docker compose: {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     if not wait_bolt:
         return
@@ -206,7 +206,7 @@ def _ensure_docker_running(start_docker: bool, timeout_seconds: int = 60) -> Non
             # Launch Docker Desktop; it is idempotent if already running
             subprocess.Popen(["open", "-a", "Docker"])  # noqa: S603
         except Exception as e:
-            raise RuntimeError(f"Failed to start Docker Desktop: {e}")
+            raise RuntimeError(f"Failed to start Docker Desktop: {e}") from e
 
         # Poll until docker info works or timeout
         import time as _time

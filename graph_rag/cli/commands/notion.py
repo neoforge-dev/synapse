@@ -46,7 +46,7 @@ def sync(
         client = NotionClient(Settings())
     except Exception as e:
         typer.echo(f"Error: {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     # Validate attachments policy
     attachments = (attachments or "link").lower()

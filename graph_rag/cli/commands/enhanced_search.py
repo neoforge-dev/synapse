@@ -32,10 +32,10 @@ def _make_search_request(query: str, limit: int, api_url: str) -> dict[str, Any]
         return response.json()
     except httpx.RequestError as e:
         console.print(f"[red]Error connecting to API: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
     except httpx.HTTPStatusError as e:
         console.print(f"[red]API returned error {e.response.status_code}: {e.response.text}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 def _get_entity_neighbors(entity_id: str, api_url: str) -> dict[str, Any]:

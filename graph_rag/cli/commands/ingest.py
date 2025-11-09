@@ -439,7 +439,7 @@ async def ingest(
             text = path.read_text(encoding="utf-8")
         except Exception as e:
             typer.echo(f"Error: Failed to read meta-file {path}: {e}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
         try:
             if path.suffix.lower() in {".yaml", ".yml"}:
                 obj = yaml.safe_load(text) or {}
@@ -454,7 +454,7 @@ async def ingest(
             return obj if isinstance(obj, dict) else {}
         except Exception as e:
             typer.echo(f"Error: Invalid meta-file {path}: {e}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
     def _parse_meta_kv(items: list[str] | None) -> dict:
         result: dict[str, Any] = {}
@@ -483,7 +483,7 @@ async def ingest(
         except json.JSONDecodeError:
             # Maintain backward-compatible error message expected by tests
             typer.echo("Error: Invalid JSON in metadata")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
     def parse_front_matter(path: Path) -> dict:
         try:

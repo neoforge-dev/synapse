@@ -83,10 +83,10 @@ def run_suggest(
         logger.error(
             f"API returned an error: {exc.response.status_code} - {exc.response.text}"
         )
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
     except Exception as e:
         logger.error(f"Suggest command failed: {e}", exc_info=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 # Keep an explicit subcommand for future extension, but default is callback

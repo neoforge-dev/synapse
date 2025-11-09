@@ -56,7 +56,7 @@ def compose_up(
         _ensure_docker_running(start_docker, wait_timeout)
     except Exception as e:
         console.print(f"[red]Docker error: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     # Build compose command
     cmd = ["docker", "compose", "-f", str(compose_path)]
@@ -89,7 +89,7 @@ def compose_up(
         console.print(f"[red]Failed to start services: {e}[/red]")
         if e.stderr:
             console.print(e.stderr)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     if not wait_services:
         return
@@ -164,7 +164,7 @@ def compose_down(
         console.print(f"[red]Failed to stop services: {e}[/red]")
         if e.stderr:
             console.print(e.stderr)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 @app.command("status")
@@ -340,7 +340,7 @@ def restart(
         console.print("[green]✅ Services restarted successfully[/green]")
     except subprocess.CalledProcessError as e:
         console.print(f"[red]Failed to restart services: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 def _ensure_docker_running(start_docker: bool, timeout_seconds: int = 60) -> None:
@@ -362,7 +362,7 @@ def _ensure_docker_running(start_docker: bool, timeout_seconds: int = 60) -> Non
             subprocess.Popen(["open", "-a", "Docker"])
             console.print("[blue]Starting Docker Desktop...[/blue]")
         except Exception as e:
-            raise RuntimeError(f"Failed to start Docker Desktop: {e}")
+            raise RuntimeError(f"Failed to start Docker Desktop: {e}") from e
 
         # Poll until docker works or timeout
         deadline = time.time() + max(10, timeout_seconds)
