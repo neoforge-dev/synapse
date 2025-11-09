@@ -1,0 +1,31 @@
+# Lychee link checker ignore patterns
+# Links that should be excluded from validation
+
+# Local development URLs
+http://localhost*
+http://127.0.0.1*
+http://0.0.0.0*
+
+# Example/placeholder URLs
+https://example.com*
+https://www.example.com*
+
+# Template/placeholder GitHub URLs
+https://github.com/yourusername/*
+
+# LinkedIn API endpoints (require authentication)
+https://api.linkedin.com/*
+https://www.linkedin.com/oauth/*
+
+# Private/authenticated APIs
+https://api.anthropic.com/*
+https://api.openai.com/*
+
+# Mailto links (not checkable via HTTP)
+mailto:*
+
+# Local file URLs
+file://*
+
+# GitHub workflow/action-specific URLs that may not be publicly accessible
+https://github.com/*/actions/runs/*

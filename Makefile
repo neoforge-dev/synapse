@@ -33,7 +33,7 @@ API_PORT ?= 8000
 # API_PORT := $(shell $(PYTHON) -c "from $(PACKAGE_NAME).config import settings; print(settings.api_port)" 2>/dev/null || echo 8000)
 
 # Phony targets (prevents conflicts with files of the same name)
-.PHONY: help install-dev download-nlp-data lint format test test-memgraph test-all run-api run-memgraph stop-memgraph logs-memgraph clean test-integration up down
+.PHONY: help install-dev download-nlp-data lint format test test-memgraph test-all run-api run-memgraph stop-memgraph logs-memgraph clean test-integration up down check-links
 
 help: ## Display this help screen
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -60,6 +60,11 @@ lint: ## Run linters (ruff check)
 
 format: ## Run formatters (ruff format)
 	$(UV) run ruff format .
+
+check-links: ## Validate all markdown links (requires lychee installed)
+	@command -v lychee >/dev/null 2>&1 || { echo "ERROR: lychee is not installed. Install with: brew install lychee (macOS) or cargo install lychee"; exit 1; }
+	@echo "INFO: Checking all markdown links..."
+	lychee --verbose --cache --max-cache-age 1d --exclude-file .lycheeignore --timeout 30 --max-retries 3 '**/*.md'
 
 test: ## Run unit tests (excluding integration tests)
 	@echo "Running unit tests..."

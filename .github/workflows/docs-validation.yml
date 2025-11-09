@@ -1,0 +1,169 @@
+name: Documentation Validation
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - '**.md'
+      - '.github/workflows/docs-validation.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - '**.md'
+      - '.github/workflows/docs-validation.yml'
+  workflow_dispatch:  # Allow manual trigger
+  schedule:
+    - cron: '0 8 * * 1'  # Weekly on Mondays at 8am UTC
+
+env:
+  # Lychee version for caching stability
+  LYCHEE_VERSION: '0.14.3'
+
+jobs:
+  markdown-link-check:
+    name: Check Markdown Links
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Restore lychee cache
+      uses: actions/cache@v3
+      with:
+        path: .lycheecache
+        key: cache-lychee-${{ runner.os }}-${{ hashFiles('**/*.md') }}
+        restore-keys: |
+          cache-lychee-${{ runner.os }}-
+
+    - name: Install lychee link checker
+      run: |
+        wget -qO- https://github.com/lycheeverse/lychee/releases/download/v${{ env.LYCHEE_VERSION }}/lychee-v${{ env.LYCHEE_VERSION }}-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+        sudo mv lychee /usr/local/bin/
+        lychee --version
+
+    - name: Check all markdown links
+      run: |
+        lychee --verbose \
+          --no-progress \
+          --cache \
+          --max-cache-age 1d \
+          --exclude-path './node_modules' \
+          --exclude-path './venv' \
+          --exclude-path './.git' \
+          --exclude-path './dist' \
+          --exclude-path './build' \
+          --exclude 'http://localhost*' \
+          --exclude 'http://127.0.0.1*' \
+          --exclude 'http://0.0.0.0*' \
+          --exclude 'https://example.com*' \
+          --exclude 'mailto:*' \
+          --exclude 'file://*' \
+          --exclude 'https://github.com/yourusername/*' \
+          --exclude 'https://api.linkedin.com/*' \
+          --exclude 'https://www.linkedin.com/oauth/*' \
+          --timeout 30 \
+          --max-redirects 10 \
+          --max-retries 3 \
+          --retry-wait-time 2 \
+          --accept 200,204,301,429 \
+          --headers 'accept=text/html' \
+          --user-agent 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' \
+          '**/*.md' \
+          '**/*.markdown' \
+          || { echo "::warning::Link check found broken links. See details above."; exit 1; }
+      continue-on-error: false
+
+    - name: Generate link check report
+      if: always()
+      run: |
+        echo "# Link Check Report" > link-check-report.md
+        echo "" >> link-check-report.md
+        echo "**Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> link-check-report.md
+        echo "**Repository**: ${{ github.repository }}" >> link-check-report.md
+        echo "**Branch**: ${{ github.ref_name }}" >> link-check-report.md
+        echo "**Commit**: ${{ github.sha }}" >> link-check-report.md
+        echo "" >> link-check-report.md
+
+        if [ -f .lycheecache ]; then
+          echo "## Cache Statistics" >> link-check-report.md
+          echo "Cache file size: $(du -h .lycheecache | cut -f1)" >> link-check-report.md
+        fi
+
+    - name: Upload link check report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: link-check-report
+        path: link-check-report.md
+        retention-days: 30
+
+    - name: Comment on PR with results
+      if: failure() && github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '## ⚠️ Documentation Link Check Failed\n\n' +
+                  'The markdown link checker found broken links in your changes.\n\n' +
+                  '**Next Steps**:\n' +
+                  '1. Check the workflow logs for details about broken links\n' +
+                  '2. Fix or remove the broken links\n' +
+                  '3. Push your changes to re-run the validation\n\n' +
+                  '**Common Issues**:\n' +
+                  '- Typos in file paths or URLs\n' +
+                  '- Files that have been moved or deleted\n' +
+                  '- External sites that are temporarily unavailable\n' +
+                  '- Links to branches or commits that don\'t exist\n\n' +
+                  'View the [full workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for detailed error messages.'
+          })
+
+  link-validation-summary:
+    name: Link Validation Summary
+    runs-on: ubuntu-latest
+    needs: markdown-link-check
+    if: always()
+
+    steps:
+    - name: Check validation status
+      run: |
+        if [ "${{ needs.markdown-link-check.result }}" = "success" ]; then
+          echo "✅ All markdown links are valid!"
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Markdown link validation failed!"
+          echo "status=failure" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+      id: summary
+
+    - name: Create summary
+      if: always()
+      run: |
+        echo "# 📚 Documentation Validation Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Workflow**: Documentation Validation" >> $GITHUB_STEP_SUMMARY
+        echo "**Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Result**: ${{ needs.markdown-link-check.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [ "${{ needs.markdown-link-check.result }}" = "success" ]; then
+          echo "✅ **All markdown links are valid and working!**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "No broken links were found in the documentation." >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Link validation failed!**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Broken links were detected. Please review the link check job for details." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### How to Fix Broken Links" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. Review the link check job output for specific broken links" >> $GITHUB_STEP_SUMMARY
+          echo "2. For internal links: Verify file paths and references" >> $GITHUB_STEP_SUMMARY
+          echo "3. For external links: Check if the URL is correct and accessible" >> $GITHUB_STEP_SUMMARY
+          echo "4. Update or remove broken links" >> $GITHUB_STEP_SUMMARY
+          echo "5. Commit and push your changes to re-run validation" >> $GITHUB_STEP_SUMMARY
+        fi

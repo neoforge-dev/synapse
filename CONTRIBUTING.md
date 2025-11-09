@@ -11,6 +11,7 @@ Thank you for considering contributing to the Synapse MCP project!
 5.  **Ensure code quality:**
     *   **Formatting:** Run `make format` (ruff format).
     *   **Linting/Types:** Run `make lint` (ruff check + mypy on core/services).
+    *   **Link Validation:** If you modified documentation, verify links are valid (see [Link Validation Guide](docs/contributing/LINK_VALIDATION.md))
     *   *(Optionally configure pre-commit hooks if available)*
 6.  **Write tests:** Add unit or integration tests for any new functionality.
 7.  **Run tests:** Ensure all tests pass by running `make test` (see README for env setup). For hot-path coverage: `make coverage-hot`.
