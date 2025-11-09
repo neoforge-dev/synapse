@@ -155,7 +155,7 @@ def create_advanced_features_router() -> APIRouter:
             return GraphAnalysisResponse(**result.model_dump())
         except Exception as e:
             logger.error(f"Graph analysis failed: {e}")
-            raise HTTPException(status_code=500, detail="Graph analysis failed")
+            raise HTTPException(status_code=500, detail="Graph analysis failed") from e
 
     @router.get(
         "/graph/stats",
@@ -174,7 +174,7 @@ def create_advanced_features_router() -> APIRouter:
             return GraphStatsResponse(**stats.model_dump())
         except Exception as e:
             logger.error(f"Graph stats retrieval failed: {e}")
-            raise HTTPException(status_code=500, detail="Failed to retrieve graph statistics")
+            raise HTTPException(status_code=500, detail="Failed to retrieve graph statistics") from e
 
     @router.get(
         "/graph/visualize",
@@ -194,7 +194,7 @@ def create_advanced_features_router() -> APIRouter:
             return visualization.model_dump()
         except Exception as e:
             logger.error(f"Graph visualization failed: {e}")
-            raise HTTPException(status_code=500, detail="Graph visualization failed")
+            raise HTTPException(status_code=500, detail="Graph visualization failed") from e
 
     # ===========================================
     # HOT TAKES & VIRAL CONTENT ENDPOINTS
@@ -221,7 +221,7 @@ def create_advanced_features_router() -> APIRouter:
             return HotTakeAnalysisResponse(**analysis.model_dump())
         except Exception as e:
             logger.error(f"Hot take analysis failed: {e}")
-            raise HTTPException(status_code=500, detail="Hot take analysis failed")
+            raise HTTPException(status_code=500, detail="Hot take analysis failed") from e
 
     @router.post(
         "/hot-takes/quick-score",
@@ -243,7 +243,7 @@ def create_advanced_features_router() -> APIRouter:
             return quick_score.model_dump()
         except Exception as e:
             logger.error(f"Quick score calculation failed: {e}")
-            raise HTTPException(status_code=500, detail="Quick score calculation failed")
+            raise HTTPException(status_code=500, detail="Quick score calculation failed") from e
 
     @router.post(
         "/viral/predict",
@@ -264,7 +264,7 @@ def create_advanced_features_router() -> APIRouter:
             return ViralPredictionResponse(**prediction.model_dump())
         except Exception as e:
             logger.error(f"Viral prediction failed: {e}")
-            raise HTTPException(status_code=500, detail="Viral prediction failed")
+            raise HTTPException(status_code=500, detail="Viral prediction failed") from e
 
     # ===========================================
     # BRAND SAFETY ENDPOINTS
@@ -290,7 +290,7 @@ def create_advanced_features_router() -> APIRouter:
             return BrandSafetyResponse(**assessment.model_dump())
         except Exception as e:
             logger.error(f"Brand safety check failed: {e}")
-            raise HTTPException(status_code=500, detail="Brand safety check failed")
+            raise HTTPException(status_code=500, detail="Brand safety check failed") from e
 
     @router.get(
         "/brand-safety/guidelines",
@@ -337,7 +337,7 @@ def create_advanced_features_router() -> APIRouter:
             }
         except Exception as e:
             logger.error(f"Guidelines retrieval failed: {e}")
-            raise HTTPException(status_code=500, detail="Failed to retrieve guidelines")
+            raise HTTPException(status_code=500, detail="Failed to retrieve guidelines") from e
 
     # ===========================================
     # AI REASONING ENDPOINTS
@@ -364,7 +364,7 @@ def create_advanced_features_router() -> APIRouter:
             return ReasoningResponse(**reasoning.model_dump())
         except Exception as e:
             logger.error(f"AI reasoning failed: {e}")
-            raise HTTPException(status_code=500, detail="AI reasoning analysis failed")
+            raise HTTPException(status_code=500, detail="AI reasoning analysis failed") from e
 
     # ===========================================
     # CHUNKS MANAGEMENT ENDPOINTS
@@ -387,7 +387,7 @@ def create_advanced_features_router() -> APIRouter:
             return ChunkAnalysisResponse(**insight.model_dump())
         except Exception as e:
             logger.error(f"Chunk analysis failed: {e}")
-            raise HTTPException(status_code=500, detail="Chunk analysis failed")
+            raise HTTPException(status_code=500, detail="Chunk analysis failed") from e
 
     @router.get(
         "/chunks",
@@ -408,7 +408,7 @@ def create_advanced_features_router() -> APIRouter:
             return listing.model_dump()
         except Exception as e:
             logger.error(f"Chunk listing failed: {e}")
-            raise HTTPException(status_code=500, detail="Chunk listing failed")
+            raise HTTPException(status_code=500, detail="Chunk listing failed") from e
 
     return router
 
