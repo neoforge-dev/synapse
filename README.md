@@ -52,10 +52,10 @@ make up
 ## 📚 Documentation
 
 - **[📖 Installation Guide](docs/guides/installation.md)** - Complete installation instructions
-- **[🚀 Quick Start](docs/QUICKSTART.md)** - Get up and running in minutes
-- **[🍺 Homebrew (local formula)](docs/HOMEBREW.md)** - Install via Homebrew
+- **[🚀 Quick Start](docs/getting-started/QUICKSTART.md)** - Get up and running in minutes
+- **[🍺 Homebrew (local formula)](docs/archive/legacy-guides/HOMEBREW.md)** - Install via Homebrew (legacy)
 - **[📚 Documentation Overview](docs/README.md)** - Map of guides & references
-- **[🏗️ Architecture](docs/ARCHITECTURE.md)** - System design and components
+- **[🏗️ Architecture](docs/reference/ARCHITECTURE.md)** - System design and components
 - **[🔧 Development](CONTRIBUTING.md)** - Development setup and contribution guide
 
 ## 🎯 What is Synapse?
