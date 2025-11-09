@@ -210,13 +210,13 @@ class EnterpriseSSOHandler:
         try:
             saml_xml = base64.b64decode(saml_response_b64).decode('utf-8')
         except Exception as e:
-            raise ValueError(f"Invalid SAML response encoding: {e}")
+            raise ValueError(f"Invalid SAML response encoding: {e}") from e
 
         # Parse XML
         try:
             root = ET.fromstring(saml_xml)
         except ET.ParseError as e:
-            raise ValueError(f"Invalid SAML response XML: {e}")
+            raise ValueError(f"Invalid SAML response XML: {e}") from e
 
         # Define namespaces
         ns = {

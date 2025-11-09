@@ -614,7 +614,7 @@ async def run_advanced_analysis(
 
     except Exception as e:
         logger.error(f"Error in advanced analysis: {e}")
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}") from e
 
 @router.get("/visualization/{analysis_type}")
 async def get_graph_visualization(
@@ -668,7 +668,7 @@ async def get_graph_visualization(
 
     except Exception as e:
         logger.error(f"Error generating visualization: {e}")
-        raise HTTPException(status_code=500, detail=f"Visualization failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Visualization failed: {str(e)}") from e
 
 @router.post("/demo-session")
 async def create_demo_session(

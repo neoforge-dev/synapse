@@ -194,7 +194,7 @@ def create_analytics_intelligence_router() -> APIRouter:
             )
         except Exception as e:
             logger.error(f"Executive dashboard failed: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Failed to load executive dashboard")
+            raise HTTPException(status_code=500, detail="Failed to load executive dashboard") from e
 
     @router.get("/dashboard/operational", response_class=HTMLResponse, tags=["Business Intelligence"])
     async def operational_dashboard(
@@ -402,7 +402,7 @@ def create_analytics_intelligence_router() -> APIRouter:
             return HTMLResponse(content=html_content)
         except Exception as e:
             logger.error(f"Operational dashboard failed: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     @router.get("/dashboard/business-metrics", tags=["Business Intelligence"])
     async def get_business_metrics(
@@ -438,7 +438,7 @@ def create_analytics_intelligence_router() -> APIRouter:
             }
         except Exception as e:
             logger.error(f"Business metrics failed: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Failed to retrieve business metrics")
+            raise HTTPException(status_code=500, detail="Failed to retrieve business metrics") from e
 
     # ===============================
     # AUDIENCE ANALYSIS ENDPOINTS
@@ -479,7 +479,7 @@ def create_analytics_intelligence_router() -> APIRouter:
 
         except Exception as e:
             logger.error(f"Error in audience analysis: {e}")
-            raise HTTPException(status_code=422, detail=f"Audience analysis failed: {str(e)}")
+            raise HTTPException(status_code=422, detail=f"Audience analysis failed: {str(e)}") from e
 
     @router.post("/audience/resonance", response_model=ResonanceAnalysisResponse, tags=["Audience Intelligence"])
     async def analyze_resonance(
@@ -514,7 +514,7 @@ def create_analytics_intelligence_router() -> APIRouter:
 
         except Exception as e:
             logger.error(f"Error in resonance analysis: {e}")
-            raise HTTPException(status_code=422, detail=f"Resonance analysis failed: {str(e)}")
+            raise HTTPException(status_code=422, detail=f"Resonance analysis failed: {str(e)}") from e
 
     @router.get("/audience/segments", response_model=AudienceSegmentsResponse, tags=["Audience Intelligence"])
     async def get_audience_segments(
@@ -589,7 +589,7 @@ def create_analytics_intelligence_router() -> APIRouter:
 
         except Exception as e:
             logger.error(f"Error getting audience segments: {e}")
-            raise HTTPException(status_code=422, detail=f"Failed to get audience segments: {str(e)}")
+            raise HTTPException(status_code=422, detail=f"Failed to get audience segments: {str(e)}") from e
 
     # ===============================
     # CONCEPT ANALYSIS ENDPOINTS
@@ -674,7 +674,7 @@ def create_analytics_intelligence_router() -> APIRouter:
 
         except Exception as e:
             logger.error(f"Error in concept extraction: {e}")
-            raise HTTPException(status_code=422, detail=f"Concept extraction failed: {str(e)}")
+            raise HTTPException(status_code=422, detail=f"Concept extraction failed: {str(e)}") from e
 
     @router.get("/concepts/trends", response_model=ConceptTrendsResponse, tags=["Concept Intelligence"])
     async def get_concept_trends(
@@ -732,7 +732,7 @@ def create_analytics_intelligence_router() -> APIRouter:
 
         except Exception as e:
             logger.error(f"Error getting concept trends: {e}")
-            raise HTTPException(status_code=422, detail=f"Failed to get concept trends: {str(e)}")
+            raise HTTPException(status_code=422, detail=f"Failed to get concept trends: {str(e)}") from e
 
     # ===============================
     # CONTENT STRATEGY ENDPOINTS
@@ -805,7 +805,7 @@ def create_analytics_intelligence_router() -> APIRouter:
 
         except Exception as e:
             logger.error(f"Error generating content strategy: {e}")
-            raise HTTPException(status_code=422, detail=f"Content strategy generation failed: {str(e)}")
+            raise HTTPException(status_code=422, detail=f"Content strategy generation failed: {str(e)}") from e
 
     @router.get("/content/performance", response_model=ContentPerformanceResponse, tags=["Content Intelligence"])
     async def get_content_performance(
@@ -875,7 +875,7 @@ def create_analytics_intelligence_router() -> APIRouter:
 
         except Exception as e:
             logger.error(f"Error analyzing content performance: {e}")
-            raise HTTPException(status_code=422, detail=f"Content performance analysis failed: {str(e)}")
+            raise HTTPException(status_code=422, detail=f"Content performance analysis failed: {str(e)}") from e
 
     # ===============================
     # HEALTH AND STATUS ENDPOINTS

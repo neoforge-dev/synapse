@@ -461,7 +461,7 @@ class EnhancedTenantMiddleware(BaseHTTPMiddleware):
             raise HTTPException(
                 status_code=500,
                 detail="Internal server error"
-            )
+            ) from e
 
     async def _process_with_tenant_scope(
         self,
@@ -625,7 +625,7 @@ class TenantSecurityMiddleware(BaseHTTPMiddleware):
             raise HTTPException(
                 status_code=403,
                 detail="Access denied"
-            )
+            ) from e
 
     async def _validate_tenant_access(self, request: Request, tenant_context: NewTenantContext) -> None:
         """Validate tenant access to requested resource."""

@@ -744,7 +744,7 @@ def get_search_service(request: Request):
 
     except Exception as e:
         logger.error(f"Failed to create SearchService: {e}", exc_info=True)
-        raise HTTPException(status_code=503, detail="Search service not available")
+        raise HTTPException(status_code=503, detail="Search service not available") from e
 
 
 

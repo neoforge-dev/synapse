@@ -228,10 +228,10 @@ class EnterpriseOAuthClient:
 
         except httpx.HTTPStatusError as e:
             logger.error(f"OAuth token exchange failed: {e.response.status_code} {e.response.text}")
-            raise ValueError(f"Token exchange failed: {e.response.status_code}")
+            raise ValueError(f"Token exchange failed: {e.response.status_code}") from e
         except Exception as e:
             logger.error(f"OAuth token exchange error: {e}")
-            raise ValueError(f"Token exchange error: {str(e)}")
+            raise ValueError(f"Token exchange error: {str(e)}") from e
 
     async def get_user_info(self, access_token: str, provider: SSOProvider) -> OIDCUserInfo:
         """Get user information from OAuth provider.
@@ -267,10 +267,10 @@ class EnterpriseOAuthClient:
 
         except httpx.HTTPStatusError as e:
             logger.error(f"UserInfo request failed: {e.response.status_code} {e.response.text}")
-            raise ValueError(f"UserInfo request failed: {e.response.status_code}")
+            raise ValueError(f"UserInfo request failed: {e.response.status_code}") from e
         except Exception as e:
             logger.error(f"UserInfo request error: {e}")
-            raise ValueError(f"UserInfo error: {str(e)}")
+            raise ValueError(f"UserInfo error: {str(e)}") from e
 
     def parse_id_token(self, id_token: str, provider: SSOProvider,
                       validate_signature: bool = False) -> IDTokenClaims:
@@ -295,12 +295,12 @@ class EnterpriseOAuthClient:
 
             return IDTokenClaims(**decoded)
 
-        except jwt.ExpiredSignatureError:
-            raise ValueError("ID token has expired")
-        except jwt.InvalidAudienceError:
-            raise ValueError("ID token audience mismatch")
+        except jwt.ExpiredSignatureError as e:
+            raise ValueError("ID token has expired") from e
+        except jwt.InvalidAudienceError as e:
+            raise ValueError("ID token audience mismatch") from e
         except jwt.InvalidTokenError as e:
-            raise ValueError(f"Invalid ID token: {str(e)}")
+            raise ValueError(f"Invalid ID token: {str(e)}") from e
 
     def map_oidc_user_to_synapse_user(self, userinfo: OIDCUserInfo, id_token: IDTokenClaims | None,
                                      provider: SSOProvider) -> User:
@@ -411,10 +411,10 @@ class EnterpriseOAuthClient:
 
         except httpx.HTTPStatusError as e:
             logger.error(f"Token refresh failed: {e.response.status_code} {e.response.text}")
-            raise ValueError(f"Token refresh failed: {e.response.status_code}")
+            raise ValueError(f"Token refresh failed: {e.response.status_code}") from e
         except Exception as e:
             logger.error(f"Token refresh error: {e}")
-            raise ValueError(f"Token refresh error: {str(e)}")
+            raise ValueError(f"Token refresh error: {str(e)}") from e
 
     def cleanup_expired_states(self) -> int:
         """Clean up expired OAuth states.
