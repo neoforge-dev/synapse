@@ -2,6 +2,8 @@
 
 Synapse is a graph-augmented Retrieval-Augmented Generation (RAG) platform built with a comprehensive service-oriented architecture. This document captures the current production layout so contributors understand where features live and how requests flow through the stack.
 
+**Last Updated**: 2025-11-09
+
 **Architecture Highlights**:
 - **4-Router Consolidated API** (89.2% complexity reduction from 37 routers)
 - **16+ Specialized Services** (IngestionService, SearchService, AdvancedFeaturesService, etc.)

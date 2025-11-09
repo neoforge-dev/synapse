@@ -2,6 +2,8 @@
 
 Get up and running with Synapse GraphRAG in under 10 minutes! This guide will help you set up the complete system including MCP integration for IDE workflows.
 
+**Last Updated**: 2025-11-09
+
 ## Prerequisites
 
 - **Python 3.10+** or **Homebrew** (macOS/Linux)
