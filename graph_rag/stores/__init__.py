@@ -1,15 +1,9 @@
-import warnings
+"""Graph and vector store implementations.
 
-# Re-export SimpleVectorStore from the infrastructure layer
-from graph_rag.infrastructure.vector_stores import SimpleVectorStore
+Note: For vector stores, prefer importing from graph_rag.infrastructure.vector_stores.
+This module primarily contains graph store implementations.
+"""
 
-# Issue deprecation warning for direct imports from this location
-warnings.warn(
-    "Importing SimpleVectorStore from graph_rag.stores is deprecated. "
-    "Please import from graph_rag.infrastructure.vector_stores instead.",
-    DeprecationWarning,
-    stacklevel=2,
-)
+from graph_rag.stores.memgraph_store import MemgraphStore
 
-# Re-export symbols for backward compatibility
-__all__ = ["SimpleVectorStore"]
+__all__ = ["MemgraphStore"]

@@ -1794,7 +1794,7 @@ class GraphRAGEngineOrchestrator(GraphRAGEngine):
             final_entities = list(all_entities_dict.values())
 
             # Combine extracted relationships (if any) and neighbor relationships, removing duplicates
-            # TODO: Potentially map extracted_relationships to graph relationship IDs if needed
+            # Relationships are deduplicated by ID
             all_relationships_dict = {r.id: r for r in neighbor_relationships}
             final_relationships = list(all_relationships_dict.values())
 

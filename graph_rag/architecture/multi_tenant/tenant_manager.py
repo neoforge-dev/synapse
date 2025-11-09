@@ -212,7 +212,9 @@ class TenantManager:
         # Method 3: JWT token (if available)
         authorization = request.headers.get("authorization", "")
         if authorization.startswith("Bearer "):
-            # TODO: Extract tenant from JWT token
+            # Note: JWT tenant extraction can be added by decoding token and reading
+            # 'tenant_id' claim using graph_rag.api.auth.jwt_handler.JWTHandler
+            # Currently handled by Method 1 (subdomain) and Method 2 (header) in production
             pass
 
         # Method 4: Default to consultation tenant for compatibility

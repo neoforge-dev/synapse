@@ -704,26 +704,4 @@ class MemgraphRepository(GraphStore):
             logger.error(f"Error performing keyword search for '{query}': {e}", exc_info=True)
             return []
 
-    # --- Deprecated / Old Methods (to be removed or refactored) ---
-
-    # Keep add_document/add_chunk? Or handle via generic add_entity?
-    # GraphStore doesn't define them. Let's assume they are handled by add_entity.
-    # If specific handling is needed, they should be added to GraphStore interface.
-    # Removing old implementations for now.
-
-    # async def add_document(self, doc: Document) -> None: ...
-    # async def add_chunk(self, chunk: Chunk) -> None: ...
-    # async def get_document_by_id(self, document_id: str) -> Optional[Document]: ...
-
-    # Keep link_chunk_to_entities and get_context_for_entities?
-    # These seem specific to the RAG use case. Add to GraphStore if core?
-    # Removing old implementations for now.
-    # async def link_chunk_to_entities(self, chunk_id: str, entity_ids: List[str]) -> None: ...
-    # async def get_context_for_entities(self, entity_texts: List[str]) -> Dict[str, Any]: ...
-
-    # Old query execution helpers might be redundant with sync helper
-    # async def execute_read_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]: ...
-    # async def execute_write_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> None: ...
-    # async def execute_query(self, query: str, params: Optional[Dict[str, Any]] = None, write: bool = False) -> List[Dict[str, Any]]: ...
-
     # === Helper Methods ===

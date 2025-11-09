@@ -32,7 +32,8 @@ class MemgraphStore(GraphStore):
         use_ssl: bool = DEFAULT_USE_SSL,
         max_retries: int = MAX_RETRIES,
         retry_delay: int = RETRY_DELAY_SECONDS,
-        # TODO: Add connection pool options if needed
+        # Note: Connection pooling can be added in future for high-concurrency scenarios
+        # (pool_size, pool_timeout, pool_recycle parameters)
     ):
         self.host = host
         self.port = port
