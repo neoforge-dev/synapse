@@ -24,6 +24,12 @@ sys.path.append(str(Path(__file__).parent))
 from authentication_integration import AuthenticationIntegration
 from unified_platform_orchestrator import UnifiedPlatformOrchestrator
 
+# Import jwt for token validation
+try:
+    import jwt
+except ImportError:
+    jwt = None  # Graceful fallback if PyJWT not installed
+
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -580,11 +586,14 @@ class IntegrationValidation:
             session = self.auth_integration.create_session(user_data)
 
             # Try to decode token with wrong secret (should fail)
-            try:
-                jwt.decode(session["access_token"], "wrong_secret", algorithms=["HS256"])
-                security_results['jwt_security'] = False  # Should not succeed
-            except Exception:
-                security_results['jwt_security'] = True   # Should fail with wrong secret
+            if jwt is not None:
+                try:
+                    jwt.decode(session["access_token"], "wrong_secret", algorithms=["HS256"])
+                    security_results['jwt_security'] = False  # Should not succeed
+                except Exception:
+                    security_results['jwt_security'] = True   # Should fail with wrong secret
+            else:
+                security_results['jwt_security'] = False  # JWT library not available
 
             # Test session management
             valid_user = self.auth_integration.validate_session(session["access_token"])
