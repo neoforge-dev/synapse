@@ -237,7 +237,7 @@ class IngestionService:
             logger.error(f"Failed to save document {document_id}: {e}", exc_info=True)
             # Classify and enhance the error
             if "connection" in str(e).lower() or "memgraph" in str(e).lower():
-                raise MemgraphConnectionError(reason=f"Failed to save document: {e}")
+                raise MemgraphConnectionError(reason=f"Failed to save document: {e}") from e
             else:
                 handle_ingestion_error(e, document_id, "document_storage")
 
@@ -300,7 +300,7 @@ class IngestionService:
                         # Check if this is a critical vector store error
                         error_msg = str(vs_e).lower()
                         if any(keyword in error_msg for keyword in ["disk", "space", "memory", "faiss"]):
-                            raise VectorStoreError(operation="add_chunks", reason=str(vs_e))
+                            raise VectorStoreError(operation="add_chunks", reason=str(vs_e)) from vs_e
                         else:
                             # Log warning and continue - vector search won't work but graph search will
                             logger.warning(f"Vector store unavailable, continuing with graph-only mode: {vs_e}")
@@ -315,7 +315,7 @@ class IngestionService:
                     exc_info=True,
                 )
                 # Raise specific embedding service error with recovery suggestions
-                raise EmbeddingServiceError(reason=f"Embedding service configuration error: {ae}")
+                raise EmbeddingServiceError(reason=f"Embedding service configuration error: {ae}") from ae
             except Exception as e:
                 logger.error(
                     f"Failed to generate embeddings for document {document_id}: {e}",
@@ -324,7 +324,7 @@ class IngestionService:
                 # Check if this is a recoverable embedding error
                 error_msg = str(e).lower()
                 if any(keyword in error_msg for keyword in ["memory", "cuda", "torch", "model"]):
-                    raise EmbeddingServiceError(reason=str(e))
+                    raise EmbeddingServiceError(reason=str(e)) from e
                 else:
                     # For other errors, continue without embeddings but warn user
                     logger.warning(f"Continuing ingestion without embeddings due to error: {e}")
@@ -378,7 +378,7 @@ class IngestionService:
                 # Classify the error
                 error_msg = str(e).lower()
                 if "connection" in error_msg or "memgraph" in error_msg:
-                    raise MemgraphConnectionError(reason=f"Failed to save chunk: {e}")
+                    raise MemgraphConnectionError(reason=f"Failed to save chunk: {e}") from e
                 else:
                     # For other errors, continue processing but warn
                     logger.warning(f"Skipping chunk {chunk.id} due to error: {e}")

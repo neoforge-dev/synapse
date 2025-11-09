@@ -64,10 +64,10 @@ class OpenAIService(LLMService):
                     base_url=self.base_url,
                     timeout=self.timeout
                 )
-            except ImportError:
+            except ImportError as e:
                 raise ImportError(
                     "OpenAI package not installed. Install with: pip install openai"
-                )
+                ) from e
         return self._client
 
     def _get_async_client(self):
@@ -80,10 +80,10 @@ class OpenAIService(LLMService):
                     base_url=self.base_url,
                     timeout=self.timeout
                 )
-            except ImportError:
+            except ImportError as e:
                 raise ImportError(
                     "OpenAI package not installed. Install with: pip install openai"
-                )
+                ) from e
         return self._async_client
 
     def _format_messages(

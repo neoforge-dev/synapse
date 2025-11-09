@@ -327,4 +327,4 @@ class IntegrityCheckJob(MaintenanceJob):
             results["vector_store_accessible"] = False
             error = f"Vector store not accessible: {e}"
             results["errors"].append(error)
-            raise Exception(error)
+            raise Exception(error) from e

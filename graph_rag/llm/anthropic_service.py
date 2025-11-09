@@ -57,10 +57,10 @@ class AnthropicService(LLMService):
                     api_key=self.api_key,
                     timeout=self.timeout
                 )
-            except ImportError:
+            except ImportError as e:
                 raise ImportError(
                     "Anthropic package not installed. Install with: uv pip install anthropic"
-                )
+                ) from e
         return self._client
 
     def _format_messages(

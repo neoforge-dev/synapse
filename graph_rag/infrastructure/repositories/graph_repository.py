@@ -124,7 +124,7 @@ class MemgraphRepository(GraphStore):
             )
             raise ValueError(
                 f"Failed to add/update relationship {relationship.id}: {e}. Source or target node may not exist."
-            )
+            ) from e
         except ValueError as e:
             # Re-raise ValueError exceptions (from our own checks)
             logger.error(
@@ -139,7 +139,7 @@ class MemgraphRepository(GraphStore):
             )
             raise ValueError(
                 f"Failed to add/update relationship {relationship.id} due to an unexpected error: {e}"
-            )
+            ) from e
 
     async def add_entities_and_relationships(
         self, entities: list[Entity], relationships: list[Relationship]
@@ -584,7 +584,7 @@ class MemgraphRepository(GraphStore):
             # Sticking with original raise: signals DB/query error vs simple 'not found'
             raise ValueError(
                 f"Failed to delete document {document_id} during query execution: {e}"
-            )
+            ) from e
 
     async def add_document(self, document: Document):
         """Adds or updates a document node in the graph."""
