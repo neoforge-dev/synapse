@@ -353,7 +353,7 @@ def get_sales_automation_engine(request: Request):
         raise HTTPException(
             status_code=503,
             detail="Sales automation system temporarily unavailable"
-        )
+        ) from e
 
 async def process_document_with_service(
     document_id: str,
@@ -424,7 +424,7 @@ def create_core_business_operations_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to add document",
-            )
+            ) from e
 
     @router.get(
         "/documents",
@@ -464,7 +464,7 @@ def create_core_business_operations_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to retrieve documents",
-            )
+            ) from e
 
     @router.get(
         "/documents/{document_id}",
@@ -559,7 +559,7 @@ def create_core_business_operations_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to delete document {document_id}. Check logs for details.",
-            )
+            ) from e
 
     @router.patch(
         "/documents/{document_id}/metadata",
@@ -612,7 +612,7 @@ def create_core_business_operations_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update document metadata",
-            )
+            ) from e
 
     # ===============================
     # DOCUMENT INGESTION ENDPOINTS
@@ -744,7 +744,7 @@ def create_core_business_operations_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_501_NOT_IMPLEMENTED,
                 detail=f"Search type '{request.search_type}' is not implemented.",
-            )
+            ) from None
         except Exception as e:
             logger.error(
                 f"Error during search for query '{request.query}': {e}", exc_info=True
@@ -752,7 +752,7 @@ def create_core_business_operations_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="An unexpected error occurred during search.",
-            )
+            ) from e
 
     @router.post(
         "/search/query",
@@ -786,12 +786,12 @@ def create_core_business_operations_router() -> APIRouter:
                             )
                     except HTTPException:
                         raise
-                    except Exception:
+                    except Exception as settings_err:
                         # If settings cannot be loaded, default to disabled
                         raise HTTPException(
                             status_code=status.HTTP_501_NOT_IMPLEMENTED,
                             detail="Streaming is only implemented for vector searches."
-                        )
+                        ) from settings_err
 
                 # Set up streaming response
                 async def stream_search_results():
@@ -907,7 +907,7 @@ def create_core_business_operations_router() -> APIRouter:
 
         except ValueError as ve:
             logger.warning(f"Search validation error for query '{request.query}': {ve}")
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve)) from ve
         except HTTPException as http_exc:
             raise http_exc
         except RuntimeError as re:
@@ -918,7 +918,7 @@ def create_core_business_operations_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=f"Search backend error: {re}",
-            )
+            ) from re
         except Exception as e:
             logger.error(
                 f"API Error: Unified search failed for query '{request.query}'. Error: {e}",
@@ -927,7 +927,7 @@ def create_core_business_operations_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Search failed due to an internal server error.",
-            )
+            ) from e
 
     @router.post(
         "/search/batch",
@@ -1057,7 +1057,7 @@ def create_core_business_operations_router() -> APIRouter:
             return PipelineSummaryResponse(**summary)
         except Exception as e:
             logger.error(f"Failed to get pipeline summary: {e}")
-            raise HTTPException(status_code=500, detail="Failed to retrieve pipeline summary")
+            raise HTTPException(status_code=500, detail="Failed to retrieve pipeline summary") from e
 
     @router.get("/crm/contacts", response_model=list[CRMContactResponse], tags=["CRM"])
     async def list_contacts(
@@ -1106,7 +1106,7 @@ def create_core_business_operations_router() -> APIRouter:
 
         except Exception as e:
             logger.error(f"Failed to list contacts: {e}")
-            raise HTTPException(status_code=500, detail="Failed to retrieve contacts")
+            raise HTTPException(status_code=500, detail="Failed to retrieve contacts") from e
 
     @router.get("/crm/contacts/{contact_id}", response_model=CRMContactResponse, tags=["CRM"])
     async def get_contact(
@@ -1148,7 +1148,7 @@ def create_core_business_operations_router() -> APIRouter:
             raise
         except Exception as e:
             logger.error(f"Failed to get contact {contact_id}: {e}")
-            raise HTTPException(status_code=500, detail="Failed to retrieve contact")
+            raise HTTPException(status_code=500, detail="Failed to retrieve contact") from e
 
     @router.put("/crm/contacts/{contact_id}", response_model=CRMContactResponse, tags=["CRM"])
     async def update_contact(
@@ -1220,7 +1220,7 @@ def create_core_business_operations_router() -> APIRouter:
             raise
         except Exception as e:
             logger.error(f"Failed to update contact {contact_id}: {e}")
-            raise HTTPException(status_code=500, detail="Failed to update contact")
+            raise HTTPException(status_code=500, detail="Failed to update contact") from e
 
     @router.post("/crm/proposals/generate", response_model=ProposalResponse, tags=["Proposals"])
     async def generate_proposal(
@@ -1258,7 +1258,7 @@ def create_core_business_operations_router() -> APIRouter:
             raise
         except Exception as e:
             logger.error(f"Failed to generate proposal: {e}")
-            raise HTTPException(status_code=500, detail="Failed to generate proposal")
+            raise HTTPException(status_code=500, detail="Failed to generate proposal") from e
 
     @router.get("/crm/proposals", response_model=list[ProposalResponse], tags=["Proposals"])
     async def list_proposals(
@@ -1296,7 +1296,7 @@ def create_core_business_operations_router() -> APIRouter:
 
         except Exception as e:
             logger.error(f"Failed to list proposals: {e}")
-            raise HTTPException(status_code=500, detail="Failed to retrieve proposals")
+            raise HTTPException(status_code=500, detail="Failed to retrieve proposals") from e
 
     @router.post("/crm/proposals/{proposal_id}/send", tags=["Proposals"])
     async def send_proposal(
@@ -1319,7 +1319,7 @@ def create_core_business_operations_router() -> APIRouter:
             raise
         except Exception as e:
             logger.error(f"Failed to send proposal {proposal_id}: {e}")
-            raise HTTPException(status_code=500, detail="Failed to send proposal")
+            raise HTTPException(status_code=500, detail="Failed to send proposal") from e
 
     @router.post("/crm/import-inquiries", tags=["Data Import"])
     async def import_consultation_inquiries(
@@ -1337,7 +1337,7 @@ def create_core_business_operations_router() -> APIRouter:
             }
         except Exception as e:
             logger.error(f"Failed to import inquiries: {e}")
-            raise HTTPException(status_code=500, detail="Failed to import consultation inquiries")
+            raise HTTPException(status_code=500, detail="Failed to import consultation inquiries") from e
 
     @router.get("/crm/lead-scoring/{contact_id}", response_model=LeadScoringResponse, tags=["Lead Scoring"])
     async def get_lead_scoring(
@@ -1360,7 +1360,7 @@ def create_core_business_operations_router() -> APIRouter:
             raise
         except Exception as e:
             logger.error(f"Failed to get lead scoring for {contact_id}: {e}")
-            raise HTTPException(status_code=500, detail="Failed to retrieve lead scoring")
+            raise HTTPException(status_code=500, detail="Failed to retrieve lead scoring") from e
 
     @router.get("/crm/analytics/conversion-funnel", tags=["Analytics"])
     async def get_conversion_funnel(
@@ -1377,7 +1377,7 @@ def create_core_business_operations_router() -> APIRouter:
 
         except Exception as e:
             logger.error(f"Failed to get conversion funnel: {e}")
-            raise HTTPException(status_code=500, detail="Failed to retrieve conversion funnel analytics")
+            raise HTTPException(status_code=500, detail="Failed to retrieve conversion funnel analytics") from e
 
     @router.post(
         "/ask",
@@ -1464,7 +1464,7 @@ def create_core_business_operations_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=error_detail,
-            )
+            ) from e
 
     return router
 
