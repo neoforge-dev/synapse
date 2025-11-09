@@ -904,11 +904,9 @@ class EnterpriseComplianceFramework:
             controls.append("TLS/SSL Encryption")
 
         # Check for password hashing (look for common libraries)
-        try:
-            import bcrypt
+        import importlib.util
+        if importlib.util.find_spec("bcrypt") is not None:
             controls.append("Password Hashing (bcrypt)")
-        except ImportError:
-            pass
 
         # Check for JWT implementation
         auth_methods = await self._check_authentication_methods()

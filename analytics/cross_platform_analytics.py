@@ -20,14 +20,8 @@ import numpy as np
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Visualization imports (optional)
-try:
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    VISUALIZATION_AVAILABLE = True
-except ImportError:
-    VISUALIZATION_AVAILABLE = False
-    logger.warning("Matplotlib/Seaborn not available - visualization features disabled")
+# Visualization imports (optional) - currently not used
+VISUALIZATION_AVAILABLE = False
 
 # Add project paths
 sys.path.insert(0, str(Path(__file__).parent.parent / 'social_platforms'))

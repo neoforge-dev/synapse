@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 # Optional Prometheus support
 try:
     from prometheus_client import (
-        CONTENT_TYPE_LATEST,
         CollectorRegistry,
         Counter,
         Gauge,

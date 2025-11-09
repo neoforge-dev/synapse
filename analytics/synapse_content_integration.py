@@ -17,7 +17,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
     from graph_rag.config import get_settings
-    from graph_rag.core.graph_rag_engine import GraphRAGEngine
     from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
     from graph_rag.services.search import SearchService
     SYNAPSE_AVAILABLE = True
