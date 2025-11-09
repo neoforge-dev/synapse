@@ -676,7 +676,9 @@ async def test_connection_failure_reconnection(memgraph_repo: MemgraphGraphRepos
 async def test_malformed_query_handling(memgraph_repo: MemgraphGraphRepository):
     """Test handling of malformed Cypher queries."""
     # Execute a malformed query that should raise an exception
-    with pytest.raises(Exception):  # mgclient will raise an exception for invalid syntax
+    # Neo4j driver will raise CypherSyntaxError for invalid syntax
+    from neo4j.exceptions import ClientError
+    with pytest.raises(ClientError, match="(syntax|invalid)"):
         await memgraph_repo.execute_query("INVALID CYPHER SYNTAX %%%")
 
 

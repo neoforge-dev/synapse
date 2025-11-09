@@ -665,7 +665,7 @@ class TestDataConsistency:
         )
 
         # Try to update with invalid data (should fail)
-        with pytest.raises(Exception):
+        with pytest.raises((TypeError, ValueError, AttributeError)):
             crm_service.update_contact(
                 contact.contact_id,
                 lead_score="invalid",  # Invalid type should cause error
@@ -688,7 +688,7 @@ class TestDataConsistency:
         )
 
         # Try to create duplicate (should fail)
-        with pytest.raises(Exception):
+        with pytest.raises((ValueError, RuntimeError)):
             crm_service.create_contact(
                 name="Duplicate Contact",
                 email=email,  # Same email
