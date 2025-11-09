@@ -349,7 +349,7 @@ class IngestionService:
 
                 # Use add_chunk for Chunk objects
                 await self._retry(
-                    lambda: self.graph_store.add_chunk(chunk),
+                    lambda c=chunk: self.graph_store.add_chunk(c),
                     attempts=3,
                     base_delay=0.2,
                 )
@@ -366,7 +366,7 @@ class IngestionService:
                     target_id=chunk.id,  # Use chunk.id
                 )
                 await self._retry(
-                    lambda: self.graph_store.add_relationship(rel),
+                    lambda r=rel: self.graph_store.add_relationship(r),
                     attempts=3,
                     base_delay=0.2,
                 )
@@ -788,7 +788,7 @@ class IngestionService:
                 )
 
                 await self._retry(
-                    lambda: self.graph_store.add_entity(domain_entity),
+                    lambda e=domain_entity: self.graph_store.add_entity(e),
                     attempts=3,
                     base_delay=0.1,
                 )
@@ -810,7 +810,7 @@ class IngestionService:
                 )
 
                 await self._retry(
-                    lambda: self.graph_store.add_relationship(mentions_relationship),
+                    lambda r=mentions_relationship: self.graph_store.add_relationship(r),
                     attempts=3,
                     base_delay=0.1,
                 )
