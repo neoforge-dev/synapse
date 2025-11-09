@@ -106,9 +106,9 @@ class ProductionJWTHandler:
             )
             return payload
         except jwt.ExpiredSignatureError:
-            raise ValueError("Token has expired")
+            raise ValueError("Token has expired") from e
         except jwt.InvalidTokenError as e:
-            raise ValueError(f"Invalid token: {str(e)}")
+            raise ValueError(f"Invalid token: {str(e)}") from e
 
     def validate_token(self, token: str) -> bool:
         """Validate token without returning payload."""

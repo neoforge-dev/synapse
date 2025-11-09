@@ -62,7 +62,7 @@ class AESGCMEncryption:
 
         except Exception as e:
             logger.error(f"Encryption failed: {str(e)}")
-            raise EncryptionError(f"Failed to encrypt data: {str(e)}")
+            raise EncryptionError(f"Failed to encrypt data: {str(e)}") from e
 
     def decrypt(self, encrypted_data: dict[str, str], associated_data: bytes | None = None) -> bytes:
         """Decrypt AES-256-GCM encrypted data."""
@@ -83,7 +83,7 @@ class AESGCMEncryption:
 
         except Exception as e:
             logger.error(f"Decryption failed: {str(e)}")
-            raise EncryptionError(f"Failed to decrypt data: {str(e)}")
+            raise EncryptionError(f"Failed to decrypt data: {str(e)}") from e
 
     def _update_encrypt_metrics(self, operation_time: float):
         """Update encryption performance metrics."""
