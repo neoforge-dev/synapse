@@ -1,9 +1,13 @@
 import logging
 import time
 from enum import Enum
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from graph_rag.services.clustering import SemanticClusteringService
+    from graph_rag.services.rerank import ReRankingService
 
 from graph_rag.core.interfaces import (
     EmbeddingService,

@@ -13,6 +13,7 @@ from neo4j.graph import Relationship as Neo4jRelationship
 
 # import mgclient # <-- REMOVE old sync driver import
 from graph_rag.core.graph_store import GraphStore
+from graph_rag.core.interfaces import ChunkData, SearchResultData
 from graph_rag.domain.models import Chunk, Document, Entity, Relationship
 
 logger = logging.getLogger(__name__)
@@ -649,8 +650,6 @@ class MemgraphRepository(GraphStore):
         self, query: str, limit: int = 10
     ) -> list["SearchResultData"]:
         """Performs keyword search across chunk text content using case-insensitive CONTAINS."""
-        from graph_rag.core.interfaces import ChunkData, SearchResultData
-
         # Simple keyword search using Cypher CONTAINS for case-insensitive text matching
         # This could be enhanced with full-text indexing in production
         query_lower = query.lower()

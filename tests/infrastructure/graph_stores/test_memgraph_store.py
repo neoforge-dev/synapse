@@ -1,5 +1,6 @@
 """Integration tests for MemgraphGraphRepository."""
 
+import asyncio
 import logging
 import os
 import uuid

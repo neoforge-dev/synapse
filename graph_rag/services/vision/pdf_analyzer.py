@@ -3,7 +3,10 @@
 import logging
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from graph_rag.services.vision.image_processor import ImageProcessor
 
 logger = logging.getLogger(__name__)
 

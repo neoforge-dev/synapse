@@ -651,7 +651,7 @@ async def test_search_batch_empty_request(test_client: AsyncClient):
 @pytest.mark.asyncio
 async def test_search_then_ingest_interaction(
     integration_test_client: AsyncClient,
-    memgraph_repo: "graph_rag.infrastructure.graph_stores.memgraph_store.MemgraphGraphRepository",  # Use real repo fixture
+    memgraph_repo: GraphRepository,  # Use real repo fixture
     app: FastAPI,  # Access the app to get the actual vector store instance
 ):
     """Test searching for non-existent, ingesting, then searching again."""

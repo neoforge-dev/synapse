@@ -915,10 +915,12 @@ class PerformanceAnalytics:
                 "channel_roi": channel_roi,
                 "incremental_roi": incremental_roi,
                 "roi_grade": self._grade_roi_performance(basic_roi),
-                "improvement_opportunities": await self._identify_roi_improvements(
-                    content_id, roi_analysis if 'roi_analysis' in locals() else {}
-                )
             }
+
+            # Calculate improvement opportunities after roi_analysis is defined
+            roi_analysis["improvement_opportunities"] = await self._identify_roi_improvements(
+                content_id, roi_analysis
+            )
 
             return roi_analysis
 

@@ -5,6 +5,7 @@ Premium client presentations showcasing advanced capabilities beyond standard RA
 Enables $100K+ consultation justification through interactive technical demonstrations
 """
 
+import uuid
 from datetime import datetime
 from typing import Any
 
