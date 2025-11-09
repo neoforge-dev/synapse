@@ -854,6 +854,16 @@ def create_core_business_operations_router() -> APIRouter:
                     pass
 
                 # Directly map domain Chunk objects to API schema objects
+                # OPTIMIZATION: Batch fetch all documents to avoid N+1 query pattern
+                doc_ids = [chunk.document_id for chunk in query_result.relevant_chunks]
+                try:
+                    documents = await graph_store.get_documents_by_ids(doc_ids)
+                    doc_map = {doc.id: doc for doc in documents}
+                    logger.debug(f"Batch fetched {len(documents)} documents for {len(doc_ids)} chunks")
+                except Exception as e:
+                    logger.warning(f"Failed to batch fetch documents: {e}, will skip document info")
+                    doc_map = {}
+
                 response_results = []
                 for chunk in query_result.relevant_chunks:
                     # Create ChunkResultSchema directly from Chunk properties
@@ -861,29 +871,15 @@ def create_core_business_operations_router() -> APIRouter:
                         id=chunk.id, text=chunk.text, document_id=chunk.document_id
                     )
 
-                    # Create SearchResultSchema with proper document information
-                    try:
-                        document = await graph_store.get_document_by_id(
-                            chunk.document_id
+                    # Get document from the batch fetched map
+                    document = doc_map.get(chunk.document_id)
+                    doc_schema = (
+                        schemas.DocumentResultSchema(
+                            id=document.id, metadata=document.metadata
                         )
-                        doc_schema = (
-                            schemas.DocumentResultSchema(
-                                id=document.id, metadata=document.metadata
-                            )
-                            if document
-                            else None
-                        )
-                        logger.info(
-                            f"DEBUG: Document ID {chunk.document_id} -> Fetched document: {document}"
-                        )
-                        logger.info(
-                            f"DEBUG: Document ID {chunk.document_id} -> Created doc_schema: {doc_schema}"
-                        )
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to get document {chunk.document_id}: {e}"
-                        )
-                        doc_schema = None
+                        if document
+                        else None
+                    )
 
                     search_result = schemas.SearchResultSchema(
                         chunk=chunk_schema,
@@ -927,6 +923,70 @@ def create_core_business_operations_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Search failed due to an internal server error.",
+            ) from e
+
+    @router.get(
+        "/search/cache/stats",
+        summary="Get Search Cache Statistics",
+        description="Returns performance metrics for the search result cache (hits, misses, hit rate).",
+        tags=["Search & Retrieval"]
+    )
+    async def get_search_cache_stats(request: Request):
+        """Get search cache performance statistics."""
+        try:
+            # Try to get AdvancedSearchService from app state
+            if hasattr(request.app.state, 'advanced_search_service'):
+                search_service = request.app.state.advanced_search_service
+                stats = search_service.get_cache_stats()
+                return {
+                    "status": "success",
+                    "cache_stats": stats
+                }
+            else:
+                return {
+                    "status": "not_available",
+                    "message": "Search cache statistics not available (AdvancedSearchService not initialized)",
+                    "cache_stats": {
+                        "enabled": False
+                    }
+                }
+        except Exception as e:
+            logger.error(f"Failed to get cache stats: {e}")
+            return {
+                "status": "error",
+                "message": str(e),
+                "cache_stats": {
+                    "enabled": False
+                }
+            }
+
+    @router.post(
+        "/search/cache/invalidate",
+        summary="Invalidate Search Cache",
+        description="Clears all cached search results. Should be called after document ingestion/deletion.",
+        tags=["Search & Retrieval"]
+    )
+    async def invalidate_search_cache(request: Request):
+        """Invalidate all cached search results."""
+        try:
+            # Try to get AdvancedSearchService from app state
+            if hasattr(request.app.state, 'advanced_search_service'):
+                search_service = request.app.state.advanced_search_service
+                search_service.invalidate_cache()
+                return {
+                    "status": "success",
+                    "message": "Search cache invalidated successfully"
+                }
+            else:
+                return {
+                    "status": "not_available",
+                    "message": "Search cache not available (AdvancedSearchService not initialized)"
+                }
+        except Exception as e:
+            logger.error(f"Failed to invalidate cache: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to invalidate search cache: {str(e)}"
             ) from e
 
     @router.post(

@@ -1355,3 +1355,116 @@ async def test_relationship_inference_flow(memgraph_repo: MemgraphGraphRepositor
     assert len(musk_neighbors) == 2
     assert all(r.properties.get("inferred") is True for r in musk_rels)
     assert all(r.properties.get("confidence") == 0.9 for r in musk_rels)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_get_documents_by_ids_batch_fetch(memgraph_repo: MemgraphGraphRepository):
+    """Test batch fetching of multiple documents to avoid N+1 query pattern."""
+    # Create multiple test documents
+    doc1 = Document(
+        id="doc-batch-1",
+        content="First document content",
+        metadata={"title": "Document 1", "author": "Author A"}
+    )
+    doc2 = Document(
+        id="doc-batch-2",
+        content="Second document content",
+        metadata={"title": "Document 2", "author": "Author B"}
+    )
+    doc3 = Document(
+        id="doc-batch-3",
+        content="Third document content",
+        metadata={"title": "Document 3", "author": "Author C"}
+    )
+
+    # Add documents to the graph
+    await memgraph_repo.add_document(doc1)
+    await memgraph_repo.add_document(doc2)
+    await memgraph_repo.add_document(doc3)
+
+    # Test batch fetch with all IDs
+    doc_ids = ["doc-batch-1", "doc-batch-2", "doc-batch-3"]
+    documents = await memgraph_repo.get_documents_by_ids(doc_ids)
+
+    # Verify all documents were fetched
+    assert len(documents) == 3
+    doc_dict = {doc.id: doc for doc in documents}
+
+    assert "doc-batch-1" in doc_dict
+    assert "doc-batch-2" in doc_dict
+    assert "doc-batch-3" in doc_dict
+
+    assert doc_dict["doc-batch-1"].content == "First document content"
+    assert doc_dict["doc-batch-2"].metadata["title"] == "Document 2"
+    assert doc_dict["doc-batch-3"].metadata["author"] == "Author C"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_get_documents_by_ids_partial_results(memgraph_repo: MemgraphGraphRepository):
+    """Test batch fetch with some non-existent IDs returns only found documents."""
+    # Create one test document
+    doc1 = Document(
+        id="doc-partial-1",
+        content="Existing document",
+        metadata={"status": "exists"}
+    )
+    await memgraph_repo.add_document(doc1)
+
+    # Request both existing and non-existent IDs
+    doc_ids = ["doc-partial-1", "doc-nonexistent", "doc-also-missing"]
+    documents = await memgraph_repo.get_documents_by_ids(doc_ids)
+
+    # Should only return the one existing document
+    assert len(documents) == 1
+    assert documents[0].id == "doc-partial-1"
+    assert documents[0].metadata["status"] == "exists"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_get_documents_by_ids_empty_list(memgraph_repo: MemgraphGraphRepository):
+    """Test batch fetch with empty list returns empty result."""
+    documents = await memgraph_repo.get_documents_by_ids([])
+    assert documents == []
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_get_documents_by_ids_performance(memgraph_repo: MemgraphGraphRepository):
+    """Test that batch fetch is more efficient than individual queries."""
+    import time
+
+    # Create 10 documents
+    doc_ids = []
+    for i in range(10):
+        doc = Document(
+            id=f"doc-perf-{i}",
+            content=f"Performance test document {i}",
+            metadata={"index": i}
+        )
+        await memgraph_repo.add_document(doc)
+        doc_ids.append(doc.id)
+
+    # Measure batch fetch time
+    start = time.time()
+    batch_docs = await memgraph_repo.get_documents_by_ids(doc_ids)
+    batch_time = time.time() - start
+
+    # Measure individual fetch time
+    start = time.time()
+    individual_docs = []
+    for doc_id in doc_ids:
+        doc = await memgraph_repo.get_document_by_id(doc_id)
+        if doc:
+            individual_docs.append(doc)
+    individual_time = time.time() - start
+
+    # Verify both methods return the same results
+    assert len(batch_docs) == len(individual_docs) == 10
+
+    # Batch should be faster (or at least not significantly slower)
+    # Allow 20% margin for test environment variability
+    logger.info(f"Batch fetch: {batch_time:.4f}s, Individual fetch: {individual_time:.4f}s")
+    assert batch_time < individual_time * 1.2, f"Batch fetch ({batch_time:.4f}s) should be faster than individual ({individual_time:.4f}s)"

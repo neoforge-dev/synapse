@@ -351,6 +351,86 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
             logger.error(f"Failed to add document {document.id}: {e}", exc_info=True)
             raise
 
+    async def get_documents_by_ids(self, document_ids: list[str]) -> list[Document]:
+        """Retrieves multiple documents by their IDs in a single query.
+
+        Args:
+            document_ids: List of document IDs to retrieve
+
+        Returns:
+            List of Document objects (may be fewer than requested if some IDs don't exist)
+        """
+        if not document_ids:
+            return []
+
+        logger.debug(f"Attempting to retrieve {len(document_ids)} documents in batch")
+        query = """
+            MATCH (doc:Document)
+            WHERE doc.id IN $document_ids
+            RETURN doc
+        """
+        results = await self.execute_query(query, {"document_ids": document_ids})
+
+        documents = []
+        for record in results:
+            doc_node = record.get("doc")
+            if doc_node is None:
+                continue
+
+            # Process properties (assuming execute_query returns processed dicts)
+            if hasattr(doc_node, "properties") and isinstance(doc_node.properties, dict):
+                doc_properties = doc_node.properties
+            elif isinstance(doc_node, dict):
+                doc_properties = doc_node
+            else:
+                logger.warning(
+                    f"Unexpected type for doc_node: {type(doc_node)}, skipping"
+                )
+                continue
+
+            # Process metadata
+            metadata = doc_properties.get("metadata")
+            if not isinstance(metadata, dict):
+                if metadata is not None and isinstance(metadata, str):
+                    try:
+                        metadata = json.loads(metadata)
+                        if not isinstance(metadata, dict):
+                            metadata = {}
+                    except json.JSONDecodeError:
+                        logging.error(
+                            f"Failed to parse metadata string for document {doc_properties.get('id')}. Defaulting to empty dict."
+                        )
+                        metadata = {}
+                else:
+                    metadata = {}
+
+            # Convert timestamps
+            doc_id = doc_properties.get("id")
+            created_at = self._parse_datetime(
+                doc_properties.get("created_at"), doc_id, "created_at"
+            )
+            updated_at = self._parse_datetime(
+                doc_properties.get("updated_at"), doc_id, "updated_at"
+            )
+
+            try:
+                documents.append(Document(
+                    id=doc_id,
+                    content=doc_properties.get("content"),
+                    metadata=metadata,
+                    created_at=created_at,
+                    updated_at=updated_at,
+                ))
+            except Exception as e:
+                logger.error(
+                    f"Failed to instantiate Document object for ID {doc_id}: {e}",
+                    exc_info=True,
+                )
+                continue
+
+        logger.debug(f"Retrieved {len(documents)} documents out of {len(document_ids)} requested")
+        return documents
+
     async def get_document_by_id(self, document_id: str) -> Document | None:
         """Retrieves a document by its ID, returning a Document object or None."""
         logger.debug(f"Attempting to retrieve document with ID: {document_id}")
