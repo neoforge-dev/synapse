@@ -347,10 +347,10 @@ def _ingest_files(paths: list[str], embeddings: bool = True, replace: bool = Tru
                     error = {"path": str(path), "error": "unexpected_error", "message": str(e)}
                     errors.append(error)
 
-    except httpx.ConnectError:
-        raise ConnectionError(f"Cannot connect to Synapse API at {API_V1}. Is the server running?")
+    except httpx.ConnectError as conn_err:
+        raise ConnectionError(f"Cannot connect to Synapse API at {API_V1}. Is the server running?") from conn_err
     except Exception as e:
-        raise McpError(f"Unexpected error during ingestion: {e}")
+        raise McpError(f"Unexpected error during ingestion: {e}") from e
 
     return {
         "success": len(errors) == 0,
@@ -408,11 +408,11 @@ def _search(query: str, limit: int = 10, search_type: str = "vector", threshold:
 
     except httpx.HTTPStatusError as e:
         error_msg = f"Search failed with HTTP {e.response.status_code}: {e.response.text[:200]}"
-        raise ConnectionError(error_msg, e.response.status_code)
-    except httpx.ConnectError:
-        raise ConnectionError(f"Cannot connect to Synapse API at {API_V1}. Is the server running?")
+        raise ConnectionError(error_msg, e.response.status_code) from e
+    except httpx.ConnectError as conn_err:
+        raise ConnectionError(f"Cannot connect to Synapse API at {API_V1}. Is the server running?") from conn_err
     except Exception as e:
-        raise McpError(f"Unexpected error during search: {e}")
+        raise McpError(f"Unexpected error during search: {e}") from e
 
 
 def _query_answer(question: str, k: int = 5, include_graph: bool = False, stream: bool = False) -> dict[str, Any]:
@@ -458,11 +458,11 @@ def _query_answer(question: str, k: int = 5, include_graph: bool = False, stream
 
     except httpx.HTTPStatusError as e:
         error_msg = f"Query failed with HTTP {e.response.status_code}: {e.response.text[:200]}"
-        raise ConnectionError(error_msg, e.response.status_code)
-    except httpx.ConnectError:
-        raise ConnectionError(f"Cannot connect to Synapse API at {API_V1}. Is the server running?")
+        raise ConnectionError(error_msg, e.response.status_code) from e
+    except httpx.ConnectError as conn_err:
+        raise ConnectionError(f"Cannot connect to Synapse API at {API_V1}. Is the server running?") from conn_err
     except Exception as e:
-        raise McpError(f"Unexpected error during query: {e}")
+        raise McpError(f"Unexpected error during query: {e}") from e
 
 
 def _list_documents(limit: int = 20, offset: int = 0) -> dict[str, Any]:
@@ -483,11 +483,11 @@ def _list_documents(limit: int = 20, offset: int = 0) -> dict[str, Any]:
 
     except httpx.HTTPStatusError as e:
         error_msg = f"List documents failed with HTTP {e.response.status_code}: {e.response.text[:200]}"
-        raise ConnectionError(error_msg, e.response.status_code)
-    except httpx.ConnectError:
-        raise ConnectionError(f"Cannot connect to Synapse API at {API_V1}. Is the server running?")
+        raise ConnectionError(error_msg, e.response.status_code) from e
+    except httpx.ConnectError as conn_err:
+        raise ConnectionError(f"Cannot connect to Synapse API at {API_V1}. Is the server running?") from conn_err
     except Exception as e:
-        raise McpError(f"Unexpected error listing documents: {e}")
+        raise McpError(f"Unexpected error listing documents: {e}") from e
 
 
 def _get_document(document_id: str) -> dict[str, Any]:
@@ -507,13 +507,13 @@ def _get_document(document_id: str) -> dict[str, Any]:
 
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
-            raise McpError(f"Document not found: {document_id}", "DOCUMENT_NOT_FOUND")
+            raise McpError(f"Document not found: {document_id}", "DOCUMENT_NOT_FOUND") from e
         error_msg = f"Get document failed with HTTP {e.response.status_code}: {e.response.text[:200]}"
-        raise ConnectionError(error_msg, e.response.status_code)
-    except httpx.ConnectError:
-        raise ConnectionError(f"Cannot connect to Synapse API at {API_V1}. Is the server running?")
+        raise ConnectionError(error_msg, e.response.status_code) from e
+    except httpx.ConnectError as conn_err:
+        raise ConnectionError(f"Cannot connect to Synapse API at {API_V1}. Is the server running?") from conn_err
     except Exception as e:
-        raise McpError(f"Unexpected error getting document: {e}")
+        raise McpError(f"Unexpected error getting document: {e}") from e
 
 
 def _delete_document(document_id: str) -> dict[str, Any]:
@@ -533,13 +533,13 @@ def _delete_document(document_id: str) -> dict[str, Any]:
 
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
-            raise McpError(f"Document not found: {document_id}", "DOCUMENT_NOT_FOUND")
+            raise McpError(f"Document not found: {document_id}", "DOCUMENT_NOT_FOUND") from e
         error_msg = f"Delete document failed with HTTP {e.response.status_code}: {e.response.text[:200]}"
-        raise ConnectionError(error_msg, e.response.status_code)
-    except httpx.ConnectError:
-        raise ConnectionError(f"Cannot connect to Synapse API at {API_V1}. Is the server running?")
+        raise ConnectionError(error_msg, e.response.status_code) from e
+    except httpx.ConnectError as conn_err:
+        raise ConnectionError(f"Cannot connect to Synapse API at {API_V1}. Is the server running?") from conn_err
     except Exception as e:
-        raise McpError(f"Unexpected error deleting document: {e}")
+        raise McpError(f"Unexpected error deleting document: {e}") from e
 
 
 def _system_status() -> dict[str, Any]:
@@ -603,11 +603,11 @@ def _system_status() -> dict[str, Any]:
 
     except httpx.HTTPStatusError as e:
         error_msg = f"System status failed with HTTP {e.response.status_code}: {e.response.text[:200]}"
-        raise ConnectionError(error_msg, e.response.status_code)
-    except httpx.ConnectError:
-        raise ConnectionError(f"Cannot connect to Synapse API at {DEFAULT_BASE}. Is the server running?")
+        raise ConnectionError(error_msg, e.response.status_code) from e
+    except httpx.ConnectError as conn_err:
+        raise ConnectionError(f"Cannot connect to Synapse API at {DEFAULT_BASE}. Is the server running?") from conn_err
     except Exception as e:
-        raise McpError(f"Unexpected error getting system status: {e}")
+        raise McpError(f"Unexpected error getting system status: {e}") from e
 
 
 def _wrap_handler(handler: Callable, schema: dict[str, Any]) -> Callable:
