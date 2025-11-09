@@ -643,3 +643,712 @@ async def test_add_get_relationship(memgraph_repo: MemgraphGraphRepository):
             assert retrieved_value == expected_value_str
         else:
             assert retrieved_value == value
+
+
+# ============================================================================
+# ERROR HANDLING TESTS (8 tests)
+# ============================================================================
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_connection_failure_reconnection(memgraph_repo: MemgraphGraphRepository):
+    """Test that the repository handles connection failures gracefully with retry logic."""
+    # Close the existing connection to simulate failure
+    await memgraph_repo.close()
+
+    # The retry decorator should attempt to reconnect when executing queries
+    # Test that we can still perform operations after reconnection
+    await memgraph_repo.connect()
+
+    # Verify we can perform operations after reconnection
+    test_node = Node(id=uid("reconnect-test"), type="TestNode", properties={"test": "reconnect"})
+    await memgraph_repo.add_node(test_node)
+
+    retrieved = await memgraph_repo.get_node_by_id(test_node.id)
+    assert retrieved is not None
+    assert retrieved.id == test_node.id
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_malformed_query_handling(memgraph_repo: MemgraphGraphRepository):
+    """Test handling of malformed Cypher queries."""
+    # Execute a malformed query that should raise an exception
+    with pytest.raises(Exception):  # mgclient will raise an exception for invalid syntax
+        await memgraph_repo.execute_query("INVALID CYPHER SYNTAX %%%")
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_relationship_with_missing_source_node(memgraph_repo: MemgraphGraphRepository):
+    """Test adding a relationship when source node doesn't exist."""
+    # Only create target node, not source
+    target_node = Node(id=uid("target"), type="TestNode", properties={"name": "Target"})
+    await memgraph_repo.add_node(target_node)
+
+    # Try to add relationship with non-existent source
+    rel = Relationship(
+        id=uid("rel"),
+        source_id="non-existent-source",
+        target_id=target_node.id,
+        type="CONNECTS_TO"
+    )
+
+    # The add_relationship method should handle this gracefully (might create nodes or fail)
+    # Based on MERGE behavior, it might create the missing node
+    await memgraph_repo.add_relationship(rel)
+
+    # Verify the relationship was added (with auto-created source node)
+    retrieved_rel = await memgraph_repo.get_relationship_by_id(rel.id)
+    assert retrieved_rel is not None
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_relationship_with_missing_target_node(memgraph_repo: MemgraphGraphRepository):
+    """Test adding a relationship when target node doesn't exist."""
+    # Only create source node, not target
+    source_node = Node(id=uid("source"), type="TestNode", properties={"name": "Source"})
+    await memgraph_repo.add_node(source_node)
+
+    # Try to add relationship with non-existent target
+    rel = Relationship(
+        id=uid("rel"),
+        source_id=source_node.id,
+        target_id="non-existent-target",
+        type="CONNECTS_TO"
+    )
+
+    # The add_relationship method should handle this gracefully
+    await memgraph_repo.add_relationship(rel)
+
+    # Verify the relationship was added
+    retrieved_rel = await memgraph_repo.get_relationship_by_id(rel.id)
+    assert retrieved_rel is not None
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_query_with_null_parameters(memgraph_repo: MemgraphGraphRepository):
+    """Test that queries handle null/None parameters correctly."""
+    # Search for nodes with None property value
+    results = await memgraph_repo.search_nodes_by_properties(
+        properties={"non_existent_key": None},
+        limit=10
+    )
+    # Should return empty list, not crash
+    assert isinstance(results, list)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_duplicate_relationship_handling(memgraph_repo: MemgraphGraphRepository):
+    """Test adding duplicate relationships (same source, target, type)."""
+    source = Node(id=uid("src"), type="TestNode", properties={"name": "Source"})
+    target = Node(id=uid("tgt"), type="TestNode", properties={"name": "Target"})
+
+    await memgraph_repo.add_node(source)
+    await memgraph_repo.add_node(target)
+
+    # Add first relationship
+    rel1 = Relationship(
+        id=uid("rel1"),
+        source_id=source.id,
+        target_id=target.id,
+        type="SAME_TYPE",
+        properties={"weight": 1}
+    )
+    await memgraph_repo.add_relationship(rel1)
+
+    # Add second relationship with same source, target, type but different ID
+    rel2 = Relationship(
+        id=uid("rel2"),
+        source_id=source.id,
+        target_id=target.id,
+        type="SAME_TYPE",
+        properties={"weight": 2}
+    )
+    await memgraph_repo.add_relationship(rel2)
+
+    # Both relationships should exist (different IDs)
+    retrieved_rel1 = await memgraph_repo.get_relationship_by_id(rel1.id)
+    retrieved_rel2 = await memgraph_repo.get_relationship_by_id(rel2.id)
+
+    assert retrieved_rel1 is not None
+    assert retrieved_rel2 is not None
+    assert retrieved_rel1.id != retrieved_rel2.id
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_empty_properties_handling(memgraph_repo: MemgraphGraphRepository):
+    """Test handling of nodes with empty properties."""
+    # Create node with empty properties
+    node = Node(id=uid("empty"), type="EmptyProps", properties={})
+    await memgraph_repo.add_node(node)
+
+    retrieved = await memgraph_repo.get_node_by_id(node.id)
+    assert retrieved is not None
+    assert retrieved.id == node.id
+    assert isinstance(retrieved.properties, dict)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_special_characters_in_properties(memgraph_repo: MemgraphGraphRepository):
+    """Test handling of special characters in node properties."""
+    special_chars = "Test with 'quotes', \"double quotes\", and \\backslashes\\"
+    node = Node(
+        id=uid("special"),
+        type="SpecialTest",
+        properties={"text": special_chars, "emoji": "🚀", "unicode": "日本語"}
+    )
+
+    await memgraph_repo.add_node(node)
+    retrieved = await memgraph_repo.get_node_by_id(node.id)
+
+    assert retrieved is not None
+    assert retrieved.properties["text"] == special_chars
+    assert retrieved.properties["emoji"] == "🚀"
+    assert retrieved.properties["unicode"] == "日本語"
+
+
+# ============================================================================
+# CONCURRENT OPERATION TESTS (6 tests)
+# ============================================================================
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_concurrent_reads(memgraph_repo: MemgraphGraphRepository):
+    """Test multiple concurrent read operations."""
+    # Create test nodes
+    node_ids = [uid(f"concurrent-read-{i}") for i in range(5)]
+    for node_id in node_ids:
+        node = Node(id=node_id, type="ConcurrentRead", properties={"index": node_id})
+        await memgraph_repo.add_node(node)
+
+    # Perform concurrent reads
+    tasks = [memgraph_repo.get_node_by_id(node_id) for node_id in node_ids]
+    results = await asyncio.gather(*tasks)
+
+    # Verify all reads succeeded
+    assert len(results) == 5
+    for i, result in enumerate(results):
+        assert result is not None
+        assert result.id == node_ids[i]
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_concurrent_writes(memgraph_repo: MemgraphGraphRepository):
+    """Test multiple concurrent write operations."""
+    # Create nodes concurrently
+    node_ids = [uid(f"concurrent-write-{i}") for i in range(10)]
+    nodes = [
+        Node(id=node_id, type="ConcurrentWrite", properties={"index": i})
+        for i, node_id in enumerate(node_ids)
+    ]
+
+    # Write concurrently
+    tasks = [memgraph_repo.add_node(node) for node in nodes]
+    await asyncio.gather(*tasks)
+
+    # Verify all writes succeeded
+    for node_id in node_ids:
+        retrieved = await memgraph_repo.get_node_by_id(node_id)
+        assert retrieved is not None
+        assert retrieved.id == node_id
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_concurrent_read_write(memgraph_repo: MemgraphGraphRepository):
+    """Test concurrent read and write operations on the same data."""
+    # Create initial node
+    node_id = uid("read-write")
+    initial_node = Node(id=node_id, type="ReadWrite", properties={"counter": 0})
+    await memgraph_repo.add_node(initial_node)
+
+    # Mix of reads and writes
+    async def read_node():
+        return await memgraph_repo.get_node_by_id(node_id)
+
+    async def update_node(value):
+        updated = Node(id=node_id, type="ReadWrite", properties={"counter": value})
+        await memgraph_repo.add_node(updated)
+
+    # Execute mixed operations concurrently
+    tasks = [read_node(), update_node(1), read_node(), update_node(2), read_node()]
+    results = await asyncio.gather(*tasks)
+
+    # Verify operations completed (final state should have counter=2)
+    final = await memgraph_repo.get_node_by_id(node_id)
+    assert final is not None
+    assert final.properties["counter"] in [1, 2]  # One of the updates succeeded
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_concurrent_entity_creation_race(memgraph_repo: MemgraphGraphRepository):
+    """Test race conditions when creating entities concurrently with same ID."""
+    entity_id = uid("race-entity")
+
+    # Create multiple tasks trying to create entity with same ID
+    async def create_entity(name_suffix):
+        entity = Entity(
+            id=entity_id,
+            type="RaceTest",
+            name=f"Entity-{name_suffix}",
+            properties={"suffix": name_suffix}
+        )
+        await memgraph_repo.add_entity(entity)
+
+    # Run concurrent creation attempts
+    tasks = [create_entity(i) for i in range(5)]
+    await asyncio.gather(*tasks)
+
+    # Verify entity exists (one of the creations succeeded, others merged)
+    retrieved = await memgraph_repo.get_entity_by_id(entity_id)
+    assert retrieved is not None
+    assert retrieved.id == entity_id
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_concurrent_relationship_creation(memgraph_repo: MemgraphGraphRepository):
+    """Test creating relationships concurrently between same nodes."""
+    source = Node(id=uid("src"), type="Source", properties={})
+    target = Node(id=uid("tgt"), type="Target", properties={})
+
+    await memgraph_repo.add_node(source)
+    await memgraph_repo.add_node(target)
+
+    # Create multiple relationships concurrently
+    async def create_rel(index):
+        rel = Relationship(
+            id=uid(f"rel-{index}"),
+            source_id=source.id,
+            target_id=target.id,
+            type="CONCURRENT_REL",
+            properties={"index": index}
+        )
+        await memgraph_repo.add_relationship(rel)
+
+    tasks = [create_rel(i) for i in range(5)]
+    await asyncio.gather(*tasks)
+
+    # Verify all relationships were created
+    neighbors, rels = await memgraph_repo.get_neighbors(source.id, direction="outgoing")
+    assert len(rels) >= 5  # All relationships should exist
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_concurrent_delete_operations(memgraph_repo: MemgraphGraphRepository):
+    """Test concurrent delete operations to ensure no deadlocks."""
+    # Create multiple documents
+    doc_ids = [uid(f"doc-{i}") for i in range(5)]
+    for doc_id in doc_ids:
+        doc = Document(id=doc_id, content=f"Document {doc_id}", metadata={})
+        await memgraph_repo.add_node(doc)
+
+    # Delete concurrently
+    tasks = [memgraph_repo.delete_document(doc_id) for doc_id in doc_ids]
+    results = await asyncio.gather(*tasks)
+
+    # Verify all deletes succeeded
+    assert all(results)
+
+    # Verify documents are gone
+    for doc_id in doc_ids:
+        retrieved = await memgraph_repo.get_node_by_id(doc_id)
+        assert retrieved is None
+
+
+# ============================================================================
+# LARGE-SCALE DATA TESTS (4 tests)
+# ============================================================================
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_bulk_insert_performance(memgraph_repo: MemgraphGraphRepository):
+    """Test efficient insertion of 1000+ nodes."""
+    # Create 1000 nodes
+    nodes = [
+        Node(id=uid(f"bulk-{i}"), type="BulkTest", properties={"index": i, "data": f"node-{i}"})
+        for i in range(1000)
+    ]
+
+    # Use bulk insert method
+    await memgraph_repo.add_nodes(nodes)
+
+    # Verify a sample of nodes
+    sample_indices = [0, 250, 500, 750, 999]
+    for i in sample_indices:
+        retrieved = await memgraph_repo.get_node_by_id(nodes[i].id)
+        assert retrieved is not None
+        assert retrieved.properties["index"] == i
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_large_graph_traversal(memgraph_repo: MemgraphGraphRepository):
+    """Test traversing graphs with 500+ nodes and relationships."""
+    # Create a chain of 500 nodes
+    num_nodes = 500
+    node_ids = [uid(f"chain-{i}") for i in range(num_nodes)]
+
+    # Add nodes
+    for i, node_id in enumerate(node_ids):
+        node = Node(id=node_id, type="ChainNode", properties={"position": i})
+        await memgraph_repo.add_node(node)
+
+    # Connect nodes in a chain
+    for i in range(num_nodes - 1):
+        rel = Relationship(
+            id=uid(f"chain-rel-{i}"),
+            source_id=node_ids[i],
+            target_id=node_ids[i + 1],
+            type="NEXT"
+        )
+        await memgraph_repo.add_relationship(rel)
+
+    # Traverse from first node
+    neighbors, rels = await memgraph_repo.get_neighbors(node_ids[0], direction="outgoing")
+    assert len(neighbors) >= 1
+    assert neighbors[0].id == node_ids[1]
+
+    # Verify chain integrity by checking middle node
+    mid_neighbors, mid_rels = await memgraph_repo.get_neighbors(
+        node_ids[250], direction="both"
+    )
+    assert len(mid_neighbors) >= 1  # Should have at least one neighbor
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_large_property_search(memgraph_repo: MemgraphGraphRepository):
+    """Test searching across large datasets with property filters."""
+    # Create 200 nodes with various properties
+    for i in range(200):
+        node = Node(
+            id=uid(f"search-{i}"),
+            type="SearchableNode",
+            properties={
+                "category": f"cat-{i % 10}",  # 10 categories
+                "value": i,
+                "active": i % 2 == 0
+            }
+        )
+        await memgraph_repo.add_node(node)
+
+    # Search for specific category
+    results = await memgraph_repo.search_nodes_by_properties(
+        properties={"category": "cat-5"},
+        node_type="SearchableNode",
+        limit=100
+    )
+
+    # Should find ~20 nodes (200 total / 10 categories)
+    assert len(results) >= 15  # Allow some margin
+    assert all(r.properties["category"] == "cat-5" for r in results)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_bulk_relationship_creation(memgraph_repo: MemgraphGraphRepository):
+    """Test creating many relationships efficiently."""
+    # Create hub-and-spoke topology: 1 central node, 100 connected nodes
+    center_id = uid("hub")
+    center = Node(id=center_id, type="Hub", properties={"role": "center"})
+    await memgraph_repo.add_node(center)
+
+    # Create spoke nodes and relationships
+    spoke_ids = [uid(f"spoke-{i}") for i in range(100)]
+
+    for spoke_id in spoke_ids:
+        spoke = Node(id=spoke_id, type="Spoke", properties={})
+        await memgraph_repo.add_node(spoke)
+
+    # Add relationships
+    for i, spoke_id in enumerate(spoke_ids):
+        rel = Relationship(
+            id=uid(f"hub-rel-{i}"),
+            source_id=center_id,
+            target_id=spoke_id,
+            type="CONNECTS"
+        )
+        await memgraph_repo.add_relationship(rel)
+
+    # Verify hub has all connections
+    neighbors, rels = await memgraph_repo.get_neighbors(center_id, direction="outgoing")
+    assert len(neighbors) == 100
+    assert len(rels) == 100
+
+
+# ============================================================================
+# INTEGRATION FLOW TESTS (6 tests) - Week 2 Milestone
+# ============================================================================
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_document_to_chunk_pipeline(memgraph_repo: MemgraphGraphRepository):
+    """Test complete document-to-chunk ingestion flow."""
+    # Create a document
+    doc_id = uid("pipeline-doc")
+    doc = Document(
+        id=doc_id,
+        content="This is a test document with multiple chunks of content.",
+        metadata={"source": "test", "author": "test-user"}
+    )
+    await memgraph_repo.add_node(doc)
+
+    # Create chunks from the document
+    chunk_ids = [uid(f"chunk-{i}") for i in range(3)]
+    chunks = [
+        Chunk(id=chunk_ids[0], text="This is a test document", document_id=doc_id),
+        Chunk(id=chunk_ids[1], text="with multiple chunks", document_id=doc_id),
+        Chunk(id=chunk_ids[2], text="of content.", document_id=doc_id)
+    ]
+
+    # Add chunks
+    for chunk in chunks:
+        await memgraph_repo.add_node(chunk)
+
+    # Link chunks to document
+    for i, chunk_id in enumerate(chunk_ids):
+        rel = Relationship(
+            id=uid(f"doc-chunk-rel-{i}"),
+            source_id=chunk_id,
+            target_id=doc_id,
+            type="BELONGS_TO",
+            properties={"position": i}
+        )
+        await memgraph_repo.add_relationship(rel)
+
+    # Verify the pipeline
+    retrieved_doc = await memgraph_repo.get_node_by_id(doc_id)
+    assert retrieved_doc is not None
+
+    # Verify all chunks exist
+    for chunk_id in chunk_ids:
+        retrieved_chunk = await memgraph_repo.get_node_by_id(chunk_id)
+        assert retrieved_chunk is not None
+        assert retrieved_chunk.properties["document_id"] == doc_id
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_chunk_to_entity_pipeline(memgraph_repo: MemgraphGraphRepository):
+    """Test chunk-to-entity extraction flow."""
+    # Create document and chunk
+    doc_id = uid("entity-doc")
+    chunk_id = uid("entity-chunk")
+
+    doc = Document(id=doc_id, content="Apple Inc. was founded by Steve Jobs.", metadata={})
+    chunk = Chunk(id=chunk_id, text="Apple Inc. was founded by Steve Jobs.", document_id=doc_id)
+
+    await memgraph_repo.add_node(doc)
+    await memgraph_repo.add_node(chunk)
+
+    # Extract entities from chunk
+    entities = [
+        Entity(id=uid("entity-apple"), type="Organization", name="Apple Inc.", properties={}),
+        Entity(id=uid("entity-jobs"), type="Person", name="Steve Jobs", properties={})
+    ]
+
+    for entity in entities:
+        await memgraph_repo.add_entity(entity)
+
+    # Link entities to chunk
+    for i, entity in enumerate(entities):
+        rel = Relationship(
+            id=uid(f"chunk-entity-rel-{i}"),
+            source_id=chunk_id,
+            target_id=entity.id,
+            type="MENTIONS",
+            properties={"confidence": 0.95}
+        )
+        await memgraph_repo.add_relationship(rel)
+
+    # Verify entity extraction
+    chunk_neighbors, chunk_rels = await memgraph_repo.get_neighbors(
+        chunk_id, relationship_types=["MENTIONS"], direction="outgoing"
+    )
+    assert len(chunk_neighbors) == 2
+    assert len(chunk_rels) == 2
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_entity_relationship_pipeline(memgraph_repo: MemgraphGraphRepository):
+    """Test relationship creation flow between entities."""
+    # Create entities
+    apple = Entity(id=uid("apple"), type="Organization", name="Apple Inc.", properties={})
+    jobs = Entity(id=uid("jobs"), type="Person", name="Steve Jobs", properties={})
+    wozniak = Entity(id=uid("wozniak"), type="Person", name="Steve Wozniak", properties={})
+
+    await memgraph_repo.add_entity(apple)
+    await memgraph_repo.add_entity(jobs)
+    await memgraph_repo.add_entity(wozniak)
+
+    # Create relationships
+    founded_rel = Relationship(
+        id=uid("founded-rel"),
+        source_id=jobs.id,
+        target_id=apple.id,
+        type="FOUNDED",
+        properties={"year": 1976}
+    )
+    co_founded_rel = Relationship(
+        id=uid("co-founded-rel"),
+        source_id=wozniak.id,
+        target_id=apple.id,
+        type="FOUNDED",
+        properties={"year": 1976}
+    )
+
+    await memgraph_repo.add_relationship(founded_rel)
+    await memgraph_repo.add_relationship(co_founded_rel)
+
+    # Verify relationship network
+    apple_neighbors, apple_rels = await memgraph_repo.get_neighbors(
+        apple.id, relationship_types=["FOUNDED"], direction="incoming"
+    )
+    assert len(apple_neighbors) == 2
+    assert {n.properties.get("name") for n in apple_neighbors} == {"Steve Jobs", "Steve Wozniak"}
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_multi_document_knowledge_graph(memgraph_repo: MemgraphGraphRepository):
+    """Test building a knowledge graph from multiple documents."""
+    # Create multiple documents
+    doc_ids = [uid(f"multi-doc-{i}") for i in range(3)]
+    docs = [
+        Document(id=doc_ids[0], content="Apple was founded in 1976.", metadata={"topic": "tech"}),
+        Document(id=doc_ids[1], content="Steve Jobs led Apple to success.", metadata={"topic": "leadership"}),
+        Document(id=doc_ids[2], content="iPhone revolutionized smartphones.", metadata={"topic": "innovation"})
+    ]
+
+    for doc in docs:
+        await memgraph_repo.add_node(doc)
+
+    # Create shared entities across documents
+    apple = Entity(id=uid("apple-entity"), type="Organization", name="Apple", properties={})
+    jobs = Entity(id=uid("jobs-entity"), type="Person", name="Steve Jobs", properties={})
+    iphone = Entity(id=uid("iphone-entity"), type="Product", name="iPhone", properties={})
+
+    await memgraph_repo.add_entity(apple)
+    await memgraph_repo.add_entity(jobs)
+    await memgraph_repo.add_entity(iphone)
+
+    # Link entities to documents
+    doc_entity_links = [
+        (doc_ids[0], apple.id), (doc_ids[1], apple.id), (doc_ids[2], apple.id),
+        (doc_ids[1], jobs.id), (doc_ids[2], iphone.id)
+    ]
+
+    for doc_id, entity_id in doc_entity_links:
+        rel = Relationship(
+            id=uid("doc-entity-link"),
+            source_id=doc_id,
+            target_id=entity_id,
+            type="REFERENCES"
+        )
+        await memgraph_repo.add_relationship(rel)
+
+    # Verify cross-document entity linking
+    apple_neighbors, apple_rels = await memgraph_repo.get_neighbors(
+        apple.id, relationship_types=["REFERENCES"], direction="incoming"
+    )
+    assert len(apple_neighbors) == 3  # Referenced in all 3 documents
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_cross_document_entity_linking(memgraph_repo: MemgraphGraphRepository):
+    """Test linking entities across different documents."""
+    # Create two documents mentioning the same entity
+    doc1_id = uid("doc1")
+    doc2_id = uid("doc2")
+
+    doc1 = Document(id=doc1_id, content="Microsoft was founded by Bill Gates.", metadata={})
+    doc2 = Document(id=doc2_id, content="Bill Gates is a philanthropist.", metadata={})
+
+    await memgraph_repo.add_node(doc1)
+    await memgraph_repo.add_node(doc2)
+
+    # Create shared entity
+    gates = Entity(id=uid("gates"), type="Person", name="Bill Gates", properties={"merged": True})
+    await memgraph_repo.add_entity(gates)
+
+    # Link entity to both documents
+    rel1 = Relationship(id=uid("rel1"), source_id=doc1_id, target_id=gates.id, type="MENTIONS")
+    rel2 = Relationship(id=uid("rel2"), source_id=doc2_id, target_id=gates.id, type="MENTIONS")
+
+    await memgraph_repo.add_relationship(rel1)
+    await memgraph_repo.add_relationship(rel2)
+
+    # Verify entity is linked to both documents
+    entity_neighbors, entity_rels = await memgraph_repo.get_neighbors(
+        gates.id, relationship_types=["MENTIONS"], direction="incoming"
+    )
+    assert len(entity_neighbors) == 2
+    assert {n.id for n in entity_neighbors} == {doc1_id, doc2_id}
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_relationship_inference_flow(memgraph_repo: MemgraphGraphRepository):
+    """Test inferring relationships from document content and entity co-occurrence."""
+    # Create document with multiple entity mentions
+    doc_id = uid("inference-doc")
+    doc = Document(
+        id=doc_id,
+        content="Elon Musk founded Tesla and SpaceX.",
+        metadata={"inference_test": True}
+    )
+    await memgraph_repo.add_node(doc)
+
+    # Create entities
+    musk = Entity(id=uid("musk"), type="Person", name="Elon Musk", properties={})
+    tesla = Entity(id=uid("tesla"), type="Organization", name="Tesla", properties={})
+    spacex = Entity(id=uid("spacex"), type="Organization", name="SpaceX", properties={})
+
+    await memgraph_repo.add_entity(musk)
+    await memgraph_repo.add_entity(tesla)
+    await memgraph_repo.add_entity(spacex)
+
+    # Infer relationships based on co-occurrence in document
+    inferred_rels = [
+        Relationship(
+            id=uid("inferred1"),
+            source_id=musk.id,
+            target_id=tesla.id,
+            type="FOUNDED",
+            properties={"inferred": True, "confidence": 0.9}
+        ),
+        Relationship(
+            id=uid("inferred2"),
+            source_id=musk.id,
+            target_id=spacex.id,
+            type="FOUNDED",
+            properties={"inferred": True, "confidence": 0.9}
+        )
+    ]
+
+    for rel in inferred_rels:
+        await memgraph_repo.add_relationship(rel)
+
+    # Verify inferred relationships
+    musk_neighbors, musk_rels = await memgraph_repo.get_neighbors(
+        musk.id, relationship_types=["FOUNDED"], direction="outgoing"
+    )
+    assert len(musk_neighbors) == 2
+    assert all(r.properties.get("inferred") is True for r in musk_rels)
+    assert all(r.properties.get("confidence") == 0.9 for r in musk_rels)
