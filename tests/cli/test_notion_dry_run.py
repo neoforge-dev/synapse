@@ -40,7 +40,7 @@ def test_notion_dry_run_add_update_delete(tmp_path: Path):
             ],
         )
         assert result.exit_code == 0, result.output
-        lines = [json.loads(l) for l in result.output.splitlines() if l.strip()]
+        lines = [json.loads(line) for line in result.output.splitlines() if line.strip()]
         # Expect update for a, add for b, and delete for missing page c (not present in this run but existed in state)
         actions = {d["page_id"]: d["action"] for d in lines}
         assert actions.get("a") == "update"

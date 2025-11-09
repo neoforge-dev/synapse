@@ -47,7 +47,7 @@ def test_notion_dry_run_multi_run_consistency(tmp_path: Path):
             ],
         )
         assert result1.exit_code == 0, result1.output
-        lines1 = [json.loads(l) for l in result1.output.splitlines() if l.strip()]
+        lines1 = [json.loads(line) for line in result1.output.splitlines() if line.strip()]
 
         # Second dry-run (should be identical)
         result2 = runner.invoke(
@@ -58,7 +58,7 @@ def test_notion_dry_run_multi_run_consistency(tmp_path: Path):
             ],
         )
         assert result2.exit_code == 0, result2.output
-        lines2 = [json.loads(l) for l in result2.output.splitlines() if l.strip()]
+        lines2 = [json.loads(line) for line in result2.output.splitlines() if line.strip()]
 
         # Results should be identical
         assert len(lines1) == len(lines2)
@@ -96,7 +96,7 @@ def test_notion_dry_run_state_file_corruption_recovery(tmp_path: Path):
             ],
         )
         assert result.exit_code == 0, result.output
-        lines = [json.loads(l) for l in result.output.splitlines() if l.strip()]
+        lines = [json.loads(line) for line in result.output.splitlines() if line.strip()]
 
         # Without valid state, should treat all pages as new
         actions = {d["page_id"]: d["action"] for d in lines}
@@ -142,7 +142,7 @@ def test_notion_sync_429_rate_limit_handling():
             ],
         )
         assert result.exit_code == 0, result.output
-        lines = [json.loads(l) for l in result.output.splitlines() if l.strip()]
+        lines = [json.loads(line) for line in result.output.splitlines() if line.strip()]
 
         # Should still get the result after retry
         actions = {d["page_id"]: d["action"] for d in lines}
