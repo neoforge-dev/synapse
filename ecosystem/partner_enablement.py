@@ -954,7 +954,7 @@ async def create_partner_enablement_router():
                 "estimated_effort_hours": sum(req.estimated_effort_hours for req in requirements)
             }
         except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     @router.get("/partners/{partner_id}/progress")
     async def get_partner_progress(partner_id: str):
@@ -963,7 +963,7 @@ async def create_partner_enablement_router():
             progress = await success_manager.track_partner_progress(partner_id)
             return progress
         except ValueError as e:
-            raise HTTPException(status_code=404, detail=str(e))
+            raise HTTPException(status_code=404, detail=str(e)) from e
 
     @router.post("/partners/{partner_id}/evaluate")
     async def evaluate_partner_certification(

@@ -592,8 +592,8 @@ async def create_industry_solutions_router():
             industry_enum = Industry(industry)
             solution = IndustrySolutionFactory.create_solution(industry_enum)
             return solution.specialization.dict()
-        except ValueError:
-            raise HTTPException(status_code=404, detail=f"Industry '{industry}' not supported")
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=f"Industry '{industry}' not supported") from e
 
     @router.post("/{industry}/process-document")
     async def process_industry_document(
@@ -616,8 +616,8 @@ async def create_industry_solutions_router():
                     "processed_at": datetime.utcnow().isoformat(),
                     "status": "processed"
                 }
-        except ValueError:
-            raise HTTPException(status_code=404, detail=f"Industry '{industry}' not supported")
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=f"Industry '{industry}' not supported") from e
 
     @router.get("/{industry}/compliance-status")
     async def get_compliance_status(
@@ -636,8 +636,8 @@ async def create_industry_solutions_router():
                 "last_audit": datetime.utcnow().isoformat(),
                 "next_audit_due": (datetime.utcnow() + timedelta(days=90)).isoformat()
             }
-        except ValueError:
-            raise HTTPException(status_code=404, detail=f"Industry '{industry}' not supported")
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=f"Industry '{industry}' not supported") from e
 
     return router
 
