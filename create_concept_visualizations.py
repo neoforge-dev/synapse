@@ -397,7 +397,7 @@ class ComprehensiveConceptMapper:
         edges = []
         correlations = data.cross_platform_correlations["platform_relationships"]
 
-        for i, correlation in enumerate(correlations):
+        for correlation in correlations:
             edges.append({
                 "source": correlation["source"].lower(),
                 "target": correlation["target"].lower(),

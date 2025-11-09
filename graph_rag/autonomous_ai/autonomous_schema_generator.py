@@ -582,7 +582,7 @@ class AdaptiveSchemaGenerator:
             pass
 
         # Apply removals (placeholder)
-        for element in evolution.removed_elements:
+        for _ in evolution.removed_elements:
             # Implementation would remove elements
             pass
 

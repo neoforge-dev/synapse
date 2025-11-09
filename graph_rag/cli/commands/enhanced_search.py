@@ -187,7 +187,7 @@ def enhanced_search(
     if json_output:
         # Enhanced JSON output with explanations
         enhanced_results = []
-        for i, res in enumerate(results, 1):
+        for res in results:
             enhanced_res = dict(res)
             enhanced_res["explanation"] = _generate_explanation(query, res)
             if entities:

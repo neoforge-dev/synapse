@@ -42,7 +42,8 @@ except ImportError:
         @staticmethod
         def clear(): pass
 
-    class TenantIsolationError(Exception): pass
+    class TenantIsolationError(Exception):
+        pass
 
 logger = logging.getLogger(__name__)
 

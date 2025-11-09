@@ -158,7 +158,7 @@ class SmartQueryExpander:
 
         # Suggest removing one term from multi-term queries
         if len(terms) > 1:
-            for i, term in enumerate(terms):
+            for i in range(len(terms)):
                 reduced_query = " ".join(terms[:i] + terms[i+1:])
                 suggestions.append(reduced_query)
 

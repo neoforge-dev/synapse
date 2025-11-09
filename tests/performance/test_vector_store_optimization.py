@@ -128,7 +128,7 @@ async def benchmark_vector_store(
         # Generate search queries
         np.random.seed(123)  # Different seed for queries
         query_vectors = []
-        for i in range(search_count):
+        for _ in range(search_count):
             query_vector = np.random.normal(0, 1, dimension).astype(np.float32)
             query_vector = query_vector / np.linalg.norm(query_vector)
             query_vectors.append(query_vector.tolist())
