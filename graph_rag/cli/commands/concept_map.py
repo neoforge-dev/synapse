@@ -773,10 +773,10 @@ def analyze_belief_consistency_cli(
 
     except FileNotFoundError:
         console.print(f"❌ Error: File {belief_file} not found")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
     except json.JSONDecodeError:
         console.print(f"❌ Error: Invalid JSON in {belief_file}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
 
 @app.command("belief-timeline")
@@ -1684,10 +1684,10 @@ def resonance_score_cli(
 
         except FileNotFoundError:
             console.print(f"❌ Error: Audience file {audience_file} not found")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
         except json.JSONDecodeError:
             console.print(f"❌ Error: Invalid JSON in {audience_file}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
     asyncio.run(score_async())
 
@@ -2169,13 +2169,13 @@ def strategy_optimize_cli(
 
         except FileNotFoundError:
             console.print(f"❌ Error: Strategy file {strategy_file} not found")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
         except json.JSONDecodeError:
             console.print(f"❌ Error: Invalid JSON in {strategy_file}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
         except Exception as e:
             console.print(f"❌ Error during optimization: {e}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
     asyncio.run(optimize_async())
 
@@ -2254,10 +2254,10 @@ def strategy_analyze_cli(
 
         except FileNotFoundError:
             console.print(f"❌ Error: Strategy file {strategy_file} not found")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
         except Exception as e:
             console.print(f"❌ Error during analysis: {e}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
     asyncio.run(analyze_async())
 
@@ -2411,10 +2411,10 @@ def strategy_export_cli(
 
         except FileNotFoundError:
             console.print(f"❌ Error: Strategy file {strategy_file} not found")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
         except Exception as e:
             console.print(f"❌ Error during export: {e}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
     asyncio.run(export_async())
 
@@ -2505,7 +2505,7 @@ def strategy_import_cli(
 
         except Exception as e:
             console.print(f"❌ Error during import: {e}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
     asyncio.run(import_async())
 
@@ -2585,10 +2585,10 @@ def strategy_compare_cli(
 
         except FileNotFoundError as e:
             console.print(f"❌ Error: Strategy file not found - {e}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
         except Exception as e:
             console.print(f"❌ Error during comparison: {e}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
     asyncio.run(compare_async())
 
@@ -2988,7 +2988,7 @@ def content_batch_optimize_cli(
 
         except Exception as e:
             console.print(f"❌ Error during batch optimization: {e}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
     asyncio.run(batch_optimize_async())
 
