@@ -340,7 +340,7 @@ def test_diverse_representative_selection(clustering_service, sample_search_resu
     )
 
     assert len(representatives) == 3
-    assert len(set(rep.chunk.id for rep in representatives)) == 3  # All different
+    assert len({rep.chunk.id for rep in representatives}) == 3  # All different
 
     # Should include the highest scoring item
     highest_score = max(sample_search_results, key=lambda x: x.score)

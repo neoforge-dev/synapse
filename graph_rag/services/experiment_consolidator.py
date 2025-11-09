@@ -701,7 +701,6 @@ class SynapseExperimentConsolidator(ExperimentConsolidator):
         # Combine all metrics and patterns
         all_metrics = []
         all_patterns = []
-        all_best_practices = []
 
         for candidate in candidates:
             all_metrics.extend(candidate.extracted_metrics)

@@ -4,7 +4,7 @@ Create comprehensive interactive concept maps and visualizations based on all ou
 
 This script uses Synapse's ConceptMapper to create visual representations of:
 - Professional concepts and relationships from LinkedIn analysis
-- Business strategy patterns from technical documents  
+- Business strategy patterns from technical documents
 - Cross-platform content correlations
 - Knowledge management frameworks
 """
@@ -104,10 +104,10 @@ class ComprehensiveConceptMapper:
         logger.info("Loading analysis data...")
 
         # Load LinkedIn analysis summary
-        linkedin_analysis = await self._load_text_file("docs/analysis/LINKEDIN_ANALYSIS_SUMMARY.md")
+        await self._load_text_file("docs/analysis/LINKEDIN_ANALYSIS_SUMMARY.md")
 
         # Load content strategy analysis
-        content_strategy = await self._load_text_file("docs/analysis/CONTENT_STRATEGY_PLATFORM_COMPLETE.md")
+        await self._load_text_file("docs/analysis/CONTENT_STRATEGY_PLATFORM_COMPLETE.md")
 
         # Load comprehensive intelligence data
         intelligence_data = await self._load_json_file("visualizations/comprehensive_intelligence.json")
@@ -489,18 +489,18 @@ class ComprehensiveConceptMapper:
     <title>{title}</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
-        body {{ 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0; 
-            padding: 20px; 
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
         }}
-        .container {{ 
-            max-width: 1400px; 
-            margin: 0 auto; 
-            background: white; 
-            border-radius: 12px; 
+        .container {{
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             padding: 30px;
         }}
@@ -521,8 +521,8 @@ class ComprehensiveConceptMapper:
             font-size: 1.1em;
             margin: 10px 0 0 0;
         }}
-        .controls {{ 
-            margin-bottom: 20px; 
+        .controls {{
+            margin-bottom: 20px;
             display: flex;
             gap: 15px;
             align-items: center;
@@ -552,31 +552,31 @@ class ComprehensiveConceptMapper:
             border-radius: 5px;
             background: white;
         }}
-        .map-container {{ 
-            border: 2px solid #ecf0f1; 
-            border-radius: 8px; 
+        .map-container {{
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
             background: #fafafa;
         }}
-        .tooltip {{ 
-            position: absolute; 
-            padding: 15px; 
-            background: rgba(44, 62, 80, 0.95); 
-            color: white; 
-            border-radius: 8px; 
-            pointer-events: none; 
+        .tooltip {{
+            position: absolute;
+            padding: 15px;
+            background: rgba(44, 62, 80, 0.95);
+            color: white;
+            border-radius: 8px;
+            pointer-events: none;
             font-size: 13px;
             line-height: 1.4;
             max-width: 300px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }}
-        .legend {{ 
+        .legend {{
             position: absolute;
             top: 100px;
             right: 30px;
-            width: 250px; 
-            padding: 20px; 
-            background: rgba(255,255,255,0.95); 
-            border-radius: 8px; 
+            width: 250px;
+            padding: 20px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 8px;
             border: 1px solid #ddd;
             box-shadow: 0 3px 10px rgba(0,0,0,0.1);
         }}
@@ -630,7 +630,7 @@ class ComprehensiveConceptMapper:
             <h1>🧠 {title}</h1>
             <p>{description}</p>
         </div>
-        
+
         <div class="stats">
             <div class="stat">
                 <div class="stat-number" id="nodeCount">0</div>
@@ -645,7 +645,7 @@ class ComprehensiveConceptMapper:
                 <div class="stat-label">Selected</div>
             </div>
         </div>
-        
+
         <div class="controls">
             <div class="control-group">
                 <button class="btn" onclick="resetZoom()">🔍 Reset View</button>
@@ -667,7 +667,7 @@ class ComprehensiveConceptMapper:
                 </select>
             </div>
         </div>
-        
+
         <div class="legend">
             <h3>Legend</h3>
             <div><strong>Node Size:</strong> Concept importance</div>
@@ -675,19 +675,19 @@ class ComprehensiveConceptMapper:
             <div style="margin: 10px 0;"><strong>Concept Types:</strong></div>
             <div id="legendItems"></div>
         </div>
-        
+
         <svg class="map-container" width="1000" height="700"></svg>
     </div>
-    
+
     <div class="tooltip" style="opacity: 0;"></div>
-    
+
     <script>
         const data = {data_json};
-        
+
         // Update stats
         document.getElementById('nodeCount').textContent = data.nodes.length;
         document.getElementById('edgeCount').textContent = data.edges.length;
-        
+
         // Populate type filter
         const types = [...new Set(data.nodes.map(n => n.concept_type || n.type))];
         const typeFilter = document.getElementById('typeFilter');
@@ -699,7 +699,7 @@ class ComprehensiveConceptMapper:
                 typeFilter.appendChild(option);
             }}
         }});
-        
+
         // Populate legend
         const legendItems = document.getElementById('legendItems');
         types.forEach(type => {{
@@ -713,28 +713,28 @@ class ComprehensiveConceptMapper:
                 }}
             }}
         }});
-        
+
         const svg = d3.select("svg");
         const width = +svg.attr("width");
         const height = +svg.attr("height");
-        
+
         const g = svg.append("g");
-        
+
         // Add zoom behavior
         const zoom = d3.zoom()
             .scaleExtent([0.1, 4])
             .on("zoom", (event) => g.attr("transform", event.transform));
         svg.call(zoom);
-        
+
         // Create simulation
         let simulation = d3.forceSimulation()
             .force("link", d3.forceLink().id(d => d.id).distance(100))
             .force("charge", d3.forceManyBody().strength(-300))
             .force("center", d3.forceCenter(width / 2, height / 2))
             .force("collision", d3.forceCollide().radius(d => (d.size || 20) / 2 + 5));
-        
+
         let link, node, labels;
-        
+
         function initGraph() {{
             // Create links
             link = g.append("g")
@@ -746,7 +746,7 @@ class ComprehensiveConceptMapper:
                 .attr("stroke", d => d.color)
                 .attr("stroke-width", d => Math.max(1, (d.weight || 1) * 2))
                 .attr("marker-end", "url(#arrowhead)");
-            
+
             // Add arrow markers
             svg.append("defs").append("marker")
                 .attr("id", "arrowhead")
@@ -759,7 +759,7 @@ class ComprehensiveConceptMapper:
                 .append("path")
                 .attr("d", "M0,-5L10,0L0,5")
                 .attr("fill", "#999");
-            
+
             // Create nodes
             node = g.append("g")
                 .attr("class", "nodes")
@@ -773,7 +773,7 @@ class ComprehensiveConceptMapper:
                     .on("start", dragstarted)
                     .on("drag", dragged)
                     .on("end", dragended));
-            
+
             // Add labels
             labels = g.append("g")
                 .attr("class", "labels")
@@ -786,10 +786,10 @@ class ComprehensiveConceptMapper:
                 .attr("dx", d => (d.size || 20) / 2 + 5)
                 .attr("dy", 4)
                 .attr("fill", "#2c3e50");
-            
+
             // Add tooltips
             const tooltip = d3.select(".tooltip");
-            
+
             node.on("mouseover", function(event, d) {{
                 tooltip.transition().duration(200).style("opacity", .9);
                 let tooltipContent = `<strong>${{d.label}}</strong><br/>`;
@@ -802,7 +802,7 @@ class ComprehensiveConceptMapper:
                         }}
                     }});
                 }}
-                
+
                 tooltip.html(tooltipContent)
                     .style("left", (event.pageX + 10) + "px")
                     .style("top", (event.pageY - 28) + "px");
@@ -814,53 +814,53 @@ class ComprehensiveConceptMapper:
                 d3.select(this).classed("selected", !d3.select(this).classed("selected"));
                 updateSelectedCount();
             }});
-            
+
             // Start simulation
             simulation
                 .nodes(data.nodes)
                 .on("tick", ticked);
-            
+
             simulation.force("link")
                 .links(data.edges);
         }}
-        
+
         function ticked() {{
             link
                 .attr("x1", d => d.source.x)
                 .attr("y1", d => d.source.y)
                 .attr("x2", d => d.target.x)
                 .attr("y2", d => d.target.y);
-            
+
             node
                 .attr("cx", d => d.x)
                 .attr("cy", d => d.y);
-            
+
             labels
                 .attr("x", d => d.x)
                 .attr("y", d => d.y);
         }}
-        
+
         function dragstarted(event, d) {{
             if (!event.active) simulation.alphaTarget(0.3).restart();
             d.fx = d.x;
             d.fy = d.y;
         }}
-        
+
         function dragged(event, d) {{
             d.fx = event.x;
             d.fy = event.y;
         }}
-        
+
         function dragended(event, d) {{
             if (!event.active) simulation.alphaTarget(0);
             d.fx = null;
             d.fy = null;
         }}
-        
+
         function resetZoom() {{
             svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
         }}
-        
+
         function centerGraph() {{
             const bounds = g.node().getBBox();
             const centerX = bounds.x + bounds.width / 2;
@@ -871,39 +871,39 @@ class ComprehensiveConceptMapper:
                 .scale(scale);
             svg.transition().duration(750).call(zoom.transform, transform);
         }}
-        
+
         let labelsVisible = true;
         function toggleLabels() {{
             labelsVisible = !labelsVisible;
             labels.style("opacity", labelsVisible ? 1 : 0);
         }}
-        
+
         function filterByType() {{
             const selectedType = document.getElementById("typeFilter").value;
-            
+
             node.style("opacity", d => {{
                 return selectedType === "all" || (d.concept_type || d.type) === selectedType ? 1 : 0.2;
             }});
-            
+
             labels.style("opacity", d => {{
                 const typeVisible = selectedType === "all" || (d.concept_type || d.type) === selectedType;
                 return typeVisible && labelsVisible ? 1 : 0;
             }});
-            
+
             link.style("opacity", d => {{
                 const sourceVisible = selectedType === "all" || (d.source.concept_type || d.source.type) === selectedType;
                 const targetVisible = selectedType === "all" || (d.target.concept_type || d.target.type) === selectedType;
                 return sourceVisible && targetVisible ? 0.6 : 0.1;
             }});
         }}
-        
+
         function changeLayout() {{
             const layout = document.getElementById("layoutSelect").value;
-            
+
             if (layout === "circular") {{
                 const radius = Math.min(width, height) / 3;
                 const angleStep = (2 * Math.PI) / data.nodes.length;
-                
+
                 data.nodes.forEach((d, i) => {{
                     const angle = i * angleStep;
                     d.fx = width / 2 + radius * Math.cos(angle);
@@ -917,7 +917,7 @@ class ComprehensiveConceptMapper:
                     if (!levels[level]) levels[level] = [];
                     levels[level].push(d);
                 }});
-                
+
                 Object.keys(levels).forEach((level, levelIndex) => {{
                     const nodesInLevel = levels[level];
                     const y = (levelIndex + 1) * (height / (Object.keys(levels).length + 1));
@@ -933,18 +933,18 @@ class ComprehensiveConceptMapper:
                     d.fy = null;
                 }});
             }}
-            
+
             simulation.alpha(1).restart();
         }}
-        
+
         function updateSelectedCount() {{
             const selected = node.filter(function() {{ return d3.select(this).classed("selected"); }});
             document.getElementById('selectedCount').textContent = selected.size();
         }}
-        
+
         // Initialize graph
         initGraph();
-        
+
         // Auto-center after initial layout
         setTimeout(() => {{
             centerGraph();

@@ -397,7 +397,7 @@ def test_validate_existing_contracts(contract_tester):
     if not contract_tester.contracts:
         pytest.skip("No existing contracts found")
 
-    results = contract_tester.test_contracts()
+    contract_tester.test_contracts()
     report = contract_tester.generate_report()
 
     # Convert ContractTestResult objects to dicts for JSON serialization
@@ -456,7 +456,7 @@ def test_contract_compatibility_after_consolidation(test_client):
     if not contract_tester.contracts:
         pytest.skip("No baseline contracts found")
 
-    results = contract_tester.test_contracts()
+    contract_tester.test_contracts()
     report = contract_tester.generate_report()
 
     # Assert 100% compatibility maintained

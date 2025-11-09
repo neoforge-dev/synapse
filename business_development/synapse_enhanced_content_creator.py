@@ -4,7 +4,7 @@ Synapse-Enhanced Content Creator for Week 3
 
 Creates Week 3 Team Building & Culture content enhanced with:
 - 76 personal beliefs extracted from LinkedIn data
-- 495 ideas and concepts from real posts  
+- 495 ideas and concepts from real posts
 - 27 personal stories from career journey
 - 15 preferences about tools and methodologies
 - 2 controversial takes

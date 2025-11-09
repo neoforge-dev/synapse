@@ -111,7 +111,7 @@ class JWTHandler:
 
     def generate_api_key(self) -> tuple[str, str]:
         """Generate a new API key and its hash.
-        
+
         Returns:
             tuple: (api_key, api_key_hash)
         """

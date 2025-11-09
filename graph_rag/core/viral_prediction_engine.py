@@ -259,7 +259,7 @@ class ViralFeatureExtractor:
             'max_engagement_potential': max(engagement_potentials) if engagement_potentials else 0.0,
             'avg_engagement_potential': sum(engagement_potentials) / len(engagement_potentials) if engagement_potentials else 0.0,
             'controversy_concept_count': len(controversial),
-            'unique_concept_types': len(set(c.concept_type for c in concepts))
+            'unique_concept_types': len({c.concept_type for c in concepts})
         }
 
     def _extract_platform_features(self, text: str, platform: Platform) -> dict[str, Any]:
@@ -572,7 +572,7 @@ class ViralPredictionModel:
         for feature, weight in self.engagement_weights.items():
             if feature in features:
                 value = features[feature]
-                if isinstance(value, (int, float)):
+                if isinstance(value, int | float):
                     # Normalize feature values
                     normalized_value = min(1.0, float(value) / 10.0) if feature.endswith('_count') else float(value)
                     score += normalized_value * weight
@@ -589,7 +589,7 @@ class ViralPredictionModel:
         for feature, weight in self.reach_weights.items():
             if feature in features:
                 value = features[feature]
-                if isinstance(value, (int, float)):
+                if isinstance(value, int | float):
                     normalized_value = min(1.0, float(value) / 5.0) if feature.endswith('_count') else float(value)
                     score += normalized_value * weight
                     total_weight += weight
@@ -604,7 +604,7 @@ class ViralPredictionModel:
         for feature, weight in self.velocity_weights.items():
             if feature in features:
                 value = features[feature]
-                if isinstance(value, (int, float)):
+                if isinstance(value, int | float):
                     normalized_value = min(1.0, float(value) / 3.0) if feature.endswith('_count') else float(value)
                     score += normalized_value * weight
                     total_weight += weight
@@ -619,7 +619,7 @@ class ViralPredictionModel:
         for feature, weight in self.controversy_weights.items():
             if feature in features:
                 value = features[feature]
-                if isinstance(value, (int, float)):
+                if isinstance(value, int | float):
                     normalized_value = min(1.0, float(value) / 3.0) if feature.endswith('_count') else float(value)
                     score += normalized_value * weight
                     total_weight += weight
@@ -836,7 +836,7 @@ class ViralPredictionEngine:
     def _calculate_confidence(self, features: dict[str, Any]) -> float:
         """Calculate prediction confidence based on feature quality."""
         # Confidence based on feature completeness and strength
-        feature_count = len([v for v in features.values() if isinstance(v, (int, float)) and v > 0])
+        feature_count = len([v for v in features.values() if isinstance(v, int | float) and v > 0])
         total_features = len(features)
 
         completeness = feature_count / max(total_features, 1)

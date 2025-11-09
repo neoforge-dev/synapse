@@ -19,7 +19,7 @@ class TestLinkedInBusinessDevelopmentEngine:
     def test_database_initialization_happy_path(self, temp_business_db):
         """Test successful database initialization with all required tables"""
         # Arrange & Act
-        engine = LinkedInBusinessDevelopmentEngine(db_path=temp_business_db)
+        LinkedInBusinessDevelopmentEngine(db_path=temp_business_db)
 
         # Assert - Verify all tables exist with correct schema
         conn = sqlite3.connect(temp_business_db)
@@ -141,7 +141,7 @@ class TestPostPerformanceTracking:
         conn = sqlite3.connect(linkedin_business_engine.db_path)
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO linkedin_posts 
+            INSERT INTO linkedin_posts
             (post_id, content, posted_at, day, week_theme, target_audience,
              business_objective, expected_engagement_rate, expected_consultation_inquiries)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -399,8 +399,8 @@ class TestBusinessDevelopmentReporting:
 
         for post_id, day, impressions, engagement_rate, likes, comments, shares, saves, profile_views, connection_requests in posts:
             cursor.execute('''
-                INSERT INTO linkedin_posts 
-                (post_id, day, impressions, actual_engagement_rate, likes, comments, shares, saves, 
+                INSERT INTO linkedin_posts
+                (post_id, day, impressions, actual_engagement_rate, likes, comments, shares, saves,
                  profile_views, connection_requests, consultation_requests, posted_at, content)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (post_id, day, impressions, engagement_rate, likes, comments, shares, saves,
@@ -423,8 +423,8 @@ class TestBusinessDevelopmentReporting:
 
         for inquiry_id, source_post, value, status in inquiries:
             cursor.execute('''
-                INSERT INTO consultation_inquiries 
-                (inquiry_id, source_post_id, contact_name, company, inquiry_type, 
+                INSERT INTO consultation_inquiries
+                (inquiry_id, source_post_id, contact_name, company, inquiry_type,
                  estimated_value, status, created_at, company_size, inquiry_channel, inquiry_text, priority_score)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (inquiry_id, source_post, 'Test Contact', 'Test Company', 'team_building',
@@ -474,13 +474,13 @@ class TestBusinessDevelopmentReporting:
 
         # Create 2 posts with known metrics
         cursor.execute('''
-            INSERT INTO linkedin_posts 
+            INSERT INTO linkedin_posts
             (post_id, impressions, likes, comments, shares, saves, consultation_requests, actual_engagement_rate)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', ('metrics-post-1', 1000, 80, 10, 5, 5, 3, 0.10))  # 10% engagement
 
         cursor.execute('''
-            INSERT INTO linkedin_posts 
+            INSERT INTO linkedin_posts
             (post_id, impressions, likes, comments, shares, saves, consultation_requests, actual_engagement_rate)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', ('metrics-post-2', 2000, 160, 20, 10, 10, 2, 0.10))  # 10% engagement
@@ -515,7 +515,7 @@ class TestBusinessContinuityValidation:
     def test_database_isolation_from_production(self, temp_business_db):
         """Test that test database is isolated from production data"""
         # Act
-        engine = LinkedInBusinessDevelopmentEngine(db_path=temp_business_db)
+        LinkedInBusinessDevelopmentEngine(db_path=temp_business_db)
 
         # Assert
         assert temp_business_db != "linkedin_business_development.db", "Should use separate test database"
@@ -549,7 +549,7 @@ class TestBusinessContinuityValidation:
             linkedin_business_engine.init_database()
 
             report = linkedin_business_engine.generate_business_development_report()
-            next_post = linkedin_business_engine.get_post_for_publishing()
+            linkedin_business_engine.get_post_for_publishing()
 
             # Assert - No external requests should have been made
             mock_requests.assert_not_called()
@@ -578,7 +578,7 @@ class TestBusinessContinuityValidation:
 
         for inquiry_id, value, status in test_pipeline:
             cursor.execute('''
-                INSERT INTO consultation_inquiries 
+                INSERT INTO consultation_inquiries
                 (inquiry_id, source_post_id, contact_name, company, inquiry_type,
                  estimated_value, status, created_at, company_size, inquiry_channel, inquiry_text, priority_score)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

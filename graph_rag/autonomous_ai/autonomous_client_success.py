@@ -213,10 +213,10 @@ class AutonomousClientSuccessManager:
     async def calculate_health_score(self, client_metrics: ClientMetrics) -> HealthScore:
         """
         Calculate comprehensive client health score.
-        
+
         Args:
             client_metrics: Current client metrics
-            
+
         Returns:
             Detailed health score with component breakdown
         """
@@ -464,11 +464,11 @@ class AutonomousClientSuccessManager:
     ) -> ChurnRisk:
         """
         Predict client churn risk using usage patterns and ML models.
-        
+
         Args:
             usage_patterns: Current usage patterns for the client
             client_id: Client identifier
-            
+
         Returns:
             Churn risk assessment with intervention recommendations
         """
@@ -555,10 +555,10 @@ class AutonomousClientSuccessManager:
     ) -> list[ExpansionOpportunity]:
         """
         Identify expansion opportunities for a client.
-        
+
         Args:
             client_profile: Client profile with usage patterns and preferences
-            
+
         Returns:
             List of expansion opportunities with ROI projections
         """
@@ -668,10 +668,10 @@ class AutonomousClientSuccessManager:
     async def auto_resolve_issues(self, detected_issues: list[dict[str, Any]]) -> list[ResolutionAction]:
         """
         Automatically resolve common issues without human intervention.
-        
+
         Args:
             detected_issues: List of detected issues to resolve
-            
+
         Returns:
             List of resolution actions taken or planned
         """
@@ -681,7 +681,7 @@ class AutonomousClientSuccessManager:
 
         for issue in detected_issues:
             issue_type = issue.get("type", "unknown")
-            severity = issue.get("severity", "medium")
+            issue.get("severity", "medium")
 
             if issue_type == "slow_query_performance":
                 action = ResolutionAction(

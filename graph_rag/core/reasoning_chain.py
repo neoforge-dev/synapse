@@ -42,7 +42,7 @@ class ReasoningChain:
     def __init__(self, question: str, steps: list[str | ReasoningStep]):
         """
         Initialize a reasoning chain.
-        
+
         Args:
             question: The original complex question to be answered
             steps: List of step names or ReasoningStep objects
@@ -77,7 +77,7 @@ class ReasoningChain:
     def advance_to_next_step(self) -> bool:
         """
         Advance to the next step in the chain.
-        
+
         Returns:
             True if advanced successfully, False if already at the end
         """
@@ -89,10 +89,10 @@ class ReasoningChain:
     def get_previous_step_results(self, num_steps: int = 1) -> list[ReasoningStep]:
         """
         Get results from previous steps for context.
-        
+
         Args:
             num_steps: Number of previous steps to include
-            
+
         Returns:
             List of completed previous steps
         """
@@ -112,10 +112,10 @@ class ReasoningChain:
     def build_context_from_previous_steps(self, num_steps: int = 2) -> str:
         """
         Build context string from previous step results.
-        
+
         Args:
             num_steps: Number of previous steps to include in context
-            
+
         Returns:
             Formatted context string
         """

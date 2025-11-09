@@ -33,7 +33,7 @@ def compose_up(
     build: bool = typer.Option(False, "--build", help="Build images before starting"),
 ):
     """Start the Synapse GraphRAG stack with Docker Compose.
-    
+
     This command starts Memgraph and the GraphRAG API server, with optional
     health checks to ensure services are ready before completing.
     """

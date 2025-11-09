@@ -55,7 +55,7 @@ class AutonomousKnowledgeGraphBuilder:
     - Generates optimal graph schemas
     - Continuously optimizes based on usage
     - Adapts to new data patterns without human intervention
-    
+
     This is the core autonomous AI component that transforms assisted
     knowledge graph management into fully autonomous operations.
     """
@@ -87,10 +87,10 @@ class AutonomousKnowledgeGraphBuilder:
     async def initialize_autonomous_operations(self, initial_documents: list[Document]) -> GraphSchema:
         """
         Initialize autonomous operations by analyzing initial data and generating schema.
-        
+
         Args:
             initial_documents: Initial document collection for pattern analysis
-            
+
         Returns:
             Generated initial schema for the knowledge graph
         """
@@ -122,11 +122,11 @@ class AutonomousKnowledgeGraphBuilder:
     ) -> dict[str, Any]:
         """
         Process new documents with autonomous pattern recognition and schema evolution.
-        
+
         Args:
             documents: New documents to process
             enable_schema_evolution: Whether to evolve schema based on new patterns
-            
+
         Returns:
             Processing results including any schema changes
         """
@@ -316,7 +316,7 @@ class AutonomousKnowledgeGraphBuilder:
     async def optimize_performance_autonomously(self) -> OptimizationMetrics:
         """
         Perform autonomous performance optimization based on usage patterns.
-        
+
         Returns:
             Metrics showing optimization improvements
         """
@@ -464,7 +464,7 @@ class AutonomousKnowledgeGraphBuilder:
     async def continuous_optimization_loop(self) -> None:
         """
         Continuous optimization loop that runs in the background.
-        
+
         This method should be run as a background task to provide
         ongoing autonomous optimization.
         """

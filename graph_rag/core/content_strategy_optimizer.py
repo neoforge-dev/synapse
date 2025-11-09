@@ -515,7 +515,7 @@ class ContentGapAnalyzer:
         gaps = []
 
         # Analyze competitor content strategies
-        competitor_strengths = competitive_analysis.get("competitor_strengths", [])
+        competitive_analysis.get("competitor_strengths", [])
         our_weaknesses = competitive_analysis.get("our_weaknesses", [])
 
         for weakness in our_weaknesses:
@@ -1060,11 +1060,10 @@ class PerformancePredictor:
 
         # Calculate baseline predictions
         if viral_scores:
-            avg_viral_score = statistics.mean(viral_scores)
+            statistics.mean(viral_scores)
             avg_engagement_rate = statistics.mean(engagement_rates)
             total_reach = sum(reach_estimates)
         else:
-            avg_viral_score = 0.5
             avg_engagement_rate = 0.03
             total_reach = 5000
 
@@ -1266,7 +1265,7 @@ class ContentStrategyOptimizer:
 
     def __init__(self, brand_profile: BrandProfile = BrandProfile.MODERATE):
         """Initialize the content strategy optimizer.
-        
+
         Args:
             brand_profile: Brand safety profile to use for analysis
         """
@@ -1292,13 +1291,13 @@ class ContentStrategyOptimizer:
                                             competitive_analysis: dict[str, Any] = None,
                                             historical_performance: dict[str, Any] = None) -> StrategicRecommendation:
         """Generate comprehensive AI-powered content strategy recommendation.
-        
+
         Args:
             business_context: Business objectives, target audience info, brand guidelines
             content_samples: Sample content for analysis and belief extraction
             competitive_analysis: Competitive landscape analysis
             historical_performance: Historical content performance data
-            
+
         Returns:
             Complete strategic recommendation with implementation plan
         """
@@ -1504,7 +1503,7 @@ class ContentStrategyOptimizer:
         """Create comprehensive resource plan."""
 
         budget_info = business_context.get("budget", {})
-        team_size = business_context.get("team_size", {})
+        business_context.get("team_size", {})
         timeline_weeks = business_context.get("timeline", {}).get("weeks", 12)
 
         # Calculate resource requirements based on content gaps

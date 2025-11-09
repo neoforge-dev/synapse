@@ -34,30 +34,30 @@ class UnifiedAnalyticsIntegration:
             CREATE TABLE IF NOT EXISTS linkedin_automation_metrics (
                 metric_id TEXT PRIMARY KEY,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                
+
                 -- Content Performance
                 posts_published INTEGER DEFAULT 0,
                 total_impressions INTEGER DEFAULT 0,
                 total_engagement INTEGER DEFAULT 0,
                 avg_engagement_rate REAL DEFAULT 0,
-                
+
                 -- Business Development
                 consultation_inquiries INTEGER DEFAULT 0,
                 pipeline_value_usd REAL DEFAULT 0,
                 conversion_rate REAL DEFAULT 0,
                 revenue_generated REAL DEFAULT 0,
-                
+
                 -- System Performance
                 posting_success_rate REAL DEFAULT 0,
                 api_response_time_ms REAL DEFAULT 0,
                 circuit_breaker_activations INTEGER DEFAULT 0,
                 brand_safety_violations INTEGER DEFAULT 0,
-                
+
                 -- Content Strategy
                 content_queue_size INTEGER DEFAULT 0,
                 optimal_posting_adherence REAL DEFAULT 0,
                 a_b_test_results TEXT,
-                
+
                 -- ROI Metrics
                 cost_per_acquisition REAL DEFAULT 0,
                 pipeline_velocity_days REAL DEFAULT 0,
@@ -70,18 +70,18 @@ class UnifiedAnalyticsIntegration:
             CREATE TABLE IF NOT EXISTS linkedin_realtime_dashboard (
                 dashboard_id TEXT PRIMARY KEY,
                 last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                
+
                 -- Live Metrics (updated every 15 minutes)
                 current_posts_today INTEGER DEFAULT 0,
                 current_engagement_rate REAL DEFAULT 0,
                 pending_inquiries INTEGER DEFAULT 0,
                 system_health_score REAL DEFAULT 0,
-                
+
                 -- Business Intelligence
                 weekly_pipeline_trend TEXT,
                 top_performing_content_types TEXT,
                 consultation_funnel_metrics TEXT,
-                
+
                 -- Predictive Analytics
                 projected_monthly_pipeline REAL DEFAULT 0,
                 engagement_forecast TEXT,
@@ -96,18 +96,18 @@ class UnifiedAnalyticsIntegration:
                 posted_at TIMESTAMP,
                 content_type TEXT,
                 target_audience TEXT,
-                
+
                 -- Performance Data
                 impressions INTEGER DEFAULT 0,
                 engagement_rate REAL DEFAULT 0,
                 consultation_inquiries INTEGER DEFAULT 0,
-                
+
                 -- AI Analysis
                 sentiment_score REAL DEFAULT 0,
                 topic_categories TEXT,
                 hook_effectiveness REAL DEFAULT 0,
                 cta_performance REAL DEFAULT 0,
-                
+
                 -- Business Impact
                 pipeline_contribution REAL DEFAULT 0,
                 inquiry_quality_score REAL DEFAULT 0
@@ -154,13 +154,13 @@ class UnifiedAnalyticsIntegration:
         yesterday = (datetime.now() - timedelta(days=1)).isoformat()
 
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(*) as posts_published,
                 SUM(impressions) as total_impressions,
                 SUM(likes + comments + shares + saves) as total_engagement,
                 AVG(actual_engagement_rate) as avg_engagement_rate,
                 SUM(consultation_requests) as consultation_inquiries
-            FROM linkedin_posts 
+            FROM linkedin_posts
             WHERE posted_at > ? AND impressions > 0
         ''', (yesterday,))
 
@@ -182,7 +182,7 @@ class UnifiedAnalyticsIntegration:
 
         # Content queue metrics
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(CASE WHEN status = 'queued' THEN 1 END) as queued,
                 COUNT(CASE WHEN status = 'posted' THEN 1 END) as posted,
                 COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed,
@@ -211,7 +211,7 @@ class UnifiedAnalyticsIntegration:
 
         # Pipeline and conversion metrics
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(*) as total_inquiries,
                 SUM(estimated_value) as pipeline_value,
                 COUNT(CASE WHEN status = 'closed_won' THEN 1 END) as won_deals,
@@ -276,7 +276,7 @@ class UnifiedAnalyticsIntegration:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT INTO linkedin_automation_metrics 
+            INSERT INTO linkedin_automation_metrics
             (metric_id, posts_published, total_impressions, total_engagement,
              avg_engagement_rate, consultation_inquiries, pipeline_value_usd,
              conversion_rate, revenue_generated, posting_success_rate,
@@ -335,7 +335,7 @@ class UnifiedAnalyticsIntegration:
 
         dashboard_id = "linkedin_automation_dashboard"
         cursor.execute('''
-            INSERT OR REPLACE INTO linkedin_realtime_dashboard 
+            INSERT OR REPLACE INTO linkedin_realtime_dashboard
             (dashboard_id, current_posts_today, current_engagement_rate,
              pending_inquiries, system_health_score, weekly_pipeline_trend,
              top_performing_content_types, consultation_funnel_metrics,
@@ -370,7 +370,7 @@ class UnifiedAnalyticsIntegration:
         linkedin_cursor.execute('''
             SELECT post_id, posted_at, day, target_audience, impressions,
                    actual_engagement_rate, consultation_requests, business_objective
-            FROM linkedin_posts 
+            FROM linkedin_posts
             WHERE posted_at > date('now', '-7 days')
             AND impressions > 0
         ''')
@@ -389,7 +389,7 @@ class UnifiedAnalyticsIntegration:
             inquiry_quality_score = 0.8  # Would analyze actual inquiry quality
 
             cursor.execute('''
-                INSERT OR REPLACE INTO content_intelligence 
+                INSERT OR REPLACE INTO content_intelligence
                 (content_id, posted_at, content_type, target_audience,
                  impressions, engagement_rate, consultation_inquiries,
                  sentiment_score, hook_effectiveness, cta_performance,
@@ -508,7 +508,7 @@ class UnifiedAnalyticsIntegration:
 
         # Get latest dashboard data
         cursor.execute('''
-            SELECT * FROM linkedin_realtime_dashboard 
+            SELECT * FROM linkedin_realtime_dashboard
             WHERE dashboard_id = 'linkedin_automation_dashboard'
         ''')
 
@@ -563,7 +563,7 @@ class UnifiedAnalyticsIntegration:
 
         # Get metrics from last 30 days
         cursor.execute('''
-            SELECT 
+            SELECT
                 AVG(posts_published) as avg_daily_posts,
                 AVG(avg_engagement_rate) as avg_engagement,
                 SUM(consultation_inquiries) as total_inquiries,

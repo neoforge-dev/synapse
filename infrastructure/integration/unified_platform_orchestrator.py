@@ -258,7 +258,7 @@ class UnifiedPlatformOrchestrator:
             active_inquiries = len(pending_inquiries)
 
             # Get business development report
-            bd_report = self.business_engine.generate_business_development_report()
+            self.business_engine.generate_business_development_report()
 
             # Calculate business health metrics
             pipeline_value = 555000.0  # Known pipeline value
@@ -500,7 +500,7 @@ class UnifiedPlatformOrchestrator:
                     bm = results['business_metrics']
                     conn.execute("""
                         INSERT INTO business_metrics (
-                            timestamp, pipeline_value, active_inquiries, 
+                            timestamp, pipeline_value, active_inquiries,
                             system_availability, revenue_at_risk, predicted_issues
                         ) VALUES (?, ?, ?, ?, ?, ?)
                     """, (
@@ -516,7 +516,7 @@ class UnifiedPlatformOrchestrator:
                 for alert in results.get('alerts_generated', []):
                     conn.execute("""
                         INSERT INTO system_alerts (
-                            timestamp, source, severity, message, 
+                            timestamp, source, severity, message,
                             automated_response_triggered, business_impact
                         ) VALUES (?, ?, ?, ?, ?, ?)
                     """, (
@@ -561,7 +561,7 @@ class UnifiedPlatformOrchestrator:
             with sqlite3.connect(self.db_path) as conn:
                 # Latest business metrics
                 cursor = conn.execute("""
-                    SELECT * FROM business_metrics 
+                    SELECT * FROM business_metrics
                     ORDER BY timestamp DESC LIMIT 1
                 """)
                 latest_metrics = cursor.fetchone()
@@ -569,7 +569,7 @@ class UnifiedPlatformOrchestrator:
                 # Recent alerts
                 cursor = conn.execute("""
                     SELECT source, severity, COUNT(*) as count
-                    FROM system_alerts 
+                    FROM system_alerts
                     WHERE timestamp > datetime('now', '-24 hours')
                     GROUP BY source, severity
                 """)
@@ -577,7 +577,7 @@ class UnifiedPlatformOrchestrator:
 
                 # Automated responses
                 cursor = conn.execute("""
-                    SELECT response_type, COUNT(*) as count, 
+                    SELECT response_type, COUNT(*) as count,
                            SUM(success) as successful
                     FROM automated_responses
                     WHERE timestamp > datetime('now', '-24 hours')

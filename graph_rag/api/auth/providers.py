@@ -85,7 +85,7 @@ class InMemoryAuthProvider(AuthProvider):
         import asyncio
         try:
             # Use asyncio.run only if not already in an event loop
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
             # If we're in a loop, create the user synchronously for this init
             self._create_user_sync(admin_data)
         except RuntimeError:

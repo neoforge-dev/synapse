@@ -126,9 +126,9 @@ class PerformanceAnalyzer:
 
         # Get all posts with performance data
         cursor.execute('''
-            SELECT post_id, content, day, actual_engagement_rate, 
+            SELECT post_id, content, day, actual_engagement_rate,
                    consultation_requests, impressions, business_objective
-            FROM linkedin_posts 
+            FROM linkedin_posts
             WHERE impressions > 0
         ''')
 
@@ -138,7 +138,7 @@ class PerformanceAnalyzer:
         analyzed_count = 0
         patterns = defaultdict(list)
 
-        for post_id, content, day, engagement_rate, consultations, impressions, objective in posts:
+        for post_id, content, day, engagement_rate, consultations, impressions, _objective in posts:
             # Analyze content characteristics
             analysis = self._analyze_content_characteristics(post_id, content)
             self._save_content_analysis(analysis)
@@ -410,9 +410,9 @@ class PerformanceAnalyzer:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT pattern_type, pattern_value, avg_engagement_rate, 
+            SELECT pattern_type, pattern_value, avg_engagement_rate,
                    avg_consultation_conversion, confidence_score, recommendation
-            FROM content_patterns 
+            FROM content_patterns
             ORDER BY confidence_score DESC
         ''')
 
@@ -483,7 +483,7 @@ class PerformanceAnalyzer:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT OR REPLACE INTO content_analysis 
+            INSERT OR REPLACE INTO content_analysis
             (analysis_id, post_id, word_count, hook_type, cta_type, topic_category,
              technical_depth, business_focus, controversy_score, emoji_count,
              hashtag_count, question_count, personal_story, data_points, code_snippets)
@@ -505,7 +505,7 @@ class PerformanceAnalyzer:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT OR REPLACE INTO content_patterns 
+            INSERT OR REPLACE INTO content_patterns
             (pattern_id, pattern_type, pattern_value, avg_engagement_rate,
              avg_consultation_conversion, sample_size, confidence_score, recommendation)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)

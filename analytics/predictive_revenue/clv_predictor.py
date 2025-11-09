@@ -452,7 +452,7 @@ class CLVPredictor:
 
         # Feature usage depth
         if profile.usage_metrics:
-            usage_values = [v for v in profile.usage_metrics.values() if isinstance(v, (int, float))]
+            usage_values = [v for v in profile.usage_metrics.values() if isinstance(v, int | float)]
             profile.feature_usage_depth = np.mean(usage_values) if usage_values else 0.0
 
     def _determine_customer_segment(self, profile: CustomerProfile) -> CustomerSegment:
@@ -823,7 +823,6 @@ class CLVPredictor:
         timeframe: str
     ):
         """Generate time-based revenue forecasts."""
-        total_clv = prediction.predicted_clv
 
         # Yearly breakdown
         if timeframe in ["3_years", "5_years", "lifetime"]:

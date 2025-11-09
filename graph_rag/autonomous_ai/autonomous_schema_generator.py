@@ -82,7 +82,7 @@ class UsageFeedback:
 class AdaptiveSchemaGenerator:
     """
     Generates and evolves graph schemas automatically based on data patterns.
-    
+
     Key capabilities:
     - Generate initial schemas from data patterns
     - Evolve schemas based on usage feedback
@@ -98,10 +98,10 @@ class AdaptiveSchemaGenerator:
     async def generate_initial_schema(self, patterns: DataPatterns) -> GraphSchema:
         """
         Generate initial graph schema from discovered data patterns.
-        
+
         Args:
             patterns: Analyzed data patterns from DataPatternAnalyzer
-            
+
         Returns:
             Generated graph schema with confidence scores
         """
@@ -397,10 +397,10 @@ class AdaptiveSchemaGenerator:
     async def evolve_schema(self, usage_feedback: UsageFeedback) -> SchemaEvolution:
         """
         Evolve schema based on usage feedback and performance metrics.
-        
+
         Args:
             usage_feedback: Feedback from schema usage
-            
+
         Returns:
             Schema evolution changes and improvements
         """
@@ -449,7 +449,7 @@ class AdaptiveSchemaGenerator:
 
         # Analyze query patterns for missing indexes
         for query_pattern in feedback.query_patterns:
-            query_type = query_pattern.get("type", "")
+            query_pattern.get("type", "")
             frequency = query_pattern.get("frequency", 0)
             performance = query_pattern.get("avg_duration", 0)
 
@@ -577,7 +577,7 @@ class AdaptiveSchemaGenerator:
                 new_constraints.append(element)
 
         # Apply modifications (placeholder)
-        for old_element, new_element in evolution.modified_elements:
+        for _old_element, _new_element in evolution.modified_elements:
             # Implementation would update existing elements
             pass
 

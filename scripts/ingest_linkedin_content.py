@@ -151,7 +151,7 @@ def process_linkedin_posts():
         print(f"Processing LinkedIn post stats from {posts_stats_file}")
         df_stats = pd.read_csv(posts_stats_file)
 
-        for idx, row in df_stats.iterrows():
+        for _idx, row in df_stats.iterrows():
             if pd.notna(row['text']) and len(str(row['text'])) > 100:
                 post_text = str(row['text'])
 
@@ -188,7 +188,7 @@ def process_linkedin_posts():
             print(f"Processing LinkedIn content from {content_file}")
             df_content = pd.read_csv(content_file)
 
-            for idx, row in df_content.iterrows():
+            for _idx, row in df_content.iterrows():
                 if pd.notna(row['Text']) and len(str(row['Text'])) > 100:
                     post_text = str(row['Text'])
 
@@ -249,7 +249,7 @@ def create_synapse_documents(content: list[dict], output_dir: Path):
 ### Core Professional Ideas
 {chr(10).join(f"- {idea}" for idea in all_ideas[:50])}
 
-### Personal Beliefs and Opinions  
+### Personal Beliefs and Opinions
 {chr(10).join(f"- {belief}" for belief in all_beliefs[:30])}
 
 ### Professional Preferences and Approaches

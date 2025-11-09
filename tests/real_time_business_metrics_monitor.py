@@ -389,7 +389,7 @@ class QueryPerformanceMonitor:
 
     def monitor_query_performance(self, query_name: str, database: str) -> dict[str, Any]:
         """Monitor individual query performance"""
-        start_time = time.time()
+        time.time()
 
         try:
             # Simulate query execution

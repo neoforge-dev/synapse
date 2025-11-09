@@ -2,7 +2,7 @@
 
 This system integrates all AI-enhanced competitive differentiation capabilities:
 - Advanced GraphRAG Intelligence with semantic reasoning
-- Real-time competitive intelligence and market positioning  
+- Real-time competitive intelligence and market positioning
 - Autonomous business development with Fortune 500 focus
 - Predictive revenue optimization with ML-driven insights
 - Enterprise AI Advisory Services for Fortune 500 transformation
@@ -352,7 +352,7 @@ class CompetitiveDifferentiationSystem:
             stakeholder_focus=["ceo", "board", "executive_team"]
         )
 
-        technical_profile = self.contextual_synthesizer.create_context_profile(
+        self.contextual_synthesizer.create_context_profile(
             domain=BusinessDomain.TECHNOLOGY,
             context_type=ContextType.TECHNICAL,
             synthesis_mode=SynthesisMode.TECHNICAL_ANALYSIS,

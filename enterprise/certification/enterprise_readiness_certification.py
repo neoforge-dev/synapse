@@ -281,8 +281,8 @@ class EnterpriseReadinessCertifier:
 
             # Determine certification status
             critical_findings = security_summary["critical_findings"]
-            high_findings = security_summary["high_findings"]
-            enterprise_ready = security_summary["enterprise_ready"] and compliance_summary["enterprise_ready"]
+            security_summary["high_findings"]
+            security_summary["enterprise_ready"] and compliance_summary["enterprise_ready"]
 
             if critical_findings == 0 and combined_score >= 90:
                 status = "CERTIFIED"

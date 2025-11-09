@@ -1,7 +1,7 @@
 """AI Strategy Generator for Enterprise AI Advisory Services.
 
 Provides comprehensive AI transformation strategy development with:
-- Enterprise AI maturity assessment and gap analysis  
+- Enterprise AI maturity assessment and gap analysis
 - Strategic AI roadmap generation with ROI projections
 - Technology stack recommendations and architecture design
 - Implementation planning with risk mitigation strategies
@@ -530,7 +530,7 @@ class AIStrategyGenerator:
 
         if isinstance(criterion_value, bool):
             return 5.0 if criterion_value else 1.0
-        elif isinstance(criterion_value, (int, float)):
+        elif isinstance(criterion_value, int | float):
             return min(max(criterion_value, 0.0), 5.0)
         elif isinstance(criterion_value, str):
             # Map string values to scores
@@ -719,7 +719,7 @@ class AIStrategyGenerator:
             "retention_rate": organization_data.get("talent_retention_rate", 0.8)
         }
         assessment.talent_readiness = np.mean([
-            1.0 if isinstance(v, bool) and v else v if isinstance(v, (int, float)) else 0.0
+            1.0 if isinstance(v, bool) and v else v if isinstance(v, int | float) else 0.0
             for v in talent_factors.values()
         ])
 
@@ -877,7 +877,7 @@ class AIStrategyGenerator:
                 vision_prompt = f"""
                 Create an inspiring AI transformation vision statement for an organization with these objectives:
                 {chr(10).join([f"- {obj}" for obj in objectives])}
-                
+
                 The vision should be:
                 - Inspiring and aspirational
                 - Specific to AI transformation

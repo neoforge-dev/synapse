@@ -64,7 +64,7 @@ class QueryCache:
         # Convert components to strings and join
         key_parts = []
         for component in components:
-            if isinstance(component, (dict, list)):
+            if isinstance(component, dict | list):
                 # For complex objects, use JSON representation
                 key_parts.append(json.dumps(component, sort_keys=True))
             else:

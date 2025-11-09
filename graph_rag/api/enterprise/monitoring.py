@@ -570,7 +570,7 @@ class EnterpriseMonitor:
     async def update_thresholds(self, new_thresholds: dict[str, float]) -> None:
         """Update monitoring thresholds."""
 
-        old_thresholds = self.thresholds.copy()
+        self.thresholds.copy()
         self.thresholds.update(new_thresholds)
 
         logger.info(f"Updated monitoring thresholds: {new_thresholds}")

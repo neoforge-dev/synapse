@@ -306,7 +306,7 @@ class TwitterAPIClient:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT OR REPLACE INTO twitter_posts 
+            INSERT OR REPLACE INTO twitter_posts
             (tweet_id, post_id, content, thread_position, total_threads)
             VALUES (?, ?, ?, ?, ?)
         ''', (tweet_id, post_id, content, position, total))
@@ -321,7 +321,7 @@ class TwitterAPIClient:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT OR REPLACE INTO twitter_threads 
+            INSERT OR REPLACE INTO twitter_threads
             (thread_id, post_id, total_tweets, first_tweet_id)
             VALUES (?, ?, ?, ?)
         ''', (thread_id, post_id, total_tweets, first_tweet_id))
@@ -430,8 +430,8 @@ class TwitterAPIClient:
         cursor = conn.cursor()
 
         cursor.execute('''
-            UPDATE twitter_posts 
-            SET impressions = ?, retweets = ?, likes = ?, replies = ?, 
+            UPDATE twitter_posts
+            SET impressions = ?, retweets = ?, likes = ?, replies = ?,
                 clicks = ?, engagement_rate = ?, last_updated = CURRENT_TIMESTAMP
             WHERE tweet_id = ?
         ''', (metrics.impressions, metrics.retweets, metrics.likes, metrics.replies,
@@ -447,8 +447,8 @@ class TwitterAPIClient:
 
         # Get thread overview
         cursor.execute('''
-            SELECT thread_id, total_tweets, first_tweet_id 
-            FROM twitter_threads 
+            SELECT thread_id, total_tweets, first_tweet_id
+            FROM twitter_threads
             WHERE post_id = ?
         ''', (post_id,))
 
@@ -460,10 +460,10 @@ class TwitterAPIClient:
 
         # Get individual tweet performance
         cursor.execute('''
-            SELECT tweet_id, thread_position, impressions, retweets, likes, 
-                   replies, engagement_rate 
-            FROM twitter_posts 
-            WHERE post_id = ? 
+            SELECT tweet_id, thread_position, impressions, retweets, likes,
+                   replies, engagement_rate
+            FROM twitter_posts
+            WHERE post_id = ?
             ORDER BY thread_position
         ''', (post_id,))
 
@@ -554,17 +554,17 @@ def main():
     # Test thread conversion
     sample_linkedin_content = """
     ## Final Optimized Post
-    
+
     I've never met a 10x developer, but I've built 10x teams. Here's the difference.
-    
+
     Team performance multiplies when you focus on systems over individuals.
-    
+
     The best engineering teams I've built had:
     - Clear communication standards
-    - Systematic knowledge sharing  
+    - Systematic knowledge sharing
     - Collective code ownership
     - Continuous learning culture
-    
+
     What made your best engineering team special? Share the secret sauce.
     """
 

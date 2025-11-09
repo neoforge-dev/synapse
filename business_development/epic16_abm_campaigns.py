@@ -273,7 +273,7 @@ class ContentAssetLibrary:
             conversion_rate = self._estimate_conversion_rate(asset)
 
             cursor.execute('''
-                INSERT OR REPLACE INTO content_assets 
+                INSERT OR REPLACE INTO content_assets
                 (asset_id, asset_type, title, description, target_persona, industry_focus,
                  personalization_data, content_url, engagement_score, conversion_rate)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -476,7 +476,7 @@ class ABMCampaignEngine:
         self._save_abm_campaign(campaign)
 
         # Create campaign touchpoints
-        touchpoints = self._create_campaign_touchpoints(campaign, target_prospects)
+        self._create_campaign_touchpoints(campaign, target_prospects)
 
         logger.info(f"Created ABM campaign: {campaign_name} targeting {len(target_prospects)} Fortune 500 accounts")
         return campaign
@@ -691,7 +691,7 @@ class ABMCampaignEngine:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT OR REPLACE INTO abm_campaigns 
+            INSERT OR REPLACE INTO abm_campaigns
             (campaign_id, campaign_name, target_accounts, campaign_type, personalization_level,
              content_assets, distribution_channels, budget_allocated, expected_engagement,
              conversion_target, roi_target, campaign_status, launch_date, end_date,
@@ -825,7 +825,7 @@ class ABMCampaignEngine:
 
         for touchpoint in touchpoints:
             cursor.execute('''
-                INSERT OR REPLACE INTO campaign_touchpoints 
+                INSERT OR REPLACE INTO campaign_touchpoints
                 (touchpoint_id, campaign_id, prospect_id, touchpoint_type, content_asset_id,
                  scheduled_date, executed_date, personalization_applied, engagement_metrics, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -847,7 +847,7 @@ class ABMCampaignEngine:
 
         # Get campaign summary
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(*) as total_campaigns,
                 COUNT(CASE WHEN campaign_status = 'active' THEN 1 END) as active_campaigns,
                 COUNT(CASE WHEN campaign_status = 'completed' THEN 1 END) as completed_campaigns,
@@ -861,7 +861,7 @@ class ABMCampaignEngine:
 
         # Get touchpoint summary
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(*) as total_touchpoints,
                 COUNT(CASE WHEN status = 'scheduled' THEN 1 END) as scheduled_touchpoints,
                 COUNT(CASE WHEN status = 'sent' THEN 1 END) as sent_touchpoints,
@@ -883,7 +883,7 @@ class ABMCampaignEngine:
 
         # Get recent campaigns
         cursor.execute('''
-            SELECT campaign_name, campaign_type, personalization_level, 
+            SELECT campaign_name, campaign_type, personalization_level,
                    budget_allocated, expected_engagement, campaign_status
             FROM abm_campaigns
             ORDER BY created_at DESC

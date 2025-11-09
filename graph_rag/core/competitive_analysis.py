@@ -478,7 +478,7 @@ class ContentAnalyzer:
         platforms = []
         platform_map = {"linkedin": Platform.LINKEDIN, "twitter": Platform.TWITTER, "general": Platform.GENERAL}
 
-        for platform, count in sorted(platform_counts.items(), key=lambda x: x[1], reverse=True):
+        for platform, _count in sorted(platform_counts.items(), key=lambda x: x[1], reverse=True):
             if platform in platform_map:
                 platforms.append(platform_map[platform])
 
@@ -1208,7 +1208,7 @@ class CompetitiveAnalyzer:
         factors.append(avg_performance)
 
         # Strategy diversity (more diverse = more intense)
-        strategies = set(p.content_strategy for p in competitor_profiles if p.content_strategy)
+        strategies = {p.content_strategy for p in competitor_profiles if p.content_strategy}
         strategy_diversity = len(strategies) / len(ContentStrategy)
         factors.append(strategy_diversity)
 
@@ -1226,7 +1226,7 @@ class CompetitiveAnalyzer:
         # Factors indicating market maturity
         avg_consistency = statistics.mean([p.consistency_score for p in competitor_profiles])
         avg_brand_safety = statistics.mean([p.brand_safety_score for p in competitor_profiles])
-        strategy_standardization = len(set(p.content_strategy for p in competitor_profiles if p.content_strategy)) / max(1, len(competitor_profiles))
+        strategy_standardization = len({p.content_strategy for p in competitor_profiles if p.content_strategy}) / max(1, len(competitor_profiles))
 
         maturity_score = (avg_consistency + avg_brand_safety + (1 - strategy_standardization)) / 3
 
@@ -1702,7 +1702,7 @@ class CompetitiveAnalyzer:
         }
 
         # Strategy gaps
-        covered_strategies = set(p.content_strategy for p in competitor_profiles if p.content_strategy)
+        covered_strategies = {p.content_strategy for p in competitor_profiles if p.content_strategy}
         all_strategies = set(ContentStrategy)
         strategy_gaps = all_strategies - covered_strategies
         gap_analysis["strategy_gaps"] = [s.value for s in strategy_gaps]
@@ -1729,7 +1729,7 @@ class CompetitiveAnalyzer:
         gap_analysis["format_gaps"] = format_gaps
 
         # Tone gaps
-        used_tones = set(p.content_tone for p in competitor_profiles)
+        used_tones = {p.content_tone for p in competitor_profiles}
         potential_tones = ["professional", "casual", "authoritative", "inspirational", "controversial", "educational"]
         tone_gaps = [tone for tone in potential_tones if tone not in used_tones]
         gap_analysis["tone_gaps"] = tone_gaps
@@ -1856,7 +1856,7 @@ class CompetitiveAnalyzer:
             strategies.append("Lead market through innovative content approaches and topics")
 
         # Engagement differentiation
-        engagement_patterns = set(p.engagement_pattern for p in competitor_profiles if p.engagement_pattern)
+        engagement_patterns = {p.engagement_pattern for p in competitor_profiles if p.engagement_pattern}
         all_patterns = set(EngagementPattern)
         unused_patterns = all_patterns - engagement_patterns
 

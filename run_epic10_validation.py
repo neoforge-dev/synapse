@@ -7,7 +7,7 @@ consolidation completion and enterprise readiness.
 
 Usage:
     python run_epic10_validation.py [--full] [--report-only] [--save-report]
-    
+
 Options:
     --full          Run full validation suite including long-running tests
     --report-only   Generate report without running new tests

@@ -50,7 +50,7 @@ class SynapseContentIntelligence:
     def _init_synapse_connection(self):
         """Initialize connection to Synapse RAG system"""
         try:
-            settings = get_settings()
+            get_settings()
             self.search_service = SearchService()
 
             # Initialize graph repository if Memgraph is available
@@ -355,7 +355,7 @@ class SynapseContentIntelligence:
         insight_id = f"insight_{post_id}_{insight_type}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
         cursor.execute('''
-            INSERT INTO content_insights 
+            INSERT INTO content_insights
             (insight_id, post_id, insight_type, insight_data, confidence_score)
             VALUES (?, ?, ?, ?, ?)
         ''', (
@@ -375,7 +375,7 @@ class SynapseContentIntelligence:
         rec_id = f"rec_{recommendation['type']}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
         cursor.execute('''
-            INSERT INTO content_recommendations 
+            INSERT INTO content_recommendations
             (recommendation_id, recommendation_type, content_topic, target_audience,
              expected_performance, reasoning, priority_score)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -397,7 +397,7 @@ class SynapseContentIntelligence:
         # Get recent insights
         cursor.execute('''
             SELECT insight_type, COUNT(*) as count, AVG(confidence_score) as avg_confidence
-            FROM content_insights 
+            FROM content_insights
             WHERE created_at >= datetime('now', '-30 days')
             GROUP BY insight_type
         ''')
@@ -406,7 +406,7 @@ class SynapseContentIntelligence:
         # Get recommendations by priority
         cursor.execute('''
             SELECT recommendation_type, content_topic, target_audience, priority_score, reasoning
-            FROM content_recommendations 
+            FROM content_recommendations
             ORDER BY priority_score DESC, created_at DESC
             LIMIT 10
         ''')

@@ -638,12 +638,12 @@ class IngestionService:
         self, content: str, metadata: dict[str, Any], document_id: str
     ) -> tuple[str, dict[str, Any]]:
         """Process content with vision processing capabilities if available.
-        
+
         Args:
             content: Original document content
             metadata: Document metadata
             document_id: Document ID for logging
-            
+
         Returns:
             Tuple of (enhanced_content, enhanced_metadata)
         """

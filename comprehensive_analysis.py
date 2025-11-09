@@ -2,7 +2,7 @@
 """
 Comprehensive Cross-Platform Analysis Report
 
-This script creates a detailed analysis report of Notion-related content and cross-platform 
+This script creates a detailed analysis report of Notion-related content and cross-platform
 correlations based on the documented analysis and the Synapse system's capabilities.
 """
 
@@ -111,8 +111,8 @@ class ComprehensiveAnalysisReport:
 
     def generate_content_evolution_patterns(self, content_analysis):
         """Analyze content evolution and workflow patterns."""
-        workflow_patterns = content_analysis.get('workflow_patterns', [])
-        strategy_patterns = content_analysis.get('content_strategy_patterns', [])
+        content_analysis.get('workflow_patterns', [])
+        content_analysis.get('content_strategy_patterns', [])
 
         return {
             'draft_to_publish_workflows': {
@@ -139,8 +139,8 @@ class ComprehensiveAnalysisReport:
 
     def generate_strategic_relationships(self, content_analysis):
         """Extract strategic relationships between platforms and methodologies."""
-        linkedin_patterns = content_analysis.get('linkedin_patterns', [])
-        strategy_patterns = content_analysis.get('content_strategy_patterns', [])
+        content_analysis.get('linkedin_patterns', [])
+        content_analysis.get('content_strategy_patterns', [])
 
         return {
             'platform_synergies': {

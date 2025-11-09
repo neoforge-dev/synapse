@@ -17,13 +17,13 @@ logger = logging.getLogger(__name__)
 def generate_reasoning_html(reasoning_result: ReasoningResult) -> str:
     """
     Generate interactive HTML visualization for a reasoning chain.
-    
+
     Creates a self-contained HTML page with embedded CSS and JavaScript
     that visualizes the step-by-step reasoning process.
-    
+
     Args:
         reasoning_result: The reasoning result to visualize
-        
+
     Returns:
         Complete HTML page as a string
     """
@@ -51,7 +51,7 @@ def generate_reasoning_html(reasoning_result: ReasoningResult) -> str:
             color: #333;
             line-height: 1.6;
         }}
-        
+
         .container {{
             max-width: 1200px;
             margin: 0 auto;
@@ -60,68 +60,68 @@ def generate_reasoning_html(reasoning_result: ReasoningResult) -> str:
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             overflow: hidden;
         }}
-        
+
         .header {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 30px;
         }}
-        
+
         .question {{
             font-size: 1.4em;
             font-weight: 600;
             margin: 0;
             line-height: 1.4;
         }}
-        
+
         .summary {{
             margin-top: 15px;
             opacity: 0.9;
             font-size: 0.9em;
         }}
-        
+
         .reasoning-chain {{
             padding: 0;
         }}
-        
+
         .step {{
             border-bottom: 1px solid #eee;
             transition: all 0.3s ease;
             cursor: pointer;
         }}
-        
+
         .step:hover {{
             background-color: #f8f9fa;
         }}
-        
+
         .step:last-child {{
             border-bottom: none;
         }}
-        
+
         .step-header {{
             padding: 20px 30px;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }}
-        
+
         .step-info {{
             flex: 1;
         }}
-        
+
         .step-name {{
             font-size: 1.1em;
             font-weight: 600;
             color: #2c3e50;
             margin: 0 0 5px 0;
         }}
-        
+
         .step-description {{
             color: #6c757d;
             font-size: 0.9em;
             margin: 0;
         }}
-        
+
         .step-status {{
             padding: 4px 12px;
             border-radius: 20px;
@@ -129,42 +129,42 @@ def generate_reasoning_html(reasoning_result: ReasoningResult) -> str:
             font-weight: 500;
             text-transform: uppercase;
         }}
-        
+
         .status-completed {{
             background-color: #d4edda;
             color: #155724;
         }}
-        
+
         .status-failed {{
             background-color: #f8d7da;
             color: #721c24;
         }}
-        
+
         .status-pending {{
             background-color: #fff3cd;
             color: #856404;
         }}
-        
+
         .status-running {{
             background-color: #cce7ff;
             color: #004085;
         }}
-        
+
         .step-details {{
             padding: 0 30px 20px;
             display: none;
             border-top: 1px solid #f0f0f0;
             background-color: #fafafa;
         }}
-        
+
         .step-details.active {{
             display: block;
         }}
-        
+
         .detail-section {{
             margin: 15px 0;
         }}
-        
+
         .detail-label {{
             font-weight: 600;
             color: #2c3e50;
@@ -173,7 +173,7 @@ def generate_reasoning_html(reasoning_result: ReasoningResult) -> str:
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }}
-        
+
         .detail-content {{
             background: white;
             padding: 15px;
@@ -181,7 +181,7 @@ def generate_reasoning_html(reasoning_result: ReasoningResult) -> str:
             border-left: 4px solid #667eea;
             font-size: 0.9em;
         }}
-        
+
         .final-answer {{
             margin: 30px;
             padding: 25px;
@@ -189,31 +189,31 @@ def generate_reasoning_html(reasoning_result: ReasoningResult) -> str:
             color: white;
             border-radius: 8px;
         }}
-        
+
         .final-answer h3 {{
             margin: 0 0 15px 0;
             font-size: 1.2em;
         }}
-        
+
         .final-answer-content {{
             font-size: 1em;
             line-height: 1.6;
         }}
-        
+
         .expand-icon {{
             margin-left: 10px;
             transition: transform 0.3s ease;
         }}
-        
+
         .expand-icon.rotated {{
             transform: rotate(180deg);
         }}
-        
+
         .timeline {{
             position: relative;
             padding-left: 30px;
         }}
-        
+
         .timeline::before {{
             content: '';
             position: absolute;
@@ -223,12 +223,12 @@ def generate_reasoning_html(reasoning_result: ReasoningResult) -> str:
             width: 2px;
             background: #dee2e6;
         }}
-        
+
         .timeline-step {{
             position: relative;
             margin-bottom: 0;
         }}
-        
+
         .timeline-step::before {{
             content: '';
             position: absolute;
@@ -240,30 +240,30 @@ def generate_reasoning_html(reasoning_result: ReasoningResult) -> str:
             border: 3px solid white;
             box-shadow: 0 0 0 2px #667eea;
         }}
-        
+
         .timeline-step.completed::before {{
             background-color: #28a745;
             box-shadow: 0 0 0 2px #28a745;
         }}
-        
+
         .timeline-step.failed::before {{
             background-color: #dc3545;
             box-shadow: 0 0 0 2px #dc3545;
         }}
-        
+
         @media (max-width: 768px) {{
             body {{
                 padding: 10px;
             }}
-            
+
             .header, .step-header, .step-details, .final-answer {{
                 padding: 20px;
             }}
-            
+
             .timeline {{
                 padding-left: 20px;
             }}
-            
+
             .timeline-step::before {{
                 left: -18px;
             }}
@@ -276,11 +276,11 @@ def generate_reasoning_html(reasoning_result: ReasoningResult) -> str:
             <h1 class="question" id="main-question">Loading...</h1>
             <div class="summary" id="summary">Analyzing reasoning chain...</div>
         </div>
-        
+
         <div class="reasoning-chain timeline" id="reasoning-viz">
             <!-- Steps will be populated by JavaScript -->
         </div>
-        
+
         <div class="final-answer" id="final-answer" style="display: none;">
             <h3>Final Answer</h3>
             <div class="final-answer-content" id="final-answer-content"></div>
@@ -290,24 +290,24 @@ def generate_reasoning_html(reasoning_result: ReasoningResult) -> str:
     <script>
         // Embedded reasoning data
         const reasoningData = {json_data};
-        
+
         function escapeHtml(text) {{
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }}
-        
+
         function formatStepName(name) {{
             return name.replace(/_/g, ' ')
                       .replace(/\\b\\w/g, l => l.toUpperCase());
         }}
-        
+
         function renderSteps() {{
             const container = document.getElementById('reasoning-viz');
             const steps = reasoningData.steps || [];
-            
+
             container.innerHTML = '';
-            
+
             steps.forEach((step, index) => {{
                 const stepDiv = document.createElement('div');
                 stepDiv.className = `step timeline-step ${{step.status}}`;
@@ -338,11 +338,11 @@ def generate_reasoning_html(reasoning_result: ReasoningResult) -> str:
                 container.appendChild(stepDiv);
             }});
         }}
-        
+
         function toggleStep(index) {{
             const details = document.getElementById(`step-details-${{index}}`);
             const icon = details.parentElement.querySelector('.expand-icon');
-            
+
             if (details.classList.contains('active')) {{
                 details.classList.remove('active');
                 icon.classList.remove('rotated');
@@ -354,43 +354,43 @@ def generate_reasoning_html(reasoning_result: ReasoningResult) -> str:
                 document.querySelectorAll('.expand-icon.rotated').forEach(el => {{
                     el.classList.remove('rotated');
                 }});
-                
+
                 // Open this step
                 details.classList.add('active');
                 icon.classList.add('rotated');
             }}
         }}
-        
+
         function renderFinalAnswer() {{
             const finalAnswerDiv = document.getElementById('final-answer');
             const finalAnswerContent = document.getElementById('final-answer-content');
-            
+
             if (reasoningData.final_answer) {{
                 finalAnswerContent.textContent = reasoningData.final_answer;
                 finalAnswerDiv.style.display = 'block';
             }}
         }}
-        
+
         function renderHeader() {{
             const questionEl = document.getElementById('main-question');
             const summaryEl = document.getElementById('summary');
-            
+
             questionEl.textContent = reasoningData.question || 'Reasoning Analysis';
-            
+
             const summary = reasoningData.summary || {{}};
             const totalSteps = summary.total_steps || 0;
             const completedSteps = summary.completed_steps || 0;
-            
+
             summaryEl.textContent = `${{completedSteps}} of ${{totalSteps}} steps completed`;
         }}
-        
+
         // Initialize the visualization
         document.addEventListener('DOMContentLoaded', function() {{
             renderHeader();
             renderSteps();
             renderFinalAnswer();
         }});
-        
+
         // Export functionality (could be extended)
         window.exportData = function(format) {{
             if (format === 'json') {{
@@ -415,12 +415,12 @@ def generate_reasoning_html(reasoning_result: ReasoningResult) -> str:
 def generate_reasoning_svg(reasoning_result: ReasoningResult) -> str:
     """
     Generate SVG visualization for a reasoning chain.
-    
+
     Creates a flowchart-style SVG showing the reasoning steps and their relationships.
-    
+
     Args:
         reasoning_result: The reasoning result to visualize
-        
+
     Returns:
         SVG content as a string
     """

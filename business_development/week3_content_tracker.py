@@ -177,7 +177,7 @@ class Week3BusinessTracker:
 
         for post in week3_posts:
             cursor.execute('''
-                INSERT OR REPLACE INTO week3_posts 
+                INSERT OR REPLACE INTO week3_posts
                 (post_id, date, day, title, series, posting_time, business_dev_focus, target_consultation_type)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
@@ -235,8 +235,8 @@ class Week3BusinessTracker:
 
         # Update consultation_inquiries count for the post
         cursor.execute('''
-            UPDATE week3_posts 
-            SET consultation_inquiries = consultation_inquiries + 1 
+            UPDATE week3_posts
+            SET consultation_inquiries = consultation_inquiries + 1
             WHERE post_id = ?
         ''', (source_post_id,))
 
@@ -256,7 +256,7 @@ class Week3BusinessTracker:
 
         # Get all consultation inquiries
         cursor.execute('''
-            SELECT ci.*, wp.title, wp.day 
+            SELECT ci.*, wp.title, wp.day
             FROM consultation_inquiries ci
             JOIN week3_posts wp ON ci.source_post_id = wp.post_id
             ORDER BY ci.inquiry_date
@@ -322,7 +322,7 @@ class Week3BusinessTracker:
             report['business_development_analysis'] = {
                 'best_day_for_inquiries': best_day[0],
                 'inquiries_on_best_day': best_day[1],
-                'most_valuable_inquiry_type': max(set(inquiry[3] for inquiry in inquiries),
+                'most_valuable_inquiry_type': max({inquiry[3] for inquiry in inquiries},
                                                  key=[inquiry[3] for inquiry in inquiries].count),
                 'average_inquiry_value': total_pipeline_value / len(inquiries) if inquiries else 0
             }
@@ -342,12 +342,12 @@ class Week3BusinessTracker:
             <style>
                 body {{ font-family: Arial, sans-serif; margin: 20px; }}
                 .container {{ max-width: 1200px; margin: 0 auto; }}
-                .metric-card {{ 
-                    display: inline-block; 
-                    background: #f8f9fa; 
-                    padding: 20px; 
-                    margin: 10px; 
-                    border-radius: 8px; 
+                .metric-card {{
+                    display: inline-block;
+                    background: #f8f9fa;
+                    padding: 20px;
+                    margin: 10px;
+                    border-radius: 8px;
                     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                 }}
                 .metric-value {{ font-size: 2em; font-weight: bold; color: #007bff; }}
@@ -363,7 +363,7 @@ class Week3BusinessTracker:
             <div class="container">
                 <h1>📊 Week 3: Team Building & Culture - Business Development Report</h1>
                 <p><strong>Content Strategy:</strong> Transform technical expertise into consultation inquiries through team building authority</p>
-                
+
                 <h2>🎯 Key Performance Metrics</h2>
                 <div class="metric-card">
                     <div class="metric-value">{report['week3_summary']['total_posts']}</div>
@@ -385,7 +385,7 @@ class Week3BusinessTracker:
                     <div class="metric-value">${report['week3_summary']['total_pipeline_value']:,.0f}</div>
                     <div class="metric-label">Pipeline Value</div>
                 </div>
-                
+
                 <h2>📈 Content Performance Analysis</h2>
                 <table>
                     <tr>
@@ -414,7 +414,7 @@ class Week3BusinessTracker:
         if report['consultation_inquiries']:
             html_content += '''
                 </table>
-                
+
                 <h2>💼 Consultation Inquiries Generated</h2>
                 <table>
                     <tr>
@@ -439,14 +439,14 @@ class Week3BusinessTracker:
 
         html_content += '''
                 </table>
-                
+
                 <h2>🎯 Success Metrics vs Targets</h2>
                 <ul>
                     <li><strong>Target Engagement Rate:</strong> 7-9% → <span class="''' + ("success" if report['week3_summary']['avg_engagement_rate'] >= 0.07 else "warning") + f'''">Achieved: {report['week3_summary']['avg_engagement_rate']*100:.1f}%</span></li>
                     <li><strong>Target Consultation Inquiries:</strong> 2-3 → <span class="''' + ("success" if report['week3_summary']['total_consultation_inquiries'] >= 2 else "warning") + f'''">Achieved: {report['week3_summary']['total_consultation_inquiries']}</span></li>
                     <li><strong>Business Development Focus:</strong> Team building and engineering culture authority</li>
                 </ul>
-                
+
                 <h2>📋 Next Steps</h2>
                 <ul>
                     <li>Start LinkedIn posting for Week 3 content</li>

@@ -457,7 +457,6 @@ def main():
             phases_to_run = [phase_id]
 
         # Run selected phases
-        all_phases_successful = True
         for phase_id in phases_to_run:
             if phase_id in runner.test_phases:
                 success = runner.run_phase(
@@ -466,7 +465,6 @@ def main():
                     stop_on_failure=args.stop_on_failure
                 )
                 if not success:
-                    all_phases_successful = False
                     if args.stop_on_failure and runner.test_phases[phase_id].get('critical', False):
                         print(f"🛑 Stopping execution due to critical phase failure: {phase_id}")
                         break

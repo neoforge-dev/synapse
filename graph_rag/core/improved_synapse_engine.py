@@ -79,7 +79,7 @@ class ConsolidatedAnswer:
                 chunk_dict = chunk.__dict__.copy()
                 # Ensure all values are serializable
                 for key, value in chunk_dict.items():
-                    if hasattr(value, '__dict__') and not isinstance(value, (str, int, float, bool, list, dict)):
+                    if hasattr(value, '__dict__') and not isinstance(value, str | int | float | bool | list | dict):
                         chunk_dict[key] = str(value)
                 chunks_dict.append(chunk_dict)
             else:
@@ -378,7 +378,7 @@ class ImprovedSynapseEngine(GraphRAGEngine):
         try:
             # Convert chunks to consolidation candidates
             candidates = []
-            for i, chunk_result in enumerate(chunks):
+            for _i, chunk_result in enumerate(chunks):
                 chunk = chunk_result.chunk
                 candidate = type('ConsolidationCandidate', (), {
                     'document_id': chunk.id,

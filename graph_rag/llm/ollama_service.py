@@ -24,7 +24,7 @@ class OllamaService(LLMService):
         max_tokens: int | None = None
     ):
         """Initialize Ollama service.
-        
+
         Args:
             base_url: Ollama server URL
             model: Model to use (must be pulled in Ollama)
@@ -193,7 +193,7 @@ class OllamaService(LLMService):
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """Extract entities and relationships from text using Ollama."""
         try:
-            prompt = f"""Extract entities and relationships from the following text. 
+            prompt = f"""Extract entities and relationships from the following text.
 Return your response as valid JSON with two arrays: "entities" and "relationships".
 
 For entities, include: id (unique), label (type), name, and properties (dict).

@@ -383,7 +383,7 @@ class DataGovernanceManager:
 
         with self._get_connection() as conn:
             conn.execute("""
-                INSERT OR REPLACE INTO retention_policies 
+                INSERT OR REPLACE INTO retention_policies
                 (policy_id, policy_data, created_at, updated_at, is_active)
                 VALUES (?, ?, ?, ?, ?)
             """, (policy.policy_id, encrypted_policy, policy.created_at,
@@ -537,7 +537,7 @@ class DataGovernanceManager:
 
             updated_request = self._encrypt_data(request.json())
             conn.execute("""
-                UPDATE data_subject_requests 
+                UPDATE data_subject_requests
                 SET request_data = ?, status = ?, completed_at = ?
                 WHERE request_id = ?
             """, (updated_request, "completed", request.completed_at, str(request_id)))
@@ -568,7 +568,7 @@ class DataGovernanceManager:
 
         with self._get_connection() as conn:
             row = conn.execute("""
-                SELECT policy_data FROM retention_policies 
+                SELECT policy_data FROM retention_policies
                 WHERE policy_id = ? AND is_active = TRUE
             """, (policy_id,)).fetchone()
 
@@ -585,7 +585,7 @@ class DataGovernanceManager:
         """Get all data records for a data subject (GDPR compliance)."""
         with self._get_connection() as conn:
             rows = conn.execute("""
-                SELECT * FROM data_records 
+                SELECT * FROM data_records
                 WHERE tenant_id = ? AND (user_id = ? OR JSON_EXTRACT(record_data, '$.data_subjects') LIKE ?)
             """, (tenant_id, data_subject_id, f'%"{data_subject_id}"%')).fetchall()
 
@@ -607,8 +607,8 @@ class DataGovernanceManager:
         """Schedule data for deletion based on retention policies."""
         with self._get_connection() as conn:
             query = """
-                UPDATE data_records 
-                SET scheduled_deletion = ? 
+                UPDATE data_records
+                SET scheduled_deletion = ?
                 WHERE tenant_id = ? AND legal_hold = FALSE AND scheduled_deletion IS NULL
             """
             params = [datetime.utcnow() + timedelta(days=30), tenant_id]  # 30-day grace period
@@ -643,8 +643,8 @@ class DataGovernanceManager:
         with self._get_connection() as conn:
             # Find records ready for deletion
             rows = conn.execute("""
-                SELECT record_id, tenant_id, resource_type, resource_id 
-                FROM data_records 
+                SELECT record_id, tenant_id, resource_type, resource_id
+                FROM data_records
                 WHERE scheduled_deletion <= ? AND legal_hold = FALSE
             """, (datetime.utcnow(),)).fetchall()
 
@@ -689,7 +689,7 @@ class DataGovernanceManager:
             'export_date': datetime.utcnow().isoformat(),
             'records': records,
             'total_records': len(records),
-            'data_types': list(set([r.get('resource_type') for r in records]))
+            'data_types': list({r.get('resource_type') for r in records})
         }
 
         # Audit log
@@ -720,7 +720,7 @@ class DataGovernanceManager:
 
             # Records by classification
             classification_counts = dict(conn.execute(f"""
-                SELECT data_classification, COUNT(*) 
+                SELECT data_classification, COUNT(*)
                 FROM data_records {base_query}
                 GROUP BY data_classification
             """, params).fetchall())
@@ -728,31 +728,31 @@ class DataGovernanceManager:
             # Records approaching retention deadline
             thirty_days = datetime.utcnow() + timedelta(days=30)
             approaching_retention = conn.execute(f"""
-                SELECT COUNT(*) FROM data_records 
+                SELECT COUNT(*) FROM data_records
                 {base_query} AND retention_until <= ? AND scheduled_deletion IS NULL
             """, params + [thirty_days]).fetchone()[0]
 
             # Scheduled for deletion
             scheduled_deletion = conn.execute(f"""
-                SELECT COUNT(*) FROM data_records 
+                SELECT COUNT(*) FROM data_records
                 {base_query} AND scheduled_deletion IS NOT NULL
             """, params).fetchone()[0]
 
             # Legal holds
             legal_holds = conn.execute(f"""
-                SELECT COUNT(*) FROM data_records 
+                SELECT COUNT(*) FROM data_records
                 {base_query} AND legal_hold = TRUE
             """, params).fetchone()[0]
 
             # Pending data subject requests
             pending_requests = conn.execute(f"""
-                SELECT COUNT(*) FROM data_subject_requests 
+                SELECT COUNT(*) FROM data_subject_requests
                 {base_query} AND status = 'pending'
             """, params).fetchone()[0]
 
             # Overdue requests
             overdue_requests = conn.execute(f"""
-                SELECT COUNT(*) FROM data_subject_requests 
+                SELECT COUNT(*) FROM data_subject_requests
                 {base_query} AND status = 'pending' AND due_date < ?
             """, params + [datetime.utcnow()]).fetchone()[0]
 

@@ -540,7 +540,7 @@ class AdvancedFeaturesService:
             reasoning_chain=reasoning_chain,
             conclusion=conclusion,
             confidence_score=0.73,
-            supporting_evidence=[token for token in query_tokens[:3]],
+            supporting_evidence=list(query_tokens[:3]),
             alternative_viewpoints=alternative_viewpoints,
         )
 

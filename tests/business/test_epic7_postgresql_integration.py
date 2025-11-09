@@ -706,12 +706,12 @@ class TestDataConsistency:
         )
 
         # Simulate concurrent updates
-        update1 = crm_service.update_contact(
+        crm_service.update_contact(
             contact.contact_id,
             lead_score=80,
         )
 
-        update2 = crm_service.update_contact(
+        crm_service.update_contact(
             contact.contact_id,
             notes="Updated notes",
         )

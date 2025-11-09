@@ -156,9 +156,9 @@ class ContentAnalytics:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT OR REPLACE INTO posts 
-            (post_id, date, day_of_week, content_type, signature_series, headline, 
-             platform, posting_time, views, likes, comments, shares, saves, 
+            INSERT OR REPLACE INTO posts
+            (post_id, date, day_of_week, content_type, signature_series, headline,
+             platform, posting_time, views, likes, comments, shares, saves,
              engagement_rate, profile_views, connection_requests, consultation_inquiries,
              discovery_calls, click_through_rate, comment_quality_score, business_relevance_score)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -205,7 +205,7 @@ class ContentAnalytics:
 
         # Get posts for the week
         cursor.execute('''
-            SELECT * FROM posts 
+            SELECT * FROM posts
             WHERE date BETWEEN ? AND ?
         ''', (start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')))
 
@@ -271,7 +271,7 @@ class ContentAnalytics:
             INSERT OR REPLACE INTO weekly_performance
             (week_number, start_date, quarter, theme, total_posts, total_views,
              total_engagement, avg_engagement_rate, total_profile_views, total_connections,
-             total_inquiries, total_discovery_calls, best_performing_post, 
+             total_inquiries, total_discovery_calls, best_performing_post,
              best_engagement_rate, optimal_posting_time)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
@@ -296,7 +296,7 @@ class ContentAnalytics:
         # Get summary statistics
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(*) as total_posts,
                 SUM(views) as total_views,
                 SUM(likes + comments + shares + saves) as total_engagement,
@@ -337,12 +337,12 @@ class ContentAnalytics:
             <style>
                 body {{ font-family: Arial, sans-serif; margin: 20px; }}
                 .container {{ max-width: 1200px; margin: 0 auto; }}
-                .metric-card {{ 
-                    display: inline-block; 
-                    background: #f8f9fa; 
-                    padding: 20px; 
-                    margin: 10px; 
-                    border-radius: 8px; 
+                .metric-card {{
+                    display: inline-block;
+                    background: #f8f9fa;
+                    padding: 20px;
+                    margin: 10px;
+                    border-radius: 8px;
                     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                 }}
                 .metric-value {{ font-size: 2em; font-weight: bold; color: #007bff; }}
@@ -357,7 +357,7 @@ class ContentAnalytics:
             <div class="container">
                 <h1>📊 Content Strategy Dashboard</h1>
                 <p><strong>Based on Synapse Analysis:</strong> 40% higher engagement from technical debates, 6:30 AM optimal timing</p>
-                
+
                 <h2>📈 Key Performance Metrics</h2>
                 <div class="metric-card">
                     <div class="metric-value">{summary[0] or 0}</div>
@@ -383,7 +383,7 @@ class ContentAnalytics:
                     <div class="metric-value">{summary[5] or 0}</div>
                     <div class="metric-label">Discovery Calls</div>
                 </div>
-                
+
                 <h2>🏆 Top Performing Posts</h2>
                 <table>
                     <tr>
@@ -406,12 +406,12 @@ class ContentAnalytics:
 
         html_content += '''
                 </table>
-                
+
                 <h2>📅 Weekly Performance Trends</h2>
                 <div class="chart-container">
                     <canvas id="weeklyChart"></canvas>
                 </div>
-                
+
                 <script>
                     const ctx = document.getElementById('weeklyChart').getContext('2d');
                     const chart = new Chart(ctx, {
@@ -461,7 +461,7 @@ class ContentAnalytics:
                         }}
                     }});
                 </script>
-                
+
                 <h2>💡 Optimization Insights</h2>
                 <ul>
                     <li><strong>Best Day for Technical Content:</strong> Tuesday 6:30 AM (40% higher engagement)</li>

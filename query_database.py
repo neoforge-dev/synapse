@@ -37,7 +37,7 @@ async def query_database():
         # Search for Notion specifically
         notion_query = """
         MATCH (d:Document)-[:HAS_CHUNK]->(c:Chunk)-[:MENTIONS]->(e:Entity)
-        WHERE toLower(e.name) CONTAINS 'notion' 
+        WHERE toLower(e.name) CONTAINS 'notion'
            OR toLower(c.text) CONTAINS 'notion'
            OR toLower(d.title) CONTAINS 'notion'
         RETURN d.document_id, d.title, c.text, e.name
@@ -53,7 +53,7 @@ async def query_database():
         # Search for LinkedIn
         linkedin_query = """
         MATCH (d:Document)-[:HAS_CHUNK]->(c:Chunk)-[:MENTIONS]->(e:Entity)
-        WHERE toLower(e.name) CONTAINS 'linkedin' 
+        WHERE toLower(e.name) CONTAINS 'linkedin'
            OR toLower(c.text) CONTAINS 'linkedin'
            OR toLower(d.title) CONTAINS 'linkedin'
         RETURN d.document_id, d.title, c.text, e.name

@@ -262,9 +262,9 @@ class WhiteGloveOnboardingEngine:
 
         for template in templates:
             cursor.execute('''
-                INSERT OR REPLACE INTO success_plan_templates 
-                (template_name, engagement_model, onboarding_tier, timeline_weeks, 
-                 phase_structure, milestone_templates, success_metrics_template, 
+                INSERT OR REPLACE INTO success_plan_templates
+                (template_name, engagement_model, onboarding_tier, timeline_weeks,
+                 phase_structure, milestone_templates, success_metrics_template,
                  resource_requirements, risk_mitigation_strategies)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
@@ -318,7 +318,7 @@ class WhiteGloveOnboardingEngine:
         self._save_enterprise_client(enterprise_client)
 
         # Create onboarding milestones
-        milestones = self._create_onboarding_milestones(enterprise_client, success_template)
+        self._create_onboarding_milestones(enterprise_client, success_template)
 
         # Initialize health metrics
         self._initialize_health_metrics(enterprise_client)
@@ -361,7 +361,7 @@ class WhiteGloveOnboardingEngine:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT * FROM success_plan_templates 
+            SELECT * FROM success_plan_templates
             WHERE engagement_model = ? AND onboarding_tier = ?
         ''', (engagement_model, onboarding_tier))
 
@@ -369,7 +369,7 @@ class WhiteGloveOnboardingEngine:
         if not template_data:
             # Fallback to standard template
             cursor.execute('''
-                SELECT * FROM success_plan_templates 
+                SELECT * FROM success_plan_templates
                 WHERE onboarding_tier = 'standard'
                 LIMIT 1
             ''')
@@ -430,7 +430,7 @@ class WhiteGloveOnboardingEngine:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT OR REPLACE INTO enterprise_clients 
+            INSERT OR REPLACE INTO enterprise_clients
             (client_id, company_name, industry, contract_value, decision_makers,
              technical_contacts, onboarding_tier, engagement_model, success_metrics,
              timeline_weeks, current_phase, health_score, created_at, last_updated)
@@ -573,7 +573,7 @@ class WhiteGloveOnboardingEngine:
 
         for milestone in milestones:
             cursor.execute('''
-                INSERT OR REPLACE INTO onboarding_milestones 
+                INSERT OR REPLACE INTO onboarding_milestones
                 (milestone_id, client_id, milestone_name, milestone_type, target_date,
                  completion_date, status, success_criteria, deliverables,
                  stakeholder_approval_required, risk_level, dependencies)
@@ -627,8 +627,8 @@ class WhiteGloveOnboardingEngine:
 
         for metric in health_metrics:
             cursor.execute('''
-                INSERT INTO client_health_metrics 
-                (client_id, metric_type, metric_value, metric_target, 
+                INSERT INTO client_health_metrics
+                (client_id, metric_type, metric_value, metric_target,
                  trend_direction, action_items, escalation_required)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', (
@@ -655,16 +655,16 @@ class WhiteGloveOnboardingEngine:
 
         # Get milestones
         cursor.execute('''
-            SELECT * FROM onboarding_milestones 
-            WHERE client_id = ? 
+            SELECT * FROM onboarding_milestones
+            WHERE client_id = ?
             ORDER BY target_date
         ''', (client_id,))
         milestones_data = cursor.fetchall()
 
         # Get health metrics
         cursor.execute('''
-            SELECT * FROM client_health_metrics 
-            WHERE client_id = ? 
+            SELECT * FROM client_health_metrics
+            WHERE client_id = ?
             ORDER BY measurement_date DESC
         ''', (client_id,))
         health_data = cursor.fetchall()
@@ -768,7 +768,7 @@ class WhiteGloveOnboardingEngine:
 
         # Get milestone completion rates
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(*) as total_milestones,
                 COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_milestones,
                 COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress_milestones

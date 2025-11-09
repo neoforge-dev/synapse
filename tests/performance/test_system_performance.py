@@ -131,12 +131,12 @@ async def test_api_endpoint_performance_with_caching():
     # First call
     start_time = time.time()
     response1 = client.get(f"/api/v1/graph/neighbors?{query_params}")
-    first_time = time.time() - start_time
+    time.time() - start_time
 
     # Second call (should hit cache in real implementation)
     start_time = time.time()
     response2 = client.get(f"/api/v1/graph/neighbors?{query_params}")
-    second_time = time.time() - start_time
+    time.time() - start_time
 
     # Both should return same data structure
     assert response1.status_code == response2.status_code == 200

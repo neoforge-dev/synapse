@@ -29,26 +29,7 @@ class LinkedInAutomation:
 
         # Note: LinkedIn API v2 requires approval for posting
         # This is a framework for when API access is available
-        headers = {
-            'Authorization': f'Bearer {self.access_token}',
-            'Content-Type': 'application/json'
-        }
 
-        payload = {
-            "author": "urn:li:person:{person_id}",  # Replace with actual person ID
-            "lifecycleState": "PUBLISHED",
-            "specificContent": {
-                "com.linkedin.ugc.ShareContent": {
-                    "shareCommentary": {
-                        "text": content
-                    },
-                    "shareMediaCategory": "NONE"
-                }
-            },
-            "visibility": {
-                "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
-            }
-        }
 
         # For now, create a reminder since API posting requires special approval
         self._create_manual_reminder(content, scheduled_time, content_type)
@@ -353,9 +334,8 @@ class BusinessDevelopmentAutomation:
             print("📧 Email not configured. Manual follow-up required.")
             return
 
-        subject = "Thank you for your technical leadership inquiry"
 
-        body = f"""
+        f"""
 Thank you for reaching out regarding technical leadership and fractional CTO services.
 
 Based on your inquiry about {inquiry_details.get('type', 'technical leadership')}, I'd love to discuss how I can help your {inquiry_details.get('company_size', 'organization')} scale effectively.
@@ -428,7 +408,7 @@ def main():
 
     # Example: Track yesterday's performance
     tracker = PerformanceTracker()
-    performance = tracker.daily_performance_check()
+    tracker.daily_performance_check()
 
     # Example: Track a consultation inquiry
     bd_automation = BusinessDevelopmentAutomation()

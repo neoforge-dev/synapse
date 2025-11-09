@@ -675,7 +675,7 @@ class PsychographicAnalyzer:
         ]
 
         pain_points = []
-        text_lower = text.lower()
+        text.lower()
         sentences = text.split('.')
 
         for sentence in sentences:
@@ -692,7 +692,7 @@ class PsychographicAnalyzer:
         ]
 
         goals = []
-        text_lower = text.lower()
+        text.lower()
         sentences = text.split('.')
 
         for sentence in sentences:
@@ -1193,7 +1193,7 @@ class AudienceSegmentationEngine:
             resonance_score = 0.0
 
             # Content preference alignment
-            content_concepts = await self.concept_extractor.extract_concepts(content)
+            await self.concept_extractor.extract_concepts(content)
             content_preferences = await self.behavior_analyzer.analyze_behavior(content)
 
             # Calculate preference alignment
@@ -1781,7 +1781,7 @@ class AudienceSegmentationEngine:
         overlaps = []
 
         for i, segment1 in enumerate(segments):
-            for j, segment2 in enumerate(segments[i+1:], i+1):
+            for _j, segment2 in enumerate(segments[i+1:], i+1):
                 similarity = self._calculate_segment_similarity(segment1, segment2)
 
                 if similarity > 0.3:  # Significant overlap

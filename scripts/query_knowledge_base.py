@@ -193,7 +193,7 @@ async def handle_document_search(graph_repo: MemgraphGraphRepository, title_quer
         doc_query = """
         MATCH (d:Document)
         WHERE toLower(d.title) CONTAINS toLower($title_query)
-        RETURN d.title as title, d.category as category, d.source as source, 
+        RETURN d.title as title, d.category as category, d.source as source,
                d.data_type as data_type, id(d) as doc_id
         LIMIT 10
         """

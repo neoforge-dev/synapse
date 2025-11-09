@@ -173,7 +173,7 @@ class AutomaticKeyRotation:
 
         self.rotation_schedules[schedule_key] = schedule
         self.rotation_metrics["tenants_with_active_schedules"] = len(
-            set(s.tenant_id for s in self.rotation_schedules.values())
+            {s.tenant_id for s in self.rotation_schedules.values()}
         )
 
         logger.info(f"Registered tenant {tenant_id} for {policy_name} key rotation")
@@ -186,7 +186,7 @@ class AutomaticKeyRotation:
         if schedule_key in self.rotation_schedules:
             del self.rotation_schedules[schedule_key]
             self.rotation_metrics["tenants_with_active_schedules"] = len(
-                set(s.tenant_id for s in self.rotation_schedules.values())
+                {s.tenant_id for s in self.rotation_schedules.values()}
             )
             logger.info(f"Unregistered tenant {tenant_id} from key rotation")
             return True
@@ -242,7 +242,7 @@ class AutomaticKeyRotation:
         """Check for and execute pending rotations."""
         current_time = datetime.utcnow()
 
-        for schedule_key, schedule in self.rotation_schedules.items():
+        for _schedule_key, schedule in self.rotation_schedules.items():
             if (schedule.status == RotationStatus.PENDING and
                 current_time >= schedule.next_rotation):
 
@@ -433,7 +433,7 @@ class AutomaticKeyRotation:
         """Generate compliance report for key rotation status."""
         report = {
             "report_date": datetime.utcnow().isoformat(),
-            "total_tenants": len(set(s.tenant_id for s in self.rotation_schedules.values())),
+            "total_tenants": len({s.tenant_id for s in self.rotation_schedules.values()}),
             "total_schedules": len(self.rotation_schedules),
             "metrics": self.rotation_metrics.copy(),
             "compliance_status": {},
@@ -444,7 +444,7 @@ class AutomaticKeyRotation:
         current_time = datetime.utcnow()
 
         # Analyze compliance by framework
-        for policy_name, policy in self.rotation_policies.items():
+        for _policy_name, policy in self.rotation_policies.items():
             matching_schedules = [
                 s for s in self.rotation_schedules.values()
                 if s.policy.compliance_framework == policy.compliance_framework
@@ -483,7 +483,7 @@ class AutomaticKeyRotation:
     def _update_metrics(self):
         """Update rotation metrics."""
         self.rotation_metrics["tenants_with_active_schedules"] = len(
-            set(s.tenant_id for s in self.rotation_schedules.values())
+            {s.tenant_id for s in self.rotation_schedules.values()}
         )
 
     def get_tenant_rotation_status(self, tenant_id: UUID) -> dict[str, Any]:

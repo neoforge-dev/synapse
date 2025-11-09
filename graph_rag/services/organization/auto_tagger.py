@@ -133,7 +133,7 @@ class AutoTagger:
             if tag not in unique_tags or conf > unique_tags[tag]:
                 unique_tags[tag] = conf
 
-        result = [(tag, conf) for tag, conf in unique_tags.items()]
+        result = list(unique_tags.items())
         return sorted(result, key=lambda x: x[1], reverse=True)[:10]
 
     def classify_category(self, content: str) -> str:
@@ -141,7 +141,7 @@ class AutoTagger:
         if not content:
             return "general"
 
-        words = set(word.lower() for word in self._extract_words(content))
+        words = {word.lower() for word in self._extract_words(content)}
 
         category_scores = {}
         for category, keywords in self.category_keywords.items():
@@ -156,7 +156,7 @@ class AutoTagger:
 
     def extract_hierarchical_tags(self, content: str) -> dict[str, list[str]]:
         """Extract tags organized in hierarchical categories."""
-        words = set(word.lower() for word in self._extract_words(content))
+        words = {word.lower() for word in self._extract_words(content)}
 
         hierarchical = {}
 

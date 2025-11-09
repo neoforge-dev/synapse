@@ -21,7 +21,7 @@ class ConceptEntityExtractor:
 
     def __init__(self, traditional_extractor=None, use_advanced_concepts: bool = True):
         """Initialize the concept-aware entity extractor.
-        
+
         Args:
             traditional_extractor: Optional traditional entity extractor (spaCy, etc.)
             use_advanced_concepts: Whether to use advanced concept extraction
@@ -40,11 +40,11 @@ class ConceptEntityExtractor:
         self, text: str, context: dict[str, Any] | None = None
     ) -> ExtractionResult:
         """Extract both traditional entities and conceptual entities from text.
-        
+
         Args:
             text: The input text
             context: Optional context (source platform, document metadata, etc.)
-            
+
         Returns:
             ExtractionResult containing both traditional and conceptual entities
         """
@@ -84,10 +84,10 @@ class ConceptEntityExtractor:
 
     async def extract(self, document: Document) -> ProcessedDocument:
         """Extract entities and concepts from all chunks in a document.
-        
+
         Args:
             document: The document to process
-            
+
         Returns:
             ProcessedDocument with extracted entities and relationships
         """
@@ -291,7 +291,7 @@ class BeliefPreferenceExtractor(ConceptEntityExtractor):
         self, text: str, context: dict[str, Any] | None = None
     ) -> dict[str, list[ConceptualEntity]]:
         """Extract beliefs and preferences specifically.
-        
+
         Returns:
             Dict with 'beliefs' and 'preferences' keys containing respective concepts
         """

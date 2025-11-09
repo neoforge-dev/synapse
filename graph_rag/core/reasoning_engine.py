@@ -57,7 +57,7 @@ class ReasoningResult:
 class MultiStepReasoningEngine:
     """
     Engine for executing multi-step reasoning chains using GraphRAG.
-    
+
     This engine can break down complex questions into reasoning steps,
     execute each step using the underlying GraphRAG engine, and chain
     the results together for sophisticated question answering.
@@ -66,7 +66,7 @@ class MultiStepReasoningEngine:
     def __init__(self, graph_rag_engine: SimpleGraphRAGEngine):
         """
         Initialize the reasoning engine.
-        
+
         Args:
             graph_rag_engine: The underlying GraphRAG engine to use for individual steps
         """
@@ -81,12 +81,12 @@ class MultiStepReasoningEngine:
     ) -> ReasoningResult:
         """
         Execute multi-step reasoning for a complex question.
-        
+
         Args:
             question: The complex question to answer
             steps: List of reasoning steps to execute, or None to auto-generate
             config: Configuration options for reasoning
-            
+
         Returns:
             ReasoningResult with the complete reasoning process and final answer
         """
@@ -131,11 +131,11 @@ class MultiStepReasoningEngine:
     ) -> list[str]:
         """
         Automatically generate reasoning steps for a question.
-        
+
         Args:
             question: The question to generate steps for
             config: Configuration options
-            
+
         Returns:
             List of step names
         """
@@ -179,7 +179,7 @@ class MultiStepReasoningEngine:
     ) -> None:
         """
         Execute all steps in a reasoning chain.
-        
+
         Args:
             reasoning_chain: The chain to execute
             config: Configuration options
@@ -209,7 +209,7 @@ class MultiStepReasoningEngine:
     ) -> None:
         """
         Execute a single reasoning step.
-        
+
         Args:
             step: The step to execute
             reasoning_chain: The complete reasoning chain for context
@@ -240,11 +240,11 @@ class MultiStepReasoningEngine:
     ) -> str:
         """
         Generate reasoning explanation for a step.
-        
+
         Args:
             step: The executed step
             reasoning_chain: The complete reasoning chain
-            
+
         Returns:
             Reasoning explanation string
         """
@@ -266,11 +266,11 @@ class MultiStepReasoningEngine:
     ) -> tuple[str, str]:
         """
         Synthesize a final answer from all reasoning steps.
-        
+
         Args:
             reasoning_chain: The completed reasoning chain
             config: Configuration options
-            
+
         Returns:
             Tuple of (final_answer, synthesis_reasoning)
         """

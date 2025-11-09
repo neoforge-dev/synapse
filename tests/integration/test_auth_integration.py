@@ -496,7 +496,7 @@ class TestAPIIntegration:
         # If no protected endpoints exist yet, this test may need to be updated
 
         # Test without authentication (should fail)
-        unauth_response = await integration_test_client.get("/api/v1/documents")
+        await integration_test_client.get("/api/v1/documents")
         # This might be 401 or might be allowed depending on endpoint implementation
         # Adjust based on actual API design
 

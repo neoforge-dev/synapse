@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class SharedPersistentVectorStore(VectorStore):
     """
-    A vector store that persists data to disk and supports concurrent access 
+    A vector store that persists data to disk and supports concurrent access
     from multiple processes through file locking.
     """
 

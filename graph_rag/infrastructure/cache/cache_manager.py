@@ -35,10 +35,10 @@ class CacheManager:
 
     async def invalidate_pattern(self, pattern: str) -> int:
         """Invalidate all keys matching a pattern.
-        
+
         Args:
             pattern: Pattern with * wildcards (e.g., "graph:node123*")
-            
+
         Returns:
             Number of keys invalidated
         """

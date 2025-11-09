@@ -19,7 +19,7 @@ def start_server(
     check_health: bool = typer.Option(True, "--check-health/--no-check-health", help="Check health before starting"),
 ):
     """Start the MCP server for Synapse GraphRAG tools.
-    
+
     The server exposes tools for document ingestion, search, and question answering
     that can be used by MCP clients like VS Code and Claude IDE.
     """
@@ -174,7 +174,7 @@ def show_config(
 
     from graph_rag.config import get_settings
 
-    settings = get_settings()
+    get_settings()
     api_url = os.getenv("SYNAPSE_API_BASE_URL", "http://localhost:8000")
 
     config = {

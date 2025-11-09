@@ -269,7 +269,7 @@ async def process_files_with_batch(
 ) -> tuple[int, int, list[dict[str, Any]] | None]:
     """
     Process multiple files using batch processing for better performance.
-    
+
     Returns:
         Tuple of (successful_count, failed_count, results_payload)
     """

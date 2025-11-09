@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 def _convert_neo4j_temporal_types(value: Any) -> Any:
     """Converts Neo4j temporal types to standard Python types."""
-    if isinstance(value, (neo4j.time.DateTime, neo4j.time.Date, neo4j.time.Time)):
+    if isinstance(value, neo4j.time.DateTime | neo4j.time.Date | neo4j.time.Time):
         return value.to_native()
     return value
 

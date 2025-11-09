@@ -198,7 +198,6 @@ class AnalyticsConsolidationMigrator:
             sqlite_columns = [col[1] for col in columns_info]
 
             # Use SQLite columns for SELECT query
-            select_columns = sqlite_columns
 
             # Migrate data in batches
             migrated_count = 0

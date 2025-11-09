@@ -534,7 +534,7 @@ class TenantProvisioningEngine:
         # Use tenant data manager to import data
         with self.tenant_manager.tenant_scope(tenant_context.tenant_id):
             # Simulate document processing
-            for i, doc in enumerate(documents):
+            for i, _doc in enumerate(documents):
                 # Update progress
                 progress = (i + 1) / len(documents) * 100
                 status.current_stage_progress_percent = progress
@@ -543,7 +543,7 @@ class TenantProvisioningEngine:
                 await asyncio.sleep(0.1)
 
             # Simulate entity processing
-            for entity in entities:
+            for _entity in entities:
                 await asyncio.sleep(0.05)
 
     async def _setup_sso_integration(self, tenant_id: str, provider: str, config: dict[str, Any]) -> None:

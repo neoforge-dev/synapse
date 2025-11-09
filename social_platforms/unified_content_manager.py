@@ -179,7 +179,7 @@ class UnifiedContentManager:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT INTO content_pieces 
+            INSERT INTO content_pieces
             (content_id, original_content, business_objective, target_audience)
             VALUES (?, ?, ?, ?)
         ''', (content_id, original_content, business_objective, target_audience))
@@ -245,7 +245,7 @@ class UnifiedContentManager:
 This insight directly impacts your ability to build and scale high-performance engineering teams. Understanding these principles helps you:
 
 - Make better hiring and team composition decisions
-- Improve team productivity and delivery velocity  
+- Improve team productivity and delivery velocity
 - Reduce technical debt and increase code quality
 - Build sustainable engineering culture
 
@@ -332,7 +332,7 @@ If you're ready to transform your engineering team performance:
             adaptation_id = f"{content_id}_{platform.value}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
             cursor.execute('''
-                INSERT OR REPLACE INTO platform_adaptations 
+                INSERT OR REPLACE INTO platform_adaptations
                 (adaptation_id, content_id, platform, adapted_content)
                 VALUES (?, ?, ?, ?)
             ''', (adaptation_id, content_id, platform.value, adapted_content))
@@ -383,7 +383,7 @@ If you're ready to transform your engineering team performance:
 
         for platform, scheduled_time in scheduled_times.items():
             cursor.execute('''
-                UPDATE platform_adaptations 
+                UPDATE platform_adaptations
                 SET scheduled_time = ?, status = 'scheduled'
                 WHERE content_id = ? AND platform = ?
             ''', (scheduled_time, content_id, platform.value))
@@ -402,8 +402,8 @@ If you're ready to transform your engineering team performance:
         timing_delays_serializable = {p.value: delay for p, delay in strategy.timing_delays.items()}
 
         cursor.execute('''
-            INSERT OR REPLACE INTO content_strategies 
-            (strategy_id, content_id, primary_platform, secondary_platforms, 
+            INSERT OR REPLACE INTO content_strategies
+            (strategy_id, content_id, primary_platform, secondary_platforms,
              timing_strategy, cross_promotion)
             VALUES (?, ?, ?, ?, ?, ?)
         ''', (
@@ -423,8 +423,8 @@ If you're ready to transform your engineering team performance:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT platform, adapted_content, scheduled_time 
-            FROM platform_adaptations 
+            SELECT platform, adapted_content, scheduled_time
+            FROM platform_adaptations
             WHERE content_id = ? AND status = 'scheduled'
             AND datetime(scheduled_time) <= datetime('now')
             ORDER BY scheduled_time
@@ -435,7 +435,7 @@ If you're ready to transform your engineering team performance:
 
         posted_ids = {}
 
-        for platform_str, adapted_content, scheduled_time in scheduled_posts:
+        for platform_str, adapted_content, _scheduled_time in scheduled_posts:
             platform = Platform(platform_str)
 
             try:
@@ -477,7 +477,7 @@ If you're ready to transform your engineering team performance:
         cursor = conn.cursor()
 
         cursor.execute('''
-            UPDATE platform_adaptations 
+            UPDATE platform_adaptations
             SET status = ?, post_id = ?
             WHERE content_id = ? AND platform = ?
         ''', (status, post_id, content_id, platform.value))
@@ -498,8 +498,8 @@ If you're ready to transform your engineering team performance:
 
         # Get all posted adaptations
         cursor.execute('''
-            SELECT platform, post_id 
-            FROM platform_adaptations 
+            SELECT platform, post_id
+            FROM platform_adaptations
             WHERE content_id = ? AND status = 'posted' AND post_id IS NOT NULL
         ''', (content_id,))
 
@@ -568,8 +568,8 @@ If you're ready to transform your engineering team performance:
             metric_id = f"metric_{content_id}_{platform_str}_{datetime.now().strftime('%Y%m%d')}"
 
             cursor.execute('''
-                INSERT OR REPLACE INTO cross_platform_metrics 
-                (metric_id, content_id, platform, impressions, engagement, 
+                INSERT OR REPLACE INTO cross_platform_metrics
+                (metric_id, content_id, platform, impressions, engagement,
                  clicks, engagement_rate)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', (
@@ -590,7 +590,7 @@ If you're ready to transform your engineering team performance:
 
         # Get recent content performance
         cursor.execute('''
-            SELECT 
+            SELECT
                 cp.content_id,
                 cp.business_objective,
                 COUNT(DISTINCT pa.platform) as platforms_used,
@@ -610,7 +610,7 @@ If you're ready to transform your engineering team performance:
 
         # Get platform performance comparison
         cursor.execute('''
-            SELECT 
+            SELECT
                 platform,
                 COUNT(*) as posts_count,
                 AVG(impressions) as avg_impressions,
@@ -663,17 +663,17 @@ def main():
     # Demo content creation and adaptation
     sample_content = """
     ## Final Optimized Post
-    
+
     I've never met a 10x developer, but I've built 10x teams. Here's the difference.
-    
+
     Team performance multiplies when you focus on systems over individuals.
-    
+
     The best engineering teams I've built had:
-    - Clear communication standards  
+    - Clear communication standards
     - Systematic knowledge sharing
     - Collective code ownership
     - Continuous learning culture
-    
+
     What made your best engineering team special? Share the secret sauce.
     """
 

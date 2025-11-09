@@ -218,14 +218,14 @@ class FaissVectorStore(VectorStore):
     ) -> list[SearchResultData]:
         """
         Convenience method that matches SimpleVectorStore's interface.
-        
+
         Converts query text to embedding and performs vector search.
-        
+
         Args:
             query_text: The search query text
             top_k: Number of results to return
             search_type: Search type (only "vector" is supported)
-            
+
         Returns:
             List of SearchResultData objects
         """

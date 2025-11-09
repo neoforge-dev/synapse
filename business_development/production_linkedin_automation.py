@@ -213,7 +213,7 @@ class ProductionLinkedInAutomation:
 
         event_id = f"cb_{datetime.now().strftime('%Y%m%d%H%M%S')}"
         cursor.execute('''
-            INSERT INTO circuit_breaker_events 
+            INSERT INTO circuit_breaker_events
             (event_id, event_type, failure_count, recovery_time)
             VALUES (?, ?, ?, ?)
         ''', (event_id, event_type, failure_count,
@@ -229,7 +229,7 @@ class ProductionLinkedInAutomation:
 
         metric_id = f"api_{datetime.now().strftime('%Y%m%d%H%M%S')}"
         cursor.execute('''
-            INSERT INTO automation_metrics 
+            INSERT INTO automation_metrics
             (metric_id, api_response_time, system_status, error_details)
             VALUES (?, ?, ?, ?)
         ''', (metric_id, response_time, "success" if success else "api_error", error))
@@ -292,8 +292,8 @@ class ProductionLinkedInAutomation:
                 content = self._generate_optimized_content(config['type'], config['audience'])
 
                 cursor.execute('''
-                    INSERT OR REPLACE INTO content_queue 
-                    (queue_id, content, scheduled_time, post_type, target_audience, 
+                    INSERT OR REPLACE INTO content_queue
+                    (queue_id, content, scheduled_time, post_type, target_audience,
                      business_objective, priority, status)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
@@ -428,7 +428,7 @@ Are you building technology or just following tutorials?"""
 
 The story nobody talks about when discussing technical leadership...
 
-Three years ago, I was the "smartest person in the room" CTO. 
+Three years ago, I was the "smartest person in the room" CTO.
 
 My approach:
 • Rewrote everything in the "right" language
@@ -669,7 +669,7 @@ What's the most complex part of your development process right now?"""
         # Log safety check results
         check_id = f"safety_{queue_id}_{int(time.time())}"
         cursor.execute('''
-            INSERT INTO brand_safety_checks 
+            INSERT INTO brand_safety_checks
             (check_id, queue_id, check_type, status, issues_found)
             VALUES (?, ?, ?, ?, ?)
         ''', (check_id, queue_id, 'automated',
@@ -725,14 +725,14 @@ What's the most complex part of your development process right now?"""
         today = datetime.now().strftime('%Y-%m-%d')
         cursor.execute('''
             SELECT queue_id, content, business_objective, priority
-            FROM content_queue 
+            FROM content_queue
             WHERE DATE(scheduled_time) = ? AND status = 'queued'
             ORDER BY priority DESC, scheduled_time ASC
         ''', (today,))
 
         posts = cursor.fetchall()
 
-        for queue_id, content, objective, priority in posts:
+        for queue_id, content, objective, _priority in posts:
             try:
                 # Run brand safety checks
                 if not self.run_brand_safety_checks(queue_id):
@@ -748,8 +748,8 @@ What's the most complex part of your development process right now?"""
 
                 if success:
                     cursor.execute('''
-                        UPDATE content_queue 
-                        SET status = 'posted', posted_at = CURRENT_TIMESTAMP 
+                        UPDATE content_queue
+                        SET status = 'posted', posted_at = CURRENT_TIMESTAMP
                         WHERE queue_id = ?
                     ''', (queue_id,))
                     logger.info(f"Successfully posted {queue_id}")
@@ -759,9 +759,9 @@ What's the most complex part of your development process right now?"""
                 else:
                     # Increment retry count
                     cursor.execute('''
-                        UPDATE content_queue 
+                        UPDATE content_queue
                         SET retry_count = retry_count + 1,
-                            status = CASE 
+                            status = CASE
                                 WHEN retry_count + 1 >= max_retries THEN 'failed'
                                 ELSE 'retry_pending'
                             END
@@ -852,7 +852,7 @@ What's the most complex part of your development process right now?"""
 
             # Update performance metrics
             cursor.execute('''
-                UPDATE content_queue 
+                UPDATE content_queue
                 SET performance_metrics = ?
                 WHERE queue_id = ?
             ''', (json.dumps(analytics), queue_id))
@@ -912,7 +912,7 @@ Check LinkedIn post for business development opportunities.
         # Calculate engagement rate
         queue_cursor.execute('''
             SELECT AVG(JSON_EXTRACT(performance_metrics, "$.engagement_rate"))
-            FROM content_queue 
+            FROM content_queue
             WHERE performance_metrics IS NOT NULL
         ''')
         avg_engagement = queue_cursor.fetchone()[0] or 0
@@ -922,8 +922,8 @@ Check LinkedIn post for business development opportunities.
         # Log metrics
         metric_id = f"monitor_{int(time.time())}"
         cursor.execute('''
-            INSERT INTO automation_metrics 
-            (metric_id, posts_scheduled, posts_published, posts_failed, 
+            INSERT INTO automation_metrics
+            (metric_id, posts_scheduled, posts_published, posts_failed,
              engagement_rate, system_status)
             VALUES (?, ?, ?, ?, ?, ?)
         ''', (metric_id, queued_count, posted_count, failed_count,
@@ -959,7 +959,7 @@ Check LinkedIn post for business development opportunities.
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(CASE WHEN status = 'queued' THEN 1 END) as queued,
                 COUNT(CASE WHEN status = 'posted' THEN 1 END) as posted,
                 COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed,
@@ -984,11 +984,11 @@ Check LinkedIn post for business development opportunities.
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT 
+            SELECT
                 AVG(JSON_EXTRACT(performance_metrics, "$.engagement_rate")) as avg_engagement,
                 SUM(JSON_EXTRACT(performance_metrics, "$.comments")) as total_comments,
                 COUNT(*) as total_posts
-            FROM content_queue 
+            FROM content_queue
             WHERE posted_at > datetime('now', '-7 days')
             AND performance_metrics IS NOT NULL
         ''')

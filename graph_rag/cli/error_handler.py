@@ -31,7 +31,7 @@ class CLIErrorHandler:
     def handle_cli_error(error: Exception, command_context: dict[str, Any] | None = None) -> None:
         """
         Handle CLI errors with appropriate user guidance and exit codes.
-        
+
         Args:
             error: The exception that occurred
             command_context: Context about the command being executed
@@ -152,7 +152,7 @@ class CLIErrorHandler:
                 ])
 
         elif command_name == "query":
-            if isinstance(error, (MemgraphConnectionError, VectorStoreError)):
+            if isinstance(error, MemgraphConnectionError | VectorStoreError):
                 suggestions.extend([
                     "Use simplified search: synapse search '<simplified query>'",
                     "Check if documents are ingested: synapse admin list-documents"
@@ -172,14 +172,14 @@ class CLIErrorHandler:
         """Determine appropriate exit code based on error type."""
         if isinstance(error, ConfigurationError):
             return 78  # EX_CONFIG
-        elif isinstance(error, (MemgraphConnectionError, ServiceUnavailableError)):
+        elif isinstance(error, MemgraphConnectionError | ServiceUnavailableError):
             return 69  # EX_UNAVAIL
         elif isinstance(error, IngestionError):
             if error.details.get("recoverable", True):
                 return 75  # EX_TEMPFAIL
             else:
                 return 66  # EX_NOINPUT
-        elif isinstance(error, (VectorStoreError, EmbeddingServiceError)):
+        elif isinstance(error, VectorStoreError | EmbeddingServiceError):
             return 75  # EX_TEMPFAIL
         else:
             return 70  # EX_SOFTWARE

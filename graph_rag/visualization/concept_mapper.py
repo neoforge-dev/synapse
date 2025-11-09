@@ -282,8 +282,8 @@ class ConceptMapper:
             })
 
         # Extract unique platforms and stages
-        timeline_data["platforms"] = list(set(v.platform.value for v in chronological_versions))
-        timeline_data["stages"] = list(set(v.stage.value for v in chronological_versions))
+        timeline_data["platforms"] = list({v.platform.value for v in chronological_versions})
+        timeline_data["stages"] = list({v.stage.value for v in chronological_versions})
 
         return timeline_data
 
@@ -358,7 +358,7 @@ class ConceptMapper:
                 </select>
             </label>
         </div>
-        
+
         <div class="legend">
             <h3>Legend</h3>
             <div><strong>Node Size:</strong> Concept frequency</div>
@@ -369,33 +369,33 @@ class ConceptMapper:
             <div style="color: #45B7D1;">● Process</div>
             <div style="color: #96CEB4;">● Insight</div>
         </div>
-        
+
         <svg class="map-container" width="800" height="600"></svg>
     </div>
-    
+
     <div class="tooltip" style="opacity: 0;"></div>
-    
+
     <script>
         const data = {data_json};
-        
+
         const svg = d3.select("svg");
         const width = +svg.attr("width");
         const height = +svg.attr("height");
-        
+
         const g = svg.append("g");
-        
+
         // Add zoom behavior
         const zoom = d3.zoom()
             .scaleExtent([0.1, 4])
             .on("zoom", (event) => g.attr("transform", event.transform));
         svg.call(zoom);
-        
+
         // Create simulation
         const simulation = d3.forceSimulation()
             .force("link", d3.forceLink().id(d => d.id).distance(100))
             .force("charge", d3.forceManyBody().strength(-300))
             .force("center", d3.forceCenter(width / 2, height / 2));
-        
+
         // Create links
         const link = g.append("g")
             .attr("class", "links")
@@ -405,7 +405,7 @@ class ConceptMapper:
             .attr("class", "link")
             .attr("stroke", d => d.color)
             .attr("stroke-width", d => Math.max(1, d.weight));
-        
+
         // Create nodes
         const node = g.append("g")
             .attr("class", "nodes")
@@ -419,7 +419,7 @@ class ConceptMapper:
                 .on("start", dragstarted)
                 .on("drag", dragged)
                 .on("end", dragended));
-        
+
         // Add labels
         const labels = g.append("g")
             .attr("class", "labels")
@@ -430,10 +430,10 @@ class ConceptMapper:
             .attr("font-size", "12px")
             .attr("dx", 15)
             .attr("dy", 4);
-        
+
         // Add tooltips
         const tooltip = d3.select(".tooltip");
-        
+
         node.on("mouseover", function(event, d) {{
             tooltip.transition().duration(200).style("opacity", .9);
             tooltip.html(`
@@ -448,65 +448,65 @@ class ConceptMapper:
         .on("mouseout", function(d) {{
             tooltip.transition().duration(500).style("opacity", 0);
         }});
-        
+
         // Start simulation
         simulation
             .nodes(data.nodes)
             .on("tick", ticked);
-        
+
         simulation.force("link")
             .links(data.edges);
-        
+
         function ticked() {{
             link
                 .attr("x1", d => d.source.x)
                 .attr("y1", d => d.source.y)
                 .attr("x2", d => d.target.x)
                 .attr("y2", d => d.target.y);
-            
+
             node
                 .attr("cx", d => d.x)
                 .attr("cy", d => d.y);
-            
+
             labels
                 .attr("x", d => d.x)
                 .attr("y", d => d.y);
         }}
-        
+
         function dragstarted(event, d) {{
             if (!event.active) simulation.alphaTarget(0.3).restart();
             d.fx = d.x;
             d.fy = d.y;
         }}
-        
+
         function dragged(event, d) {{
             d.fx = event.x;
             d.fy = event.y;
         }}
-        
+
         function dragended(event, d) {{
             if (!event.active) simulation.alphaTarget(0);
             d.fx = null;
             d.fy = null;
         }}
-        
+
         function resetZoom() {{
             svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
         }}
-        
+
         let labelsVisible = true;
         function toggleLabels() {{
             labelsVisible = !labelsVisible;
             labels.style("opacity", labelsVisible ? 1 : 0);
         }}
-        
+
         function filterByType() {{
             const selectedType = document.getElementById("typeFilter").value;
-            
+
             node.style("opacity", d => {{
                 return selectedType === "all" || d.concept_type === selectedType ? 1 : 0.2;
             }});
-            
+
             labels.style("opacity", d => {{
                 const typeVisible = selectedType === "all" || d.concept_type === selectedType;
                 return typeVisible && labelsVisible ? 1 : 0;
@@ -560,40 +560,40 @@ class ConceptMapper:
 <body>
     <h1>📈 Idea Evolution Timeline</h1>
     <h2>Evolution: {evolution_id}</h2>
-    
+
     <div class="timeline" id="timeline"></div>
-    
+
     <script>
         const timelineData = {timeline_json};
-        
+
         const timeline = d3.select("#timeline");
-        
+
         timelineData.timeline.forEach(item => {{
             const div = timeline.append("div")
                 .attr("class", `timeline-item platform-${{item.platform}}`);
-            
+
             div.append("div")
                 .attr("class", "timestamp")
                 .text(new Date(item.timestamp).toLocaleString());
-            
+
             div.append("div")
                 .attr("class", "stage")
                 .text(item.stage);
-            
+
             div.append("h4")
                 .text(item.concept_name);
-            
+
             if (item.content_snippet) {{
                 div.append("p")
                     .text(item.content_snippet);
             }}
-            
+
             if (Object.keys(item.engagement_metrics).length > 0) {{
                 const engagement = div.append("div")
                     .attr("class", "engagement");
-                
+
                 engagement.append("strong").text("Engagement: ");
-                
+
                 Object.entries(item.engagement_metrics).forEach(([key, value]) => {{
                     engagement.append("span")
                         .text(`${{key}}: ${{value}} `);

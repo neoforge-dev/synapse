@@ -385,7 +385,7 @@ class SecurityValidationFramework:
                 public_exponent=65537,
                 key_size=4096
             )
-            public_key = private_key.public_key()
+            private_key.public_key()
 
             # Verify key strength
             key_size = private_key.key_size
@@ -1204,8 +1204,8 @@ class SecurityValidationFramework:
             framework_tests = [r for r in self.test_results if r.framework == framework]
 
             if framework_tests:
-                total_tests = len(framework_tests)
-                passed_tests = sum(1 for r in framework_tests if r.passed)
+                len(framework_tests)
+                sum(1 for r in framework_tests if r.passed)
 
                 # Weight by severity
                 weighted_score = 0

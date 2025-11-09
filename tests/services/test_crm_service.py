@@ -350,7 +350,7 @@ class TestSalesPipelineManagement:
             priority_tier="gold",
             qualification_status="qualified",
         )
-        contact3 = crm_service.create_contact(
+        crm_service.create_contact(
             name="Silver Contact",
             email="silver@example.com",
             lead_score=55,
@@ -734,7 +734,7 @@ def example_basic_usage():
     )
 
     # Create pipeline entry
-    pipeline = service.create_pipeline_entry(
+    service.create_pipeline_entry(
         contact.contact_id,
         stage="qualified",
         probability=Decimal("0.75"),
@@ -742,7 +742,7 @@ def example_basic_usage():
     )
 
     # Create proposal
-    proposal = service.create_proposal(
+    service.create_proposal(
         contact.contact_id,
         template_used="fractional_cto",
         proposal_value=Decimal("120000.00"),

@@ -105,7 +105,7 @@ class GraphRAGMemgraphIntegration:
                 MATCH (c:Content)-[:HAS_TOPIC]->(t:Topic)<-[:HAS_TOPIC]-(c2:Content)
                       -[:GENERATED]->(e:Engagement)-[:LED_TO]->(cons:Consultation)
                 WHERE c.engagement_rate > 0.08 AND cons.value > 15000
-                RETURN t.name as topic, 
+                RETURN t.name as topic,
                        COUNT(DISTINCT c2) as content_count,
                        AVG(c2.engagement_rate) as avg_engagement,
                        COUNT(cons) as consultation_count,
@@ -122,7 +122,7 @@ class GraphRAGMemgraphIntegration:
                 cypher_query="""
                 MATCH (e1:Entity)<-[:CONTAINS]-(c:Content)-[:CONTAINS]->(e2:Entity)
                 WHERE c.engagement_rate > 0.10 AND e1.name < e2.name
-                WITH e1.name as entity1, e2.name as entity2, 
+                WITH e1.name as entity1, e2.name as entity2,
                      COUNT(c) as cooccurrence_count,
                      AVG(c.engagement_rate) as avg_engagement,
                      SUM(c.consultation_requests) as total_consultations
@@ -138,7 +138,7 @@ class GraphRAGMemgraphIntegration:
                 pattern_id="audience_community_detection",
                 cypher_query="""
                 MATCH (u:User)-[:ENGAGED_WITH]->(c:Content)-[:CONTAINS]->(e:Entity)
-                WITH e, COUNT(DISTINCT u) as user_count, 
+                WITH e, COUNT(DISTINCT u) as user_count,
                      AVG(c.engagement_rate) as avg_engagement,
                      COUNT(c) as content_count
                 WHERE user_count >= 10
@@ -329,7 +329,7 @@ class GraphRAGMemgraphIntegration:
         try:
             # Get LinkedIn posts
             cursor.execute('''
-                SELECT post_id, content, day, actual_engagement_rate, 
+                SELECT post_id, content, day, actual_engagement_rate,
                        consultation_requests, business_objective, posted_at
                 FROM linkedin_posts
                 WHERE actual_engagement_rate IS NOT NULL
@@ -510,7 +510,7 @@ class GraphRAGMemgraphIntegration:
 
         try:
             cursor.execute('''
-                SELECT 
+                SELECT
                     business_objective as topic,
                     COUNT(*) as content_count,
                     AVG(actual_engagement_rate) as avg_engagement,
@@ -578,7 +578,7 @@ class GraphRAGMemgraphIntegration:
 
         try:
             cursor.execute('''
-                SELECT 
+                SELECT
                     day,
                     COUNT(*) as post_count,
                     AVG(actual_engagement_rate) as avg_engagement,

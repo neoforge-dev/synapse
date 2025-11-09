@@ -232,7 +232,7 @@ class SemanticReasoningEngine:
                 extraction_prompt = f"""
                 Extract the key entities and relationships from this query:
                 Query: {query}
-                
+
                 Return in JSON format:
                 {{
                     "entities": ["entity1", "entity2", ...],
@@ -240,7 +240,7 @@ class SemanticReasoningEngine:
                 }}
                 """
 
-                response = await self.llm_service.generate(extraction_prompt)
+                await self.llm_service.generate(extraction_prompt)
                 # Parse JSON response (simplified for demo)
                 # In production, would use proper JSON parsing
                 entities = ["extracted_entity_1", "extracted_entity_2"]
@@ -323,7 +323,7 @@ class SemanticReasoningEngine:
         current_entities = set(entities)
         current_relationships = set(relationships)
 
-        for hop in range(max_hops):
+        for _hop in range(max_hops):
             # Find new inferences for this hop
             hop_steps = await self._reasoning_hop(
                 current_entities, current_relationships, rules, min_confidence
@@ -396,14 +396,14 @@ class SemanticReasoningEngine:
         if self.llm_service:
             synthesis_prompt = f"""
             Based on the following reasoning steps, provide a comprehensive conclusion for the query:
-            
+
             Query: {query}
             Context: {domain_context}
-            
+
             Reasoning Steps:
             {chr(10).join([f"Step {i+1}: {step.conclusion} (Confidence: {step.confidence:.2f})"
                           for i, step in enumerate(steps)])}
-            
+
             Provide a clear, actionable conclusion that synthesizes these insights.
             """
 

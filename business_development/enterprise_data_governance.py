@@ -341,8 +341,8 @@ class EnterpriseDataGovernance:
 
         for policy in default_policies:
             cursor.execute('''
-                INSERT OR REPLACE INTO data_governance_policies 
-                (policy_id, policy_name, policy_type, tenant_id, rules, 
+                INSERT OR REPLACE INTO data_governance_policies
+                (policy_id, policy_name, policy_type, tenant_id, rules,
                  compliance_frameworks, effective_date, expiry_date, is_active)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
@@ -398,7 +398,7 @@ class EnterpriseDataGovernance:
             framework = framework_data["framework"]
             for control in framework_data["controls"]:
                 cursor.execute('''
-                    INSERT OR REPLACE INTO compliance_monitoring 
+                    INSERT OR REPLACE INTO compliance_monitoring
                     (tenant_id, compliance_framework, control_id, control_description,
                      assessment_result, risk_rating, next_assessment_date, automated_monitoring)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -441,7 +441,7 @@ class EnterpriseDataGovernance:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT INTO tenant_configurations 
+            INSERT INTO tenant_configurations
             (tenant_id, tenant_name, compliance_frameworks, data_retention_days,
              encryption_required, audit_level, resource_limits, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -490,7 +490,7 @@ class EnterpriseDataGovernance:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT INTO comprehensive_audit_log 
+            INSERT INTO comprehensive_audit_log
             (audit_id, tenant_id, user_id, event_type, resource_type, resource_id,
              action_details, ip_address, user_agent, timestamp, compliance_context,
              data_classification, risk_score)
@@ -578,7 +578,7 @@ class EnterpriseDataGovernance:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT compliance_frameworks FROM tenant_configurations 
+            SELECT compliance_frameworks FROM tenant_configurations
             WHERE tenant_id = ?
         ''', (tenant_id,))
         result = cursor.fetchone()
@@ -627,7 +627,7 @@ class EnterpriseDataGovernance:
         cursor = conn.cursor()
 
         cursor.execute('''
-            UPDATE comprehensive_audit_log 
+            UPDATE comprehensive_audit_log
             SET automated_response = ?
             WHERE audit_id = ?
         ''', (json.dumps(response_actions), audit_entry.audit_id))
@@ -664,7 +664,7 @@ class EnterpriseDataGovernance:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT INTO data_classification_registry 
+            INSERT INTO data_classification_registry
             (classification_id, tenant_id, resource_type, resource_id, classification_level,
              classification_tags, compliance_requirements, retention_period_days,
              encryption_required, classified_by, next_review_date)
@@ -691,7 +691,7 @@ class EnterpriseDataGovernance:
         # Get all controls for the framework
         cursor.execute('''
             SELECT control_id, control_description, assessment_result, risk_rating
-            FROM compliance_monitoring 
+            FROM compliance_monitoring
             WHERE tenant_id = ? AND compliance_framework = ?
         ''', (tenant_id, compliance_framework.value))
 
@@ -716,7 +716,7 @@ class EnterpriseDataGovernance:
 
             # Update assessment result
             cursor.execute('''
-                UPDATE compliance_monitoring 
+                UPDATE compliance_monitoring
                 SET assessment_result = ?, last_assessed = ?, next_assessment_date = ?
                 WHERE tenant_id = ? AND compliance_framework = ? AND control_id = ?
             ''', (
@@ -777,7 +777,7 @@ class EnterpriseDataGovernance:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT encryption_required FROM tenant_configurations 
+            SELECT encryption_required FROM tenant_configurations
             WHERE tenant_id = ?
         ''', (tenant_id,))
         result = cursor.fetchone()
@@ -792,8 +792,8 @@ class EnterpriseDataGovernance:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT COUNT(*) FROM security_incident_log 
-            WHERE tenant_id = ? AND severity_level IN ('high', 'critical') 
+            SELECT COUNT(*) FROM security_incident_log
+            WHERE tenant_id = ? AND severity_level IN ('high', 'critical')
             AND status != 'resolved' AND created_at >= date('now', '-30 days')
         ''', (tenant_id,))
 
@@ -809,7 +809,7 @@ class EnterpriseDataGovernance:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT rules FROM data_governance_policies 
+            SELECT rules FROM data_governance_policies
             WHERE tenant_id = ? AND policy_type = 'access' AND is_active = 1
         ''', (tenant_id,))
         result = cursor.fetchone()
@@ -835,7 +835,7 @@ class EnterpriseDataGovernance:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT COUNT(*) FROM comprehensive_audit_log 
+            SELECT COUNT(*) FROM comprehensive_audit_log
             WHERE tenant_id = ? AND timestamp >= date('now', '-30 days')
         ''', (tenant_id,))
 
@@ -845,7 +845,7 @@ class EnterpriseDataGovernance:
 
         # Collect policy evidence
         cursor.execute('''
-            SELECT COUNT(*) FROM data_governance_policies 
+            SELECT COUNT(*) FROM data_governance_policies
             WHERE tenant_id = ? AND is_active = 1
         ''', (tenant_id,))
 
@@ -888,7 +888,7 @@ class EnterpriseDataGovernance:
 
         # Get tenant configuration
         cursor.execute('''
-            SELECT tenant_name, compliance_frameworks FROM tenant_configurations 
+            SELECT tenant_name, compliance_frameworks FROM tenant_configurations
             WHERE tenant_id = ?
         ''', (tenant_id,))
         tenant_info = cursor.fetchone()
@@ -912,14 +912,14 @@ class EnterpriseDataGovernance:
 
         # Get recent audit activity
         cursor.execute('''
-            SELECT COUNT(*) FROM comprehensive_audit_log 
+            SELECT COUNT(*) FROM comprehensive_audit_log
             WHERE tenant_id = ? AND timestamp >= date('now', '-30 days')
         ''', (tenant_id,))
         recent_audit_events = cursor.fetchone()[0]
 
         # Get security incidents
         cursor.execute('''
-            SELECT COUNT(*), severity_level FROM security_incident_log 
+            SELECT COUNT(*), severity_level FROM security_incident_log
             WHERE tenant_id = ? AND created_at >= date('now', '-30 days')
             GROUP BY severity_level
         ''', (tenant_id,))
@@ -927,7 +927,7 @@ class EnterpriseDataGovernance:
 
         # Get data classification summary
         cursor.execute('''
-            SELECT classification_level, COUNT(*) FROM data_classification_registry 
+            SELECT classification_level, COUNT(*) FROM data_classification_registry
             WHERE tenant_id = ? GROUP BY classification_level
         ''', (tenant_id,))
         classification_summary = dict(cursor.fetchall())
@@ -994,14 +994,14 @@ class EnterpriseDataGovernance:
 
         # Get policy summary
         cursor.execute('''
-            SELECT policy_type, COUNT(*) FROM data_governance_policies 
+            SELECT policy_type, COUNT(*) FROM data_governance_policies
             WHERE tenant_id = ? AND is_active = 1 GROUP BY policy_type
         ''', (tenant_id,))
         policy_summary = dict(cursor.fetchall())
 
         # Get recent audit activity
         cursor.execute('''
-            SELECT event_type, COUNT(*) FROM comprehensive_audit_log 
+            SELECT event_type, COUNT(*) FROM comprehensive_audit_log
             WHERE tenant_id = ? AND timestamp >= date('now', '-7 days')
             GROUP BY event_type
         ''', (tenant_id,))
@@ -1009,10 +1009,10 @@ class EnterpriseDataGovernance:
 
         # Get compliance status
         cursor.execute('''
-            SELECT compliance_framework, 
+            SELECT compliance_framework,
                    COUNT(CASE WHEN assessment_result = 'compliant' THEN 1 END) as compliant,
                    COUNT(*) as total
-            FROM compliance_monitoring 
+            FROM compliance_monitoring
             WHERE tenant_id = ?
             GROUP BY compliance_framework
         ''', (tenant_id,))
@@ -1028,14 +1028,14 @@ class EnterpriseDataGovernance:
 
         # Get data classification metrics
         cursor.execute('''
-            SELECT classification_level, COUNT(*) FROM data_classification_registry 
+            SELECT classification_level, COUNT(*) FROM data_classification_registry
             WHERE tenant_id = ? GROUP BY classification_level
         ''', (tenant_id,))
         classification_metrics = dict(cursor.fetchall())
 
         # Get security incident summary
         cursor.execute('''
-            SELECT severity_level, COUNT(*) FROM security_incident_log 
+            SELECT severity_level, COUNT(*) FROM security_incident_log
             WHERE tenant_id = ? AND created_at >= date('now', '-30 days')
             GROUP BY severity_level
         ''', (tenant_id,))

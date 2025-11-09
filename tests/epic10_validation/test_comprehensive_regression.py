@@ -1,7 +1,7 @@
 """
 Comprehensive Regression Testing Suite for Epic 10
 
-This module provides comprehensive regression testing to ensure 
+This module provides comprehensive regression testing to ensure
 Epic 10 consolidation introduces no breaking changes.
 """
 

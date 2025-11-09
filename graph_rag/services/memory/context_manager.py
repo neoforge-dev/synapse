@@ -12,7 +12,7 @@ class ContextManager:
 
     def __init__(self, memory_manager: ConversationMemoryManager):
         """Initialize context manager with memory manager.
-        
+
         Args:
             memory_manager: ConversationMemoryManager instance
         """
@@ -21,10 +21,10 @@ class ContextManager:
 
     async def start_conversation(self, user_id: str) -> str:
         """Start a new conversation.
-        
+
         Args:
             user_id: User identifier
-            
+
         Returns:
             conversation_id: New conversation ID
         """
@@ -38,7 +38,7 @@ class ContextManager:
         metadata: dict | None = None
     ) -> None:
         """Add an interaction to the conversation.
-        
+
         Args:
             conversation_id: Conversation identifier
             question: User question
@@ -55,11 +55,11 @@ class ContextManager:
         max_context_length: int = 2000
     ) -> str:
         """Get formatted conversation context for LLM consumption.
-        
+
         Args:
             conversation_id: Conversation identifier
             max_context_length: Maximum context length in characters
-            
+
         Returns:
             Formatted context string for LLM
         """
@@ -99,10 +99,10 @@ class ContextManager:
 
     async def get_conversation_summary(self, conversation_id: str) -> str | None:
         """Get conversation summary if available.
-        
+
         Args:
             conversation_id: Conversation identifier
-            
+
         Returns:
             Conversation summary or None
         """
@@ -111,10 +111,10 @@ class ContextManager:
 
     async def delete_conversation(self, conversation_id: str) -> bool:
         """Delete a conversation.
-        
+
         Args:
             conversation_id: Conversation identifier
-            
+
         Returns:
             True if deleted, False if not found
         """
@@ -122,10 +122,10 @@ class ContextManager:
 
     async def list_user_conversations(self, user_id: str) -> list[str]:
         """List all conversations for a user.
-        
+
         Args:
             user_id: User identifier
-            
+
         Returns:
             List of conversation IDs
         """

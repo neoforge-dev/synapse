@@ -320,7 +320,7 @@ class OptimizationWorkflow(BaseModel):
 
 class ContentAnalyzer:
     """Deep content analysis across multiple dimensions.
-    
+
     Provides comprehensive analysis of content including readability, engagement potential,
     brand alignment, audience fit, and other quality metrics.
     """
@@ -341,10 +341,10 @@ class ContentAnalyzer:
 
     async def analyze_readability(self, content: str) -> dict[str, Any]:
         """Analyze content readability using multiple metrics.
-        
+
         Args:
             content: Content to analyze
-            
+
         Returns:
             Dictionary with readability metrics and scores
         """
@@ -436,11 +436,11 @@ class ContentAnalyzer:
 
     async def analyze_engagement_potential(self, content: str, platform: Platform = Platform.GENERAL) -> dict[str, Any]:
         """Analyze content's potential for engagement.
-        
+
         Args:
             content: Content to analyze
             platform: Target platform
-            
+
         Returns:
             Dictionary with engagement analysis results
         """
@@ -559,11 +559,11 @@ class ContentAnalyzer:
 
     async def analyze_brand_alignment(self, content: str, brand_profile: BrandProfile | None = None) -> dict[str, Any]:
         """Analyze how well content aligns with brand guidelines.
-        
+
         Args:
             content: Content to analyze
             brand_profile: Brand profile for alignment check
-            
+
         Returns:
             Dictionary with brand alignment analysis
         """
@@ -690,11 +690,11 @@ class ContentAnalyzer:
 
     async def identify_gaps(self, content: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         """Identify content gaps and improvement opportunities.
-        
+
         Args:
             content: Content to analyze
             context: Additional context for gap analysis
-            
+
         Returns:
             Dictionary with identified gaps and opportunities
         """
@@ -761,7 +761,7 @@ class ContentAnalyzer:
 
 class ImprovementSuggestionGenerator:
     """Generates specific, actionable improvement recommendations.
-    
+
     Uses ML models and heuristics to suggest content optimizations and prioritizes
     suggestions by impact and effort.
     """
@@ -803,11 +803,11 @@ class ImprovementSuggestionGenerator:
     async def generate_suggestions(self, analysis_result: ContentAnalysisResult,
                                  optimization_types: list[OptimizationType]) -> list[ImprovementSuggestion]:
         """Generate improvement suggestions based on analysis results.
-        
+
         Args:
             analysis_result: Results from content analysis
             optimization_types: Types of optimization to focus on
-            
+
         Returns:
             List of prioritized improvement suggestions
         """
@@ -836,7 +836,6 @@ class ImprovementSuggestionGenerator:
                                           optimization_type: OptimizationType) -> list[ImprovementSuggestion]:
         """Generate suggestions for specific optimization type."""
         suggestions = []
-        content = analysis_result.original_content
 
         try:
             if optimization_type == OptimizationType.READABILITY:
@@ -1087,7 +1086,6 @@ class ImprovementSuggestionGenerator:
     async def _generate_audience_fit_suggestions(self, analysis_result: ContentAnalysisResult) -> list[ImprovementSuggestion]:
         """Generate audience fit improvement suggestions."""
         suggestions = []
-        audience_data = analysis_result.audience_fit_analysis
 
         # General audience fit suggestions
         suggestions.append(ImprovementSuggestion(
@@ -1137,7 +1135,6 @@ class ImprovementSuggestionGenerator:
     async def _generate_viral_suggestions(self, analysis_result: ContentAnalysisResult) -> list[ImprovementSuggestion]:
         """Generate viral potential improvement suggestions."""
         suggestions = []
-        viral_data = analysis_result.viral_analysis
 
         suggestions.append(ImprovementSuggestion(
             category=SuggestionCategory.ENGAGEMENT,
@@ -1221,10 +1218,10 @@ class ImprovementSuggestionGenerator:
 
     def prioritize_by_impact(self, suggestions: list[ImprovementSuggestion]) -> list[ImprovementSuggestion]:
         """Prioritize suggestions by impact score and priority level.
-        
+
         Args:
             suggestions: List of suggestions to prioritize
-            
+
         Returns:
             List of suggestions sorted by priority and impact
         """
@@ -1257,10 +1254,10 @@ class ImprovementSuggestionGenerator:
 
     def format_actionable_recommendations(self, suggestions: list[ImprovementSuggestion]) -> dict[str, Any]:
         """Format suggestions into actionable recommendations.
-        
+
         Args:
             suggestions: List of suggestions to format
-            
+
         Returns:
             Formatted recommendations dictionary
         """
@@ -1314,7 +1311,7 @@ class ImprovementSuggestionGenerator:
 
 class ContentVariationGenerator:
     """Creates multiple content variations for A/B testing.
-    
+
     Generates platform-specific adaptations and different approaches to the same content
     for testing and optimization purposes.
     """
@@ -1353,13 +1350,13 @@ class ContentVariationGenerator:
                                 platform: Platform = Platform.GENERAL,
                                 target_audience: str | None = None) -> list[ContentVariation]:
         """Generate content variations for A/B testing.
-        
+
         Args:
             content: Original content to create variations of
             variation_types: Types of variations to generate
             platform: Target platform for optimization
             target_audience: Target audience for variations
-            
+
         Returns:
             List of content variations
         """
@@ -1635,7 +1632,7 @@ class ContentVariationGenerator:
             "Save this post for later reference! 📌"
         ]
 
-        for i, cta in enumerate(cta_options[:3]):  # Limit to 3 CTAs
+        for _i, cta in enumerate(cta_options[:3]):  # Limit to 3 CTAs
             modified_content = f"{content}\n\n{cta}"
 
             variations.append(ContentVariation(
@@ -1774,12 +1771,12 @@ class ContentVariationGenerator:
     async def adapt_for_platform(self, content: str, target_platform: Platform,
                                 source_platform: Platform = Platform.GENERAL) -> ContentVariation:
         """Adapt content for specific platform requirements.
-        
+
         Args:
             content: Original content
             target_platform: Platform to adapt for
             source_platform: Original platform (if known)
-            
+
         Returns:
             Platform-adapted content variation
         """
@@ -1822,12 +1819,12 @@ class ContentVariationGenerator:
     async def create_ab_tests(self, content: str, test_focus: str = "engagement",
                             platform: Platform = Platform.GENERAL) -> list[ContentVariation]:
         """Create A/B test variations focused on specific metrics.
-        
+
         Args:
             content: Original content
             test_focus: What to optimize for ("engagement", "conversion", "reach")
             platform: Target platform
-            
+
         Returns:
             List of A/B test variations
         """
@@ -1887,7 +1884,7 @@ class ContentVariationGenerator:
 
 class PerformancePredictionEngine:
     """Predicts content performance before publishing.
-    
+
     Uses historical data and ML models to predict engagement, reach, and conversion
     metrics with confidence intervals.
     """
@@ -1906,13 +1903,13 @@ class PerformancePredictionEngine:
                                 target_audience: str | None = None,
                                 context: dict[str, Any] | None = None) -> PerformancePrediction:
         """Predict content performance across multiple metrics.
-        
+
         Args:
             content: Content to predict performance for
             platform: Target platform
             target_audience: Target audience description
             context: Additional context for prediction
-            
+
         Returns:
             Performance prediction with confidence intervals
         """
@@ -2023,11 +2020,11 @@ class PerformancePredictionEngine:
 
     def _calculate_confidence_interval(self, prediction: float, uncertainty: float) -> tuple[float, float]:
         """Calculate confidence interval for a prediction.
-        
+
         Args:
             prediction: The predicted value
             uncertainty: Uncertainty factor (0-1)
-            
+
         Returns:
             Tuple of (lower_bound, upper_bound)
         """
@@ -2139,10 +2136,10 @@ class PerformancePredictionEngine:
 
     def calculate_confidence(self, prediction: PerformancePrediction) -> float:
         """Calculate confidence score for a performance prediction.
-        
+
         Args:
             prediction: Performance prediction to assess
-            
+
         Returns:
             Confidence score (0-1)
         """
@@ -2150,10 +2147,10 @@ class PerformancePredictionEngine:
 
     def assess_risks(self, prediction: PerformancePrediction) -> dict[str, Any]:
         """Assess risks associated with predicted performance.
-        
+
         Args:
             prediction: Performance prediction to assess
-            
+
         Returns:
             Risk assessment details
         """
@@ -2168,7 +2165,7 @@ class PerformancePredictionEngine:
 
 class ContentOptimizationWorkflow:
     """End-to-end optimization workflow management.
-    
+
     Tracks optimization progress, manages iteration cycles, and handles feedback loops
     for continuous content improvement.
     """
@@ -2190,10 +2187,10 @@ class ContentOptimizationWorkflow:
 
     async def start_optimization(self, request: ContentOptimizationRequest) -> OptimizationWorkflow:
         """Start a complete optimization workflow.
-        
+
         Args:
             request: Optimization request with content and parameters
-            
+
         Returns:
             Workflow object for tracking progress
         """
@@ -2269,7 +2266,7 @@ class ContentOptimizationWorkflow:
                 workflow.update_progress("predicting_performance", 80)
                 step_start = datetime.now()
 
-                prediction = await self.prediction_engine.predict_performance(
+                await self.prediction_engine.predict_performance(
                     request.content, request.platform, request.target_audience, request.context
                 )
                 workflow.predictions_count = 1
@@ -2357,10 +2354,10 @@ class ContentOptimizationWorkflow:
 
     def track_progress(self, workflow_id: str) -> OptimizationWorkflow | None:
         """Track progress of an optimization workflow.
-        
+
         Args:
             workflow_id: ID of workflow to track
-            
+
         Returns:
             Current workflow state or None if not found
         """
@@ -2368,10 +2365,10 @@ class ContentOptimizationWorkflow:
 
     def get_workflow_status(self, workflow_id: str) -> dict[str, Any]:
         """Get detailed status of optimization workflow.
-        
+
         Args:
             workflow_id: ID of workflow to check
-            
+
         Returns:
             Detailed status information
         """
@@ -2401,11 +2398,11 @@ class ContentOptimizationWorkflow:
 
     async def iterate_improvements(self, workflow_id: str, feedback: dict[str, Any]) -> OptimizationWorkflow:
         """Iterate on improvements based on feedback.
-        
+
         Args:
             workflow_id: ID of workflow to iterate
             feedback: Feedback on previous suggestions/variations
-            
+
         Returns:
             Updated workflow with new iterations
         """
@@ -2429,7 +2426,7 @@ class ContentOptimizationWorkflow:
 
     def cleanup_completed_workflows(self, max_age_hours: int = 24):
         """Clean up old completed workflows to free memory.
-        
+
         Args:
             max_age_hours: Maximum age in hours for keeping completed workflows
         """
@@ -2455,7 +2452,7 @@ class ContentOptimizationWorkflow:
 
 class ContentOptimizationEngine:
     """Main orchestrator for content optimization.
-    
+
     Integrates all Epic capabilities and provides comprehensive content analysis
     and improvement recommendations through a unified interface.
     """
@@ -2506,14 +2503,14 @@ class ContentOptimizationEngine:
                             analysis_depth: AnalysisDepth = AnalysisDepth.STANDARD,
                             context: dict[str, Any] | None = None) -> ContentAnalysisResult:
         """Analyze content across multiple dimensions.
-        
+
         Args:
             content: Content to analyze
             platform: Target platform
             optimization_types: Types of optimization to focus on
             analysis_depth: Depth of analysis to perform
             context: Additional context for analysis
-            
+
         Returns:
             Comprehensive content analysis results
         """
@@ -2551,14 +2548,14 @@ class ContentOptimizationEngine:
                                   target_audience: str | None = None,
                                   brand_profile: dict[str, Any] | None = None) -> dict[str, Any]:
         """Generate comprehensive improvement suggestions for content.
-        
+
         Args:
             content: Content to improve
             platform: Target platform
             optimization_types: Types of optimization to focus on
             target_audience: Target audience description
             brand_profile: Brand profile information
-            
+
         Returns:
             Dictionary with analysis results and improvement suggestions
         """
@@ -2605,13 +2602,13 @@ class ContentOptimizationEngine:
                                   source_platform: Platform = Platform.GENERAL,
                                   include_variations: bool = True) -> dict[str, Any]:
         """Optimize content for specific platform requirements.
-        
+
         Args:
             content: Original content
             target_platform: Platform to optimize for
             source_platform: Original platform (if known)
             include_variations: Whether to include content variations
-            
+
         Returns:
             Platform-optimized content and recommendations
         """
@@ -2660,13 +2657,13 @@ class ContentOptimizationEngine:
                                  platform: Platform = Platform.GENERAL,
                                  target_audience: str | None = None) -> dict[str, Any]:
         """Generate A/B testing suggestions and variations.
-        
+
         Args:
             content: Original content
             test_focus: What to optimize for ("engagement", "conversion", "reach")
             platform: Target platform
             target_audience: Target audience description
-            
+
         Returns:
             A/B testing variations and recommendations
         """
@@ -2748,10 +2745,10 @@ class ContentOptimizationEngine:
 
     async def comprehensive_optimization(self, request: ContentOptimizationRequest) -> dict[str, Any]:
         """Perform comprehensive content optimization including all analysis types.
-        
+
         Args:
             request: Complete optimization request
-            
+
         Returns:
             Comprehensive optimization results
         """
@@ -2799,10 +2796,10 @@ class ContentOptimizationEngine:
 
     def get_optimization_status(self, workflow_id: str) -> dict[str, Any]:
         """Get status of optimization workflow.
-        
+
         Args:
             workflow_id: ID of workflow to check
-            
+
         Returns:
             Current workflow status and results
         """
@@ -2810,11 +2807,11 @@ class ContentOptimizationEngine:
 
     async def quick_optimization(self, content: str, platform: Platform = Platform.GENERAL) -> dict[str, Any]:
         """Perform quick optimization for immediate improvements.
-        
+
         Args:
             content: Content to optimize
             platform: Target platform
-            
+
         Returns:
             Quick optimization results with top suggestions
         """
@@ -2862,7 +2859,7 @@ class ContentOptimizationEngine:
 # Helper functions and utilities
 def create_optimization_engine() -> ContentOptimizationEngine:
     """Create and configure a content optimization engine.
-    
+
     Returns:
         Configured ContentOptimizationEngine instance
     """
@@ -2877,11 +2874,11 @@ def create_optimization_engine() -> ContentOptimizationEngine:
 
 async def optimize_content_quick(content: str, platform: str = "general") -> dict[str, Any]:
     """Quick utility function for content optimization.
-    
+
     Args:
         content: Content to optimize
         platform: Target platform name
-        
+
     Returns:
         Quick optimization results
     """
@@ -2916,7 +2913,7 @@ if __name__ == "__main__":
 
         # Sample content for testing
         sample_content = """
-        AI is changing everything. Machine learning algorithms are now being used in virtually every industry, 
+        AI is changing everything. Machine learning algorithms are now being used in virtually every industry,
         from healthcare to finance to entertainment. Companies that don't adapt will be left behind.
         """
 

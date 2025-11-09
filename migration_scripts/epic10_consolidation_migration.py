@@ -3,7 +3,7 @@
 Epic 10 Database Consolidation Migration System
 CRITICAL: Zero disruption to $1.158M Epic 7 sales pipeline
 
-This script performs the complete database consolidation from 17 fragmented 
+This script performs the complete database consolidation from 17 fragmented
 databases to 3 unified enterprise databases while maintaining business continuity.
 
 Author: Claude Code - Synapse Graph RAG System
@@ -224,7 +224,7 @@ class Epic10DatabaseConsolidation:
                 created_at TEXT,
                 updated_at TEXT,
                 notes TEXT,
-                
+
                 -- Migration metadata
                 source_database TEXT DEFAULT 'epic7_sales_automation',
                 migration_timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -243,7 +243,7 @@ class Epic10DatabaseConsolidation:
                 created_at TEXT,
                 updated_at TEXT,
                 stage_history TEXT,
-                
+
                 -- Business continuity protection
                 epic7_protected BOOLEAN DEFAULT TRUE,
                 FOREIGN KEY (contact_id) REFERENCES crm_contacts (contact_id)
@@ -318,7 +318,7 @@ class Epic10DatabaseConsolidation:
 
         # Epic 7 Pipeline Protection Trigger
         cursor.execute("""
-            CREATE TRIGGER IF NOT EXISTS epic7_pipeline_protection 
+            CREATE TRIGGER IF NOT EXISTS epic7_pipeline_protection
             BEFORE DELETE ON crm_contacts
             WHEN OLD.epic7_protected = TRUE
             BEGIN
@@ -547,7 +547,7 @@ class Epic10DatabaseConsolidation:
 
         try:
             # Pre-migration validation
-            pre_migration_checksum = self._calculate_file_checksum(self.epic7_db_path)
+            self._calculate_file_checksum(self.epic7_db_path)
             pre_migration_value = self._validate_epic7_pipeline_value()
             pre_migration_contacts = self._count_epic7_contacts()
 
@@ -603,17 +603,17 @@ class Epic10DatabaseConsolidation:
                         # Get column info for proper insertion
                         source_cursor.execute(f"PRAGMA table_info({table})")
                         columns = [col[1] for col in source_cursor.fetchall()]
-                        placeholders = ','.join(['?' for _ in columns])
+                        ','.join(['?' for _ in columns])
 
                         target_cursor.execute(f"""
-                            INSERT OR REPLACE INTO {table} 
+                            INSERT OR REPLACE INTO {table}
                             SELECT * FROM temp.{table}
                         """)
 
                         # Create temporary table and insert data
                         target_cursor.execute(f"ATTACH DATABASE '{self.epic7_db_path}' AS temp")
                         target_cursor.execute(f"""
-                            INSERT OR REPLACE INTO {table} 
+                            INSERT OR REPLACE INTO {table}
                             SELECT * FROM temp.{table}
                         """)
                         target_cursor.execute("DETACH DATABASE temp")

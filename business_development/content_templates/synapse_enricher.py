@@ -218,7 +218,7 @@ class SynapseContentEnricher:
         relevant = []
 
         # Simple keyword matching for now - could be enhanced with embeddings
-        all_text = f"{topic} {' '.join(keywords)}".lower()
+        f"{topic} {' '.join(keywords)}".lower()
 
         for belief in self.linkedin_insights['beliefs']:
             if belief and any(keyword.lower() in belief.lower() for keyword in keywords):
@@ -230,7 +230,7 @@ class SynapseContentEnricher:
         """Find relevant personal stories from LinkedIn data"""
         relevant = []
 
-        all_text = f"{topic} {' '.join(keywords)}".lower()
+        f"{topic} {' '.join(keywords)}".lower()
 
         for story in self.linkedin_insights['stories']:
             if story and any(keyword.lower() in story.lower() for keyword in keywords):

@@ -77,11 +77,6 @@ class Epic7DataQualityRemediation:
         logger.info("Generating synthetic contact data...")
 
         # Realistic email domains for B2B tech companies
-        email_domains = [
-            'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com',
-            'company.com', 'techcorp.com', 'enterprises.com', 'solutions.com',
-            'systems.com', 'analytics.com', 'platform.com', 'software.com'
-        ]
 
         # Contact data mapping based on existing names
         contact_updates = {
@@ -285,7 +280,7 @@ class Epic7DataQualityRemediation:
         logger.info("Starting Epic 7 data quality remediation...")
 
         # Step 1: Analyze current state
-        analysis = self.analyze_current_state()
+        self.analyze_current_state()
 
         # Step 2: Remediate contact data
         updated_count = self.remediate_contact_data()

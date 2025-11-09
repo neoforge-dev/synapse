@@ -160,7 +160,7 @@ class AnalyticsRevenueConsolidator:
                 raise Exception("Backup validation failed")
 
             # Capture analytics-specific baseline metrics
-            baseline_metrics = self._capture_analytics_baseline_metrics()
+            self._capture_analytics_baseline_metrics()
 
             logger.info("✅ Guardian QA Protection: ACTIVE")
             logger.info("   📊 Analytics baseline metrics captured and protected")
@@ -190,7 +190,7 @@ class AnalyticsRevenueConsolidator:
             logger.info("   🎯 Business Value: Cross-platform analytics and AI-powered content optimization")
 
             # Schema design for unified analytics
-            schema_design = self._design_analytics_schema()
+            self._design_analytics_schema()
 
             # Simulate successful consolidation (in production, would execute actual ETL)
             logger.info("🔄 Executing Analytics ETL Pipeline...")
@@ -231,7 +231,7 @@ class AnalyticsRevenueConsolidator:
             logger.info("   🎯 Business Value: Complete ROI attribution enabling 20-30% pipeline growth")
 
             # Schema design for revenue intelligence
-            revenue_schema = self._design_revenue_intelligence_schema()
+            self._design_revenue_intelligence_schema()
 
             # Simulate successful consolidation (in production, would execute actual ETL)
             logger.info("🔄 Executing Revenue Intelligence ETL Pipeline...")

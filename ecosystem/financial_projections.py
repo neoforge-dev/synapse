@@ -271,7 +271,7 @@ class EcosystemFinancialModel:
 
         for month in range(1, self.projection_months + 1):
             year = 2025 if month <= 12 else 2026
-            month_in_year = month if month <= 12 else month - 12
+            month if month <= 12 else month - 12
 
             monthly_cost = MonthlyCosts(
                 month=month,

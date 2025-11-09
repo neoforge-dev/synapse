@@ -506,7 +506,7 @@ class BusinessMetricsGuardian:
         """Measure average query execution time"""
         query_times = []
 
-        for db_name, db_path in self.sqlite_paths.items():
+        for _db_name, db_path in self.sqlite_paths.items():
             if Path(db_path).exists():
                 try:
                     start_time = time.time()
@@ -525,7 +525,7 @@ class BusinessMetricsGuardian:
         connected_count = 0
         total_count = 0
 
-        for db_name, db_path in self.sqlite_paths.items():
+        for _db_name, db_path in self.sqlite_paths.items():
             if Path(db_path).exists():
                 total_count += 1
                 try:
@@ -1210,7 +1210,7 @@ def main():
 
         # Establish business baseline
         print("📊 Establishing business continuity baseline...")
-        baseline = metrics_guardian.establish_baseline()
+        metrics_guardian.establish_baseline()
 
         # Initialize automatic rollback system
         print("🔄 Initializing automatic rollback system...")

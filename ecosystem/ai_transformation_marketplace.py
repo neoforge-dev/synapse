@@ -250,7 +250,7 @@ class MarketplaceEngine:
             # Validate partner and offering
             partner = self.db.query(MarketplacePartner).filter(
                 MarketplacePartner.id == request.partner_id,
-                MarketplacePartner.is_active == True
+                MarketplacePartner.is_active is True
             ).first()
 
             if not partner:
@@ -318,11 +318,11 @@ class MarketplaceEngine:
             query = query.filter(MarketplacePartner.partner_type == partner_type.value)
 
         if featured_only:
-            query = query.filter(PartnerOffering.is_featured == True)
+            query = query.filter(PartnerOffering.is_featured is True)
 
         query = query.filter(
-            PartnerOffering.is_active == True,
-            MarketplacePartner.is_active == True
+            PartnerOffering.is_active is True,
+            MarketplacePartner.is_active is True
         )
 
         offerings = query.all()
@@ -622,7 +622,7 @@ if __name__ == "__main__":
     # Example usage
     async def main():
         # Create marketplace engine (in real implementation, these would be proper services)
-        marketplace = MarketplaceEngine(
+        MarketplaceEngine(
             db_session=None,  # Would be SQLAlchemy session
             auth_provider=None,  # Would be authentication service
             billing_service=None  # Would be billing service

@@ -33,7 +33,7 @@ def sample_experimental_content():
 
 ## Key Framework: 5 Non-Negotiables
 1. Technical Debt as Strategic Constraint
-2. Architecture Decisions Through Business Lens  
+2. Architecture Decisions Through Business Lens
 3. Team Scaling Before Technical Scaling
 4. Security as Competitive Advantage
 5. Data Architecture as Product Strategy
@@ -60,7 +60,7 @@ After 15+ years building systems for everyone from Ubisoft's game infrastructure
 **1. Technical Debt as Strategic Constraint**
 Manage technical debt as a business constraint, not an engineering afterthought. I've seen too many startups where "we need to refactor" becomes a death spiral. Instead, quarterly audits with quantified business impact turn vague requests into clear ROI: "this $200K investment will increase our development velocity by 40%."
 
-**2. Architecture Decisions Through Business Lens** 
+**2. Architecture Decisions Through Business Lens**
 Every architectural choice needs clear business justification. When I helped scale a healthcare platform from 10K to 100K users, we documented every major decision with Architecture Decision Records (ADRs) that included business context.
 
 **3. Team Scaling Before Technical Scaling**
@@ -101,7 +101,7 @@ The pattern is always the same: reactive technical management disguised as leade
 ## 🎯 **The 5 Non-Negotiables (Most CTOs Fail #3)**
 
 **1. Technical Debt as Strategic Constraint** ⚡
-Stop treating technical debt like a dirty secret. I quantify it as a business constraint with quarterly audits: "this $200K investment increases development velocity by 40%." 
+Stop treating technical debt like a dirty secret. I quantify it as a business constraint with quarterly audits: "this $200K investment increases development velocity by 40%."
 
 Most CTOs say "we need to refactor." Strategic CTOs say "this refactor unlocks $2M in revenue opportunities."
 
@@ -202,7 +202,7 @@ class TestTextSimilarityDetector:
         content_a = """# Section 1
 This is about technical debt management.
 
-# Section 2  
+# Section 2
 Architecture decisions require business context.
 """
         content_b = """# Different Title
@@ -637,7 +637,7 @@ class TestConsolidationIntegration:
 
             # Create many similar documents
             base_content = """# Performance Test Document
-            
+
 This is a test document for performance testing.
 It contains some metrics like 100x improvement and 50% reduction.
 Architecture uses microservices and event-driven patterns.

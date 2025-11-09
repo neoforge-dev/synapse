@@ -258,13 +258,13 @@ class CitationService:
     ) -> CitationResult:
         """
         Enhance an answer with citation markers and generate bibliography.
-        
+
         Args:
             answer: The generated answer text
             chunks: List of chunks that were available for the answer
             context_texts: Optional list of context texts that were actually used
             enable_verification: Whether to enable enhanced chunk verification
-            
+
         Returns:
             CitationResult with enhanced answer and citation metadata
         """
@@ -322,7 +322,7 @@ class CitationService:
     ) -> list[CitationMetadata]:
         """
         Identify which chunks were likely used in generating the answer.
-        
+
         Uses text similarity and keyword matching to determine usage.
         """
         used_citations = []
@@ -346,7 +346,7 @@ class CitationService:
     ) -> bool:
         """
         Determine if a chunk appears to be referenced in the answer.
-        
+
         Uses keyword overlap and content similarity heuristics.
         """
         if not citation.chunk_text:
@@ -396,7 +396,7 @@ class CitationService:
     ) -> str:
         """
         Add inline citation markers to the answer text.
-        
+
         Uses sentence-based citation placement.
         """
         if not citations:
@@ -477,7 +477,7 @@ class CitationService:
     ) -> list[CitationMetadata]:
         """
         Perform enhanced verification of chunk usage against answer content.
-        
+
         Uses multiple verification methods including exact matching,
         paraphrase detection, and contextual analysis.
         """
@@ -589,7 +589,7 @@ class CitationService:
     def _find_paraphrase_matches(self, answer: str, chunk_text: str) -> list[str]:
         """
         Find potential paraphrases using sequence matching.
-        
+
         This is a simplified implementation. In production, you might use
         more sophisticated NLP models for semantic similarity.
         """

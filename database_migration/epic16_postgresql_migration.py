@@ -236,7 +236,7 @@ class Epic16PostgreSQLMigrator:
         if not value:
             return None
 
-        if isinstance(value, (dict, list)):
+        if isinstance(value, dict | list):
             return value
 
         try:

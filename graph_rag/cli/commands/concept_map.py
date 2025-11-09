@@ -490,38 +490,38 @@ def run_demo():
     # Sample LinkedIn post
     linkedin_text = """
     Just had an amazing breakthrough in our AI strategy! 🤖
-    
-    After months of research and development, we've discovered that combining 
-    human creativity with machine learning capabilities creates unprecedented 
-    innovation opportunities. 
-    
+
+    After months of research and development, we've discovered that combining
+    human creativity with machine learning capabilities creates unprecedented
+    innovation opportunities.
+
     The key insight: AI doesn't replace human thinking - it amplifies it.
-    This approach has already improved our product development process by 40% 
+    This approach has already improved our product development process by 40%
     and enhanced customer satisfaction significantly.
-    
-    What's your experience with AI-human collaboration? Would love to hear 
-    your thoughts in the comments! 
-    
+
+    What's your experience with AI-human collaboration? Would love to hear
+    your thoughts in the comments!
+
     #AI #Innovation #Strategy #Leadership #ProductDevelopment
     """
 
     # Sample Notion note
     notion_text = """
     Research Notes: AI-Human Collaboration Framework
-    
+
     Key concepts to explore:
     - Augmented intelligence vs artificial intelligence
     - Human creativity amplification through technology
     - Process optimization strategies
     - Customer experience enhancement
-    
+
     Draft outline for LinkedIn post:
     1. Hook: Breakthrough moment
-    2. Context: Research and development journey  
+    2. Context: Research and development journey
     3. Insight: AI amplifies rather than replaces
     4. Evidence: Metrics and results
     5. Call to action: Community engagement
-    
+
     Next steps:
     - Write LinkedIn post
     - Measure engagement
@@ -834,7 +834,7 @@ def belief_timeline_cli(
 
             # Summary stats
             console.print("\n📊 Timeline Summary:")
-            console.print(f"• Platforms: {', '.join(set(e['platform'] for e in timeline_data))}")
+            console.print(f"• Platforms: {', '.join({e['platform'] for e in timeline_data})}")
             console.print(f"• Evolution stages: {len(timeline_data)}")
             console.print(f"• Confidence growth: {timeline_data[0]['confidence']:.1f} → {timeline_data[-1]['confidence']:.1f}")
 
@@ -855,13 +855,12 @@ def preference_recommendations_cli(
     if user_profile:
         try:
             with open(user_profile) as f:
-                profile_data = json.load(f)
+                json.load(f)
             console.print(f"📁 Loaded user profile from {user_profile}")
         except FileNotFoundError:
             console.print("⚠️ Profile file not found, using default preferences")
-            profile_data = {}
     else:
-        profile_data = {}
+        pass
 
     # Mock recommendations (in real implementation, this would use ML-based recommendation engine)
     recommendations = [
@@ -1260,7 +1259,7 @@ def optimize_hot_take_cli(
         # Optimization suggestions tree
         opt_tree = Tree(f"🎯 {goal.title()} Optimization Strategies")
 
-        for i, suggestion in enumerate(optimization_suggestions.get('suggestions', [])[:8]):
+        for _i, suggestion in enumerate(optimization_suggestions.get('suggestions', [])[:8]):
             priority = suggestion.get('priority', 'medium')
             priority_color = "red" if priority == "high" else "yellow" if priority == "medium" else "green"
 

@@ -212,53 +212,53 @@ def create_analytics_intelligence_router() -> APIRouter:
     <title>Operational Dashboard - Synapse BI</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body {{ 
+        body {{
             margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
             color: #2c3e50;
         }}
-        .header {{ 
-            background: rgba(255,255,255,0.95); padding: 20px; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        .header {{
+            background: rgba(255,255,255,0.95); padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }}
         .title {{ margin: 0; font-size: 28px; font-weight: 700; color: #2c3e50; }}
         .subtitle {{ margin: 5px 0 0 0; font-size: 16px; color: #7f8c8d; }}
-        
+
         .dashboard-container {{ padding: 20px; }}
-        
-        .metrics-grid {{ 
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
-            gap: 20px; margin-bottom: 30px; 
+
+        .metrics-grid {{
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px; margin-bottom: 30px;
         }}
-        
-        .metric-card {{ 
-            background: rgba(255,255,255,0.95); border-radius: 12px; 
-            padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+
+        .metric-card {{
+            background: rgba(255,255,255,0.95); border-radius: 12px;
+            padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }}
-        
-        .metric-header {{ 
-            display: flex; justify-content: between; align-items: center; 
-            margin-bottom: 20px; 
+
+        .metric-header {{
+            display: flex; justify-content: between; align-items: center;
+            margin-bottom: 20px;
         }}
         .metric-title {{ font-size: 18px; font-weight: 600; }}
-        
-        .efficiency-indicators {{ 
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-            gap: 15px; 
+
+        .efficiency-indicators {{
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
         }}
-        
-        .indicator-card {{ 
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef); 
-            border-radius: 8px; padding: 20px; text-align: center; 
+
+        .indicator-card {{
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 8px; padding: 20px; text-align: center;
         }}
         .indicator-value {{ font-size: 24px; font-weight: 700; color: #2ecc71; }}
         .indicator-label {{ font-size: 12px; color: #7f8c8d; margin-top: 5px; }}
-        
+
         .consolidation-progress {{
             background: rgba(255,255,255,0.95); border-radius: 12px;
             padding: 25px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }}
-        
+
         .progress-bar {{
             width: 100%; height: 20px; background: #ecf0f1; border-radius: 10px;
             overflow: hidden; margin: 10px 0;
@@ -274,7 +274,7 @@ def create_analytics_intelligence_router() -> APIRouter:
         <h1 class="title">⚙️ Operational Dashboard - Epic 15 Phase 2</h1>
         <p class="subtitle">API Router Consolidation Progress - {focus.upper()} focus</p>
     </div>
-    
+
     <div class="dashboard-container">
         <!-- Epic 15 Consolidation Progress -->
         <div class="consolidation-progress">
@@ -288,7 +288,7 @@ def create_analytics_intelligence_router() -> APIRouter:
                     <div class="progress-fill" style="width: 65%;"></div>
                 </div>
             </div>
-            
+
             <div>
                 <div style="display: flex; justify-content: space-between; margin-top: 15px;">
                     <span>Business Continuity</span>
@@ -299,7 +299,7 @@ def create_analytics_intelligence_router() -> APIRouter:
                 </div>
             </div>
         </div>
-        
+
         <!-- Operational Metrics -->
         <div class="metrics-grid">
             <div class="metric-card">
@@ -317,7 +317,7 @@ def create_analytics_intelligence_router() -> APIRouter:
                     </div>
                 </div>
             </div>
-            
+
             <div class="metric-card">
                 <div class="metric-header">
                     <div class="metric-title">📊 Quality Metrics</div>
@@ -333,7 +333,7 @@ def create_analytics_intelligence_router() -> APIRouter:
                     </div>
                 </div>
             </div>
-            
+
             <div class="metric-card">
                 <div class="metric-header">
                     <div class="metric-title">⏱️ Processing Times</div>
@@ -349,7 +349,7 @@ def create_analytics_intelligence_router() -> APIRouter:
                     </div>
                 </div>
             </div>
-            
+
             <div class="metric-card">
                 <div class="metric-header">
                     <div class="metric-title">💰 Cost Optimization</div>
@@ -366,7 +366,7 @@ def create_analytics_intelligence_router() -> APIRouter:
                 </div>
             </div>
         </div>
-        
+
         <!-- Business Protection Metrics -->
         <div class="metric-card" style="grid-column: span 2;">
             <div class="metric-header">
@@ -392,7 +392,7 @@ def create_analytics_intelligence_router() -> APIRouter:
             </div>
         </div>
     </div>
-    
+
     <script>
         // Auto-refresh dashboard every 30 seconds
         setTimeout(() => {{ window.location.reload(); }}, 30000);

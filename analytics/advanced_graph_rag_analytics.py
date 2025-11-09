@@ -305,7 +305,7 @@ class AdvancedGraphRAGAnalyticsEngine:
             query = """
             MATCH (c:Content)-[:HAS_TOPIC]->(t:Topic)<-[:HAS_TOPIC]-(c2:Content)-[:GENERATED]->(e:Engagement)-[:LED_TO]->(cons:Consultation)
             WHERE c.engagement_rate > 0.08 AND cons.value > 15000
-            RETURN t.name, 
+            RETURN t.name,
                    AVG(c.engagement_rate) as avg_engagement,
                    COUNT(cons) as consultation_count,
                    AVG(cons.value) as avg_consultation_value,
@@ -361,12 +361,12 @@ class AdvancedGraphRAGAnalyticsEngine:
         try:
             # Analyze topic → engagement → consultation patterns
             cursor.execute('''
-                SELECT 
+                SELECT
                     business_objective as topic,
                     AVG(actual_engagement_rate) as avg_engagement,
                     SUM(consultation_requests) as total_consultations,
                     COUNT(*) as post_count
-                FROM linkedin_posts 
+                FROM linkedin_posts
                 WHERE impressions > 0 AND actual_engagement_rate IS NOT NULL
                 GROUP BY business_objective
                 HAVING post_count >= 3 AND total_consultations > 0
@@ -421,7 +421,7 @@ class AdvancedGraphRAGAnalyticsEngine:
                 query = """
                 MATCH (e1:Entity)<-[:CONTAINS]-(c:Content)-[:CONTAINS]->(e2:Entity)
                 WHERE c.engagement_rate > 0.10 AND e1.name < e2.name
-                WITH e1.name as entity1, e2.name as entity2, 
+                WITH e1.name as entity1, e2.name as entity2,
                      COUNT(c) as cooccurrence_count,
                      AVG(c.engagement_rate) as avg_engagement,
                      SUM(c.consultation_requests) as total_consultations
@@ -532,13 +532,13 @@ class AdvancedGraphRAGAnalyticsEngine:
         try:
             # Weekly performance trends
             cursor.execute('''
-                SELECT 
+                SELECT
                     strftime('%w', posted_at) as day_of_week,
                     strftime('%H', posted_at) as hour,
                     AVG(actual_engagement_rate) as avg_engagement,
                     SUM(consultation_requests) as total_consultations,
                     COUNT(*) as post_count
-                FROM linkedin_posts 
+                FROM linkedin_posts
                 WHERE posted_at IS NOT NULL AND actual_engagement_rate IS NOT NULL
                 GROUP BY day_of_week, hour
                 HAVING post_count >= 2
@@ -1058,7 +1058,7 @@ class AdvancedGraphRAGAnalyticsEngine:
 
         try:
             cursor.execute('''
-                SELECT 
+                SELECT
                     AVG(actual_engagement_rate) as avg_engagement,
                     SUM(consultation_requests) * 1.0 / COUNT(*) as consultation_rate,
                     SUM(consultation_requests * 25000) / 30 as monthly_pipeline

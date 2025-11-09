@@ -238,7 +238,7 @@ class QuerySuggestionEngine:
         # Remove duplicates while preserving order
         seen = set()
         unique_suggestions = []
-        for suggestion, score in scored_suggestions:
+        for suggestion, _score in scored_suggestions:
             if suggestion.lower() not in seen:
                 seen.add(suggestion.lower())
                 unique_suggestions.append(suggestion)

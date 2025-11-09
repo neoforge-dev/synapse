@@ -76,7 +76,7 @@ class Week3AnalyticsDashboard:
                 post_id TEXT PRIMARY KEY,
                 platform TEXT DEFAULT 'LinkedIn',
                 posted_at TEXT,
-                
+
                 -- Basic engagement
                 impressions INTEGER DEFAULT 0,
                 views INTEGER DEFAULT 0,
@@ -85,23 +85,23 @@ class Week3AnalyticsDashboard:
                 shares INTEGER DEFAULT 0,
                 saves INTEGER DEFAULT 0,
                 clicks INTEGER DEFAULT 0,
-                
+
                 -- Calculated metrics
                 engagement_rate REAL DEFAULT 0.0,
                 click_through_rate REAL DEFAULT 0.0,
                 save_rate REAL DEFAULT 0.0,
                 comment_quality_score REAL DEFAULT 0.0,
-                
+
                 -- Business metrics
                 profile_views INTEGER DEFAULT 0,
                 connection_requests INTEGER DEFAULT 0,
                 dm_inquiries INTEGER DEFAULT 0,
                 consultation_leads INTEGER DEFAULT 0,
-                
+
                 -- Performance scores
                 optimal_timing_score REAL DEFAULT 0.0,
                 audience_match_score REAL DEFAULT 0.0,
-                
+
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
@@ -171,7 +171,7 @@ class Week3AnalyticsDashboard:
         values = list(metrics.values())
 
         cursor.execute(f'''
-            INSERT OR REPLACE INTO content_metrics 
+            INSERT OR REPLACE INTO content_metrics
             (post_id, {', '.join(fields)}, updated_at)
             VALUES (?, {placeholders}, CURRENT_TIMESTAMP)
         ''', [post_id] + values)
@@ -215,7 +215,7 @@ class Week3AnalyticsDashboard:
 
         cursor.execute('''
             INSERT OR REPLACE INTO timing_analysis
-            (analysis_id, post_id, day_of_week, hour_posted, optimal_timing, 
+            (analysis_id, post_id, day_of_week, hour_posted, optimal_timing,
              audience_activity_score, created_at)
             VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ''', (f"{post_id}_timing", post_id, day_of_week, hour_posted,
@@ -254,7 +254,7 @@ class Week3AnalyticsDashboard:
 
         # Update consultation leads count
         cursor.execute('''
-            UPDATE content_metrics 
+            UPDATE content_metrics
             SET consultation_leads = consultation_leads + 1
             WHERE post_id = ?
         ''', (post_id,))
@@ -274,14 +274,14 @@ class Week3AnalyticsDashboard:
 
         # Get all metrics
         cursor.execute('''
-            SELECT * FROM content_metrics 
+            SELECT * FROM content_metrics
             ORDER BY posted_at
         ''')
         metrics = cursor.fetchall()
 
         # Get timing analysis
         cursor.execute('''
-            SELECT ta.*, cm.engagement_rate 
+            SELECT ta.*, cm.engagement_rate
             FROM timing_analysis ta
             JOIN content_metrics cm ON ta.post_id = cm.post_id
         ''')

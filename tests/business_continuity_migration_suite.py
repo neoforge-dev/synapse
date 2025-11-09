@@ -9,7 +9,7 @@ automated rollback triggers, and guarantees protection of the $555K consultation
 
 Test Coverage:
 - Pre-migration business system validation
-- Migration process integrity with rollback validation  
+- Migration process integrity with rollback validation
 - Post-migration business system verification
 - Consultation pipeline continuity monitoring
 - Real-time business metrics validation
@@ -433,7 +433,7 @@ class MigrationProcessIntegrityTests(unittest.TestCase):
 
         # Analyze validation results
         critical_failures = [r for r in validation_results if r.is_critical_failure()]
-        high_failures = [r for r in validation_results if r.is_failure() and r.severity == ValidationSeverity.HIGH]
+        [r for r in validation_results if r.is_failure() and r.severity == ValidationSeverity.HIGH]
 
         # Critical business protection validation
         consultation_check = next((r for r in validation_results
@@ -470,7 +470,7 @@ class MigrationProcessIntegrityTests(unittest.TestCase):
         )
 
         # Test rollback trigger
-        rollback_needed = rollback_system.execute_rollback_if_needed([critical_failure])
+        rollback_system.execute_rollback_if_needed([critical_failure])
 
         # Validate rollback was triggered
         self.assertTrue(rollback_system.rollback_executed,
@@ -527,7 +527,7 @@ class PostMigrationBusinessVerificationTests(unittest.TestCase):
         logger.info("🧪 Testing consultation pipeline continuity...")
 
         # Capture baseline for comparison
-        baseline = self.validator.capture_baseline_metrics()
+        self.validator.capture_baseline_metrics()
 
         # Simulate post-migration validation
         # In production, this would connect to PostgreSQL
@@ -1098,7 +1098,7 @@ def main():
         results = orchestrator.run_comprehensive_business_continuity_test_suite()
 
         # Determine success
-        total_tests = sum(suite['tests_run'] for suite in results['test_suites'].values())
+        sum(suite['tests_run'] for suite in results['test_suites'].values())
         total_failures = sum(suite['failures'] for suite in results['test_suites'].values())
         total_errors = sum(suite['errors'] for suite in results['test_suites'].values())
 

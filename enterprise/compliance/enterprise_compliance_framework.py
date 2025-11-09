@@ -1134,7 +1134,7 @@ class EnterpriseComplianceFramework:
                 "timeline": "0-30 days",
                 "priority": 1,
                 "requirements_count": len(critical_reqs),
-                "focus_areas": list(set(req.category for req in critical_reqs)),
+                "focus_areas": list({req.category for req in critical_reqs}),
                 "key_actions": [
                     "Implement authentication and authorization",
                     "Deploy data protection measures",
@@ -1154,7 +1154,7 @@ class EnterpriseComplianceFramework:
                 "timeline": "1-3 months",
                 "priority": 2,
                 "requirements_count": len(high_reqs),
-                "focus_areas": list(set(req.category for req in high_reqs)),
+                "focus_areas": list({req.category for req in high_reqs}),
                 "key_actions": [
                     "Implement monitoring and logging",
                     "Develop policies and procedures",
@@ -1174,7 +1174,7 @@ class EnterpriseComplianceFramework:
                 "timeline": "3-12 months",
                 "priority": 3,
                 "requirements_count": len(medium_low_reqs),
-                "focus_areas": list(set(req.category for req in medium_low_reqs)),
+                "focus_areas": list({req.category for req in medium_low_reqs}),
                 "key_actions": [
                     "Complete remaining compliance requirements",
                     "Enhance existing controls",

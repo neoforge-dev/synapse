@@ -973,7 +973,7 @@ class ThoughtLeadershipEngine:
                 "content_count": len(content_list),
                 "lead_target": quarter_leads,
                 "investment": quarter_investment,
-                "content_types": list(set(content["content_type"] for content in content_list)),
+                "content_types": list({content["content_type"] for content in content_list}),
                 "key_themes": [content["title"] for content in content_list]
             })
 
@@ -1127,7 +1127,7 @@ class ThoughtLeadershipEngine:
         # Save conference opportunities
         for conference in self.conference_opportunities:
             cursor.execute('''
-                INSERT OR REPLACE INTO conference_opportunities 
+                INSERT OR REPLACE INTO conference_opportunities
                 (conference_id, conference_name, conference_type, industry_focus, audience_size,
                  audience_seniority, global_reach, speaking_fee, travel_cost, preparation_hours,
                  expected_leads, brand_exposure_value, competitive_speakers, speaking_topics,

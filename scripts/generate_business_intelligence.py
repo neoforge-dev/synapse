@@ -99,7 +99,7 @@ async def analyze_entities(graph_repo: MemgraphGraphRepository) -> dict:
     # Get entity statistics
     entity_stats_query = """
     MATCH (e:Entity)
-    RETURN 
+    RETURN
         e.entity_type as entity_type,
         e.name as entity_name,
         count(*) as frequency
@@ -124,7 +124,7 @@ async def analyze_entities(graph_repo: MemgraphGraphRepository) -> dict:
     WHERE e.entity_type IN ['ORG', 'PERSON', 'PRODUCT', 'MONEY', 'GPE']
     OPTIONAL MATCH (e)-[r]-(d:Document)
     WITH e, count(r) as document_connections
-    RETURN 
+    RETURN
         e.name as name,
         e.entity_type as type,
         document_connections
@@ -156,7 +156,7 @@ async def analyze_relationships(graph_repo: MemgraphGraphRepository) -> dict:
     # Entity-to-entity relationships
     entity_relationships_query = """
     MATCH (e1:Entity)-[r]-(e2:Entity)
-    RETURN 
+    RETURN
         e1.name as entity1,
         e1.entity_type as type1,
         type(r) as relationship,
@@ -181,7 +181,7 @@ async def analyze_documents(graph_repo: MemgraphGraphRepository) -> dict:
     MATCH (d:Document)
     OPTIONAL MATCH (d)-[r]-(e:Entity)
     WITH d, count(e) as entity_count
-    RETURN 
+    RETURN
         d.title as title,
         d.source as source,
         d.category as category,
@@ -277,7 +277,7 @@ async def create_enhanced_network(graph_repo: MemgraphGraphRepository) -> dict:
     OPTIONAL MATCH (e)-[r]-(related)
     WITH e, count(r) as connections
     WHERE connections > 0
-    RETURN 
+    RETURN
         id(e) as node_id,
         e.name as name,
         e.entity_type as entity_type,
@@ -294,7 +294,7 @@ async def create_enhanced_network(graph_repo: MemgraphGraphRepository) -> dict:
     OPTIONAL MATCH (d)-[r]-(e:Entity)
     WITH d, count(e) as entity_connections
     WHERE entity_connections > 3
-    RETURN 
+    RETURN
         id(d) as node_id,
         d.title as title,
         d.source as source,
@@ -312,7 +312,7 @@ async def create_enhanced_network(graph_repo: MemgraphGraphRepository) -> dict:
         relationships_query = f"""
         MATCH (a)-[r]->(b)
         WHERE id(a) IN {all_node_ids} AND id(b) IN {all_node_ids}
-        RETURN 
+        RETURN
             id(a) as source_id,
             id(b) as target_id,
             type(r) as relationship_type
@@ -557,13 +557,13 @@ def generate_enhanced_dashboard(data: dict) -> str:
         <p>Graph-RAG Knowledge Base Analysis</p>
         <p>Generated: {data['generated_at']}</p>
     </div>
-    
+
     <div class="container">
         <div class="insight-box">
             <div class="insight-title">🎯 Executive Summary</div>
             <p>This dashboard presents a comprehensive analysis of {entities_data['total_entities']} entities across {data['documents']['total_documents']} documents, revealing business relationships, technology stack, and professional network insights.</p>
         </div>
-        
+
         <div class="grid-3">
             <div class="card">
                 <h3>📈 Knowledge Graph Metrics</h3>
@@ -584,7 +584,7 @@ def generate_enhanced_dashboard(data: dict) -> str:
                     <span class="metric-value">{network_data['stats']['total_nodes']}</span>
                 </div>
             </div>
-            
+
             <div class="card">
                 <h3>💼 Business Ecosystem</h3>
                 <div class="metric">
@@ -604,7 +604,7 @@ def generate_enhanced_dashboard(data: dict) -> str:
                     <span class="metric-value">{len(business_insights['client_companies'])}</span>
                 </div>
             </div>
-            
+
             <div class="card">
                 <h3>🔗 Network Analysis</h3>
                 <div class="metric">
@@ -625,7 +625,7 @@ def generate_enhanced_dashboard(data: dict) -> str:
                 </div>
             </div>
         </div>
-        
+
         <div class="grid">
             <div class="card">
                 <h3>🚀 Technology Stack</h3>
@@ -637,7 +637,7 @@ def generate_enhanced_dashboard(data: dict) -> str:
                     {generate_tech_list(business_insights['technology_stack'][:10])}
                 </div>
             </div>
-            
+
             <div class="card">
                 <h3>👥 Key People Network</h3>
                 <div class="people-list">
@@ -645,7 +645,7 @@ def generate_enhanced_dashboard(data: dict) -> str:
                 </div>
             </div>
         </div>
-        
+
         <div class="grid">
             <div class="card">
                 <h3>🏢 Client & Partner Companies</h3>
@@ -653,7 +653,7 @@ def generate_enhanced_dashboard(data: dict) -> str:
                     {generate_companies_list(business_insights['client_companies'][:15])}
                 </div>
             </div>
-            
+
             <div class="card">
                 <h3>📊 Entity Distribution</h3>
                 <div class="chart-container">
@@ -661,7 +661,7 @@ def generate_enhanced_dashboard(data: dict) -> str:
                 </div>
             </div>
         </div>
-        
+
         <div class="card full-width">
             <h3>🌐 Knowledge Network Visualization</h3>
             <div class="network-controls">
@@ -674,19 +674,19 @@ def generate_enhanced_dashboard(data: dict) -> str:
             <div id="network"></div>
         </div>
     </div>
-    
+
     <script>
         // Network Data
         const nodes = new vis.DataSet({json.dumps(network_data['nodes'])});
         const edges = new vis.DataSet({json.dumps(network_data['edges'])});
-        
+
         const allNodes = nodes.get();
         const allEdges = edges.get();
-        
+
         // Initialize Network
         const container = document.getElementById('network');
         const data = {{ nodes: nodes, edges: edges }};
-        
+
         const options = {{
             physics: {{
                 enabled: true,
@@ -728,46 +728,46 @@ def generate_enhanced_dashboard(data: dict) -> str:
                 hideEdgesOnDrag: true
             }}
         }};
-        
+
         const network = new vis.Network(container, data, options);
-        
+
         // Network Control Functions
         function filterEntities() {{
             const entityNodes = allNodes.filter(node => node.type === 'Entity');
             const entityNodeIds = new Set(entityNodes.map(n => n.id));
-            const entityEdges = allEdges.filter(edge => 
+            const entityEdges = allEdges.filter(edge =>
                 entityNodeIds.has(edge.source) && entityNodeIds.has(edge.target)
             );
-            
+
             nodes.update(entityNodes);
             edges.update(entityEdges);
             network.fit();
         }}
-        
+
         function filterDocuments() {{
             const docNodes = allNodes.filter(node => node.type === 'Document');
             const docNodeIds = new Set(docNodes.map(n => n.id));
-            const docEdges = allEdges.filter(edge => 
+            const docEdges = allEdges.filter(edge =>
                 docNodeIds.has(edge.source) && docNodeIds.has(edge.target)
             );
-            
+
             nodes.update(docNodes);
             edges.update(docEdges);
             network.fit();
         }}
-        
+
         function showAll() {{
             nodes.update(allNodes);
             edges.update(allEdges);
             network.fit();
         }}
-        
+
         function highlightTech() {{
-            const techNodes = allNodes.filter(node => 
-                node.entity_type === 'ORG' && 
+            const techNodes = allNodes.filter(node =>
+                node.entity_type === 'ORG' &&
                 ['Python', 'React', 'Django', 'Kubernetes', 'Terraform', 'Docker'].includes(node.label)
             );
-            
+
             // Reset all nodes
             nodes.update(allNodes.map(node => ({{
                 ...node,
@@ -775,24 +775,24 @@ def generate_enhanced_dashboard(data: dict) -> str:
                 color: node.color
             }})));
         }}
-        
+
         // Event Handlers
         network.on("selectNode", function(params) {{
             const nodeId = params.nodes[0];
             const node = nodes.get(nodeId);
             console.log('Selected node:', node);
-            
+
             // Highlight connected nodes
             const connectedNodes = network.getConnectedNodes(nodeId);
             const connectedEdges = network.getConnectedEdges(nodeId);
-            
+
             // Visual feedback
             nodes.update(allNodes.map(n => ({{
                 ...n,
                 opacity: connectedNodes.includes(n.id) || n.id === nodeId ? 1.0 : 0.3
             }})));
         }});
-        
+
         network.on("deselectNode", function() {{
             // Reset opacity
             nodes.update(allNodes.map(n => ({{
@@ -800,14 +800,14 @@ def generate_enhanced_dashboard(data: dict) -> str:
                 opacity: 1.0
             }})));
         }});
-        
+
         // Entity Distribution Chart
         const entityCtx = document.getElementById('entityChart').getContext('2d');
         const entityDistribution = {json.dumps([
             {'type': etype, 'count': sum(1 for e in entities_data['entity_distribution'] if e.get('entity_type') == etype)}
             for etype in ['ORG', 'PERSON', 'GPE', 'MONEY', 'DATE', 'CARDINAL', 'ORDINAL']
         ])};
-        
+
         new Chart(entityCtx, {{
             type: 'doughnut',
             data: {{
@@ -815,7 +815,7 @@ def generate_enhanced_dashboard(data: dict) -> str:
                 datasets: [{{
                     data: entityDistribution.map(item => item.count),
                     backgroundColor: [
-                        '#4ECDC4', '#FF6B6B', '#FECA57', '#FF9FF3', 
+                        '#4ECDC4', '#FF6B6B', '#FECA57', '#FF9FF3',
                         '#FFA726', '#66BB6A', '#42A5F5'
                     ]
                 }}]

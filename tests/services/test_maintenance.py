@@ -157,7 +157,7 @@ class TestMaintenanceJobs:
         )
 
         with patch('graph_rag.services.maintenance.jobs.logger') as mock_logger:
-            result = await job.run()
+            await job.run()
 
             # Check that JSON logging was used
             mock_logger.info.assert_called()
@@ -356,7 +356,7 @@ class TestMaintenanceIntegration:
         assert len(results) == 2
 
         # Check that both jobs completed successfully
-        for job_name, result in results.items():
+        for _job_name, result in results.items():
             assert result["status"] == MaintenanceJobStatus.SUCCESS.value
             assert "duration_seconds" in result
 
@@ -365,7 +365,7 @@ class TestMaintenanceIntegration:
 
         # Check final job status
         final_job_status = scheduler.get_job_status()
-        for job_name, status in final_job_status.items():
+        for _job_name, status in final_job_status.items():
             assert status["status"] == MaintenanceJobStatus.SUCCESS.value
             assert status["run_count"] == 1
             assert status["failure_count"] == 0

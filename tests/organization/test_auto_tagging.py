@@ -22,7 +22,7 @@ def test_content_based_tag_extraction():
     assert len(tags) > 0
 
     expected_tech_tags = {"api", "fastapi", "postgresql", "authentication", "database", "deployment"}
-    found_tags = set(tag.lower() for tag in tags)
+    found_tags = {tag.lower() for tag in tags}
 
     # Should find at least some expected tags
     assert len(expected_tech_tags.intersection(found_tags)) >= 3
@@ -44,7 +44,7 @@ def test_tag_confidence_scoring():
     assert all(isinstance(tag, str) and isinstance(score, float) for tag, score in tags_with_scores)
 
     # Confidence scores should be between 0 and 1
-    for tag, confidence in tags_with_scores:
+    for _tag, confidence in tags_with_scores:
         assert 0.0 <= confidence <= 1.0
 
     # Should find high-confidence tags for clear content
@@ -148,6 +148,6 @@ def test_tag_hierarchy_support():
         assert isinstance(tech_tags, list)
 
         # Should include specific technologies
-        tech_set = set(tag.lower() for tag in tech_tags)
+        tech_set = {tag.lower() for tag in tech_tags}
         expected_tech = {"python", "flask", "sqlalchemy"}
         assert len(expected_tech.intersection(tech_set)) >= 2

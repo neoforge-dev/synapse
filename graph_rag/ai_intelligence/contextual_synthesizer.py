@@ -3,7 +3,7 @@
 Provides domain-aware synthesis for enterprise scenarios with:
 - Enterprise context understanding and adaptation
 - Industry-specific knowledge synthesis
-- Business domain expertise integration  
+- Business domain expertise integration
 - Contextual relevance scoring and optimization
 - Multi-modal information synthesis
 """
@@ -576,22 +576,22 @@ class ContextualSynthesizer:
         """Build comprehensive synthesis prompt for LLM."""
         prompt = f"""
         Synthesize the following information to answer the query with domain-specific expertise:
-        
+
         Query: {query}
-        
+
         Context Profile:
         - Domain: {context_profile.domain.value}
         - Context Type: {context_profile.context_type.value}
         - Synthesis Mode: {context_profile.synthesis_mode.value}
         - Organizational Level: {context_profile.organizational_level}
         - Detail Level: {context_profile.detail_level}
-        
+
         Retrieved Information:
         """
 
         for i, info in enumerate(enhanced_info[:5]):  # Limit to top 5
             prompt += f"""
-        
+
         Source {i+1}:
         Content: {info.get('content', '')[:500]}...
         Contextual Relevance: {info.get('contextual_relevance', 0.0):.2f}
@@ -601,21 +601,21 @@ class ContextualSynthesizer:
 
         if reasoning_chain:
             prompt += f"""
-        
+
         Related Reasoning:
         {reasoning_chain.final_conclusion}
         (Confidence: {reasoning_chain.overall_confidence:.2f})
         """
 
         prompt += f"""
-        
+
         Please provide a {context_profile.synthesis_mode.value} that:
         1. Directly addresses the query with domain expertise
         2. Incorporates relevant best practices and patterns
         3. Considers risk factors and mitigation strategies
         4. Provides actionable insights appropriate for {context_profile.organizational_level} level
         5. Maintains {context_profile.presentation_style} tone and style
-        
+
         Structure your response with:
         - Executive Summary (2-3 sentences)
         - Key Insights (3-5 bullet points)

@@ -230,7 +230,7 @@ class OptimizedAnalyticsDatabase:
 
             # Use executemany for bulk operations
             cursor.executemany('''
-                INSERT OR REPLACE INTO content_patterns 
+                INSERT OR REPLACE INTO content_patterns
                 (pattern_id, pattern_type, pattern_value, avg_engagement_rate,
                  avg_consultation_conversion, sample_size, confidence_score, recommendation)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -254,7 +254,7 @@ class OptimizedAnalyticsDatabase:
             cursor = conn.cursor()
 
             cursor.executemany('''
-                INSERT OR REPLACE INTO content_analysis 
+                INSERT OR REPLACE INTO content_analysis
                 (analysis_id, post_id, word_count, hook_type, cta_type, topic_category,
                  technical_depth, business_focus, controversy_score, emoji_count,
                  hashtag_count, question_count, personal_story, data_points, code_snippets)
@@ -282,20 +282,20 @@ class OptimizedAnalyticsDatabase:
             if pattern_type:
                 # Use parameterized query with index optimization
                 cursor.execute('''
-                    SELECT pattern_type, pattern_value, avg_engagement_rate, 
+                    SELECT pattern_type, pattern_value, avg_engagement_rate,
                            avg_consultation_conversion, confidence_score, recommendation,
                            sample_size
-                    FROM content_patterns 
+                    FROM content_patterns
                     WHERE pattern_type = ? AND sample_size >= 2
                     ORDER BY confidence_score DESC, avg_engagement_rate DESC
                     LIMIT ?
                 ''', (pattern_type, limit))
             else:
                 cursor.execute('''
-                    SELECT pattern_type, pattern_value, avg_engagement_rate, 
+                    SELECT pattern_type, pattern_value, avg_engagement_rate,
                            avg_consultation_conversion, confidence_score, recommendation,
                            sample_size
-                    FROM content_patterns 
+                    FROM content_patterns
                     WHERE sample_size >= 2
                     ORDER BY confidence_score DESC, avg_engagement_rate DESC
                     LIMIT ?
@@ -311,8 +311,8 @@ class OptimizedAnalyticsDatabase:
             # Use aggregated metrics table if available
             cursor.execute(f'''
                 SELECT metric_date, avg_engagement_rate, total_consultations, total_posts
-                FROM performance_metrics_agg 
-                WHERE metric_type = 'daily' 
+                FROM performance_metrics_agg
+                WHERE metric_type = 'daily'
                   AND metric_date >= date('now', '-{days} days')
                 ORDER BY metric_date DESC
             ''')
@@ -348,19 +348,19 @@ class OptimizedAnalyticsDatabase:
 
             # Calculate daily aggregates
             cursor.execute('''
-                INSERT OR REPLACE INTO performance_metrics_agg 
-                (metric_id, metric_type, metric_date, total_posts, 
+                INSERT OR REPLACE INTO performance_metrics_agg
+                (metric_id, metric_type, metric_date, total_posts,
                  avg_engagement_rate, total_consultations, top_performing_pattern)
-                SELECT 
+                SELECT
                     'daily_' || date(analyzed_at) as metric_id,
                     'daily' as metric_type,
                     date(analyzed_at) as metric_date,
                     COUNT(*) as total_posts,
                     AVG(CASE WHEN technical_depth > 0 THEN technical_depth * 0.1 ELSE 0.06 END) as avg_engagement_rate,
                     SUM(CASE WHEN personal_story THEN 1 ELSE 0 END) as total_consultations,
-                    (SELECT hook_type FROM content_analysis ca2 
-                     WHERE date(ca2.analyzed_at) = date(ca1.analyzed_at) 
-                     GROUP BY hook_type 
+                    (SELECT hook_type FROM content_analysis ca2
+                     WHERE date(ca2.analyzed_at) = date(ca1.analyzed_at)
+                     GROUP BY hook_type
                      ORDER BY COUNT(*) DESC LIMIT 1) as top_performing_pattern
                 FROM content_analysis ca1
                 WHERE analyzed_at >= date('now', '-30 days')

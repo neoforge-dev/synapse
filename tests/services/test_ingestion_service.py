@@ -488,7 +488,7 @@ async def test_ingest_document_returns_ingestion_result(
         call.args[0].id for call in mock_graph_repository.add_chunk.call_args_list
     ]
     assert set(result.chunk_ids) == set(chunk_ids_saved)
-    assert set(result.chunk_ids) == set(c.id for c in mock_chunks)
+    assert set(result.chunk_ids) == {c.id for c in mock_chunks}
 
 
 @pytest.mark.asyncio

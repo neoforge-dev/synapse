@@ -23,7 +23,7 @@ class AnthropicService(LLMService):
         timeout: float = 60.0
     ):
         """Initialize Anthropic service.
-        
+
         Args:
             api_key: Anthropic API key (defaults to ANTHROPIC_API_KEY env var)
             model: Model to use (claude-3-5-sonnet-20241022, claude-3-5-haiku-20241022, etc.)
@@ -169,7 +169,7 @@ class AnthropicService(LLMService):
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """Extract entities and relationships from text using Anthropic Claude."""
         try:
-            prompt = f"""Extract entities and relationships from the following text. 
+            prompt = f"""Extract entities and relationships from the following text.
 Return your response as valid JSON with two arrays: "entities" and "relationships".
 
 For entities, include: id (unique), label (type), name, and properties (dict).

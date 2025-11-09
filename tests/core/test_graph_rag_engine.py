@@ -718,9 +718,9 @@ async def test_simple_engine_query_with_graph_context(
     assert result.graph_context is not None
     expected_entities, expected_relationships = sample_graph_neighbors
     # Compare sets of IDs as order might differ
-    assert set(e.id for e in result.graph_context[0]) == set(
+    assert {e.id for e in result.graph_context[0]} == {
         e.id for e in expected_entities
-    )
+    }
     assert len(result.graph_context[1]) == len(expected_relationships)
     logger.info("test_simple_engine_query_with_graph_context assertions passed.")
 
@@ -1685,7 +1685,7 @@ async def test_llm_relationship_dry_run_mode(
             "extract_relationships_dry_run": True,
             "k": 1
         }
-        result = await rag_engine.query(query_text, config=config)
+        await rag_engine.query(query_text, config=config)
 
         # Assert LLM extraction occurred
         mock_llm_service.extract_entities_relationships.assert_called_once()
@@ -1775,7 +1775,7 @@ async def test_llm_relationship_confidence_gating(
             "extract_relationships_persist": True,
             "k": 1
         }
-        result = await rag_engine.query(query_text, config=config)
+        await rag_engine.query(query_text, config=config)
 
         # Assert persistence calls - should be 3 (KNOWS, LIKES, WORKS_WITH >= 0.75)
         assert mock_graph_repository.execute_query.call_count == 3
@@ -1862,7 +1862,7 @@ async def test_llm_relationship_entity_mapping_by_name(
             "extract_relationships_persist": True,
             "k": 1
         }
-        result = await rag_engine.query(query_text, config=config)
+        await rag_engine.query(query_text, config=config)
 
         # Assert persistence occurred despite case differences
         assert mock_graph_repository.execute_query.call_count == 1

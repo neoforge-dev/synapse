@@ -22,7 +22,7 @@ async def test_entity_extraction():
 
     # Create test document with entity-rich content
     test_content = """
-    Barack Obama was the 44th President of the United States from 2009 to 2017. 
+    Barack Obama was the 44th President of the United States from 2009 to 2017.
     He was born in Honolulu, Hawaii and later served as a senator from Illinois.
     Microsoft Corporation is a technology company founded by Bill Gates and Paul Allen.
     The company is headquartered in Redmond, Washington and has offices in San Francisco, California.

@@ -177,7 +177,7 @@ class TechnicalRevenueAccelerator:
 
         # Calculate specific recommendations
         for segment, data in pipeline_analysis['estimated_segments'].items():
-            segment_info = self.customer_segments[segment]
+            self.customer_segments[segment]
 
             # Upselling opportunities
             upsell_potential = data['total'] * 0.6  # 60% upsell potential
@@ -314,7 +314,7 @@ class TechnicalRevenueAccelerator:
 
     def _recommend_offering(self, segment: str, engagement: dict[str, Any]) -> str:
         """Recommend appropriate offering based on segment and engagement"""
-        segment_info = self.customer_segments[segment]
+        self.customer_segments[segment]
         content_interests = engagement['content_interactions']
 
         if segment == 'startup_founder':
@@ -486,14 +486,14 @@ class TechnicalRevenueAccelerator:
         """Generate comprehensive revenue acceleration plan"""
 
         # Analyze existing pipeline
-        pipeline_analysis = self.analyze_existing_pipeline_potential()
+        self.analyze_existing_pipeline_potential()
 
         # Implement advanced lead scoring
         sample_linkedin_data = {}  # Would use real data
-        revenue_opportunities = self.implement_advanced_lead_scoring(sample_linkedin_data)
+        self.implement_advanced_lead_scoring(sample_linkedin_data)
 
         # Create product projections
-        product_projections = self.create_product_revenue_projections()
+        self.create_product_revenue_projections()
 
         # Generate comprehensive plan
         acceleration_plan = {

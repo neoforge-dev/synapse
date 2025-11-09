@@ -1,7 +1,7 @@
 """Content-Audience Resonance Scoring Algorithms for Epic 8.2.
 
-This module provides sophisticated algorithms that measure how well content resonates 
-with specific audience segments and predict engagement potential. It analyzes 
+This module provides sophisticated algorithms that measure how well content resonates
+with specific audience segments and predict engagement potential. It analyzes
 multi-dimensional resonance including demographic, behavioral, and psychographic fit.
 
 Features:
@@ -527,13 +527,13 @@ class DemographicResonanceAnalyzer:
             resonance.experience_alignment,
             resonance.location_alignment,
             resonance.role_alignment
-        ]) if len(set([
+        ]) if len({
             resonance.age_alignment,
             resonance.industry_alignment,
             resonance.experience_alignment,
             resonance.location_alignment,
             resonance.role_alignment
-        ])) > 1 else 1.0
+        }) > 1 else 1.0
 
         return (data_completeness * 0.7 + score_consistency * 0.3)
 
@@ -555,7 +555,7 @@ class DemographicResonanceAnalyzer:
                 recommendations.append("Focus on proven experience and established methods")
 
         if resonance.industry_alignment < 0.6 and demo_profile.industry:
-            industry_keywords = self.industry_expertise_indicators.get(demo_profile.industry, [])
+            self.industry_expertise_indicators.get(demo_profile.industry, [])
             recommendations.append(f"Incorporate more {demo_profile.industry.value}-specific terminology")
             recommendations.append("Reference industry-relevant examples and case studies")
 

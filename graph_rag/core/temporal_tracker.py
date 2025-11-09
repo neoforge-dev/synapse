@@ -321,7 +321,7 @@ class TemporalTracker:
             })
 
         # Suggest cross-platform expansion
-        platforms_used = set(v.platform for v in evolution.concept_versions)
+        platforms_used = {v.platform for v in evolution.concept_versions}
         if ContentPlatform.NOTION in platforms_used and ContentPlatform.LINKEDIN not in platforms_used:
             suggestions.append({
                 "action": "Share on LinkedIn",

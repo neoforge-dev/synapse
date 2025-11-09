@@ -46,7 +46,7 @@ class TestAutomationDashboardInitialization:
         with patch('business_development.automation_dashboard.LinkedInAPIClient', side_effect=Exception("API init failed")):
             # Act & Assert - Should not raise exception
             try:
-                dashboard = AutomationDashboard()
+                AutomationDashboard()
                 # If we get here, the exception was handled gracefully
                 assert True, "Dashboard should handle dependency failures gracefully"
             except Exception as e:
@@ -73,7 +73,7 @@ class TestComprehensiveStatusReporting:
         # Insert test posts
         for post in mock_business_database['linkedin_posts']:
             cursor.execute('''
-                INSERT INTO linkedin_posts 
+                INSERT INTO linkedin_posts
                 (post_id, content, posted_at, week_theme, day, target_audience, business_objective,
                  expected_engagement_rate, expected_consultation_inquiries, impressions, likes, comments,
                  consultation_requests, actual_engagement_rate)
@@ -88,7 +88,7 @@ class TestComprehensiveStatusReporting:
         # Insert test inquiries
         for inquiry in mock_business_database['consultation_inquiries']:
             cursor.execute('''
-                INSERT INTO consultation_inquiries 
+                INSERT INTO consultation_inquiries
                 (inquiry_id, source_post_id, contact_name, company, company_size, inquiry_type,
                  inquiry_channel, inquiry_text, estimated_value, priority_score, status, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -143,7 +143,7 @@ class TestComprehensiveStatusReporting:
 
         for i, inquiry_data in enumerate(high_value_inquiries):
             cursor.execute('''
-                INSERT INTO consultation_inquiries 
+                INSERT INTO consultation_inquiries
                 (inquiry_id, source_post_id, contact_name, company, inquiry_type,
                  estimated_value, status, created_at, company_size, inquiry_channel, inquiry_text, priority_score)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -263,7 +263,7 @@ class TestDailyReportGeneration:
 
         for post_id, day, impressions, engagement_rate, consultation_requests in posts_data:
             cursor.execute('''
-                INSERT INTO linkedin_posts 
+                INSERT INTO linkedin_posts
                 (post_id, day, impressions, actual_engagement_rate, consultation_requests,
                  posted_at, content, business_objective)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -291,9 +291,9 @@ class TestDailyReportGeneration:
 
         for inquiry_id, value, priority, inquiry_type in inquiries_data:
             cursor.execute('''
-                INSERT INTO consultation_inquiries 
+                INSERT INTO consultation_inquiries
                 (inquiry_id, source_post_id, contact_name, company, inquiry_type,
-                 estimated_value, priority_score, status, created_at, company_size, 
+                 estimated_value, priority_score, status, created_at, company_size,
                  inquiry_channel, inquiry_text)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (inquiry_id, 'week3-monday', f'Contact {inquiry_id}', f'Company {inquiry_id}',
@@ -343,7 +343,7 @@ class TestCriticalAlertsMonitoring:
 
         for inquiry in high_priority_inquiries:
             cursor.execute('''
-                INSERT INTO consultation_inquiries 
+                INSERT INTO consultation_inquiries
                 (inquiry_id, source_post_id, contact_name, company, inquiry_type,
                  estimated_value, priority_score, status, created_at, company_size,
                  inquiry_channel, inquiry_text)
@@ -390,7 +390,7 @@ class TestCriticalAlertsMonitoring:
 
         for post_id, posted_at, impressions, engagement_rate in low_engagement_posts:
             cursor.execute('''
-                INSERT INTO linkedin_posts 
+                INSERT INTO linkedin_posts
                 (post_id, posted_at, impressions, actual_engagement_rate, content, day)
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (post_id, posted_at, impressions, engagement_rate, 'Test content', 'Monday'))
@@ -422,7 +422,7 @@ class TestCriticalAlertsMonitoring:
 
         for post_id, posted_at, day in failed_posts:
             cursor.execute('''
-                INSERT INTO linkedin_posts 
+                INSERT INTO linkedin_posts
                 (post_id, posted_at, day, impressions, content, business_objective)
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (post_id, posted_at, day, 0, 'Test content', 'Test objective'))
@@ -562,7 +562,7 @@ class TestBusinessContinuityProtection:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT INTO consultation_inquiries 
+            INSERT INTO consultation_inquiries
             (inquiry_id, source_post_id, contact_name, company, inquiry_type,
              estimated_value, priority_score, status, created_at, company_size,
              inquiry_channel, inquiry_text)
@@ -579,9 +579,9 @@ class TestBusinessContinuityProtection:
         conn.close()
 
         # Act - Perform various dashboard operations
-        status = automation_dashboard.get_comprehensive_status()
-        report = automation_dashboard.generate_daily_report()
-        alerts = automation_dashboard.monitor_critical_alerts()
+        automation_dashboard.get_comprehensive_status()
+        automation_dashboard.generate_daily_report()
+        automation_dashboard.monitor_critical_alerts()
 
         # Assert - Verify data unchanged
         conn = sqlite3.connect(automation_dashboard.business_engine.db_path)
@@ -627,7 +627,7 @@ class TestBusinessContinuityProtection:
 
         for inquiry_id, value in known_inquiries:
             cursor.execute('''
-                INSERT INTO consultation_inquiries 
+                INSERT INTO consultation_inquiries
                 (inquiry_id, source_post_id, contact_name, company, inquiry_type,
                  estimated_value, priority_score, status, created_at, company_size,
                  inquiry_channel, inquiry_text)
@@ -641,7 +641,7 @@ class TestBusinessContinuityProtection:
         # Act - Perform multiple dashboard operations
         status_1 = automation_dashboard.get_comprehensive_status()
         report = automation_dashboard.generate_daily_report()
-        alerts = automation_dashboard.monitor_critical_alerts()
+        automation_dashboard.monitor_critical_alerts()
         status_2 = automation_dashboard.get_comprehensive_status()
 
         # Assert - Verify calculations remain consistent and accurate

@@ -26,7 +26,7 @@ class OpenAIService(LLMService):
         timeout: float = 30.0
     ):
         """Initialize OpenAI service.
-        
+
         Args:
             api_key: OpenAI API key (defaults to OPENAI_API_KEY env var)
             model: Model to use (gpt-4o-mini, gpt-4o, gpt-3.5-turbo, etc.)
@@ -191,7 +191,7 @@ class OpenAIService(LLMService):
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """Extract entities and relationships from text using OpenAI."""
         try:
-            prompt = f"""Extract entities and relationships from the following text. 
+            prompt = f"""Extract entities and relationships from the following text.
 Return your response as valid JSON with two arrays: "entities" and "relationships".
 
 For entities, include: id (unique), label (type), name, and properties (dict).

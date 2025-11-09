@@ -65,7 +65,7 @@ async def extract_graph_structure(graph_repo: MemgraphGraphRepository) -> tuple[
     WITH n, (out_connections + in_connections) as connections
     ORDER BY connections DESC
     LIMIT 500
-    RETURN 
+    RETURN
         id(n) as node_id,
         labels(n) as labels,
         n.name as name,
@@ -121,7 +121,7 @@ async def extract_graph_structure(graph_repo: MemgraphGraphRepository) -> tuple[
     edges_query = f"""
     MATCH (a)-[r]->(b)
     WHERE id(a) IN {list(node_ids)} AND id(b) IN {list(node_ids)}
-    RETURN 
+    RETURN
         id(a) as source_id,
         id(b) as target_id,
         type(r) as relationship_type
@@ -198,8 +198,8 @@ async def generate_network_visualizations(nodes: list[dict], edges: list[dict]):
         'stats': {
             'total_nodes': len(nodes),
             'total_edges': len(edges),
-            'node_types': list(set(node['type'] for node in nodes)),
-            'edge_types': list(set(edge['type'] for edge in edges))
+            'node_types': list({node['type'] for node in nodes}),
+            'edge_types': list({edge['type'] for edge in edges})
         }
     }
 
@@ -268,14 +268,14 @@ def generate_network_html(data: dict) -> str:
 <body>
     <h1>🔗 Knowledge Graph Network Visualization</h1>
     <p>Generated at: {data.get('generated_at', 'Unknown')}</p>
-    
+
     <div class="stats">
         <h3>📊 Network Statistics</h3>
         <p><strong>Nodes:</strong> {data['stats']['total_nodes']} | <strong>Edges:</strong> {data['stats']['total_edges']}</p>
         <p><strong>Node Types:</strong> {', '.join(data['stats']['node_types'])}</p>
         <p><strong>Relationship Types:</strong> {', '.join(data['stats']['edge_types'])}</p>
     </div>
-    
+
     <div class="controls">
         <button onclick="network.fit()">Fit to Screen</button>
         <button onclick="stabilize()">Stabilize</button>
@@ -283,19 +283,19 @@ def generate_network_html(data: dict) -> str:
         <button onclick="filterDocuments()">Show Only Documents</button>
         <button onclick="showAll()">Show All</button>
     </div>
-    
+
     <div id="network"></div>
-    
+
     <script>
         const nodes = new vis.DataSet({json.dumps(vis_nodes)});
         const edges = new vis.DataSet({json.dumps(vis_edges)});
-        
+
         const allNodes = nodes.get();
         const allEdges = edges.get();
-        
+
         const container = document.getElementById('network');
         const data = {{ nodes: nodes, edges: edges }};
-        
+
         const options = {{
             physics: {{
                 enabled: true,
@@ -330,51 +330,51 @@ def generate_network_html(data: dict) -> str:
                 tooltipDelay: 200
             }}
         }};
-        
+
         const network = new vis.Network(container, data, options);
-        
+
         // Control functions
         function stabilize() {{
             network.stabilize();
         }}
-        
+
         function filterEntities() {{
             const entityNodes = allNodes.filter(node => node.title.includes('Type: Entity'));
             const entityNodeIds = new Set(entityNodes.map(n => n.id));
-            const entityEdges = allEdges.filter(edge => 
+            const entityEdges = allEdges.filter(edge =>
                 entityNodeIds.has(edge.from) && entityNodeIds.has(edge.to)
             );
-            
+
             nodes.update(entityNodes);
             edges.update(entityEdges);
             network.fit();
         }}
-        
+
         function filterDocuments() {{
             const docNodes = allNodes.filter(node => node.title.includes('Type: Document'));
             const docNodeIds = new Set(docNodes.map(n => n.id));
-            const docEdges = allEdges.filter(edge => 
+            const docEdges = allEdges.filter(edge =>
                 docNodeIds.has(edge.from) && docNodeIds.has(edge.to)
             );
-            
+
             nodes.update(docNodes);
             edges.update(docEdges);
             network.fit();
         }}
-        
+
         function showAll() {{
             nodes.update(allNodes);
             edges.update(allEdges);
             network.fit();
         }}
-        
+
         // Event handlers
         network.on("selectNode", function(params) {{
             const nodeId = params.nodes[0];
             const node = nodes.get(nodeId);
             console.log('Selected node:', node);
         }});
-        
+
         network.on("selectEdge", function(params) {{
             const edgeId = params.edges[0];
             const edge = edges.get(edgeId);
@@ -444,12 +444,12 @@ def generate_cytoscape_html(data: dict) -> str:
 <body>
     <h1>🎯 Knowledge Graph - Advanced Network</h1>
     <p>Generated at: {data.get('generated_at', 'Unknown')}</p>
-    
+
     <div class="stats">
         <h3>📊 Network Statistics</h3>
         <p><strong>Nodes:</strong> {data['stats']['total_nodes']} | <strong>Edges:</strong> {data['stats']['total_edges']}</p>
     </div>
-    
+
     <div class="legend">
         <h4>🎨 Legend</h4>
         <div class="legend-item">
@@ -469,7 +469,7 @@ def generate_cytoscape_html(data: dict) -> str:
             <span>Document</span>
         </div>
     </div>
-    
+
     <div class="controls">
         <button onclick="cy.fit()">Fit to Screen</button>
         <button onclick="runLayout('cose-bilkent')">Hierarchical Layout</button>
@@ -477,15 +477,15 @@ def generate_cytoscape_html(data: dict) -> str:
         <button onclick="runLayout('grid')">Grid Layout</button>
         <button onclick="showCentralNodes()">Show Central Nodes</button>
     </div>
-    
+
     <div id="cy"></div>
-    
+
     <script>
         const cy = cytoscape({{
             container: document.getElementById('cy'),
-            
+
             elements: {json.dumps(cy_elements)},
-            
+
             style: [
                 {{
                     selector: 'node',
@@ -517,7 +517,7 @@ def generate_cytoscape_html(data: dict) -> str:
                     }}
                 }}
             ],
-            
+
             layout: {{
                 name: 'cose-bilkent',
                 animate: true,
@@ -526,7 +526,7 @@ def generate_cytoscape_html(data: dict) -> str:
                 padding: 30
             }}
         }});
-        
+
         // Layout functions
         function runLayout(layoutName) {{
             const layout = cy.layout({{
@@ -538,7 +538,7 @@ def generate_cytoscape_html(data: dict) -> str:
             }});
             layout.run();
         }}
-        
+
         function showCentralNodes() {{
             // Highlight nodes with many connections
             cy.nodes().forEach(node => {{
@@ -549,25 +549,25 @@ def generate_cytoscape_html(data: dict) -> str:
                 }}
             }});
         }}
-        
+
         // Event handlers
         cy.on('tap', 'node', function(evt) {{
             const node = evt.target;
             console.log('Node clicked:', node.data());
-            
+
             // Highlight neighborhood
             const neighborhood = node.neighborhood().add(node);
             cy.elements().removeClass('highlighted').addClass('faded');
             neighborhood.removeClass('faded').addClass('highlighted');
         }});
-        
+
         cy.on('tap', function(evt) {{
             if (evt.target === cy) {{
                 // Clicked on background, remove highlighting
                 cy.elements().removeClass('highlighted faded');
             }}
         }});
-        
+
         // Add CSS for highlighting
         cy.style()
             .selector('.highlighted')

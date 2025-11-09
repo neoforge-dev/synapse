@@ -165,8 +165,8 @@ class TestBusinessPipelineProtection:
             conn = sqlite3.connect(engine.db_path)
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT contact_id FROM crm_contacts 
-                WHERE priority_tier IN ('platinum', 'gold') 
+                SELECT contact_id FROM crm_contacts
+                WHERE priority_tier IN ('platinum', 'gold')
                 AND qualification_status = 'qualified'
                 LIMIT 5
             """)
@@ -296,7 +296,7 @@ class TestBusinessPipelineProtection:
 
         # Capture original data
         original_summary = engine.get_sales_pipeline_summary()
-        original_export = engine.export_pipeline_data()
+        engine.export_pipeline_data()
 
         # Simulate data corruption or modification
         conn = sqlite3.connect(db_path)
@@ -581,7 +581,7 @@ class TestBusinessMetricsValidation:
         # Generate comprehensive business data
         summary = engine.get_sales_pipeline_summary()
         forecast = engine.generate_revenue_forecast("annual")
-        unified_data = engine.get_unified_dashboard_data()
+        engine.get_unified_dashboard_data()
 
         # Define critical KPIs
         kpis = {

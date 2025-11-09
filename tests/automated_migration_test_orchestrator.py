@@ -9,7 +9,7 @@ automated testing, real-time monitoring, and automated rollback capabilities.
 
 Test Orchestration Phases:
 1. Pre-migration validation and preparation
-2. Migration process integrity testing  
+2. Migration process integrity testing
 3. Real-time business continuity monitoring
 4. Post-migration verification and validation
 5. Automated rollback testing and safety protocols
@@ -333,7 +333,7 @@ class BusinessContinuityGuard:
         connectivity_count = 0
         total_count = 0
 
-        for db_name, db_path in self.config.sqlite_paths.items():
+        for _db_name, db_path in self.config.sqlite_paths.items():
             if Path(db_path).exists():
                 total_count += 1
                 try:
@@ -1643,7 +1643,7 @@ def main():
         # Display results
         migration_approved = results.get('migration_approved', False)
         overall_success_rate = results.get('overall_success_rate', 0)
-        business_continuity_protected = results.get('business_continuity_protected', False)
+        results.get('business_continuity_protected', False)
 
         if migration_approved:
             print("\n✅ AUTOMATED MIGRATION TESTING: SUCCESS")

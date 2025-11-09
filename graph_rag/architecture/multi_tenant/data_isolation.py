@@ -2,7 +2,7 @@
 
 This module provides comprehensive data isolation strategies:
 - Database-per-tenant (maximum isolation)
-- Schema-per-tenant (balanced performance/isolation) 
+- Schema-per-tenant (balanced performance/isolation)
 - Row-level security (shared database with tenant context)
 - Hybrid model supporting different isolation levels per tenant
 """
@@ -227,7 +227,7 @@ class DatabasePerTenantStrategy(DatabaseIsolationStrategy):
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             schema_version TEXT DEFAULT '1.0'
         );
-        
+
         -- Documents table
         CREATE TABLE documents (
             id TEXT PRIMARY KEY,
@@ -237,7 +237,7 @@ class DatabasePerTenantStrategy(DatabaseIsolationStrategy):
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-        
+
         -- Chunks table
         CREATE TABLE chunks (
             id TEXT PRIMARY KEY,
@@ -250,7 +250,7 @@ class DatabasePerTenantStrategy(DatabaseIsolationStrategy):
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (document_id) REFERENCES documents(id)
         );
-        
+
         -- Entities table
         CREATE TABLE entities (
             id TEXT PRIMARY KEY,
@@ -260,7 +260,7 @@ class DatabasePerTenantStrategy(DatabaseIsolationStrategy):
             metadata JSON,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-        
+
         -- Relationships table
         CREATE TABLE relationships (
             id TEXT PRIMARY KEY,
@@ -273,7 +273,7 @@ class DatabasePerTenantStrategy(DatabaseIsolationStrategy):
             FOREIGN KEY (source_entity_id) REFERENCES entities(id),
             FOREIGN KEY (target_entity_id) REFERENCES entities(id)
         );
-        
+
         -- Create indexes for performance
         CREATE INDEX idx_chunks_document ON chunks(document_id);
         CREATE INDEX idx_entities_name ON entities(name);
@@ -374,7 +374,7 @@ class RowLevelSecurityStrategy(DatabaseIsolationStrategy):
                 # Add tenant_id to parameters
                 if isinstance(params, dict):
                     params['tenant_id'] = tenant_id
-                elif isinstance(params, (list, tuple)):
+                elif isinstance(params, list | tuple):
                     params = list(params) + [tenant_id]
                 result = cursor.execute(filtered_query, params)
             else:
@@ -432,7 +432,7 @@ class RowLevelSecurityStrategy(DatabaseIsolationStrategy):
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             status TEXT DEFAULT 'active'
         );
-        
+
         -- Documents table with tenant isolation
         CREATE TABLE documents (
             id TEXT PRIMARY KEY,
@@ -444,7 +444,7 @@ class RowLevelSecurityStrategy(DatabaseIsolationStrategy):
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id)
         );
-        
+
         -- Chunks table with tenant isolation
         CREATE TABLE chunks (
             id TEXT PRIMARY KEY,
@@ -459,7 +459,7 @@ class RowLevelSecurityStrategy(DatabaseIsolationStrategy):
             FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id),
             FOREIGN KEY (document_id) REFERENCES documents(id)
         );
-        
+
         -- Entities table with tenant isolation
         CREATE TABLE entities (
             id TEXT PRIMARY KEY,
@@ -471,7 +471,7 @@ class RowLevelSecurityStrategy(DatabaseIsolationStrategy):
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (tenant_id) REFERENCES tenant_registry(tenant_id)
         );
-        
+
         -- Relationships table with tenant isolation
         CREATE TABLE relationships (
             id TEXT PRIMARY KEY,
@@ -486,7 +486,7 @@ class RowLevelSecurityStrategy(DatabaseIsolationStrategy):
             FOREIGN KEY (source_entity_id) REFERENCES entities(id),
             FOREIGN KEY (target_entity_id) REFERENCES entities(id)
         );
-        
+
         -- Create indexes for performance including tenant_id
         CREATE INDEX idx_documents_tenant ON documents(tenant_id);
         CREATE INDEX idx_chunks_tenant_document ON chunks(tenant_id, document_id);

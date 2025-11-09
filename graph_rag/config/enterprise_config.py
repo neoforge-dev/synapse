@@ -216,7 +216,7 @@ class EnterpriseConfigManager:
         """Log configuration change for compliance audit."""
         with self._get_db_connection() as conn:
             conn.execute("""
-                INSERT INTO config_audit_log 
+                INSERT INTO config_audit_log
                 (tenant_id, action, resource_type, resource_id, old_values, new_values, user_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (
@@ -231,8 +231,8 @@ class EnterpriseConfigManager:
         """Create new Fortune 500 enterprise client."""
         with self._get_db_connection() as conn:
             conn.execute("""
-                INSERT INTO enterprise_clients 
-                (client_id, company_name, contract_value, tier, is_active, created_at, 
+                INSERT INTO enterprise_clients
+                (client_id, company_name, contract_value, tier, is_active, created_at,
                  contact_email, security_contact, compliance_requirements)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
@@ -310,7 +310,7 @@ class EnterpriseConfigManager:
 
         with self._get_db_connection() as conn:
             conn.execute("""
-                INSERT INTO tenant_configurations 
+                INSERT INTO tenant_configurations
                 (tenant_id, client_id, config_data, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?)
             """, (
@@ -382,7 +382,7 @@ class EnterpriseConfigManager:
 
         with self._get_db_connection() as conn:
             conn.execute("""
-                UPDATE tenant_configurations 
+                UPDATE tenant_configurations
                 SET config_data = ?, updated_at = ?
                 WHERE tenant_id = ?
             """, (encrypted_config, current_config.updated_at, tenant_id))
@@ -417,7 +417,7 @@ class EnterpriseConfigManager:
 
         with self._get_db_connection() as conn:
             conn.execute("""
-                INSERT OR REPLACE INTO sso_providers 
+                INSERT OR REPLACE INTO sso_providers
                 (provider_id, tenant_id, provider_data, is_active, created_at)
                 VALUES (?, ?, ?, ?, ?)
             """, (
@@ -493,7 +493,7 @@ class EnterpriseConfigManager:
 
         with self._get_db_connection() as conn:
             rows = conn.execute("""
-                SELECT * FROM enterprise_clients 
+                SELECT * FROM enterprise_clients
                 WHERE contract_value >= ? AND is_active = 1
                 ORDER BY contract_value DESC
             """, (min_contract_value,)).fetchall()

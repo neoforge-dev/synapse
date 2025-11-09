@@ -357,7 +357,7 @@ class LogNotificationProvider(NotificationProvider):
 class AlertManager:
     """
     Comprehensive alert management system.
-    
+
     Features:
     - Real-time alert evaluation
     - Multi-channel notifications
@@ -374,7 +374,7 @@ class AlertManager:
     ):
         """
         Initialize the alert manager.
-        
+
         Args:
             evaluation_interval: How often to evaluate alert conditions (seconds)
             max_alert_history: Maximum number of alert events to keep in history

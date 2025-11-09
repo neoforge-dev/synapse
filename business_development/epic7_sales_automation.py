@@ -380,8 +380,8 @@ class SalesAutomationEngine:
 
         for template in templates:
             cursor.execute('''
-                INSERT OR REPLACE INTO roi_templates 
-                (template_id, inquiry_type, template_name, cost_factors, benefit_factors, 
+                INSERT OR REPLACE INTO roi_templates
+                (template_id, inquiry_type, template_name, cost_factors, benefit_factors,
                  calculation_formula, industry_benchmarks, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
@@ -586,8 +586,8 @@ class SalesAutomationEngine:
 
         for inquiry in synthetic_data:
             cursor.execute('''
-                INSERT OR REPLACE INTO consultation_inquiries 
-                (inquiry_id, contact_name, company, company_size, inquiry_type, 
+                INSERT OR REPLACE INTO consultation_inquiries
+                (inquiry_id, contact_name, company, company_size, inquiry_type,
                  inquiry_text, estimated_value, priority_score, status, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
@@ -616,7 +616,7 @@ class SalesAutomationEngine:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT inquiry_id, contact_name, company, company_size, inquiry_type, 
+            SELECT inquiry_id, contact_name, company, company_size, inquiry_type,
                    inquiry_text, estimated_value, priority_score, created_at
             FROM consultation_inquiries
             WHERE status IN ('new', 'contacted')
@@ -907,7 +907,7 @@ class SalesAutomationEngine:
         proposal_id = f"prop-{contact_id}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
         cursor.execute('''
-            INSERT INTO generated_proposals 
+            INSERT INTO generated_proposals
             (proposal_id, contact_id, inquiry_id, template_used, proposal_content,
              roi_calculation, estimated_close_probability, proposal_value, status, generated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1181,7 +1181,7 @@ class SalesAutomationEngine:
 
             # Save automation tracking
             cursor.execute('''
-                INSERT OR REPLACE INTO linkedin_automation_tracking 
+                INSERT OR REPLACE INTO linkedin_automation_tracking
                 (contact_id, sequence_type, scheduled_at, sequence_data, status)
                 VALUES (?, ?, ?, ?, ?)
             ''', (
@@ -1294,8 +1294,8 @@ class SalesAutomationEngine:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT INTO ab_test_campaigns 
-            (campaign_id, test_name, variant_a_description, variant_b_description, 
+            INSERT INTO ab_test_campaigns
+            (campaign_id, test_name, variant_a_description, variant_b_description,
              target_segment, success_metric, start_date, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
@@ -1344,11 +1344,11 @@ class SalesAutomationEngine:
 
         # Get conversion data by variant
         cursor.execute('''
-            SELECT 
+            SELECT
                 variant,
                 COUNT(DISTINCT contact_id) as total_contacts,
                 COUNT(CASE WHEN action_taken = 'conversion' THEN 1 END) as conversions
-            FROM ab_test_results 
+            FROM ab_test_results
             WHERE campaign_id = ?
             GROUP BY variant
         ''', (campaign_id,))
@@ -1380,7 +1380,7 @@ class SalesAutomationEngine:
 
         # Update campaign with results
         cursor.execute('''
-            UPDATE ab_test_campaigns 
+            UPDATE ab_test_campaigns
             SET statistical_significance = ?, winner = ?
             WHERE campaign_id = ?
         ''', (significance, winner, campaign_id))
@@ -1454,7 +1454,7 @@ class SalesAutomationEngine:
 
         # Get proposal conversion rates by tier
         cursor.execute('''
-            SELECT 
+            SELECT
                 c.priority_tier,
                 AVG(p.estimated_close_probability) as avg_close_prob
             FROM crm_contacts c
@@ -1554,7 +1554,7 @@ class SalesAutomationEngine:
         # Save forecast
         forecast_id = f"forecast-{uuid.uuid4().hex[:8]}"
         cursor.execute('''
-            INSERT INTO revenue_forecasts 
+            INSERT INTO revenue_forecasts
             (forecast_id, forecast_period, pipeline_snapshot, conversion_assumptions,
              projected_revenue, confidence_interval, forecast_date)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -1836,7 +1836,7 @@ class SalesAutomationEngine:
 
         # LinkedIn automation metrics
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(*) as total_sequences,
                 COUNT(CASE WHEN status = 'active' THEN 1 END) as active_sequences,
                 SUM(messages_sent) as total_messages,
@@ -1848,7 +1848,7 @@ class SalesAutomationEngine:
 
         # A/B testing metrics
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(*) as total_campaigns,
                 COUNT(CASE WHEN status = 'active' THEN 1 END) as active_campaigns,
                 AVG(statistical_significance) as avg_significance
@@ -1858,7 +1858,7 @@ class SalesAutomationEngine:
 
         # Recent activity feed
         cursor.execute('''
-            SELECT 
+            SELECT
                 'proposal_generated' as activity_type,
                 contact_id,
                 proposal_value as value,
@@ -1866,7 +1866,7 @@ class SalesAutomationEngine:
             FROM generated_proposals
             WHERE generated_at >= date('now', '-7 days')
             UNION ALL
-            SELECT 
+            SELECT
                 'linkedin_sequence_started' as activity_type,
                 contact_id,
                 0 as value,
@@ -1905,7 +1905,7 @@ class SalesAutomationEngine:
 
         # Client onboarding pipeline
         cursor.execute('''
-            SELECT 
+            SELECT
                 c.priority_tier,
                 COUNT(*) as count,
                 AVG(p.estimated_close_probability) as avg_close_prob
@@ -1982,7 +1982,7 @@ class SalesAutomationEngine:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT 
+            SELECT
                 contact_id, name, company, company_size, title, email,
                 lead_score, qualification_status, estimated_value, priority_tier,
                 next_action, next_action_date, created_at, updated_at
@@ -1991,7 +1991,7 @@ class SalesAutomationEngine:
         contacts = cursor.fetchall()
 
         cursor.execute('''
-            SELECT 
+            SELECT
                 proposal_id, contact_id, proposal_value, estimated_close_probability,
                 status, generated_at
             FROM generated_proposals
@@ -2063,7 +2063,7 @@ def run_epic7_optimization_demo():
     print("\n🚀 Week 2: Conversion Rate Optimization")
 
     # A/B testing
-    ab_campaign = engine.create_ab_test_campaign(
+    engine.create_ab_test_campaign(
         "LinkedIn Outreach Optimization",
         "Direct technical approach",
         "Value-first business approach"

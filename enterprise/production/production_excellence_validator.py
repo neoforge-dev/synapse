@@ -1255,7 +1255,7 @@ class ProductionExcellenceValidator:
 
     def _assess_cicd_maturity(self) -> dict:
         """Assess CI/CD maturity level"""
-        cicd_checks = [c for c in self.checks if c.domain == "CI/CD"]
+        [c for c in self.checks if c.domain == "CI/CD"]
         cicd_result = self.domain_results.get("CI/CD")
 
         return {

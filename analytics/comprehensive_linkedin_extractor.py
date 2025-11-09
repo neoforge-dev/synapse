@@ -4,7 +4,7 @@ Comprehensive LinkedIn Data Extractor for Synapse Integration
 
 Processes 11,222+ posts, 5,222+ comments, and 10,749+ shares to extract:
 - Ideas and concepts
-- Beliefs and opinions  
+- Beliefs and opinions
 - Personal preferences
 - Personal stories and experiences
 - Controversial takes

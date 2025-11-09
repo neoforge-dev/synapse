@@ -358,7 +358,7 @@ class PromptOptimizer:
     ) -> str:
         """
         Create an optimized prompt for the given query and context.
-        
+
         Args:
             query: The user's question
             context: Available context (chunks, entities, etc.)
@@ -367,7 +367,7 @@ class PromptOptimizer:
             confidence_scoring: Whether to request confidence indicators
             citation_required: Whether to require source citations
             max_length: Maximum response length constraint
-            
+
         Returns:
             Optimized prompt string
         """
@@ -470,12 +470,12 @@ class PromptOptimizer:
     ) -> PromptTemplate:
         """
         Create a customized version of an existing template.
-        
+
         Args:
             base_template_name: Name of template to customize
             modifications: Dict of field names to new values
             new_name: Name for the new template (optional)
-            
+
         Returns:
             New customized template
         """

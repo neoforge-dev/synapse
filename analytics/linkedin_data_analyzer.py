@@ -3,7 +3,7 @@
 LinkedIn Data Analyzer for Business Development Automation
 
 Analyzes comprehensive LinkedIn export data to extract:
-- High-performing content patterns  
+- High-performing content patterns
 - Engagement optimization insights
 - Controversial take effectiveness
 - Business development opportunities

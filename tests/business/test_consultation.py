@@ -29,7 +29,7 @@ class TestConsultationWorkflow:
         with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
             db_path = tmp.name
 
-        engine = SalesAutomationEngine(db_path=db_path)
+        SalesAutomationEngine(db_path=db_path)
         yield db_path
 
         Path(db_path).unlink(missing_ok=True)
@@ -94,7 +94,7 @@ class TestConsultationWorkflow:
         for inquiry in inquiry_data:
             cursor.execute('''
                 INSERT OR REPLACE INTO consultation_inquiries
-                (inquiry_id, contact_name, company, company_size, inquiry_type, 
+                (inquiry_id, contact_name, company, company_size, inquiry_type,
                  inquiry_text, estimated_value, priority_score, status, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
@@ -266,7 +266,7 @@ class TestPipelineTracking:
         with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
             db_path = tmp.name
 
-        engine = SalesAutomationEngine(db_path=db_path)
+        SalesAutomationEngine(db_path=db_path)
         yield db_path
 
         Path(db_path).unlink(missing_ok=True)
@@ -422,7 +422,7 @@ class TestBusinessContinuityValidation:
         with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
             db_path = tmp.name
 
-        engine = SalesAutomationEngine(db_path=db_path)
+        SalesAutomationEngine(db_path=db_path)
         yield db_path
 
         Path(db_path).unlink(missing_ok=True)
@@ -561,8 +561,8 @@ class TestBusinessContinuityValidation:
 
         # Check no data corruption in critical fields
         cursor.execute("""
-            SELECT contact_id, name, company, estimated_value, lead_score 
-            FROM crm_contacts 
+            SELECT contact_id, name, company, estimated_value, lead_score
+            FROM crm_contacts
             WHERE name IS NOT NULL AND company IS NOT NULL AND estimated_value > 0
         """)
         valid_contacts = cursor.fetchall()
@@ -583,11 +583,11 @@ class TestBusinessContinuityValidation:
 
         try:
             # Generate revenue forecast
-            forecast = sales_engine_with_high_value_pipeline.generate_revenue_forecast("annual")
+            sales_engine_with_high_value_pipeline.generate_revenue_forecast("annual")
             operations_performed.append("revenue_forecast")
 
             # Create A/B test campaign
-            campaign_id = sales_engine_with_high_value_pipeline.create_ab_test_campaign(
+            sales_engine_with_high_value_pipeline.create_ab_test_campaign(
                 "Test Campaign", "Variant A", "Variant B"
             )
             operations_performed.append("ab_test_creation")

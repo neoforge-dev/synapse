@@ -156,7 +156,7 @@ class EnterpriseSSOHandler:
 
     def generate_saml_auth_request(self, provider_id: str, relay_state: str | None = None) -> tuple[str, str]:
         """Generate SAML authentication request.
-        
+
         Returns:
             tuple: (auth_request_xml, auth_url)
         """
@@ -194,11 +194,11 @@ class EnterpriseSSOHandler:
 
     def parse_saml_response(self, saml_response_b64: str, provider_id: str) -> SAMLResponse:
         """Parse and validate SAML response.
-        
+
         Args:
             saml_response_b64: Base64 encoded SAML response
             provider_id: SSO provider identifier
-            
+
         Returns:
             SAMLResponse: Parsed and validated response
         """
@@ -290,11 +290,11 @@ class EnterpriseSSOHandler:
 
     def generate_oauth_auth_url(self, provider_id: str, state: str | None = None) -> str:
         """Generate OAuth2/OIDC authorization URL.
-        
+
         Args:
             provider_id: SSO provider identifier
             state: Optional state parameter for CSRF protection
-            
+
         Returns:
             str: Authorization URL
         """
@@ -318,12 +318,12 @@ class EnterpriseSSOHandler:
 
     def exchange_oauth_code(self, code: str, provider_id: str, state: str) -> OIDCTokenResponse:
         """Exchange OAuth authorization code for tokens.
-        
+
         Args:
             code: Authorization code from OAuth provider
             provider_id: SSO provider identifier
             state: State parameter for validation
-            
+
         Returns:
             OIDCTokenResponse: Token response from provider
         """
@@ -342,12 +342,12 @@ class EnterpriseSSOHandler:
 
     def map_attributes_to_user(self, provider: SSOProvider, attributes: dict[str, Any], subject: str) -> User:
         """Map SSO provider attributes to User object.
-        
+
         Args:
             provider: SSO provider configuration
             attributes: User attributes from SSO response
             subject: Subject identifier from SSO response
-            
+
         Returns:
             User: Mapped user object
         """
@@ -393,13 +393,13 @@ class EnterpriseSSOHandler:
     def create_sso_session(self, user: User, provider_id: str, external_user_id: str,
                           saml_session_index: str | None = None) -> SSOSession:
         """Create enterprise SSO session.
-        
+
         Args:
             user: Authenticated user
             provider_id: SSO provider identifier
             external_user_id: External user identifier from SSO provider
             saml_session_index: SAML session index for logout
-            
+
         Returns:
             SSOSession: Created session object
         """
@@ -443,7 +443,7 @@ class EnterpriseSSOHandler:
 
     def cleanup_expired_sessions(self) -> int:
         """Clean up expired SSO sessions.
-        
+
         Returns:
             int: Number of sessions cleaned up
         """

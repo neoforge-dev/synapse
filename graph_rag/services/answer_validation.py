@@ -157,13 +157,13 @@ class AnswerValidator:
     ) -> ValidationResult:
         """
         Validate an answer against source chunks.
-        
+
         Args:
             answer: The generated answer text
             chunks: Source chunks that were available
             citations: Citation metadata with verification results
             context_texts: Context texts that were provided to LLM
-            
+
         Returns:
             ValidationResult with detailed analysis
         """

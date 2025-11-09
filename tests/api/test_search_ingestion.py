@@ -346,7 +346,7 @@ async def test_search_stream_success(
     streamed_result = results[0]
 
     assert "score" in streamed_result
-    assert isinstance(streamed_result["score"], (int, float))
+    assert isinstance(streamed_result["score"], int | float)
     assert streamed_result["score"] == 0.9
 
     assert "chunk" in streamed_result

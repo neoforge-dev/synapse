@@ -78,7 +78,7 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
         }}
-        
+
         .header {{
             background: rgba(255,255,255,0.95);
             backdrop-filter: blur(10px);
@@ -86,7 +86,7 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
             text-align: center;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }}
-        
+
         .header h1 {{
             margin: 0;
             font-size: 2.5em;
@@ -95,20 +95,20 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }}
-        
+
         .container {{
             max-width: 1400px;
             margin: 0 auto;
             padding: 30px;
         }}
-        
+
         .hero-stats {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 25px;
             margin: 30px 0;
         }}
-        
+
         .hero-card {{
             background: rgba(255,255,255,0.95);
             backdrop-filter: blur(10px);
@@ -118,7 +118,7 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
             border: 1px solid rgba(255,255,255,0.2);
         }}
-        
+
         .hero-number {{
             font-size: 3em;
             font-weight: bold;
@@ -128,27 +128,27 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
             background-clip: text;
             margin: 0;
         }}
-        
+
         .hero-label {{
             font-size: 1.2em;
             color: #666;
             margin: 10px 0 0 0;
         }}
-        
+
         .grid {{
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 25px;
             margin: 30px 0;
         }}
-        
+
         .grid-3 {{
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
             gap: 25px;
             margin: 30px 0;
         }}
-        
+
         .card {{
             background: rgba(255,255,255,0.95);
             backdrop-filter: blur(10px);
@@ -157,7 +157,7 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
             border: 1px solid rgba(255,255,255,0.2);
         }}
-        
+
         .card h3 {{
             margin-top: 0;
             color: #333;
@@ -165,7 +165,7 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
             padding-bottom: 15px;
             font-size: 1.3em;
         }}
-        
+
         .entity-type {{
             display: flex;
             justify-content: space-between;
@@ -173,11 +173,11 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
             padding: 12px 0;
             border-bottom: 1px solid #f0f0f0;
         }}
-        
+
         .entity-type:last-child {{
             border-bottom: none;
         }}
-        
+
         .entity-badge {{
             background: #667eea;
             color: white;
@@ -186,7 +186,7 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
             font-weight: bold;
             font-size: 0.9em;
         }}
-        
+
         .business-insight {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -194,12 +194,12 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
             border-radius: 15px;
             margin: 15px 0;
         }}
-        
+
         .business-insight h4 {{
             margin-top: 0;
             font-size: 1.2em;
         }}
-        
+
         .tech-tag {{
             display: inline-block;
             background: rgba(103, 126, 234, 0.1);
@@ -211,7 +211,7 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
             font-weight: 500;
             border: 2px solid rgba(103, 126, 234, 0.2);
         }}
-        
+
         .popular-entity {{
             background: #f8f9ff;
             border-left: 4px solid #667eea;
@@ -219,19 +219,19 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
             margin: 10px 0;
             border-radius: 0 8px 8px 0;
         }}
-        
+
         .entity-name {{
             font-weight: bold;
             color: #333;
             font-size: 1.1em;
         }}
-        
+
         .entity-details {{
             color: #666;
             font-size: 0.9em;
             margin-top: 5px;
         }}
-        
+
         #network {{
             width: 100%;
             height: 500px;
@@ -239,12 +239,12 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
             border-radius: 15px;
             background: rgba(255,255,255,0.1);
         }}
-        
+
         .network-controls {{
             text-align: center;
             margin: 20px 0;
         }}
-        
+
         .btn {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -258,21 +258,21 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
             box-shadow: 0 4px 15px rgba(103, 126, 234, 0.3);
             transition: all 0.3s ease;
         }}
-        
+
         .btn:hover {{
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(103, 126, 234, 0.4);
         }}
-        
+
         .chart-container {{
             height: 300px;
             position: relative;
         }}
-        
+
         .full-width {{
             grid-column: 1 / -1;
         }}
-        
+
         .status-indicator {{
             display: inline-block;
             width: 12px;
@@ -282,13 +282,13 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
             margin-right: 8px;
             animation: pulse 2s infinite;
         }}
-        
+
         @keyframes pulse {{
             0% {{ opacity: 1; }}
             50% {{ opacity: 0.5; }}
             100% {{ opacity: 1; }}
         }}
-        
+
         .summary-box {{
             background: rgba(255,255,255,0.95);
             backdrop-filter: blur(10px);
@@ -306,7 +306,7 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
         <p><span class="status-indicator"></span>Graph-RAG Knowledge Base Analysis</p>
         <p>Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}</p>
     </div>
-    
+
     <div class="container">
         <div class="hero-stats">
             <div class="hero-card">
@@ -326,17 +326,17 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
                 <div class="hero-label">Entity Types</div>
             </div>
         </div>
-        
+
         <div class="summary-box">
             <h2>🎯 Executive Summary</h2>
-            <p>This dashboard presents a comprehensive analysis of CodeSwiftr's business intelligence extracted from 
-            real-world business documents and professional profiles. The Graph-RAG system has successfully processed 
-            <strong>{total_documents} documents</strong> containing <strong>{total_entities} business entities</strong> 
+            <p>This dashboard presents a comprehensive analysis of CodeSwiftr's business intelligence extracted from
+            real-world business documents and professional profiles. The Graph-RAG system has successfully processed
+            <strong>{total_documents} documents</strong> containing <strong>{total_entities} business entities</strong>
             and generated <strong>{total_chunks} knowledge chunks</strong> for semantic search and analysis.</p>
-            
+
             {generate_key_insights(business_insights)}
         </div>
-        
+
         <div class="grid">
             <div class="card">
                 <h3>📊 Entity Type Distribution</h3>
@@ -344,25 +344,25 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
                     <canvas id="entityChart"></canvas>
                 </div>
             </div>
-            
+
             <div class="card">
                 <h3>🏢 Business Entity Breakdown</h3>
                 {generate_entity_breakdown(entity_types)}
             </div>
         </div>
-        
+
         <div class="grid">
             <div class="card">
                 <h3>⭐ Most Mentioned Entities</h3>
                 {generate_popular_entities_html(popular_entities[:10])}
             </div>
-            
+
             <div class="card">
                 <h3>💻 Technology Stack Identified</h3>
                 {generate_tech_stack_html(business_insights.get('technologies', []))}
             </div>
         </div>
-        
+
         <div class="card full-width">
             <h3>🌐 Knowledge Graph Network</h3>
             <p>Interactive visualization of the document network and entity relationships.</p>
@@ -373,28 +373,28 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
             </div>
             <div id="network"></div>
         </div>
-        
+
         <div class="business-insight">
             <h4>🚀 Business Intelligence Summary</h4>
-            <p>The analysis reveals CodeSwiftr's focus on technology consulting and development services, 
-            with strong emphasis on modern frameworks and cloud technologies. The knowledge graph 
-            demonstrates comprehensive business documentation and professional expertise across 
+            <p>The analysis reveals CodeSwiftr's focus on technology consulting and development services,
+            with strong emphasis on modern frameworks and cloud technologies. The knowledge graph
+            demonstrates comprehensive business documentation and professional expertise across
             multiple technology domains.</p>
         </div>
     </div>
-    
+
     <script>
         // Network Data
         const networkData = {json.dumps(network_data.get('nodes', []))};
         const networkEdges = {json.dumps(network_data.get('edges', []))};
-        
+
         const nodes = new vis.DataSet(networkData);
         const edges = new vis.DataSet(networkEdges);
-        
+
         // Initialize Network
         const container = document.getElementById('network');
         const data = {{ nodes: nodes, edges: edges }};
-        
+
         const options = {{
             physics: {{
                 enabled: true,
@@ -440,22 +440,22 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
                 tooltipDelay: 200
             }}
         }};
-        
+
         const network = new vis.Network(container, data, options);
-        
+
         function resetNetwork() {{
             network.fit();
             network.redraw();
         }}
-        
+
         function showStats() {{
             alert(`Network Statistics:\\nNodes: ${{nodes.length}}\\nEdges: ${{edges.length}}`);
         }}
-        
+
         // Entity Distribution Chart
         const entityCtx = document.getElementById('entityChart').getContext('2d');
         const entityData = {json.dumps(list(entity_types.items()) if entity_types else [])};
-        
+
         if (entityData.length > 0) {{
             new Chart(entityCtx, {{
                 type: 'doughnut',
@@ -485,10 +485,10 @@ def create_comprehensive_dashboard(kb_data, network_data, comprehensive_data):
                 }}
             }});
         }} else {{
-            document.getElementById('entityChart').parentElement.innerHTML = 
+            document.getElementById('entityChart').parentElement.innerHTML =
                 '<p style="text-align: center; color: #666; padding: 60px;">No entity data available</p>';
         }}
-        
+
         // Network event handlers
         network.on("selectNode", function(params) {{
             console.log('Selected node:', params.nodes[0]);
@@ -610,10 +610,10 @@ def create_summary_report(kb_data, viz_dir):
 
 ## Key Achievements
 
-✅ **Successfully processed real-world business documents**  
-✅ **Generated comprehensive entity relationship network**  
-✅ **Created interactive knowledge graph visualization**  
-✅ **Implemented business intelligence analysis pipeline**  
+✅ **Successfully processed real-world business documents**
+✅ **Generated comprehensive entity relationship network**
+✅ **Created interactive knowledge graph visualization**
+✅ **Implemented business intelligence analysis pipeline**
 ✅ **Delivered production-ready dashboard interface**
 
 ## Business Intelligence Insights
@@ -630,7 +630,7 @@ The Graph-RAG system has successfully demonstrated its capability to:
 
 The system confirmed expertise in:
 - **Backend Technologies:** Python, Django, FastAPI
-- **Frontend Frameworks:** React, modern web technologies  
+- **Frontend Frameworks:** React, modern web technologies
 - **Cloud Infrastructure:** Kubernetes, Terraform, Docker
 - **Development Practices:** CI/CD, DevOps methodologies
 

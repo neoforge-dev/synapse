@@ -225,7 +225,7 @@ class AdvancedRetrievalService:
         relevance_threshold: float = 0.5
     ):
         """Initialize advanced retrieval service.
-        
+
         Args:
             search_service: Advanced search service
             vector_store: Vector store for embeddings
@@ -252,13 +252,13 @@ class AdvancedRetrievalService:
         limit: int = 10
     ) -> RetrievalResult:
         """Perform advanced retrieval with sophisticated strategies.
-        
+
         Args:
             query: Search query
             strategy: Specific strategy to use (if None, will be determined automatically)
             context: Retrieval context
             limit: Maximum number of results to return
-            
+
         Returns:
             RetrievalResult with advanced retrieval results
         """

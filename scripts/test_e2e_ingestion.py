@@ -72,12 +72,12 @@ async def test_e2e_ingestion_pipeline():
         # Create test document with rich content
         test_content = """
         Apple Inc. is a technology company founded by Steve Jobs, Steve Wozniak, and Ronald Wayne.
-        The company is headquartered in Cupertino, California, and has become one of the world's most 
+        The company is headquartered in Cupertino, California, and has become one of the world's most
         valuable companies. Tim Cook currently serves as the CEO, succeeding Steve Jobs.
-        
-        Microsoft Corporation, led by Satya Nadella, is another major technology company based in 
+
+        Microsoft Corporation, led by Satya Nadella, is another major technology company based in
         Redmond, Washington. The company was founded by Bill Gates and Paul Allen in 1975.
-        
+
         Both companies have revolutionized the technology industry and continue to innovate in areas
         like artificial intelligence, cloud computing, and consumer electronics.
         """
@@ -118,7 +118,7 @@ async def test_e2e_ingestion_pipeline():
         print(f"✓ Generated {len(embeddings)} embeddings")
 
         # 5. Store embeddings in vector store
-        for i, (chunk, embedding) in enumerate(zip(extracted_doc.chunks, embeddings, strict=False)):
+        for _i, (chunk, embedding) in enumerate(zip(extracted_doc.chunks, embeddings, strict=False)):
             await vector_store.add_chunk(chunk, embedding)
 
         print("✓ Pipeline completed successfully")
@@ -139,7 +139,7 @@ async def test_e2e_ingestion_pipeline():
         print(f"✓ {len(graph_repository.entities)} entities extracted")
 
         # Print extracted entities
-        for entity_id, entity in graph_repository.entities.items():
+        for _entity_id, entity in graph_repository.entities.items():
             print(f"  - {entity.name} ({entity.type})")
 
         # Verify embeddings were created

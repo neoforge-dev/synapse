@@ -312,8 +312,8 @@ class LinkedInAutomationScheduler:
             if linkedin_post_id:
                 # Update database with LinkedIn post ID and published status
                 cursor.execute('''
-                    UPDATE linkedin_posts 
-                    SET impressions = 1, posted_at = ? 
+                    UPDATE linkedin_posts
+                    SET impressions = 1, posted_at = ?
                     WHERE post_id = ?
                 ''', (datetime.now().isoformat(), post_id))
                 conn.commit()
@@ -406,7 +406,7 @@ def main():
         print("This system will provide posting templates and manual workflows")
 
     # Initialize scheduler
-    scheduler = LinkedInAutomationScheduler(api_client)
+    LinkedInAutomationScheduler(api_client)
 
     print("\n💡 Available Features:")
     print("• Automated posting with optimal timing")

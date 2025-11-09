@@ -14,7 +14,7 @@ class MaintenanceScheduler:
 
     def __init__(self, interval_seconds: int = 86400, log_json: bool = False):
         """Initialize scheduler.
-        
+
         Args:
             interval_seconds: Interval between job runs in seconds (default: 1 day)
             log_json: Whether to use JSON structured logging

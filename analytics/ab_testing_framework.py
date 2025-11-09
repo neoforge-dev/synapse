@@ -376,8 +376,8 @@ class ABTestingFramework:
         )
         consultation_requests = metrics.get('consultation_requests', 0)
 
-        engagement_rate = engagement_actions / impressions if impressions > 0 else 0
-        consultation_conversion = consultation_requests / impressions if impressions > 0 else 0
+        engagement_actions / impressions if impressions > 0 else 0
+        consultation_requests / impressions if impressions > 0 else 0
 
         # Update variant results
         cursor.execute('''
@@ -435,7 +435,7 @@ class ABTestingFramework:
             if winner:
                 # Mark test as completed and record winner
                 cursor.execute('''
-                    UPDATE ab_tests SET 
+                    UPDATE ab_tests SET
                         status = 'completed',
                         winning_variant = ?,
                         end_date = ?
@@ -519,8 +519,8 @@ class ABTestingFramework:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT INTO ab_tests 
-            (test_id, test_name, hypothesis, element_type, start_date, 
+            INSERT INTO ab_tests
+            (test_id, test_name, hypothesis, element_type, start_date,
              traffic_split, minimum_sample_size, confidence_threshold)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
@@ -538,7 +538,7 @@ class ABTestingFramework:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT INTO test_variants 
+            INSERT INTO test_variants
             (variant_id, test_id, variant_name, element_type, content, expected_metric)
             VALUES (?, ?, ?, ?, ?, ?)
         ''', (

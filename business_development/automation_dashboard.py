@@ -56,9 +56,9 @@ class AutomationDashboard:
 
         # Get posts by status
         cursor.execute('''
-            SELECT 
+            SELECT
                 day,
-                CASE 
+                CASE
                     WHEN impressions = 0 THEN 'scheduled'
                     WHEN impressions > 0 AND consultation_requests = 0 THEN 'posted_no_inquiries'
                     WHEN consultation_requests > 0 THEN 'posted_with_inquiries'
@@ -84,12 +84,12 @@ class AutomationDashboard:
 
         # Recent performance trends
         cursor.execute('''
-            SELECT 
+            SELECT
                 DATE(posted_at) as post_date,
                 AVG(actual_engagement_rate) as avg_engagement,
                 SUM(consultation_requests) as daily_inquiries
-            FROM linkedin_posts 
-            WHERE impressions > 0 
+            FROM linkedin_posts
+            WHERE impressions > 0
             AND posted_at >= date('now', '-7 days')
             GROUP BY DATE(posted_at)
             ORDER BY post_date DESC
@@ -264,7 +264,7 @@ class AutomationDashboard:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT post_id, day FROM linkedin_posts 
+            SELECT post_id, day FROM linkedin_posts
             WHERE posted_at < datetime('now', '-1 day')
             AND impressions = 0
         ''')
@@ -275,7 +275,7 @@ class AutomationDashboard:
 
         # Check engagement rates
         cursor.execute('''
-            SELECT AVG(actual_engagement_rate) FROM linkedin_posts 
+            SELECT AVG(actual_engagement_rate) FROM linkedin_posts
             WHERE posted_at >= datetime('now', '-3 days')
             AND impressions > 0
         ''')
@@ -639,7 +639,7 @@ class AutomationDashboard:
             # Insert into linkedin_posts table
             cursor.execute('''
                 INSERT INTO linkedin_posts (
-                    post_id, day, content, business_objective, 
+                    post_id, day, content, business_objective,
                     expected_consultation_inquiries, posted_at,
                     impressions, consultation_requests, actual_engagement_rate
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -722,9 +722,9 @@ class AutomationDashboard:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT post_id, day, business_objective, 
+            SELECT post_id, day, business_objective,
                    substr(content, 1, 100) as preview
-            FROM linkedin_posts 
+            FROM linkedin_posts
             WHERE impressions = 0
             ORDER BY posted_at DESC
         ''')
@@ -754,7 +754,7 @@ class AutomationDashboard:
         cursor.execute('''
             SELECT post_id, business_objective, posted_at,
                    substr(content, 1, 150) as preview
-            FROM linkedin_posts 
+            FROM linkedin_posts
             WHERE post_id LIKE 'ai-generated-%'
             ORDER BY posted_at DESC
         ''')
@@ -783,7 +783,7 @@ class AutomationDashboard:
 
         cursor.execute('''
             SELECT post_id, substr(content, 1, 60) as preview
-            FROM linkedin_posts 
+            FROM linkedin_posts
             WHERE impressions = 0
             ORDER BY posted_at DESC
             LIMIT 7
@@ -883,12 +883,12 @@ class AutomationDashboard:
 
         # Get performance metrics
         cursor.execute('''
-            SELECT 
+            SELECT
                 AVG(actual_engagement_rate) as avg_engagement,
                 COUNT(*) as total_posts,
                 SUM(consultation_requests) as total_inquiries,
                 COUNT(CASE WHEN post_id LIKE 'ai-generated-%' THEN 1 END) as ai_posts
-            FROM linkedin_posts 
+            FROM linkedin_posts
             WHERE impressions > 0
         ''')
 
@@ -904,9 +904,9 @@ class AutomationDashboard:
         # Get top performing posts
         cursor.execute('''
             SELECT post_id, actual_engagement_rate, consultation_requests
-            FROM linkedin_posts 
-            WHERE impressions > 0 
-            ORDER BY actual_engagement_rate DESC 
+            FROM linkedin_posts
+            WHERE impressions > 0
+            ORDER BY actual_engagement_rate DESC
             LIMIT 5
         ''')
 

@@ -182,10 +182,10 @@ class TenantManager:
 
     def detect_tenant_from_request(self, request: Request) -> str | None:
         """Detect tenant ID from incoming request.
-        
+
         Tenant detection priority:
         1. Explicit tenant_id header (X-Tenant-ID)
-        2. Subdomain extraction (tenant.domain.com)  
+        2. Subdomain extraction (tenant.domain.com)
         3. JWT token tenant claim
         4. Default consultation tenant (Epic 7 compatibility)
         """

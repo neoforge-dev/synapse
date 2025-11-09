@@ -190,7 +190,7 @@ class GraphRAGLinkedInIntegration:
                                              content_type: str = None) -> list[RAGContentSuggestion]:
         """
         Generate intelligent content suggestions using Graph-RAG analysis
-        
+
         Leverages knowledge graph relationships and vector search to identify
         high-value content opportunities with business impact prediction.
         """
@@ -202,7 +202,7 @@ class GraphRAGLinkedInIntegration:
             # If graph intelligence is available, use advanced analysis
             if self.graph_intelligence:
                 # Get community insights for content topics
-                communities = await self.graph_intelligence.detect_graph_communities(min_size=3, max_communities=15)
+                await self.graph_intelligence.detect_graph_communities(min_size=3, max_communities=15)
 
                 # Generate content recommendations
                 recommendations = await self.graph_intelligence.generate_content_recommendations(
@@ -214,7 +214,7 @@ class GraphRAGLinkedInIntegration:
                 gap_insights = await self.graph_intelligence.identify_content_gaps()
 
                 # Analyze temporal patterns for trending topics
-                temporal_insights = await self.graph_intelligence.analyze_temporal_patterns(time_window_days=30)
+                await self.graph_intelligence.analyze_temporal_patterns(time_window_days=30)
 
                 # Convert recommendations to structured suggestions
                 for rec in recommendations:
@@ -276,7 +276,7 @@ class GraphRAGLinkedInIntegration:
                                                 count: int = 5) -> list[IntelligentLinkedInPost]:
         """
         Generate intelligent LinkedIn posts based on RAG content suggestions
-        
+
         Creates engaging, fact-checked posts with supporting evidence from the knowledge graph.
         """
         logger.info(f"Generating {count} intelligent LinkedIn posts using Graph-RAG insights")
@@ -348,7 +348,7 @@ class GraphRAGLinkedInIntegration:
                                              audience_segments: list[str]) -> list[ContentPersonalization]:
         """
         Personalize content for different audience segments using graph analysis
-        
+
         Leverages relationship context to tailor messaging for maximum relevance.
         """
         logger.info(f"Personalizing content for {len(audience_segments)} audience segments")
@@ -396,7 +396,7 @@ class GraphRAGLinkedInIntegration:
     async def fact_check_content(self, content: str) -> dict[str, Any]:
         """
         Fact-check content using Graph-RAG knowledge validation
-        
+
         Verifies claims against knowledge graph relationships and source credibility.
         """
         logger.info("Fact-checking content using Graph-RAG validation")

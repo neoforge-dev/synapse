@@ -93,7 +93,7 @@ class AdvancedGraphIntelligenceEngine:
                                      max_communities: int = 20) -> list[GraphCommunity]:
         """
         Detect communities in the knowledge graph using advanced clustering algorithms
-        
+
         This showcases capabilities beyond standard RAG by identifying topic clusters
         and content gaps for strategic content planning.
         """
@@ -142,7 +142,7 @@ class AdvancedGraphIntelligenceEngine:
                                             audience_segments: list[str] | None = None) -> list[ContentRecommendation]:
         """
         Generate AI-powered content recommendations using graph relationship patterns
-        
+
         This demonstrates advanced Graph-RAG by analyzing entity co-occurrence patterns
         and relationship strengths to identify high-engagement content opportunities.
         """
@@ -180,7 +180,7 @@ class AdvancedGraphIntelligenceEngine:
                                        max_hops: int = 4) -> list[MultiHopResult]:
         """
         Perform sophisticated multi-hop relationship traversal for complex business intelligence
-        
+
         This showcases advanced graph capabilities by finding non-obvious connections
         between entities that standard RAG systems would miss.
         """
@@ -210,7 +210,7 @@ class AdvancedGraphIntelligenceEngine:
                                   competitor_topics: list[str] | None = None) -> list[GraphInsight]:
         """
         Identify content gaps and opportunities using graph analysis
-        
+
         Advanced capability that analyzes topic coverage and identifies
         underexplored areas with high business potential.
         """
@@ -219,7 +219,7 @@ class AdvancedGraphIntelligenceEngine:
         try:
             # Analyze current topic coverage
             communities = await self.detect_graph_communities()
-            topic_coverage = self._analyze_topic_coverage(communities)
+            self._analyze_topic_coverage(communities)
 
             # Identify gaps in relationship patterns
             gap_insights = []
@@ -273,7 +273,7 @@ class AdvancedGraphIntelligenceEngine:
                                       time_window_days: int = 90) -> list[GraphInsight]:
         """
         Analyze temporal patterns in graph evolution for trend prediction
-        
+
         Advanced temporal analysis that identifies emerging topics and
         declining interests for strategic content planning.
         """
@@ -337,7 +337,7 @@ class AdvancedGraphIntelligenceEngine:
     async def calculate_entity_influence_scores(self) -> dict[str, float]:
         """
         Calculate influence scores for entities using advanced centrality algorithms
-        
+
         Demonstrates sophisticated graph analysis capabilities for identifying
         key influencers and content amplification opportunities.
         """

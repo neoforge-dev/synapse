@@ -279,10 +279,10 @@ def get_content_queue_status() -> ContentQueueStatus:
 
         # Get queue statistics
         cursor.execute('''
-            SELECT 
+            SELECT
                 status,
                 COUNT(*) as count
-            FROM content_queue 
+            FROM content_queue
             GROUP BY status
         ''')
 
@@ -290,10 +290,10 @@ def get_content_queue_status() -> ContentQueueStatus:
 
         # Get next scheduled post
         cursor.execute('''
-            SELECT scheduled_time 
-            FROM content_queue 
-            WHERE status = 'queued' 
-            ORDER BY scheduled_time ASC 
+            SELECT scheduled_time
+            FROM content_queue
+            WHERE status = 'queued'
+            ORDER BY scheduled_time ASC
             LIMIT 1
         ''')
 
@@ -327,7 +327,7 @@ def get_business_metrics() -> BusinessMetrics:
 
         # Get consultation pipeline metrics
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(*) as total_inquiries,
                 SUM(estimated_value) as pipeline_value,
                 COUNT(CASE WHEN status = 'closed_won' THEN 1 END) as won_deals,
@@ -339,10 +339,10 @@ def get_business_metrics() -> BusinessMetrics:
 
         # Get post performance metrics
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(*) as total_posts,
                 AVG(actual_engagement_rate) as avg_engagement
-            FROM linkedin_posts 
+            FROM linkedin_posts
             WHERE impressions > 0
         ''')
 
@@ -412,10 +412,10 @@ def update_dynamic_metrics():
     """Update dynamic Prometheus metrics"""
     try:
         # Update content queue metrics
-        queue_status = get_content_queue_status()
+        get_content_queue_status()
 
         # Update business metrics
-        business_metrics = get_business_metrics()
+        get_business_metrics()
 
         # Update database connection count (mock)
         DATABASE_CONNECTIONS.set(1)
@@ -430,13 +430,13 @@ def get_recent_activity() -> list[dict]:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT 
+            SELECT
                 'post' as type,
                 day as description,
                 posted_at as timestamp
-            FROM linkedin_posts 
+            FROM linkedin_posts
             WHERE posted_at IS NOT NULL
-            ORDER BY posted_at DESC 
+            ORDER BY posted_at DESC
             LIMIT 10
         ''')
 
@@ -482,12 +482,12 @@ def get_performance_data(days: int) -> dict:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT 
+            SELECT
                 DATE(posted_at) as date,
                 COUNT(*) as posts,
                 AVG(actual_engagement_rate) as avg_engagement,
                 SUM(consultation_requests) as inquiries
-            FROM linkedin_posts 
+            FROM linkedin_posts
             WHERE posted_at >= ? AND posted_at <= ?
             AND impressions > 0
             GROUP BY DATE(posted_at)

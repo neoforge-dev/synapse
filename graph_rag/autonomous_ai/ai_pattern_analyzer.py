@@ -58,7 +58,7 @@ class DataPatterns:
 class DataPatternAnalyzer:
     """
     Analyzes enterprise data to discover patterns for autonomous knowledge graph configuration.
-    
+
     Uses machine learning techniques to identify:
     - Common entity types and their characteristics
     - Relationship patterns between entities
@@ -79,10 +79,10 @@ class DataPatternAnalyzer:
     async def discover_entity_types(self, documents: list[Document]) -> list[EntityPattern]:
         """
         Discover entity type patterns from document collection.
-        
+
         Args:
             documents: Collection of documents to analyze
-            
+
         Returns:
             List of discovered entity patterns with confidence scores
         """
@@ -202,11 +202,11 @@ class DataPatternAnalyzer:
     ) -> list[RelationshipPattern]:
         """
         Infer relationship patterns between entity types.
-        
+
         Args:
             entities: List of extracted entities
             relationships: List of extracted relationships
-            
+
         Returns:
             List of relationship patterns with confidence scores
         """
@@ -295,10 +295,10 @@ class DataPatternAnalyzer:
     async def analyze_document_patterns(self, documents: list[Document]) -> dict[str, Any]:
         """
         Analyze document structure and content patterns.
-        
+
         Args:
             documents: Collection of documents to analyze
-            
+
         Returns:
             Dictionary containing document pattern analysis results
         """
@@ -345,7 +345,7 @@ class DataPatternAnalyzer:
     ) -> dict[str, float]:
         """
         Calculate overall quality metrics for the pattern analysis.
-        
+
         Returns:
             Dictionary of quality metrics and confidence scores
         """
@@ -393,10 +393,10 @@ class DataPatternAnalyzer:
     async def analyze_full_patterns(self, documents: list[Document]) -> DataPatterns:
         """
         Perform comprehensive pattern analysis on document collection.
-        
+
         Args:
             documents: Collection of documents to analyze
-            
+
         Returns:
             Complete pattern analysis results
         """
@@ -445,7 +445,7 @@ class DataPatternAnalyzer:
 class GraphPatternRecognizer:
     """
     Advanced pattern recognition for graph structures and optimization opportunities.
-    
+
     Analyzes existing graph structures to identify:
     - Optimization opportunities
     - Structural anomalies
@@ -459,10 +459,10 @@ class GraphPatternRecognizer:
     async def discover_patterns(self, graph_data: Any) -> dict[str, Any]:
         """
         Discover patterns in existing graph structure.
-        
+
         Args:
             graph_data: Current graph data and metrics
-            
+
         Returns:
             Dictionary containing discovered patterns and recommendations
         """

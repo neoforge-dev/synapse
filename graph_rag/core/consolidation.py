@@ -119,12 +119,12 @@ class SimilarityDetector(Protocol):
         comparison_method: str = "semantic"
     ) -> float:
         """Calculate similarity score between two content pieces.
-        
+
         Args:
             content_a: First content piece
-            content_b: Second content piece  
+            content_b: Second content piece
             comparison_method: Method to use ("semantic", "textual", "structural")
-            
+
         Returns:
             Similarity score between 0.0 and 1.0
         """
@@ -137,7 +137,7 @@ class SimilarityDetector(Protocol):
         threshold: float = 0.8
     ) -> list[tuple[str, str]]:
         """Find sections with high similarity between documents.
-        
+
         Returns:
             List of (section_a, section_b) tuples that are similar
         """
@@ -150,10 +150,10 @@ class MetricsExtractor(Protocol):
 
     async def extract_metrics(self, content: str) -> list[SuccessMetric]:
         """Extract quantifiable metrics from text content.
-        
+
         Args:
             content: Text content to analyze
-            
+
         Returns:
             List of extracted success metrics
         """
@@ -161,10 +161,10 @@ class MetricsExtractor(Protocol):
 
     async def extract_performance_numbers(self, content: str) -> list[SuccessMetric]:
         """Extract performance improvement numbers like '39,092x' or '95.9%'.
-        
+
         Args:
             content: Text content to analyze
-            
+
         Returns:
             List of performance-related metrics
         """
@@ -177,10 +177,10 @@ class PatternRecognizer(Protocol):
 
     async def identify_patterns(self, content: str) -> list[ArchitecturalPattern]:
         """Identify architectural patterns mentioned in content.
-        
+
         Args:
             content: Text content to analyze
-            
+
         Returns:
             List of identified architectural patterns
         """
@@ -188,10 +188,10 @@ class PatternRecognizer(Protocol):
 
     async def extract_best_practices(self, content: str) -> list[str]:
         """Extract best practices and proven approaches.
-        
+
         Args:
             content: Text content to analyze
-            
+
         Returns:
             List of identified best practices
         """
@@ -207,10 +207,10 @@ class EvidenceRanker(Protocol):
         consolidated_experiments: list[ConsolidatedExperiment]
     ) -> list[ConsolidatedExperiment]:
         """Rank consolidated experiments by strength of supporting evidence.
-        
+
         Args:
             consolidated_experiments: List of experiments to rank
-            
+
         Returns:
             List sorted by evidence strength (highest first)
         """
@@ -222,11 +222,11 @@ class EvidenceRanker(Protocol):
         patterns: list[ArchitecturalPattern]
     ) -> float:
         """Calculate overall evidence strength score.
-        
+
         Args:
             metrics: Success metrics as evidence
             patterns: Architectural patterns as evidence
-            
+
         Returns:
             Evidence strength score between 0.0 and 1.0
         """
@@ -243,11 +243,11 @@ class ExperimentConsolidator(ABC):
         file_patterns: list[str] = None
     ) -> list[ConsolidationCandidate]:
         """Discover documents that are candidates for consolidation.
-        
+
         Args:
             search_path: Directory path to search for candidates
             file_patterns: Optional list of file patterns to match
-            
+
         Returns:
             List of consolidation candidates
         """
@@ -260,11 +260,11 @@ class ExperimentConsolidator(ABC):
         similarity_threshold: float = SimilarityThreshold.HIGH_SIMILARITY.value
     ) -> list[SimilarityMatch]:
         """Find documents with high content similarity.
-        
+
         Args:
             candidates: List of candidates to compare
             similarity_threshold: Minimum similarity score for matches
-            
+
         Returns:
             List of similarity matches above threshold
         """
@@ -276,10 +276,10 @@ class ExperimentConsolidator(ABC):
         similarity_matches: list[SimilarityMatch]
     ) -> list[ConsolidatedExperiment]:
         """Consolidate similar documents into unified experiments.
-        
+
         Args:
             similarity_matches: Similarity matches to consolidate
-            
+
         Returns:
             List of consolidated experiments
         """
@@ -292,11 +292,11 @@ class ExperimentConsolidator(ABC):
         consolidated_experiments: list[ConsolidatedExperiment]
     ) -> ConsolidationReport:
         """Generate a comprehensive consolidation report.
-        
+
         Args:
             candidates: Original candidates analyzed
             consolidated_experiments: Results of consolidation
-            
+
         Returns:
             Detailed consolidation report
         """
@@ -309,12 +309,12 @@ class ExperimentConsolidator(ABC):
         file_patterns: list[str] = None
     ) -> ConsolidationReport:
         """Run the complete consolidation pipeline.
-        
+
         Args:
             search_path: Directory to search for experimental documents
             similarity_threshold: Minimum similarity for consolidation
             file_patterns: Optional file patterns to match
-            
+
         Returns:
             Complete consolidation report
         """

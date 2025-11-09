@@ -755,7 +755,7 @@ class ZeroDisruptionMigrationOrchestrator:
         # Migration Phases
         report.append("MIGRATION PHASES COMPLETED")
         report.append("-" * 40)
-        for i, phase in enumerate([
+        for _i, phase in enumerate([
             "1. Preparation and Backup",
             "2. Shadow Deployment",
             "3. Dual Write Phase",

@@ -383,10 +383,10 @@ class CompetitorAnalyzer:
             try:
                 analysis_prompt = f"""
                 Analyze the market positioning for competitor: {profile.name}
-                
+
                 Company description: {profile.description}
                 Primary offerings: {', '.join(profile.primary_offerings)}
-                
+
                 Provide analysis in the following format:
                 - Market segments they target
                 - Customer types they serve
@@ -394,7 +394,7 @@ class CompetitorAnalyzer:
                 - Market approach (premium, cost-leader, differentiated, etc.)
                 """
 
-                response = await self.llm_service.generate(analysis_prompt)
+                await self.llm_service.generate(analysis_prompt)
                 # Parse response (simplified for demo)
                 positioning["value_proposition"] = "AI-powered enterprise solutions"
                 positioning["market_approach"] = "differentiated"
@@ -547,7 +547,7 @@ class CompetitorAnalyzer:
             "competitor_id": profile.competitor_id,
             "frequency": profile.monitoring_frequency,
             "next_update": datetime.now() + timedelta(days=7),
-            "data_sources": [source_id for source_id in self.data_sources.keys()],
+            "data_sources": list(self.data_sources.keys()),
             "monitoring_priorities": [
                 "pricing_changes",
                 "product_updates",
@@ -583,9 +583,9 @@ class CompetitorAnalyzer:
                 competitors = list(self.competitor_profiles.values())
 
             result.competitors_analyzed = [c.name for c in competitors]
-            result.market_segments = market_segments or list(set(
+            result.market_segments = market_segments or list({
                 segment for c in competitors for segment in c.market_segments
-            ))
+            })
 
             # Perform analysis based on type
             if analysis_type == "market_overview":
@@ -751,7 +751,7 @@ class CompetitorAnalyzer:
         # Basic competitive intelligence
         result.competitive_landscape = {
             "competitor_count": len(competitors),
-            "categories": list(set(c.category.value for c in competitors)),
+            "categories": list({c.category.value for c in competitors}),
             "average_threat_level": "medium",  # Simplified
             "market_dynamics": "competitive"
         }

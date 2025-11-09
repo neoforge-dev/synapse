@@ -84,7 +84,7 @@ class PHIHandler:
         """Classify data based on PHI content."""
 
         # Check for direct identifiers
-        for category, identifiers in self.phi_identifiers.items():
+        for _category, identifiers in self.phi_identifiers.items():
             for identifier in identifiers:
                 if identifier in data or any(
                     identifier in str(key).lower() for key in data.keys()

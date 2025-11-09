@@ -137,13 +137,13 @@ async def lifespan(app: FastAPI):
         from graph_rag.observability.metrics import initialize_metrics, start_monitoring
 
         # Initialize metrics collector
-        metrics_collector = initialize_metrics(
+        initialize_metrics(
             enable_prometheus=getattr(current_settings, 'enable_metrics', True),
             enable_alerts=True,
         )
 
         # Initialize alert manager
-        alert_manager = initialize_alerts(
+        initialize_alerts(
             evaluation_interval=30.0,
             enable_auto_resolve=True,
         )

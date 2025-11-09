@@ -940,8 +940,8 @@ async def create_partner_enablement_router():
     async def get_certification_requirements(partner_type: str, level: str):
         """Get certification requirements for partner type and level"""
         try:
-            partner_type_enum = PartnerType(partner_type)
-            level_enum = CertificationLevel(level)
+            PartnerType(partner_type)
+            CertificationLevel(level)
 
             framework = CertificationFramework()
             requirements = framework.requirements.get(level, [])

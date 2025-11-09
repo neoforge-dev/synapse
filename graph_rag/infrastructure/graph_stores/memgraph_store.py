@@ -49,7 +49,7 @@ def _convert_neo4j_temporal_types(data: dict[str, Any]) -> dict[str, Any]:
     """Converts Neo4j temporal types to standard Python types."""
     converted_data = {}
     for key, value in data.items():
-        if isinstance(value, (neo4j.time.DateTime, neo4j.time.Date, neo4j.time.Time)):
+        if isinstance(value, neo4j.time.DateTime | neo4j.time.Date | neo4j.time.Time):
             converted_data[key] = value.to_native()
         else:
             converted_data[key] = value
@@ -332,15 +332,15 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
         # Use individual property assignments in SET clauses
         query = """
         MERGE (d:Document {id: $id})
-        ON CREATE SET 
-            d.content = $content, 
-            d.metadata = $metadata, 
-            d.created_at = $created_at, 
+        ON CREATE SET
+            d.content = $content,
+            d.metadata = $metadata,
+            d.created_at = $created_at,
             d.updated_at = $updated_at
-        ON MATCH SET 
-            d.content = $content, 
-            d.metadata = $metadata, 
-            d.updated_at = $updated_at 
+        ON MATCH SET
+            d.content = $content,
+            d.metadata = $metadata,
+            d.updated_at = $updated_at
         """
 
         try:
@@ -1582,12 +1582,12 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
         # Select appropriate algorithm query
         if algorithm.lower() == "louvain":
             algo_query = """
-            CALL community.louvain() 
+            CALL community.louvain()
             YIELD node, community
             """
         elif algorithm.lower() == "label_propagation":
             algo_query = """
-            CALL community.label_propagation() 
+            CALL community.label_propagation()
             YIELD node, community
             """
         else:
@@ -1614,7 +1614,7 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
                 )
 
             logger.info(
-                f"Detected {len(set(r.get('community') for r in community_data))} communities across {len(community_data)} nodes"
+                f"Detected {len({r.get('community') for r in community_data})} communities across {len(community_data)} nodes"
             )
             return community_data
 
@@ -1700,9 +1700,9 @@ class MemgraphGraphRepository(GraphStore, GraphRepository):
         MATCH (source)-[r]->(target)
         WHERE r.id = $rel_id
         RETURN
-            r.id AS id, 
-            source.id AS source_id, 
-            target.id AS target_id, 
+            r.id AS id,
+            source.id AS source_id,
+            target.id AS target_id,
             type(r) AS type,
             properties(r) AS properties
         LIMIT 1

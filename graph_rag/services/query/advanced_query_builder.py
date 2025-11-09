@@ -108,7 +108,7 @@ class AdvancedQuery:
         if self.boolean_operations:
             query_parts = []
             op_index = 0
-            for i, part in enumerate(parts):
+            for _i, part in enumerate(parts):
                 query_parts.append(part)
                 if op_index < len(self.boolean_operations):
                     query_parts.append(self.boolean_operations[op_index].value)

@@ -103,7 +103,7 @@ class DRTestSuite:
                 # Create test schema and table
                 cur.execute("""
                     CREATE SCHEMA IF NOT EXISTS dr_test;
-                    
+
                     CREATE TABLE IF NOT EXISTS dr_test.pipeline_validation (
                         id SERIAL PRIMARY KEY,
                         test_id UUID NOT NULL,
@@ -135,7 +135,7 @@ class DRTestSuite:
                 validation_hash = hashlib.sha256(json.dumps(test_data, sort_keys=True).encode()).hexdigest()
 
                 cur.execute("""
-                    INSERT INTO dr_test.pipeline_validation 
+                    INSERT INTO dr_test.pipeline_validation
                     (test_id, pipeline_value, data_payload, validation_hash)
                     VALUES (%s, %s, %s, %s)
                     RETURNING id;
@@ -223,7 +223,7 @@ class DRTestSuite:
             max_wait_time = RTO_TARGET_MINUTES * 60 + 120  # RTO + 2 minutes buffer
             check_interval = 5
 
-            for elapsed in range(0, max_wait_time, check_interval):
+            for _elapsed in range(0, max_wait_time, check_interval):
                 time.sleep(check_interval)
 
                 # Check if target is now primary
@@ -478,7 +478,7 @@ class DRTestSuite:
                     if conn:
                         with conn.cursor() as cur:
                             cur.execute("""
-                                DELETE FROM dr_test.pipeline_validation 
+                                DELETE FROM dr_test.pipeline_validation
                                 WHERE test_id = %s;
                             """, (self.test_id,))
 

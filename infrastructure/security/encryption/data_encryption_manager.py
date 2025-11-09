@@ -298,7 +298,7 @@ class DataEncryptionManager:
             return False
 
         # Check searchable tokens in encrypted fields
-        for field_name, field_data in document.items():
+        for _field_name, field_data in document.items():
             if isinstance(field_data, dict) and field_data.get("encrypted"):
                 search_tokens = field_data.get("search_tokens", [])
                 if search_token in search_tokens:

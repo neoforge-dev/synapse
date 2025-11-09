@@ -305,7 +305,7 @@ class UnifiedBusinessIntelligence:
 
         for db_name, metric in metrics.items():
             cursor.execute('''
-                INSERT OR REPLACE INTO database_performance_metrics 
+                INSERT OR REPLACE INTO database_performance_metrics
                 (database_name, database_path, connection_time_ms, avg_query_time_ms, size_mb,
                  total_records, index_efficiency_score, optimization_score, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -363,7 +363,7 @@ class UnifiedBusinessIntelligence:
 
         # CRM contact analysis
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(*) as total_contacts,
                 AVG(lead_score) as avg_lead_score,
                 SUM(estimated_value) as total_pipeline_value,
@@ -376,7 +376,7 @@ class UnifiedBusinessIntelligence:
 
         # Proposal generation analysis
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(*) as total_proposals,
                 AVG(estimated_close_probability) as avg_close_probability,
                 SUM(proposal_value) as total_proposal_value,
@@ -387,7 +387,7 @@ class UnifiedBusinessIntelligence:
 
         # LinkedIn automation performance
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(*) as total_sequences,
                 COUNT(CASE WHEN status = 'active' THEN 1 END) as active_sequences,
                 SUM(messages_sent) as total_messages,
@@ -399,7 +399,7 @@ class UnifiedBusinessIntelligence:
 
         # Revenue forecasting analysis
         cursor.execute('''
-            SELECT 
+            SELECT
                 projected_revenue,
                 forecast_period,
                 created_at
@@ -547,7 +547,7 @@ class UnifiedBusinessIntelligence:
 
         # Get latest performance metrics
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(DISTINCT database_name) as monitored_databases,
                 AVG(optimization_score) as avg_optimization_score,
                 AVG(size_mb) as avg_database_size
@@ -757,7 +757,7 @@ class UnifiedBusinessIntelligence:
                 correlations = data.get('correlation_analysis', {})
                 for metric_name, value in correlations.items():
                     cursor.execute('''
-                        INSERT INTO cross_platform_analytics 
+                        INSERT INTO cross_platform_analytics
                         (metric_type, metric_name, metric_value, metric_metadata, source_database,
                          calculation_method, confidence_score, business_impact_score, created_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -769,7 +769,7 @@ class UnifiedBusinessIntelligence:
             elif platform == 'unified_revenue_forecast':
                 forecast_data = data
                 cursor.execute('''
-                    INSERT INTO cross_platform_analytics 
+                    INSERT INTO cross_platform_analytics
                     (metric_type, metric_name, metric_value, metric_metadata, source_database,
                      calculation_method, confidence_score, business_impact_score, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -934,8 +934,8 @@ class UnifiedBusinessIntelligence:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT OR REPLACE INTO unified_dashboard_config 
-            (dashboard_type, widget_config, refresh_interval_seconds, data_sources, 
+            INSERT OR REPLACE INTO unified_dashboard_config
+            (dashboard_type, widget_config, refresh_interval_seconds, data_sources,
              access_permissions, created_by, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
@@ -1012,7 +1012,7 @@ class UnifiedBusinessIntelligence:
         """Assess database enterprise readiness"""
         scores = []
 
-        for db_name, metrics in performance_metrics.items():
+        for _db_name, metrics in performance_metrics.items():
             db_score = 0
 
             # Performance criteria (40% of score)

@@ -72,7 +72,7 @@ class SearchSystemEvaluator:
                 "max_score": max((r.get("score", 0) for r in results), default=0),
                 "min_score": min((r.get("score", 0) for r in results), default=0),
                 "has_relevant_content": any(len(r.get("chunk", {}).get("text", "")) > 50 for r in results),
-                "content_diversity": len(set(r.get("chunk", {}).get("document_id") for r in results)),
+                "content_diversity": len({r.get("chunk", {}).get("document_id") for r in results}),
                 "results": results
             }
 

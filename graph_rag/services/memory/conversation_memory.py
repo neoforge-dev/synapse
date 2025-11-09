@@ -271,7 +271,7 @@ class ConversationMemoryManager:
         enable_summarization: bool = False
     ):
         """Initialize conversation memory manager.
-        
+
         Args:
             backend: Storage backend for conversations
             max_interactions_per_conversation: Maximum interactions to keep in memory
@@ -284,10 +284,10 @@ class ConversationMemoryManager:
 
     async def start_conversation(self, user_id: str) -> str:
         """Start a new conversation session.
-        
+
         Args:
             user_id: User identifier
-            
+
         Returns:
             conversation_id: Unique conversation identifier
         """
@@ -311,7 +311,7 @@ class ConversationMemoryManager:
         metadata: dict[str, any] | None = None
     ) -> None:
         """Add an interaction to a conversation.
-        
+
         Args:
             conversation_id: Conversation identifier
             question: User question
@@ -340,10 +340,10 @@ class ConversationMemoryManager:
 
     async def get_conversation_session(self, conversation_id: str) -> ConversationSession | None:
         """Get a conversation session by ID.
-        
+
         Args:
             conversation_id: Conversation identifier
-            
+
         Returns:
             ConversationSession or None if not found
         """
@@ -351,10 +351,10 @@ class ConversationMemoryManager:
 
     async def get_conversation_history(self, conversation_id: str) -> list[Interaction]:
         """Get conversation history.
-        
+
         Args:
             conversation_id: Conversation identifier
-            
+
         Returns:
             List of interactions in chronological order
         """
@@ -366,10 +366,10 @@ class ConversationMemoryManager:
 
     async def delete_conversation(self, conversation_id: str) -> bool:
         """Delete a conversation.
-        
+
         Args:
             conversation_id: Conversation identifier
-            
+
         Returns:
             True if deleted, False if not found
         """
@@ -377,10 +377,10 @@ class ConversationMemoryManager:
 
     async def list_user_conversations(self, user_id: str) -> list[str]:
         """List all conversations for a user.
-        
+
         Args:
             user_id: User identifier
-            
+
         Returns:
             List of conversation IDs
         """

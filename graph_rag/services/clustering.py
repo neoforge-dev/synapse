@@ -53,7 +53,7 @@ class SemanticClusteringService:
 
     def __init__(self, min_cluster_size: int = 2, max_clusters: int = 10):
         """Initialize clustering service.
-        
+
         Args:
             min_cluster_size: Minimum number of items per cluster
             max_clusters: Maximum number of clusters to create
@@ -69,13 +69,13 @@ class SemanticClusteringService:
         similarity_threshold: float = 0.7
     ) -> ClusterResult:
         """Cluster search results using the specified strategy.
-        
+
         Args:
             results: List of search results to cluster
             strategy: Clustering strategy to use
             target_clusters: Target number of clusters (for k-means)
             similarity_threshold: Similarity threshold for threshold-based clustering
-            
+
         Returns:
             ClusterResult with clustered results and metadata
         """

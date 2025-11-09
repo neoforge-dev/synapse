@@ -121,7 +121,7 @@ class PredictiveAlert:
 class PredictiveTransformationEngine:
     """
     AI-driven transformation engine that generates autonomous transformation plans.
-    
+
     Key capabilities:
     - Generate transformation roadmaps based on enterprise data patterns
     - Predict ROI with statistical confidence intervals
@@ -191,11 +191,11 @@ class PredictiveTransformationEngine:
     ) -> TransformationPlan:
         """
         Generate comprehensive transformation roadmap for client.
-        
+
         Args:
             client_data: Enterprise client data and context
             business_objectives: List of business objectives to achieve
-            
+
         Returns:
             Complete transformation plan with ROI forecast and risk assessment
         """
@@ -793,11 +793,11 @@ class PredictiveTransformationEngine:
     ) -> list[PredictiveAlert]:
         """
         Predict potential performance issues before they impact clients.
-        
+
         Args:
             historical_data: Historical performance data
             current_metrics: Current system metrics
-            
+
         Returns:
             List of predictive alerts with recommended actions
         """

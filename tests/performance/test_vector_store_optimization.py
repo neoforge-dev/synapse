@@ -6,7 +6,7 @@ compared to both SimpleVectorStore and the basic FaissVectorStore.
 
 Performance targets:
 - 10x faster search times compared to SimpleVectorStore
-- 5x faster search times compared to basic FaissVectorStore  
+- 5x faster search times compared to basic FaissVectorStore
 - Sub-millisecond search for datasets under 10K vectors
 - Sub-5ms search for datasets under 100K vectors
 - Significant memory efficiency improvements with quantization
@@ -91,7 +91,7 @@ async def benchmark_vector_store(
 ) -> dict[str, Any]:
     """
     Comprehensive benchmark of a vector store implementation.
-    
+
     Returns performance metrics including:
     - Ingestion time
     - Single query performance (avg, p95, p99)
@@ -212,7 +212,7 @@ async def benchmark_vector_store(
 async def test_vector_store_performance_comparison():
     """
     Compare performance of different vector store implementations.
-    
+
     This test validates that OptimizedFaissVectorStore achieves:
     - 10x improvement over SimpleVectorStore
     - 3-5x improvement over basic FaissVectorStore
@@ -325,7 +325,7 @@ async def test_vector_store_performance_comparison():
 async def test_large_dataset_performance():
     """
     Test performance with larger datasets to validate scalability.
-    
+
     This test uses larger datasets to ensure the optimized store
     maintains performance at scale.
     """
@@ -508,7 +508,7 @@ if __name__ == "__main__":
         await test_optimization_index_selection()
 
         print("\nRunning memory efficiency test...")
-        memory_results = await test_memory_efficiency()
+        await test_memory_efficiency()
 
         print("\nPerformance test completed successfully!")
 

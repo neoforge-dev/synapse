@@ -2,7 +2,7 @@
 """
 Cross-Platform Correlation Analysis Script
 
-This script performs a comprehensive analysis of Notion-related content and 
+This script performs a comprehensive analysis of Notion-related content and
 cross-platform correlations using the Synapse system's advanced analytics capabilities.
 """
 
@@ -52,7 +52,7 @@ class CrossPlatformAnalysisEngine:
         # Search for Notion mentions in documents
         notion_query = """
         MATCH (d:Document)-[:HAS_CHUNK]->(c:Chunk)-[:MENTIONS]->(e:Entity)
-        WHERE toLower(e.name) CONTAINS 'notion' 
+        WHERE toLower(e.name) CONTAINS 'notion'
            OR toLower(c.text) CONTAINS 'notion'
            OR toLower(d.title) CONTAINS 'notion'
         RETURN d.document_id as doc_id, d.title, c.chunk_id, c.text, e.name as entity
@@ -93,7 +93,7 @@ class CrossPlatformAnalysisEngine:
         # Query for workflow-related entities and patterns
         workflow_query = """
         MATCH (d:Document)-[:HAS_CHUNK]->(c:Chunk)-[:MENTIONS]->(e:Entity)
-        WHERE toLower(e.name) CONTAINS 'workflow' 
+        WHERE toLower(e.name) CONTAINS 'workflow'
            OR toLower(e.name) CONTAINS 'process'
            OR toLower(e.name) CONTAINS 'pipeline'
            OR toLower(e.name) CONTAINS 'strategy'
@@ -115,7 +115,7 @@ class CrossPlatformAnalysisEngine:
             }
 
             for record in results:
-                entity_name = record.get('name', '').lower()
+                record.get('name', '').lower()
                 chunk_text = record.get('text', '').lower()
 
                 workflow_item = {
@@ -222,7 +222,7 @@ class CrossPlatformAnalysisEngine:
         # Query for knowledge management concepts
         knowledge_query = """
         MATCH (d:Document)-[:HAS_CHUNK]->(c:Chunk)-[:MENTIONS]->(e:Entity)
-        WHERE toLower(e.name) CONTAINS 'knowledge' 
+        WHERE toLower(e.name) CONTAINS 'knowledge'
            OR toLower(e.name) CONTAINS 'management'
            OR toLower(e.name) CONTAINS 'strategy'
            OR toLower(e.name) CONTAINS 'content'
@@ -246,7 +246,7 @@ class CrossPlatformAnalysisEngine:
             }
 
             for record in results:
-                entity_name = record.get('name', '').lower()
+                record.get('name', '').lower()
                 chunk_text = record.get('text', '').lower()
 
                 pattern_item = {

@@ -56,6 +56,6 @@ def test_cli_suggest_http_error_returns_exit_code():
 
         try:
             run_suggest(topic="anything", json_out=False)
-            assert False, "Expected typer.Exit to be raised"
+            raise AssertionError("Expected typer.Exit to be raised")
         except typer.Exit as e:
             assert e.exit_code == 1

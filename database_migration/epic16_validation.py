@@ -362,7 +362,7 @@ class Epic16ValidationTool:
                         LIMIT 1
                     """
                     pg_cursor.execute(query)
-                    sample = pg_cursor.fetchone()
+                    pg_cursor.fetchone()
 
                     if invalid_count == 0:
                         self.log(f"✅ {table}.{column}: Valid JSON structure", "SUCCESS")
@@ -765,12 +765,12 @@ class Epic16ValidationTool:
 
     def _compare_records(self, sqlite_record: tuple, pg_record: tuple, columns: list[str]) -> bool:
         """Compare two records field by field"""
-        for i, (sqlite_val, pg_val) in enumerate(zip(sqlite_record, pg_record, strict=False)):
+        for _i, (sqlite_val, pg_val) in enumerate(zip(sqlite_record, pg_record, strict=False)):
             # Handle type conversions
             if isinstance(sqlite_val, str) and isinstance(pg_val, str):
                 if sqlite_val != pg_val:
                     return False
-            elif isinstance(sqlite_val, (int, float)) and isinstance(pg_val, (int, float, Decimal)):
+            elif isinstance(sqlite_val, int | float) and isinstance(pg_val, int | float | Decimal):
                 if abs(float(sqlite_val or 0) - float(pg_val or 0)) > 0.01:
                     return False
             elif sqlite_val != pg_val:

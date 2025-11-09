@@ -5,7 +5,7 @@ Comprehensive Security Validation for Fortune 500 Deployment
 
 SECURITY DOMAINS:
 - Authentication & Authorization (JWT, RBAC, API Keys)
-- Data Protection (Encryption, PII, GDPR compliance) 
+- Data Protection (Encryption, PII, GDPR compliance)
 - Network Security (TLS, CORS, Rate Limiting)
 - Input Validation & Injection Prevention
 - Dependency Security (CVE scanning)
@@ -125,7 +125,6 @@ class EnterpriseSecurityAuditor:
         """Audit authentication and authorization mechanisms"""
         logger.info("Auditing Authentication & Authorization")
 
-        auth_findings = []
 
         try:
             # Test JWT token security
@@ -435,7 +434,7 @@ class EnterpriseSecurityAuditor:
 
                             for pattern, data_type in sensitive_patterns:
                                 matches = re.finditer(pattern, text, re.IGNORECASE)
-                                for match in matches:
+                                for _match in matches:
                                     self.findings.append(SecurityFinding(
                                         severity="HIGH",
                                         category="Data Protection",
@@ -452,12 +451,6 @@ class EnterpriseSecurityAuditor:
 
     async def _test_pii_handling(self):
         """Test Personally Identifiable Information handling"""
-        pii_patterns = [
-            (r'\b\d{3}-\d{2}-\d{4}\b', 'SSN'),
-            (r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', 'Email'),
-            (r'\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b', 'Credit Card'),
-            (r'\b\d{10,11}\b', 'Phone Number')
-        ]
 
         # Similar implementation to sensitive data exposure
         # but specifically for PII compliance
@@ -524,7 +517,7 @@ class EnterpriseSecurityAuditor:
                 requests_sent = 0
                 rate_limited = False
 
-                for i in range(100):  # Send 100 rapid requests
+                for _i in range(100):  # Send 100 rapid requests
                     try:
                         async with session.get(f"{self.config.base_url}/health") as response:
                             requests_sent += 1
@@ -690,12 +683,6 @@ class EnterpriseSecurityAuditor:
 
     async def _test_command_injection(self):
         """Test command injection vulnerabilities"""
-        command_payloads = [
-            "; ls -la",
-            "| whoami",
-            "&& echo 'vulnerable'",
-            "`id`"
-        ]
 
         # Similar implementation to SQL injection
         # Test command injection in various input fields
@@ -703,11 +690,6 @@ class EnterpriseSecurityAuditor:
 
     async def _test_path_traversal(self):
         """Test path traversal vulnerabilities"""
-        traversal_payloads = [
-            "../../../etc/passwd",
-            "..\\..\\..\\windows\\system32\\drivers\\etc\\hosts",
-            "....//....//....//etc/passwd"
-        ]
 
         # Test file access endpoints for path traversal
         logger.info("Path traversal test - checking file access controls")
@@ -877,12 +859,6 @@ class EnterpriseSecurityAuditor:
     async def _test_security_logging(self):
         """Test security event logging"""
         # Test that security events are properly logged
-        security_events = [
-            "authentication_failure",
-            "authorization_failure",
-            "input_validation_failure",
-            "rate_limit_exceeded"
-        ]
 
         # This would require integration with actual logging system
         logger.info("Security logging test - verify security events are logged")
@@ -912,13 +888,6 @@ class EnterpriseSecurityAuditor:
     async def _check_soc2_compliance(self):
         """Check SOC2 compliance requirements"""
         # SOC2 security criteria
-        soc2_requirements = [
-            "Access Control",
-            "Data Classification",
-            "Incident Response",
-            "Risk Assessment",
-            "Vendor Management"
-        ]
 
         # This would be a comprehensive check against SOC2 Type II requirements
         logger.info("SOC2 compliance check - verify security controls")

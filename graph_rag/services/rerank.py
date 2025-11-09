@@ -81,12 +81,12 @@ class ReRankingService:
         strategy: ReRankingStrategy = ReRankingStrategy.SEMANTIC_SIMILARITY,
     ) -> list[SearchResultData]:
         """Re-rank search results based on relevance to the query.
-        
+
         Args:
             query: The original search query
             results: List of search results to re-rank
             strategy: Re-ranking strategy to use
-            
+
         Returns:
             Re-ranked list of search results
         """

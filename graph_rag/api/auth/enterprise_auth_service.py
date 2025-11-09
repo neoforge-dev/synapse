@@ -80,12 +80,12 @@ class MultiProviderSSOService:
     async def initiate_sso_login(self, provider_id: str, redirect_uri: str,
                                tenant_id: str | None = None) -> dict[str, Any]:
         """Initiate SSO login flow for any supported provider type.
-        
+
         Args:
             provider_id: SSO provider identifier
             redirect_uri: Callback URL after authentication
             tenant_id: Optional tenant ID for additional validation
-            
+
         Returns:
             Dict containing auth_url and flow-specific data
         """
@@ -136,12 +136,12 @@ class MultiProviderSSOService:
     async def complete_saml_login(self, saml_response_b64: str, provider_id: str,
                                 relay_state: str | None = None) -> EnterpriseAuthResult:
         """Complete SAML SSO login flow.
-        
+
         Args:
             saml_response_b64: Base64 encoded SAML response
             provider_id: SSO provider identifier
             relay_state: Optional relay state from initial request
-            
+
         Returns:
             EnterpriseAuthResult: Authentication result
         """
@@ -212,12 +212,12 @@ class MultiProviderSSOService:
     async def complete_oauth_login(self, authorization_code: str, state: str,
                                  provider_id: str) -> EnterpriseAuthResult:
         """Complete OAuth/OIDC SSO login flow.
-        
+
         Args:
             authorization_code: Authorization code from OAuth provider
             state: State parameter for CSRF validation
             provider_id: SSO provider identifier
-            
+
         Returns:
             EnterpriseAuthResult: Authentication result
         """
@@ -298,10 +298,10 @@ class MultiProviderSSOService:
 
     async def initiate_sso_logout(self, session_id: str) -> dict[str, Any]:
         """Initiate SSO logout (Single Logout) if supported by provider.
-        
+
         Args:
             session_id: SSO session identifier
-            
+
         Returns:
             Dict containing logout URL and instructions
         """
@@ -335,11 +335,11 @@ class MultiProviderSSOService:
 
     async def validate_tenant_access(self, user: User, tenant_id: str) -> bool:
         """Validate that user has access to specified tenant.
-        
+
         Args:
             user: Authenticated user
             tenant_id: Tenant identifier to check access for
-            
+
         Returns:
             bool: True if user has access to tenant
         """
@@ -367,10 +367,10 @@ class MultiProviderSSOService:
 
     async def get_tenant_authentication_options(self, tenant_id: str) -> dict[str, Any]:
         """Get available authentication options for a tenant.
-        
+
         Args:
             tenant_id: Tenant identifier
-            
+
         Returns:
             Dict containing available authentication methods
         """
@@ -412,10 +412,10 @@ class MultiProviderSSOService:
 
     async def get_enterprise_analytics(self, tenant_id: str | None = None) -> dict[str, Any]:
         """Get enterprise authentication analytics.
-        
+
         Args:
             tenant_id: Optional tenant ID to filter analytics
-            
+
         Returns:
             Dict containing authentication metrics
         """

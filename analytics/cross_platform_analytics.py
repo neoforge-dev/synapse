@@ -186,7 +186,7 @@ class CrossPlatformAnalytics:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT INTO attribution_tracking 
+            INSERT INTO attribution_tracking
             (tracking_id, content_id, platform, touchpoint, user_id, session_id, value, metadata)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (tracking_id, content_id, platform.value, touchpoint, user_id, session_id,
@@ -207,8 +207,8 @@ class CrossPlatformAnalytics:
         # Get all attribution events for content
         cursor.execute(f'''
             SELECT user_id, platform, touchpoint, timestamp, value, metadata
-            FROM attribution_tracking 
-            WHERE content_id = ? 
+            FROM attribution_tracking
+            WHERE content_id = ?
               AND timestamp >= date('now', '-{lookback_days} days')
               AND user_id IS NOT NULL
             ORDER BY user_id, timestamp
@@ -371,7 +371,7 @@ class CrossPlatformAnalytics:
                 touchpoints_serializable.append(tp_dict)
 
             cursor.execute('''
-                INSERT OR REPLACE INTO conversion_paths 
+                INSERT OR REPLACE INTO conversion_paths
                 (path_id, user_id, content_id, touchpoints, conversion_value,
                  conversion_type, journey_start, journey_end, attribution_weights)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -433,7 +433,7 @@ class CrossPlatformAnalytics:
 
         for platform in Platform:
             cursor.execute(f'''
-                SELECT 
+                SELECT
                     COUNT(*) as total_events,
                     SUM(CASE WHEN touchpoint = 'impression' THEN 1 ELSE 0 END) as impressions,
                     SUM(CASE WHEN touchpoint = 'click' THEN 1 ELSE 0 END) as clicks,
@@ -683,7 +683,7 @@ def main():
 
     # Track attribution events
     for i, (platform, touchpoint, value) in enumerate(journey_events):
-        timestamp_offset = i * 3600  # 1 hour between touchpoints
+        i * 3600  # 1 hour between touchpoints
         analytics.track_attribution_event(
             content_id=content_id,
             platform=platform,

@@ -274,7 +274,7 @@ class AnalyticsConfig:
 class AdvancedAnalyticsEngine:
     """
     Main orchestrator for analytics and monitoring.
-    
+
     Provides real-time data processing, advanced analytics, and comprehensive
     monitoring capabilities across all content strategy operations.
     """
@@ -305,10 +305,10 @@ class AdvancedAnalyticsEngine:
     ) -> AnalyticsResponse:
         """
         Comprehensive performance analysis with advanced metrics.
-        
+
         Args:
             request: Analytics request with parameters
-            
+
         Returns:
             Detailed analytics response with insights
         """
@@ -377,11 +377,11 @@ class AdvancedAnalyticsEngine:
     ) -> list[TrendAnalysis]:
         """
         Calculate comprehensive trend analysis.
-        
+
         Args:
             content_ids: List of content IDs to analyze
             time_horizon: Time horizon for analysis
-            
+
         Returns:
             List of trend analyses
         """
@@ -415,10 +415,10 @@ class AdvancedAnalyticsEngine:
     ) -> list[str]:
         """
         Generate AI-powered insights from analytics data.
-        
+
         Args:
             analytics_data: Comprehensive analytics data
-            
+
         Returns:
             List of actionable insights
         """
@@ -462,11 +462,11 @@ class AdvancedAnalyticsEngine:
     ) -> AsyncGenerator[RealTimeUpdate, None]:
         """
         Start real-time monitoring with streaming updates.
-        
+
         Args:
             content_ids: Content IDs to monitor
             metrics: Metrics to track
-            
+
         Yields:
             Real-time updates
         """
@@ -583,7 +583,7 @@ class AdvancedAnalyticsEngine:
 class RiskManagementSystem:
     """
     Comprehensive risk assessment and monitoring system.
-    
+
     Provides multi-dimensional risk analysis, predictive risk modeling,
     and early warning systems for content strategy operations.
     """
@@ -607,12 +607,12 @@ class RiskManagementSystem:
     ) -> list[RiskAssessment]:
         """
         Comprehensive risk assessment across multiple dimensions.
-        
+
         Args:
             content_id: Specific content to assess
             platform: Platform-specific risk assessment
             risk_categories: Specific risk categories to evaluate
-            
+
         Returns:
             List of risk assessments
         """
@@ -668,11 +668,11 @@ class RiskManagementSystem:
     ) -> list[dict[str, Any]]:
         """
         Predict potential threats using ML models.
-        
+
         Args:
             time_horizon: Prediction time horizon
             threat_types: Specific threat types to predict
-            
+
         Returns:
             List of predicted threats with probabilities
         """
@@ -712,10 +712,10 @@ class RiskManagementSystem:
     ) -> list[ComplianceReport]:
         """
         Monitor compliance across multiple categories.
-        
+
         Args:
             categories: Specific compliance categories to monitor
-            
+
         Returns:
             List of compliance reports
         """
@@ -742,11 +742,11 @@ class RiskManagementSystem:
     ) -> list[AnalyticsAlert]:
         """
         Generate alerts based on risk assessments.
-        
+
         Args:
             risk_assessments: Risk assessments to evaluate
             threshold: Alert threshold level
-            
+
         Returns:
             List of generated alerts
         """
@@ -843,7 +843,7 @@ class RiskManagementSystem:
 class PerformanceAnalytics:
     """
     Advanced performance metrics and KPI tracking system.
-    
+
     Provides ROI calculation, attribution analysis, competitive benchmarking,
     and comprehensive performance monitoring.
     """
@@ -867,13 +867,13 @@ class PerformanceAnalytics:
     ) -> dict[str, Any]:
         """
         Calculate comprehensive ROI with attribution analysis.
-        
+
         Args:
             content_id: Content identifier
             investment_data: Investment breakdown
             revenue_data: Revenue attribution data
             attribution_model: Attribution model to use
-            
+
         Returns:
             Comprehensive ROI analysis
         """
@@ -933,11 +933,11 @@ class PerformanceAnalytics:
     ) -> dict[str, Any]:
         """
         Track comprehensive KPIs across content portfolio.
-        
+
         Args:
             content_ids: List of content IDs to track
             kpi_names: Specific KPIs to track
-            
+
         Returns:
             KPI tracking results
         """
@@ -996,12 +996,12 @@ class PerformanceAnalytics:
     ) -> dict[str, Any]:
         """
         Benchmark performance against industry standards.
-        
+
         Args:
             content_id: Content to benchmark
             industry: Industry for comparison
             content_type: Type of content
-            
+
         Returns:
             Benchmarking results
         """
@@ -1059,11 +1059,11 @@ class PerformanceAnalytics:
     ) -> dict[str, Any]:
         """
         Analyze attribution across multiple touchpoints.
-        
+
         Args:
             conversion_data: Conversion event data
             touchpoint_data: List of touchpoint interactions
-            
+
         Returns:
             Attribution analysis results
         """
@@ -1173,7 +1173,7 @@ class PerformanceAnalytics:
 class TrendAnalyzer:
     """
     Market trend detection and prediction system.
-    
+
     Provides comprehensive trend analysis, pattern recognition, and
     performance forecasting capabilities.
     """
@@ -1195,11 +1195,11 @@ class TrendAnalyzer:
     ) -> list[TrendAnalysis]:
         """
         Detect comprehensive trends in data.
-        
+
         Args:
             data: Time series data to analyze
             time_horizon: Analysis time horizon
-            
+
         Returns:
             List of detected trends
         """
@@ -1241,11 +1241,11 @@ class TrendAnalyzer:
     ) -> dict[str, Any]:
         """
         Predict future patterns based on historical data.
-        
+
         Args:
             historical_data: Historical trend data
             prediction_horizon: Prediction time horizon
-            
+
         Returns:
             Pattern predictions
         """
@@ -1296,11 +1296,11 @@ class TrendAnalyzer:
     ) -> dict[str, Any]:
         """
         Analyze seasonal patterns in data.
-        
+
         Args:
             data: Time series data
             period: Seasonality period (daily, weekly, monthly, yearly)
-            
+
         Returns:
             Seasonality analysis results
         """
@@ -1349,12 +1349,12 @@ class TrendAnalyzer:
     ) -> dict[str, Any]:
         """
         Forecast future performance based on trends.
-        
+
         Args:
             historical_performance: Historical performance data
             forecast_horizon: Forecast time horizon
             confidence_level: Confidence level for predictions
-            
+
         Returns:
             Performance forecasts
         """
@@ -1457,7 +1457,7 @@ class TrendAnalyzer:
 class RealTimeMonitor:
     """
     Real-time monitoring system with WebSocket streaming.
-    
+
     Provides live monitoring, alert triggering, and real-time dashboard feeds
     for continuous content performance tracking.
     """
@@ -1478,12 +1478,12 @@ class RealTimeMonitor:
     ) -> str:
         """
         Start real-time monitoring session.
-        
+
         Args:
             content_ids: Content IDs to monitor
             metrics: Metrics to track
             alert_thresholds: Alert thresholds for metrics
-            
+
         Returns:
             Monitoring session ID
         """
@@ -1519,10 +1519,10 @@ class RealTimeMonitor:
     ) -> AsyncGenerator[RealTimeUpdate, None]:
         """
         Stream real-time metrics updates.
-        
+
         Args:
             session_id: Monitoring session ID
-            
+
         Yields:
             Real-time metric updates
         """
@@ -1564,10 +1564,10 @@ class RealTimeMonitor:
     ) -> bool:
         """
         Trigger real-time alert.
-        
+
         Args:
             alert: Alert to trigger
-            
+
         Returns:
             Success status
         """
@@ -1596,10 +1596,10 @@ class RealTimeMonitor:
     ) -> AsyncGenerator[dict[str, Any], None]:
         """
         Generate real-time dashboard feed.
-        
+
         Args:
             dashboard_config: Dashboard configuration
-            
+
         Yields:
             Dashboard update data
         """
@@ -1691,7 +1691,7 @@ class RealTimeMonitor:
 class ComplianceTracker:
     """
     Regulatory compliance monitoring system.
-    
+
     Monitors compliance across multiple categories, tracks violations,
     and generates comprehensive compliance reports.
     """
@@ -1713,11 +1713,11 @@ class ComplianceTracker:
     ) -> list[ComplianceReport]:
         """
         Check compliance across specified categories.
-        
+
         Args:
             content_id: Content to check
             categories: Compliance categories to evaluate
-            
+
         Returns:
             List of compliance reports
         """
@@ -1745,10 +1745,10 @@ class ComplianceTracker:
     ) -> dict[str, Any]:
         """
         Track violations over time period.
-        
+
         Args:
             time_period: Time period to analyze
-            
+
         Returns:
             Violation tracking results
         """
@@ -1792,11 +1792,11 @@ class ComplianceTracker:
     ) -> AnalyticsReport:
         """
         Generate comprehensive compliance reports.
-        
+
         Args:
             report_type: Type of report to generate
             time_period: Time period for report
-            
+
         Returns:
             Compliance analytics report
         """
@@ -1865,11 +1865,11 @@ class ComplianceTracker:
     ) -> dict[str, Any]:
         """
         Enforce policies on content.
-        
+
         Args:
             content_id: Content to evaluate
             policy_set: Set of policies to enforce
-            
+
         Returns:
             Policy enforcement results
         """
@@ -1950,7 +1950,7 @@ class ComplianceTracker:
 class PredictiveAnalytics:
     """
     Machine learning-based predictive analytics system.
-    
+
     Provides performance forecasting, scenario modeling, and risk prediction
     using advanced ML algorithms.
     """
@@ -1973,12 +1973,12 @@ class PredictiveAnalytics:
     ) -> dict[str, Any]:
         """
         Forecast performance metrics using ML models.
-        
+
         Args:
             historical_data: Historical performance data
             forecast_horizon: Forecast time horizon
             metrics: Specific metrics to forecast
-            
+
         Returns:
             Metric forecasts with confidence intervals
         """
@@ -2042,11 +2042,11 @@ class PredictiveAnalytics:
     ) -> dict[str, Any]:
         """
         Predict outcomes for given scenarios.
-        
+
         Args:
             scenario_data: Scenario input data
             outcome_variables: Variables to predict
-            
+
         Returns:
             Outcome predictions
         """
@@ -2098,11 +2098,11 @@ class PredictiveAnalytics:
     ) -> list[dict[str, Any]]:
         """
         Model multiple scenarios and compare outcomes.
-        
+
         Args:
             base_scenario: Base scenario data
             variations: List of scenario variations
-            
+
         Returns:
             Scenario modeling results
         """
@@ -2171,11 +2171,11 @@ class PredictiveAnalytics:
     ) -> dict[str, Any]:
         """
         Predict and prevent risks using ML models.
-        
+
         Args:
             risk_indicators: Current risk indicator values
             prevention_strategies: Available prevention strategies
-            
+
         Returns:
             Risk prevention recommendations
         """
@@ -2251,7 +2251,7 @@ class PredictiveAnalytics:
 class AnalyticsReportGenerator:
     """
     Comprehensive analytics report generation system.
-    
+
     Creates executive dashboards, detailed insights, automated reports,
     and scheduled analytics deliverables.
     """
@@ -2274,12 +2274,12 @@ class AnalyticsReportGenerator:
     ) -> AnalyticsReport:
         """
         Generate comprehensive analytics reports.
-        
+
         Args:
             report_type: Type of report to generate
             data_sources: Data sources for report
             template: Report template to use
-            
+
         Returns:
             Generated analytics report
         """
@@ -2362,10 +2362,10 @@ class AnalyticsReportGenerator:
     ) -> dict[str, Any]:
         """
         Create executive dashboards.
-        
+
         Args:
             dashboard_config: Dashboard configuration
-            
+
         Returns:
             Dashboard data and configuration
         """
@@ -2407,10 +2407,10 @@ class AnalyticsReportGenerator:
     ) -> str:
         """
         Schedule automated report generation.
-        
+
         Args:
             schedule_config: Scheduling configuration
-            
+
         Returns:
             Schedule ID
         """
@@ -2452,12 +2452,12 @@ class AnalyticsReportGenerator:
     ) -> str:
         """
         Export analytics data to various formats.
-        
+
         Args:
             data: Data to export
             export_format: Export format (pdf, xlsx, csv, json)
             destination: Export destination
-            
+
         Returns:
             Export file path
         """
@@ -2521,7 +2521,7 @@ class AnalyticsReportGenerator:
 class ContentStrategyIntelligencePlatform:
     """
     Unified Content Strategy Intelligence Platform.
-    
+
     Integrates all epic capabilities into a comprehensive content strategy
     and analytics platform with real-time monitoring and advanced insights.
     """
@@ -2555,11 +2555,11 @@ class ContentStrategyIntelligencePlatform:
     ) -> dict[str, Any]:
         """
         Perform comprehensive analysis using all epic capabilities.
-        
+
         Args:
             content_data: Content data to analyze
             analysis_scope: Scope of analysis (full, performance, risk, etc.)
-            
+
         Returns:
             Comprehensive analysis results
         """
@@ -2663,10 +2663,10 @@ class ContentStrategyIntelligencePlatform:
     ) -> AsyncGenerator[dict[str, Any], None]:
         """
         Provide real-time intelligence across all capabilities.
-        
+
         Args:
             content_ids: Content IDs to monitor
-            
+
         Yields:
             Real-time intelligence updates
         """
@@ -2674,7 +2674,6 @@ class ContentStrategyIntelligencePlatform:
             logger.info(f"Starting real-time intelligence for {len(content_ids)} items")
 
             # Start monitoring streams
-            monitoring_tasks = []
 
             # Real-time performance monitoring
             async def performance_stream():
@@ -2718,10 +2717,10 @@ class ContentStrategyIntelligencePlatform:
     ) -> dict[str, Any]:
         """
         Generate strategic executive dashboard.
-        
+
         Args:
             dashboard_config: Dashboard configuration
-            
+
         Returns:
             Strategic dashboard data
         """

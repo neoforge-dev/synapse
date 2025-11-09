@@ -420,7 +420,7 @@ class TestRoleIntegrationWithAuthentication:
         # Create auth provider
         settings = JWTSettings(secret_key="test-secret-key-32-chars-minimum")
         jwt_handler = JWTHandler(settings)
-        auth_provider = InMemoryAuthProvider(jwt_handler)
+        InMemoryAuthProvider(jwt_handler)
 
         # Create users with different roles
         admin_data = UserCreate(

@@ -7,7 +7,7 @@ Goal: Drive next-generation capabilities and strengthen Fortune 500 partnerships
 
 This module defines the comprehensive innovation labs network including:
 - Regional innovation centers with specialized focus areas
-- University partnerships and research collaborations  
+- University partnerships and research collaborations
 - Customer co-innovation programs and executive briefing centers
 - R&D pipeline management and commercialization processes
 """
@@ -662,8 +662,8 @@ class InnovationLabsOrchestrator:
     def calculate_innovation_metrics(self) -> dict[str, Any]:
         """Calculate comprehensive innovation metrics and KPIs"""
         total_budget = sum(lab.annual_budget for lab in self.innovation_labs)
-        total_staff = sum(lab.staff_count for lab in self.innovation_labs)
-        total_partnerships = sum(len(lab.university_partnerships) for lab in self.innovation_labs)
+        sum(lab.staff_count for lab in self.innovation_labs)
+        sum(len(lab.university_partnerships) for lab in self.innovation_labs)
 
         # Research productivity metrics
         total_publications = sum(lab.annual_publications for lab in self.innovation_labs)

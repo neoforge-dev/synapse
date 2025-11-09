@@ -366,7 +366,7 @@ class EnhancedConceptExtractor(ConceptExtractor):
 
         # Find co-occurring concepts in text
         for i, concept1 in enumerate(concepts):
-            for j, concept2 in enumerate(concepts[i+1:], i+1):
+            for _j, concept2 in enumerate(concepts[i+1:], i+1):
                 # Check if concepts appear near each other
                 if self._concepts_are_related(concept1, concept2, text):
                     rel_type = self._determine_relationship_type(concept1, concept2, text, relationship_patterns)

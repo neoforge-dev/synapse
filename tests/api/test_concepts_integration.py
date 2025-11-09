@@ -337,7 +337,7 @@ class TestWorkflowIntegrationEndpoints:
 
         analysis_response = await test_client.post("/api/v1/concepts/hot-takes/analyze", json=analysis_request)
         assert analysis_response.status_code == 200
-        analysis_data = analysis_response.json()
+        analysis_response.json()
 
         # Step 2: Check brand safety
         safety_request = {
@@ -386,7 +386,7 @@ class TestWorkflowIntegrationEndpoints:
 
         audience_response = await test_client.post("/api/v1/concepts/audience/analyze", json=content_analysis_request)
         assert audience_response.status_code == 200
-        audience_data = audience_response.json()
+        audience_response.json()
 
         # Step 3: Test resonance with specific segments
         if segments_data["segments"]:

@@ -243,7 +243,7 @@ class TestImprovedSynapseEngine:
         """Test consolidation of overlapping chunks."""
         # Mock experiment consolidator
         with patch.object(improved_engine._experiment_consolidator, 'find_similar_documents') as mock_find:
-            with patch.object(improved_engine._experiment_consolidator, 'consolidate_experiments') as mock_consolidate:
+            with patch.object(improved_engine._experiment_consolidator, 'consolidate_experiments'):
                 # Mock similarity matches
                 mock_find.return_value = []
 

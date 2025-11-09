@@ -824,8 +824,8 @@ def sample_chunk() -> dict[str, Any]:
 def sample_text() -> str:
     """Provides a sample text string."""
     return """
-    The quick brown fox jumps over the lazy dog. 
-    This text discusses various animals and their actions. 
+    The quick brown fox jumps over the lazy dog.
+    This text discusses various animals and their actions.
     Foxes are known for their cunning, while dogs are often loyal companions.
     """
 

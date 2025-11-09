@@ -77,10 +77,10 @@ class OptimizedPerformanceAnalyzer:
         cursor = business_conn.cursor()
 
         cursor.execute('''
-            SELECT post_id, content, day, actual_engagement_rate, 
+            SELECT post_id, content, day, actual_engagement_rate,
                    consultation_requests, impressions, business_objective,
                    posted_at
-            FROM linkedin_posts 
+            FROM linkedin_posts
             WHERE impressions > 0
             ORDER BY posted_at DESC
         ''')
@@ -98,7 +98,7 @@ class OptimizedPerformanceAnalyzer:
         analysis_batch = []
         patterns_data = defaultdict(list)
 
-        for post_id, content, day, engagement_rate, consultations, impressions, objective, posted_at in posts:
+        for post_id, content, day, engagement_rate, consultations, impressions, _objective, _posted_at in posts:
             # Analyze content characteristics
             analysis = self._analyze_content_characteristics(post_id, content)
             analysis_batch.append(analysis)
@@ -437,7 +437,7 @@ class OptimizedPerformanceAnalyzer:
 
     def _identify_hook_type(self, content: str) -> str:
         """Enhanced hook type identification"""
-        content_lower = content.lower()
+        content.lower()
         first_line = content.split('\n')[0].lower()
 
         # Controversial hooks
@@ -622,7 +622,7 @@ def main():
         # Test prediction system
         test_content = """
         I've never met a 10x developer, but I've built 10x teams. Here's the difference.
-        
+
         Team performance multiplies when you focus on systems over individuals.
         """
 

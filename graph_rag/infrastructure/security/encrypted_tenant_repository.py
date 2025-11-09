@@ -358,7 +358,7 @@ class EncryptedTenantRepository(SecureTenantRepository):
         # Check for sensitive field indicators
         sensitive_indicators = ["ssn", "credit_card", "medical", "financial", "pii"]
 
-        for key, value in data.items():
+        for key, _value in data.items():
             if any(indicator in key.lower() for indicator in sensitive_indicators):
                 return "restricted"
 
@@ -395,7 +395,7 @@ class EncryptedTenantRepository(SecureTenantRepository):
 
         # Add encryption health from managers
         encryption_health = []
-        for tenant_id, manager in self.encryption_managers.items():
+        for _tenant_id, manager in self.encryption_managers.items():
             health = manager.get_encryption_health_status()
             encryption_health.append(health)
 

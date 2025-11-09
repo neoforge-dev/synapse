@@ -48,7 +48,7 @@ class ContentAutomationPipeline:
         # Get all posts for the week that haven't been posted yet
         cursor.execute('''
             SELECT post_id, day, posted_at, business_objective
-            FROM linkedin_posts 
+            FROM linkedin_posts
             WHERE post_id LIKE ?
             AND impressions = 0
             ORDER BY posted_at
@@ -57,7 +57,7 @@ class ContentAutomationPipeline:
         results = cursor.fetchall()
 
         scheduled_count = 0
-        for post_id, day, scheduled_time, objective in results:
+        for post_id, day, _scheduled_time, _objective in results:
 
             # Schedule using Python schedule library
             if day == 'Monday':
@@ -107,7 +107,7 @@ class ContentAutomationPipeline:
             if linkedin_post_id:
                 # Mark as posted
                 cursor.execute('''
-                    UPDATE linkedin_posts 
+                    UPDATE linkedin_posts
                     SET impressions = 1, posted_at = ?
                     WHERE post_id = ?
                 ''', (datetime.now().isoformat(), post_id))

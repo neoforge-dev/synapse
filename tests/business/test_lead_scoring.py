@@ -27,7 +27,7 @@ class TestLeadScoringAccuracy:
         with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
             db_path = tmp.name
 
-        engine = SalesAutomationEngine(db_path=db_path)
+        SalesAutomationEngine(db_path=db_path)
         yield db_path
 
         Path(db_path).unlink(missing_ok=True)
@@ -228,7 +228,7 @@ class TestLeadScoringAccuracy:
 
         base_inquiry = "We need technical consulting help."
 
-        for signal_text, signal_type in maturity_signals:
+        for signal_text, _signal_type in maturity_signals:
             inquiry_with_signal = f"{base_inquiry} {signal_text}."
 
             score_with_signal = sales_engine._enhanced_ml_lead_scoring(
@@ -260,7 +260,7 @@ class TestPriorityTierAssignment:
         with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
             db_path = tmp.name
 
-        engine = SalesAutomationEngine(db_path=db_path)
+        SalesAutomationEngine(db_path=db_path)
         yield db_path
 
         Path(db_path).unlink(missing_ok=True)
@@ -332,7 +332,7 @@ class TestLeadScoringConsistency:
         with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
             db_path = tmp.name
 
-        engine = SalesAutomationEngine(db_path=db_path)
+        SalesAutomationEngine(db_path=db_path)
         yield db_path
 
         Path(db_path).unlink(missing_ok=True)

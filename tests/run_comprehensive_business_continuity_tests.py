@@ -10,7 +10,7 @@ testing, monitoring, and safety protocols.
 
 Test Components Orchestrated:
 1. Business Continuity Migration Test Suite
-2. Real-Time Business Metrics Monitoring  
+2. Real-Time Business Metrics Monitoring
 3. Automated Migration Test Orchestration
 4. Migration Safety Protocols with Rollback Triggers
 
@@ -533,7 +533,7 @@ class ComprehensiveBusinessContinuityTestMaster:
         """Test safety system rollback integration"""
         try:
             # Test rollback trigger evaluation
-            alerts = self.safety_system.evaluate_rollback_triggers()
+            self.safety_system.evaluate_rollback_triggers()
 
             # Test that rollback system is properly initialized
             return len(self.safety_system.rollback_triggers) > 0

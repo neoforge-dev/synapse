@@ -54,8 +54,8 @@ async def dashboard(request: Request):
 
     cursor.execute('''
         SELECT contact_id, name, company, lead_score, priority_tier, qualification_status, estimated_value, created_at
-        FROM crm_contacts 
-        ORDER BY lead_score DESC, created_at DESC 
+        FROM crm_contacts
+        ORDER BY lead_score DESC, created_at DESC
         LIMIT 10
     ''')
     recent_contacts = cursor.fetchall()
@@ -86,9 +86,9 @@ async def contacts_page(request: Request):
     cursor = conn.cursor()
 
     cursor.execute('''
-        SELECT contact_id, name, company, company_size, lead_score, qualification_status, 
+        SELECT contact_id, name, company, company_size, lead_score, qualification_status,
                priority_tier, estimated_value, next_action, next_action_date, created_at
-        FROM crm_contacts 
+        FROM crm_contacts
         ORDER BY lead_score DESC, created_at DESC
     ''')
     contacts = cursor.fetchall()
@@ -117,9 +117,9 @@ async def contact_detail(request: Request, contact_id: str):
 
     # Get proposals for this contact
     cursor.execute('''
-        SELECT proposal_id, template_used, proposal_value, estimated_close_probability, 
+        SELECT proposal_id, template_used, proposal_value, estimated_close_probability,
                status, generated_at, sent_at
-        FROM generated_proposals 
+        FROM generated_proposals
         WHERE contact_id = ?
         ORDER BY generated_at DESC
     ''', (contact_id,))
@@ -207,8 +207,8 @@ async def analytics_page(request: Request):
 
     # Lead score distribution
     cursor.execute('''
-        SELECT 
-            CASE 
+        SELECT
+            CASE
                 WHEN lead_score >= 80 THEN '80-100'
                 WHEN lead_score >= 60 THEN '60-79'
                 WHEN lead_score >= 40 THEN '40-59'
@@ -231,8 +231,8 @@ async def analytics_page(request: Request):
 
     # Inquiry type performance
     cursor.execute('''
-        SELECT 
-            c.notes, 
+        SELECT
+            c.notes,
             COUNT(*) as count,
             AVG(c.lead_score) as avg_score,
             SUM(c.estimated_value) as total_value
@@ -317,7 +317,7 @@ async def send_proposal(proposal_id: str):
         cursor = conn.cursor()
 
         cursor.execute('''
-            UPDATE generated_proposals 
+            UPDATE generated_proposals
             SET status = 'sent', sent_at = ?
             WHERE proposal_id = ?
         ''', (datetime.now().isoformat(), proposal_id))
@@ -387,14 +387,14 @@ def create_templates():
             <h1>Epic 7 Sales Automation</h1>
             <p>Systematic $2M+ ARR Sales Engine - Converting Leads to Revenue</p>
         </div>
-        
+
         <div class="nav">
             <a href="/">Dashboard</a>
             <a href="/contacts">CRM Contacts</a>
             <a href="/proposals">Proposals</a>
             <a href="/analytics">Analytics</a>
         </div>
-        
+
         <div class="metrics">
             <div class="metric-card">
                 <div class="metric-value">{{ summary.total_contacts }}</div>
@@ -417,7 +417,7 @@ def create_templates():
                 <div class="metric-change positive">{% if summary.projected_annual_revenue >= 2000000 %}🎉 Target Met!{% else %}Need ${{ "{:,}".format(2000000 - summary.projected_annual_revenue) }} more{% endif %}</div>
             </div>
         </div>
-        
+
         <div class="section">
             <h2>High-Priority Contacts</h2>
             <table>
@@ -445,7 +445,7 @@ def create_templates():
                 </tbody>
             </table>
         </div>
-        
+
         <div class="section">
             <h2>Recent Proposals</h2>
             <table>
@@ -515,14 +515,14 @@ def create_templates():
             <h1>CRM Contacts</h1>
             <p>Lead Management and Qualification System</p>
         </div>
-        
+
         <div class="nav">
             <a href="/">Dashboard</a>
             <a href="/contacts">CRM Contacts</a>
             <a href="/proposals">Proposals</a>
             <a href="/analytics">Analytics</a>
         </div>
-        
+
         <div class="section">
             <h2>All Contacts</h2>
             <table>
@@ -562,7 +562,7 @@ def create_templates():
             </table>
         </div>
     </div>
-    
+
     <script>
         function generateProposal(contactId) {
             fetch('/api/generate-proposal', {

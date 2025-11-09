@@ -666,7 +666,7 @@ class OperationalExcellenceMonitor:
 
     async def _generate_optimization_recommendations(self):
         """Generate AI-powered optimization recommendations"""
-        health_analysis = self.performance_data.get("health_analysis", {})
+        self.performance_data.get("health_analysis", {})
         operational_metrics = self.performance_data.get("operational_metrics", {})
 
         recommendations = []

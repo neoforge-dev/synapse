@@ -102,20 +102,20 @@ from synapse_ai import SynapseClient
 
 async def main():
     client = SynapseClient(api_key="your_api_key")
-    
+
     # Process and store document
     document_id = await client.documents.ingest(
         content="Your document content here",
         metadata={"source": "example", "type": "text"}
     )
-    
+
     # Perform GraphRAG query
     result = await client.query.graphrag(
         query="What are the key insights from this document?",
         search_type="hybrid",
         limit=10
     )
-    
+
     print(f"Answer: {result.answer}")
     print(f"Sources: {[chunk.document_id for chunk in result.sources]}")
 
@@ -134,16 +134,16 @@ from synapse_ai.batch import BatchProcessor
 async def main():
     client = SynapseClient(api_key="your_api_key")
     batch_processor = BatchProcessor(client, batch_size=50)
-    
+
     # Process multiple documents
     document_paths = list(Path("./documents").glob("*.txt"))
-    
+
     results = await batch_processor.process_documents(
         file_paths=document_paths,
         enable_embeddings=True,
         replace_existing=True
     )
-    
+
     print(f"Processed {results['successful']} documents")
     print(f"Failed: {results['failed']}")
 
@@ -211,14 +211,14 @@ async function main() {
         content: 'Your document content here',
         metadata: { source: 'example', type: 'text' }
     });
-    
+
     // Query with GraphRAG
     const result = await client.query.graphrag({
         query: 'What are the key insights?',
         searchType: 'hybrid',
         limit: 10
     });
-    
+
     console.log('Answer:', result.answer);
     console.log('Sources:', result.sources);
 }
@@ -238,10 +238,10 @@ function DocumentAnalysis({ documentId }) {
         documentIds: [documentId],
         searchType: 'hybrid'
     });
-    
+
     if (loading) return <div>Analyzing...</div>;
     if (error) return <div>Error: {error.message}</div>;
-    
+
     return (
         <div>
             <h2>Analysis Results</h2>
@@ -642,23 +642,23 @@ class SynapseClient:
         self.client = httpx.AsyncClient(
             headers={"Authorization": f"Bearer {api_key}"}
         )
-        
+
         # Initialize service clients
         self.documents = DocumentsClient(self)
         self.query = QueryClient(self)
         self.search = SearchClient(self)
         self.graph = GraphClient(self)
-    
+
     async def __aenter__(self):
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.client.aclose()
 
 class DocumentsClient:
     def __init__(self, client: SynapseClient):
         self.client = client
-    
+
     async def ingest(self, content: str, metadata: Dict[str, Any]) -> str:
         response = await self.client.client.post(
             f"{self.client.base_url}/api/v1/documents/ingest",
@@ -666,7 +666,7 @@ class DocumentsClient:
         )
         response.raise_for_status()
         return response.json()["document_id"]
-    
+
     async def get(self, document_id: str) -> Dict[str, Any]:
         response = await self.client.client.get(
             f"{self.client.base_url}/api/v1/documents/{document_id}"
@@ -677,7 +677,7 @@ class DocumentsClient:
 class QueryClient:
     def __init__(self, client: SynapseClient):
         self.client = client
-    
+
     async def graphrag(self, query: str, search_type: str = "hybrid", limit: int = 10) -> Dict[str, Any]:
         response = await self.client.client.post(
             f"{self.client.base_url}/api/v1/query/graphrag",
@@ -693,7 +693,7 @@ class QueryClient:
 class SearchClient:
     def __init__(self, client: SynapseClient):
         self.client = client
-    
+
     async def vector_search(self, query: str, limit: int = 10) -> Dict[str, Any]:
         response = await self.client.client.post(
             f"{self.client.base_url}/api/v1/search/vector",
@@ -705,7 +705,7 @@ class SearchClient:
 class GraphClient:
     def __init__(self, client: SynapseClient):
         self.client = client
-    
+
     async def get_neighbors(self, entity_id: str, depth: int = 1) -> Dict[str, Any]:
         response = await self.client.client.get(
             f"{self.client.base_url}/api/v1/graph/neighbors/{entity_id}",
@@ -915,14 +915,9 @@ if __name__ == "__main__":
         print(python_docs[:500] + "...")
 
         # Generate SDK
-        sdk_generator = SDKGenerator()
+        SDKGenerator()
 
         # Mock API spec
-        api_spec = {
-            "documents": {"ingest": {}, "get": {}},
-            "query": {"graphrag": {}},
-            "search": {"vector": {}}
-        }
 
         # python_sdk_path = await sdk_generator.generate_python_sdk(api_spec)
         # print(f"\nGenerated Python SDK at: {python_sdk_path}")

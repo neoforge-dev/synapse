@@ -181,13 +181,13 @@ class ComplianceAuditLogger:
                     event_type TEXT NOT NULL,
                     timestamp TIMESTAMP NOT NULL,
                     severity TEXT NOT NULL,
-                    
+
                     -- Actor information
                     user_id TEXT,
                     username TEXT,
                     user_role TEXT,
                     session_id TEXT,
-                    
+
                     -- Context information
                     tenant_id TEXT,
                     client_id TEXT,
@@ -195,32 +195,32 @@ class ComplianceAuditLogger:
                     user_agent TEXT,
                     api_endpoint TEXT,
                     http_method TEXT,
-                    
+
                     -- Target information
                     resource_type TEXT,
                     resource_id TEXT,
                     resource_name TEXT,
-                    
+
                     -- Event details (encrypted)
                     action TEXT NOT NULL,
                     outcome TEXT NOT NULL,
                     details_encrypted TEXT,
-                    
+
                     -- Data classification
                     data_classification TEXT,
                     personal_data_involved BOOLEAN DEFAULT FALSE,
                     sensitive_data_types TEXT,  -- JSON array
-                    
+
                     -- Compliance metadata
                     retention_period INTEGER,
                     compliance_frameworks TEXT,  -- JSON array
                     legal_basis TEXT,
-                    
+
                     -- System metadata
                     system_version TEXT,
                     correlation_id TEXT,
                     parent_event_id TEXT,
-                    
+
                     -- Integrity check
                     event_hash TEXT NOT NULL
                 )
@@ -228,27 +228,27 @@ class ComplianceAuditLogger:
 
             # Compliance-specific indexes
             conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_audit_timestamp 
+                CREATE INDEX IF NOT EXISTS idx_audit_timestamp
                 ON audit_events (timestamp)
             """)
             conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_audit_user 
+                CREATE INDEX IF NOT EXISTS idx_audit_user
                 ON audit_events (user_id, tenant_id, timestamp)
             """)
             conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_audit_type_tenant 
+                CREATE INDEX IF NOT EXISTS idx_audit_type_tenant
                 ON audit_events (event_type, tenant_id, timestamp)
             """)
             conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_audit_compliance 
+                CREATE INDEX IF NOT EXISTS idx_audit_compliance
                 ON audit_events (compliance_frameworks, timestamp)
             """)
             conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_audit_personal_data 
+                CREATE INDEX IF NOT EXISTS idx_audit_personal_data
                 ON audit_events (personal_data_involved, timestamp)
             """)
             conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_audit_resource 
+                CREATE INDEX IF NOT EXISTS idx_audit_resource
                 ON audit_events (resource_type, resource_id, timestamp)
             """)
 
@@ -327,7 +327,7 @@ class ComplianceAuditLogger:
                         api_endpoint, http_method,
                         resource_type, resource_id, resource_name,
                         action, outcome, details_encrypted,
-                        data_classification, personal_data_involved, 
+                        data_classification, personal_data_involved,
                         sensitive_data_types, retention_period,
                         compliance_frameworks, legal_basis,
                         system_version, correlation_id, parent_event_id,
@@ -476,7 +476,7 @@ class ComplianceAuditLogger:
         with self._get_audit_connection() as conn:
             # Find expired records not under legal hold
             expired_events = conn.execute("""
-                SELECT event_id FROM retention_tracking 
+                SELECT event_id FROM retention_tracking
                 WHERE retention_until < ? AND legal_hold = FALSE
             """, (cutoff_date,)).fetchall()
 
@@ -502,7 +502,7 @@ class ComplianceAuditLogger:
         with self._get_audit_connection() as conn:
             placeholders = ",".join("?" * len(event_ids))
             cursor = conn.execute(f"""
-                UPDATE retention_tracking 
+                UPDATE retention_tracking
                 SET legal_hold = TRUE, retention_reason = ?
                 WHERE event_id IN ({placeholders})
             """, [reason] + event_ids)
@@ -531,27 +531,27 @@ class ComplianceAuditLogger:
 
             # Events by type
             events_by_type = dict(conn.execute(f"""
-                SELECT event_type, COUNT(*) FROM audit_events 
+                SELECT event_type, COUNT(*) FROM audit_events
                 {where_clause} GROUP BY event_type
             """, params).fetchall())
 
             # Failed events
             failed_params = params + ["failure"]
             failed_events = conn.execute(f"""
-                SELECT COUNT(*) FROM audit_events 
+                SELECT COUNT(*) FROM audit_events
                 {where_clause} AND outcome = ?
             """, failed_params).fetchone()[0]
 
             # Personal data events
             personal_data_params = params + [True]
             personal_data_events = conn.execute(f"""
-                SELECT COUNT(*) FROM audit_events 
+                SELECT COUNT(*) FROM audit_events
                 {where_clause} AND personal_data_involved = ?
             """, personal_data_params).fetchone()[0]
 
             # Unique users
             unique_users = conn.execute(f"""
-                SELECT COUNT(DISTINCT user_id) FROM audit_events 
+                SELECT COUNT(DISTINCT user_id) FROM audit_events
                 {where_clause} AND user_id IS NOT NULL
             """, params).fetchone()[0]
 

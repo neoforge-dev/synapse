@@ -564,14 +564,14 @@ class AutonomousAIDemo:
         tech_doc = Document(
             id="enterprise_tech_doc_001",
             content="""
-            Microsoft Azure integration with OpenAI GPT-4 enables advanced natural language processing 
-            capabilities for enterprise applications. The integration supports real-time data processing 
-            and machine learning workflows. AWS provides complementary cloud infrastructure services 
-            including S3 storage and EC2 compute instances. Google Cloud Platform offers BigQuery 
+            Microsoft Azure integration with OpenAI GPT-4 enables advanced natural language processing
+            capabilities for enterprise applications. The integration supports real-time data processing
+            and machine learning workflows. AWS provides complementary cloud infrastructure services
+            including S3 storage and EC2 compute instances. Google Cloud Platform offers BigQuery
             for large-scale data analytics and TensorFlow for machine learning model development.
-            
-            The system architecture includes PostgreSQL database for transactional data, Redis cache 
-            for session management, and Elasticsearch for search functionality. Docker containers 
+
+            The system architecture includes PostgreSQL database for transactional data, Redis cache
+            for session management, and Elasticsearch for search functionality. Docker containers
             enable consistent deployment across development and production environments.
             """,
             metadata={"source": "technical_architecture", "department": "IT", "type": "documentation"},
@@ -616,7 +616,7 @@ class AutonomousAIDemo:
             capabilities including email campaigns and lead scoring. The finance team uses
             SAP ERP for financial planning and reporting, while the HR department relies on
             Workday for employee management and payroll processing.
-            
+
             Business intelligence dashboards powered by Tableau provide real-time insights
             into key performance indicators. The data warehouse built on Snowflake enables
             scalable analytics across all business units. Microsoft Teams facilitates
@@ -659,7 +659,7 @@ class AutonomousAIDemo:
             multi-factor authentication through Okta identity provider. CrowdStrike Falcon
             provides endpoint detection and response capabilities across all devices.
             Splunk SIEM aggregates security events for threat detection and compliance reporting.
-            
+
             Data encryption uses AES-256 standards for data at rest and TLS 1.3 for data
             in transit. The security operations center monitors threats 24/7 using
             Microsoft Sentinel for cloud security management. Compliance requirements

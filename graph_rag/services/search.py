@@ -127,12 +127,12 @@ class SearchService:
     ) -> list[SearchResult]:
         """
         Intelligent search with automatic fallback mechanisms.
-        
+
         Args:
             query: The search query string
             limit: Maximum number of results to return
             strategy: Search strategy ("vector", "keyword", "hybrid")
-            
+
         Returns:
             List of SearchResult objects
         """
@@ -167,7 +167,7 @@ class SearchService:
     async def _fallback_search(self, query: str, limit: int = 10) -> list[SearchResult]:
         """
         Fallback search when all primary methods fail.
-        
+
         This performs basic text matching on any available chunks.
         """
         try:

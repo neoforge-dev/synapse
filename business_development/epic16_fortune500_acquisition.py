@@ -600,7 +600,7 @@ class Fortune500ProspectDatabase:
 
         for prospect in prospects:
             cursor.execute('''
-                INSERT OR REPLACE INTO fortune500_prospects 
+                INSERT OR REPLACE INTO fortune500_prospects
                 (prospect_id, company_name, revenue_billions, industry, headquarters, employees,
                  stock_symbol, market_cap_billions, ceo_name, cto_name, engineering_headcount,
                  tech_stack, digital_transformation_score, acquisition_score, contact_priority,
@@ -626,7 +626,7 @@ class Fortune500ProspectDatabase:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT * FROM fortune500_prospects 
+            SELECT * FROM fortune500_prospects
             ORDER BY acquisition_score DESC, estimated_contract_value DESC
             LIMIT ?
         ''', (limit,))
@@ -935,9 +935,9 @@ class EnterpriseBusinessCaseBuilder:
         payback_months = business_case.roi_calculation.get("payback_months", 24)
 
         cursor.execute('''
-            INSERT OR REPLACE INTO enterprise_business_cases 
-            (prospect_id, problem_quantification, solution_benefits, roi_calculation, 
-             risk_assessment, implementation_timeline, investment_options, 
+            INSERT OR REPLACE INTO enterprise_business_cases
+            (prospect_id, problem_quantification, solution_benefits, roi_calculation,
+             risk_assessment, implementation_timeline, investment_options,
              projected_savings, payback_months, confidence_score)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
@@ -1387,7 +1387,7 @@ class Fortune500AcquisitionEngine:
 
             # Check Epic 7 pipeline status
             cursor.execute('''
-                SELECT 
+                SELECT
                     COUNT(*) as total_contacts,
                     SUM(estimated_value) as total_pipeline_value,
                     COUNT(CASE WHEN qualification_status = 'qualified' THEN 1 END) as qualified_leads

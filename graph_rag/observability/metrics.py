@@ -97,7 +97,7 @@ class MetricData:
 class MetricsCollector:
     """
     Comprehensive metrics collection and monitoring system.
-    
+
     Features:
     - Real-time metric collection
     - Alerting based on thresholds
@@ -115,7 +115,7 @@ class MetricsCollector:
     ):
         """
         Initialize the metrics collector.
-        
+
         Args:
             enable_prometheus: Whether to enable Prometheus metrics export
             enable_alerts: Whether to enable alerting system

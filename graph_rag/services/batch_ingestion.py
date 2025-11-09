@@ -85,7 +85,7 @@ class IncrementalIngestionResult(BaseModel):
 class IncrementalIngestion:
     """
     Service for processing large document collections in manageable batches.
-    
+
     Provides progress tracking, error handling, and recovery capabilities
     for sustainable processing of thousands of documents.
     """
@@ -97,7 +97,7 @@ class IncrementalIngestion:
     ):
         """
         Initialize incremental ingestion service.
-        
+
         Args:
             ingestion_service: The base ingestion service to use
             config: Batch processing configuration
@@ -116,13 +116,13 @@ class IncrementalIngestion:
     ) -> IncrementalIngestionResult:
         """
         Process a list of files in batches with progress tracking.
-        
+
         Args:
             file_paths: List of file paths to process
             enable_embeddings: Whether to generate embeddings
             replace_existing: Whether to replace existing documents
             metadata_parser: Optional function to extract metadata from files
-            
+
         Returns:
             IncrementalIngestionResult with processing summary
         """
@@ -395,13 +395,13 @@ class IncrementalIngestion:
     ) -> IncrementalIngestionResult:
         """
         Resume processing from a list of failed files.
-        
+
         Args:
             failed_file_paths: List of file paths that failed in previous run
             enable_embeddings: Whether to generate embeddings
             replace_existing: Whether to replace existing documents
             metadata_parser: Optional function to extract metadata from files
-            
+
         Returns:
             IncrementalIngestionResult with processing summary
         """

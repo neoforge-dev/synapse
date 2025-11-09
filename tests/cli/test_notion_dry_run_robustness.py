@@ -172,15 +172,13 @@ def test_notion_sync_rate_limit_budget_configuration():
 @pytest.mark.asyncio
 async def test_notion_sync_exponential_backoff_ceiling():
     """Test that exponential backoff respects the configured ceiling."""
-    import asyncio
     from unittest.mock import AsyncMock
 
     # Mock a rate-limited client that eventually succeeds
-    mock_client = AsyncMock()
+    AsyncMock()
 
     # Track backoff times
     backoff_times = []
-    original_sleep = asyncio.sleep
 
     async def mock_sleep(delay):
         backoff_times.append(delay)
@@ -197,7 +195,7 @@ async def test_notion_sync_exponential_backoff_ceiling():
 
         # Simulate exponential backoff calculation
         backoff = 1.0
-        for i in range(5):
+        for _i in range(5):
             backoff = min(backoff * 2, max_backoff)
             backoff_times.append(backoff)
 

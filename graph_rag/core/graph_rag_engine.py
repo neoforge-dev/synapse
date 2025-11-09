@@ -862,12 +862,12 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         context_data: tuple | None = None,
     ) -> EnhancedLLMResponse:
         """Generate a synthesized answer with confidence scoring and enhanced metadata.
-        
+
         Args:
             query_text: The user's query
             config: Optional configuration (search_type, limit, etc.)
             context_data: Optional pre-fetched context data
-            
+
         Returns:
             EnhancedLLMResponse with confidence metrics and metadata
         """
@@ -1107,13 +1107,13 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
         self, query_text: str, config: dict[str, Any] | None = None
     ) -> QueryResult:
         """Execute a complete query pipeline with retrieval, synthesis, and response generation.
-        
+
         This method orchestrates the full GraphRAG query process including:
         - Context retrieval from vector and graph stores
         - LLM-based answer synthesis with citations
         - Performance optimization and caching
         - Advanced memory management and conversation context
-        
+
         Args:
             query_text: The user's natural language query
             config: Optional configuration dict with keys:
@@ -1123,14 +1123,14 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
                 - conversation_id: For conversation memory tracking
                 - cache_enabled: Whether to use query caching
                 - citation_style: Citation format preference
-                
+
         Returns:
             QueryResult containing:
                 - answer: Synthesized answer with citations
                 - relevant_chunks: Retrieved context chunks
                 - graph_context: Related entities and relationships
                 - metadata: Performance metrics and processing details
-                
+
         Raises:
             Exception: If context retrieval or LLM synthesis fails
         """
@@ -1387,16 +1387,16 @@ class SimpleGraphRAGEngine(GraphRAGEngine):
     ) -> Any:
         """
         Perform multi-step reasoning for complex questions.
-        
+
         This method creates a MultiStepReasoningEngine and uses it to break down
         complex questions into reasoning steps, execute each step, and synthesize
         a comprehensive answer.
-        
+
         Args:
             question: The complex question to answer
             steps: List of reasoning steps to execute, or None to auto-generate
             config: Configuration options for reasoning
-            
+
         Returns:
             ReasoningResult with the complete reasoning process and final answer
         """
@@ -1627,16 +1627,16 @@ class GraphRAGEngineOrchestrator(GraphRAGEngine):
         self, query_text: str, config: dict[str, Any] | None = None
     ) -> QueryResult:
         """Retrieve context and generate a basic query response with placeholder LLM answer.
-        
+
         This is a simplified implementation that focuses on context retrieval without
         full LLM integration. Used primarily for testing and development scenarios.
-        
+
         Args:
             query_text: The user's natural language query
             config: Optional configuration dict with keys:
                 - search_type: "vector" or "keyword" (default: "vector")
                 - limit: Number of chunks to retrieve (default: 5)
-                
+
         Returns:
             QueryResult with retrieved chunks and placeholder answer
         """
@@ -1755,7 +1755,7 @@ class GraphRAGEngineOrchestrator(GraphRAGEngine):
             )
 
             # Convert extracted entities to graph entities
-            graph_entities = [e for e in extracted_entities]
+            graph_entities = list(extracted_entities)
 
             # Use the graph store to search for entities based on properties
             # Pass the list of ExtractedEntity objects directly

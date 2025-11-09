@@ -116,7 +116,7 @@ async def get_demo_interface():
             <div class="demo-panel">
                 <h2>Interactive Analysis Capabilities</h2>
                 <p>Select an analysis type to see advanced Graph-RAG capabilities in action:</p>
-                
+
                 <div class="analysis-grid">
                     <div class="analysis-card" onclick="runAnalysis('communities')">
                         <h3>🏘️ Community Detection</h3>
@@ -124,35 +124,35 @@ async def get_demo_interface():
                         <div class="metric-badge">Business Impact: High</div>
                         <div class="metric-badge">Technical Complexity: Advanced</div>
                     </div>
-                    
+
                     <div class="analysis-card" onclick="runAnalysis('recommendations')">
                         <h3>🎯 AI Content Recommendations</h3>
                         <p>Generate data-driven content suggestions based on relationship patterns</p>
                         <div class="metric-badge">Engagement Boost: 25-40%</div>
                         <div class="metric-badge">Pipeline Value: $25K+</div>
                     </div>
-                    
+
                     <div class="analysis-card" onclick="runAnalysis('multi_hop')">
                         <h3>🔗 Multi-Hop Analysis</h3>
                         <p>Discover non-obvious connections through sophisticated graph traversal</p>
                         <div class="metric-badge">Unique Insights: 15-30</div>
                         <div class="metric-badge">Depth: 4 Hops</div>
                     </div>
-                    
+
                     <div class="analysis-card" onclick="runAnalysis('gaps')">
                         <h3>💡 Content Gap Analysis</h3>
                         <p>Identify underexplored opportunities using graph intelligence</p>
                         <div class="metric-badge">New Opportunities: 8-12</div>
                         <div class="metric-badge">ROI Potential: $40K+</div>
                     </div>
-                    
+
                     <div class="analysis-card" onclick="runAnalysis('temporal')">
                         <h3>📈 Temporal Pattern Analysis</h3>
                         <p>Predict emerging trends through graph evolution analysis</p>
                         <div class="metric-badge">Prediction Accuracy: 85%+</div>
                         <div class="metric-badge">Lead Time: 3-6 months</div>
                     </div>
-                    
+
                     <div class="analysis-card" onclick="runAnalysis('influence')">
                         <h3>👑 Influence Scoring</h3>
                         <p>Calculate entity influence using advanced centrality algorithms</p>
@@ -207,20 +207,20 @@ async def get_demo_interface():
 
         <script>
             let currentSession = null;
-            
+
             async function runAnalysis(analysisType) {
                 // Highlight selected analysis
                 document.querySelectorAll('.analysis-card').forEach(card => {
                     card.classList.remove('active');
                 });
                 event.currentTarget.classList.add('active');
-                
+
                 // Show loading
                 const resultsContainer = document.getElementById('results-container');
                 const resultsContent = document.getElementById('results-content');
                 resultsContainer.style.display = 'block';
                 resultsContent.innerHTML = '<div class="loading">🔄 Running advanced graph analysis...</div>';
-                
+
                 try {
                     const response = await axios.post('/api/v1/advanced-graph/analyze', {
                         analysis_type: analysisType,
@@ -229,20 +229,20 @@ async def get_demo_interface():
                             include_visualization: true
                         }
                     });
-                    
+
                     displayResults(response.data);
                 } catch (error) {
                     console.error('Analysis error:', error);
                     resultsContent.innerHTML = '<div class="error">⚠️ Analysis temporarily unavailable. This is a demonstration interface.</div>';
-                    
+
                     // Show demo results
                     showDemoResults(analysisType);
                 }
             }
-            
+
             function displayResults(data) {
                 const resultsContent = document.getElementById('results-content');
-                
+
                 let html = `
                     <div class="insight-item">
                         <h3>Analysis: ${data.analysis_type}</h3>
@@ -251,7 +251,7 @@ async def get_demo_interface():
                         <p><strong>Execution Time:</strong> ${data.execution_time_ms}ms</p>
                     </div>
                 `;
-                
+
                 data.results.forEach((result, index) => {
                     html += `
                         <div class="insight-item">
@@ -267,7 +267,7 @@ async def get_demo_interface():
                         </div>
                     `;
                 });
-                
+
                 html += `
                     <div class="insight-item">
                         <h4>Technical Advantages Demonstrated</h4>
@@ -276,13 +276,13 @@ async def get_demo_interface():
                         </ul>
                     </div>
                 `;
-                
+
                 resultsContent.innerHTML = html;
-                
+
                 // Update competitive advantages
                 updateCompetitiveAdvantages(data.technical_advantage);
             }
-            
+
             function showDemoResults(analysisType) {
                 const demoResults = {
                     communities: {
@@ -400,10 +400,10 @@ async def get_demo_interface():
                         ]
                     }
                 };
-                
+
                 displayResults(demoResults[analysisType]);
             }
-            
+
             function updateCompetitiveAdvantages(advantages) {
                 const competitiveList = document.getElementById('competitive-list');
                 let html = '';

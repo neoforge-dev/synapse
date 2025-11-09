@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Multi-Cloud Deployment System  
+Multi-Cloud Deployment System
 Epic 6 Week 3 - AWS + Azure + GCP Enterprise Deployment
 
 Implements enterprise-grade multi-cloud deployment with automated failover,
@@ -133,10 +133,10 @@ class MultiCloudDeploymentSystem:
             deployment_results['total_regions'] = len(self.regions)
 
             # Multi-cloud deployment is successful if we have at least 2 providers
-            providers_deployed = set(
+            providers_deployed = {
                 region['provider'] for region in deployment_results['regions']
                 if region.get('success', False)
-            )
+            }
             deployment_results['providers_deployed'] = list(providers_deployed)
             deployment_results['overall_success'] = len(providers_deployed) >= 2
 

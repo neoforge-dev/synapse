@@ -28,10 +28,10 @@ class ImageProcessor:
 
     async def extract_text_from_image(self, image_path: str) -> str:
         """Extract text from an image file using OCR.
-        
+
         Args:
             image_path: Path to the image file
-            
+
         Returns:
             Extracted text as string, empty string if extraction fails or vision unavailable
         """
@@ -63,10 +63,10 @@ class ImageProcessor:
 
     def is_supported_format(self, file_path: str) -> bool:
         """Check if the image format is supported.
-        
+
         Args:
             file_path: Path to the image file
-            
+
         Returns:
             True if format is supported, False otherwise
         """
@@ -78,10 +78,10 @@ class ImageProcessor:
 
     async def extract_text_from_multiple_images(self, image_paths: list[str]) -> list[str]:
         """Extract text from multiple images.
-        
+
         Args:
             image_paths: List of paths to image files
-            
+
         Returns:
             List of extracted text strings
         """

@@ -320,7 +320,7 @@ class IntegrityCheckJob(MaintenanceJob):
 
         # Test basic search operation
         try:
-            test_results = await self.vector_store.search("test_query", limit=1)
+            await self.vector_store.search("test_query", limit=1)
             results["vector_store_accessible"] = True
             self._log_message("info", "Vector store health check passed")
         except Exception as e:

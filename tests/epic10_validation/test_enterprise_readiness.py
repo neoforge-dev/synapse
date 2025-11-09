@@ -298,7 +298,7 @@ class EnterpriseReadinessValidator:
             for _ in range(num_requests):
                 try:
                     start_time = time.time()
-                    response = requests.get(endpoint, timeout=10)
+                    requests.get(endpoint, timeout=10)
                     end_time = time.time()
                     times.append((end_time - start_time) * 1000)
                 except Exception:

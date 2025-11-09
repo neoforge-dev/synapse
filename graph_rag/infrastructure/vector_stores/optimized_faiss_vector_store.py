@@ -45,7 +45,7 @@ def _normalize(vectors: np.ndarray) -> np.ndarray:
 class OptimizedFaissVectorStore(VectorStore):
     """
     High-performance FAISS-based vector store with advanced optimizations.
-    
+
     Features:
     - Dynamic index selection (Flat, IVF, HNSW) based on dataset size
     - GPU acceleration with automatic fallback
@@ -74,7 +74,7 @@ class OptimizedFaissVectorStore(VectorStore):
     ):
         """
         Initialize the optimized FAISS vector store.
-        
+
         Args:
             path: Storage path for index files
             embedding_dimension: Vector dimension
@@ -458,7 +458,7 @@ class OptimizedFaissVectorStore(VectorStore):
     ) -> list[list[SearchResultData]]:
         """
         High-performance batch search for multiple queries.
-        
+
         This provides significant performance improvements when searching
         multiple queries simultaneously by leveraging FAISS batch operations.
         """
@@ -502,7 +502,7 @@ class OptimizedFaissVectorStore(VectorStore):
 
             # Process results for each query
             all_results = []
-            for query_idx, (scores, indices) in enumerate(zip(scores_batch, indices_batch, strict=False)):
+            for _query_idx, (scores, indices) in enumerate(zip(scores_batch, indices_batch, strict=False)):
                 results = []
                 for score, idx in zip(scores, indices, strict=False):
                     # Validate indices

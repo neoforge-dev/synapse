@@ -334,7 +334,7 @@ class EnterpriseAuthProvider(AuthProvider):
 
             # Map LDAP attributes to user fields
             email = ldap_user.get("mail", f"{username}@{ldap_config.server_uri}")
-            display_name = ldap_user.get("displayName", username)
+            ldap_user.get("displayName", username)
 
             # Get or create user
             user = await self.get_user_by_username(username)

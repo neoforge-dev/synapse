@@ -200,7 +200,7 @@ class EnhancedLinkedInEngine(LinkedInBusinessDevelopmentEngine):
         # Use real performance data to optimize Week 3 posts
         base_week3_posts = self._get_week3_base_posts()
 
-        for i, base_post in enumerate(base_week3_posts):
+        for _i, base_post in enumerate(base_week3_posts):
             # Find best matching strategy
             matching_strategy = self._find_best_strategy_match(base_post)
 

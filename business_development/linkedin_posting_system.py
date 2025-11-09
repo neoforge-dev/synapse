@@ -89,7 +89,7 @@ class LinkedInBusinessDevelopmentEngine:
                 business_objective TEXT,
                 expected_engagement_rate REAL,
                 expected_consultation_inquiries INTEGER,
-                
+
                 -- Real performance metrics
                 impressions INTEGER DEFAULT 0,
                 views INTEGER DEFAULT 0,
@@ -98,18 +98,18 @@ class LinkedInBusinessDevelopmentEngine:
                 shares INTEGER DEFAULT 0,
                 saves INTEGER DEFAULT 0,
                 clicks INTEGER DEFAULT 0,
-                
+
                 -- Business development metrics
                 profile_views INTEGER DEFAULT 0,
                 connection_requests INTEGER DEFAULT 0,
                 dm_inquiries INTEGER DEFAULT 0,
                 consultation_requests INTEGER DEFAULT 0,
-                
+
                 -- Calculated metrics
                 actual_engagement_rate REAL DEFAULT 0.0,
                 business_conversion_rate REAL DEFAULT 0.0,
                 roi_score REAL DEFAULT 0.0,
-                
+
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
@@ -253,8 +253,8 @@ class LinkedInBusinessDevelopmentEngine:
 
                 # Insert into database
                 cursor.execute('''
-                    INSERT OR REPLACE INTO linkedin_posts 
-                    (post_id, content, posted_at, week_theme, day, target_audience, 
+                    INSERT OR REPLACE INTO linkedin_posts
+                    (post_id, content, posted_at, week_theme, day, target_audience,
                      business_objective, expected_engagement_rate, expected_consultation_inquiries)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
@@ -322,7 +322,7 @@ class LinkedInBusinessDevelopmentEngine:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT OR REPLACE INTO consultation_inquiries 
+            INSERT OR REPLACE INTO consultation_inquiries
             (inquiry_id, source_post_id, contact_name, company, company_size,
              inquiry_type, inquiry_channel, inquiry_text, estimated_value,
              priority_score, status, created_at, last_contact, notes)
@@ -337,7 +337,7 @@ class LinkedInBusinessDevelopmentEngine:
 
         # Update post consultation count
         cursor.execute('''
-            UPDATE linkedin_posts 
+            UPDATE linkedin_posts
             SET consultation_requests = consultation_requests + 1
             WHERE post_id = ?
         ''', (inquiry.source_post_id,))
@@ -352,7 +352,7 @@ class LinkedInBusinessDevelopmentEngine:
         cursor = conn.cursor()
 
         query = '''
-            SELECT * FROM linkedin_posts 
+            SELECT * FROM linkedin_posts
             WHERE impressions = 0  -- Not yet posted
         '''
         params = []
@@ -382,7 +382,7 @@ class LinkedInBusinessDevelopmentEngine:
 
         # Get post performance summary
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(*) as total_posts,
                 AVG(actual_engagement_rate) as avg_engagement_rate,
                 SUM(impressions) as total_impressions,
@@ -390,14 +390,14 @@ class LinkedInBusinessDevelopmentEngine:
                 SUM(consultation_requests) as total_consultation_requests,
                 SUM(profile_views) as total_profile_views,
                 SUM(connection_requests) as total_connection_requests
-            FROM linkedin_posts 
+            FROM linkedin_posts
             WHERE impressions > 0
         ''')
         post_summary = cursor.fetchone()
 
         # Get consultation inquiries summary
         cursor.execute('''
-            SELECT 
+            SELECT
                 COUNT(*) as total_inquiries,
                 COUNT(CASE WHEN status = 'discovery_scheduled' THEN 1 END) as discovery_calls,
                 COUNT(CASE WHEN status = 'proposal_sent' THEN 1 END) as proposals_sent,
@@ -411,7 +411,7 @@ class LinkedInBusinessDevelopmentEngine:
         # Get top performing posts
         cursor.execute('''
             SELECT post_id, day, actual_engagement_rate, consultation_requests
-            FROM linkedin_posts 
+            FROM linkedin_posts
             WHERE impressions > 0
             ORDER BY consultation_requests DESC, actual_engagement_rate DESC
             LIMIT 5

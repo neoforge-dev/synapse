@@ -159,7 +159,7 @@ class RateLimiter:
     async def check_rate_limits(self, client_id: str, tenant_id: str,
                               tier: RateLimitTier, request_size_mb: float = 0.0) -> None:
         """Check all rate limits for a client request.
-        
+
         Raises:
             RateLimitExceeded: If any rate limit is exceeded
         """
@@ -171,7 +171,7 @@ class RateLimiter:
 
         # Get tier limits
         limits = self.tier_limits[tier]
-        now = datetime.utcnow()
+        datetime.utcnow()
 
         # Check each rate limit
         for limit_type, rate_limit in limits.items():
@@ -339,7 +339,7 @@ class RateLimiter:
 
         state = self.client_states[client_id]
         limits = self.tier_limits[state.tier]
-        now = datetime.utcnow()
+        datetime.utcnow()
 
         usage = {
             "client_id": client_id,

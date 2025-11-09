@@ -164,7 +164,7 @@ class MobileApprovalSystem:
     <title>Content Approval Dashboard</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
+        body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #f5f5f7;
             color: #1d1d1f;
@@ -262,7 +262,7 @@ class MobileApprovalSystem:
     <div class="header">
         📱 Content Approval Dashboard
     </div>
-    
+
     <div class="stats">
         <div class="stat-grid">
             <div class="stat-item">
@@ -286,19 +286,19 @@ class MobileApprovalSystem:
             <div class="platform-badge {{ approval.platform }}">
                 {{ approval.platform|upper }}
             </div>
-            
+
             <div class="content-preview">
                 {{ approval.content_preview[:200] }}{% if approval.content_preview|length > 200 %}...{% endif %}
             </div>
-            
+
             <div class="scheduled-time">
                 📅 Scheduled: {{ approval.scheduled_time }}
             </div>
-            
+
             <div class="scheduled-time">
                 🎯 {{ approval.business_objective }}
             </div>
-            
+
             <div class="action-buttons">
                 <button class="btn btn-approve" onclick="approveContent('{{ approval.approval_id }}')">
                     ✅ Approve
@@ -312,7 +312,7 @@ class MobileApprovalSystem:
             </div>
         </div>
         {% endfor %}
-        
+
         {% if not approvals %}
         <div class="empty-state">
             <h3>🎉 All caught up!</h3>
@@ -327,19 +327,19 @@ class MobileApprovalSystem:
                 await makeRequest('approve', approvalId);
             }
         }
-        
+
         async function rejectContent(approvalId) {
             const notes = prompt('Rejection reason (optional):');
             await makeRequest('reject', approvalId, { notes });
         }
-        
+
         async function rescheduleContent(approvalId) {
             const newSchedule = prompt('New schedule (YYYY-MM-DD HH:MM):');
             if (newSchedule) {
                 await makeRequest('reschedule', approvalId, { new_schedule: newSchedule });
             }
         }
-        
+
         async function makeRequest(action, approvalId, data = {}) {
             try {
                 const response = await fetch(`/api/${action}/${approvalId}`, {
@@ -347,9 +347,9 @@ class MobileApprovalSystem:
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (result.success) {
                     location.reload(); // Simple refresh for now
                 } else {
@@ -359,7 +359,7 @@ class MobileApprovalSystem:
                 alert('Network error: ' + error.message);
             }
         }
-        
+
         // Auto-refresh every 30 seconds
         setInterval(() => {
             location.reload();
@@ -395,7 +395,7 @@ class MobileApprovalSystem:
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT INTO pending_approvals 
+            INSERT INTO pending_approvals
             (approval_id, content_id, content_preview, platform, scheduled_time,
              business_objective, urgency, expires_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -414,9 +414,9 @@ class MobileApprovalSystem:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT approval_id, content_id, content_preview, platform, 
+            SELECT approval_id, content_id, content_preview, platform,
                    scheduled_time, business_objective, urgency, created_at, expires_at
-            FROM pending_approvals 
+            FROM pending_approvals
             WHERE status = 'pending' AND datetime(expires_at) > datetime('now')
             ORDER BY urgency DESC, created_at ASC
         ''')
@@ -461,8 +461,8 @@ class MobileApprovalSystem:
 
         # Check if approval exists and is pending
         cursor.execute('''
-            SELECT content_id, platform, scheduled_time 
-            FROM pending_approvals 
+            SELECT content_id, platform, scheduled_time
+            FROM pending_approvals
             WHERE approval_id = ? AND status = 'pending'
         ''', (approval_id,))
 
@@ -476,15 +476,15 @@ class MobileApprovalSystem:
         # Update approval status
         new_status = 'approved' if action == 'approve' else 'rejected' if action == 'reject' else 'rescheduled'
         cursor.execute('''
-            UPDATE pending_approvals 
-            SET status = ? 
+            UPDATE pending_approvals
+            SET status = ?
             WHERE approval_id = ?
         ''', (new_status, approval_id))
 
         # Record action
         action_id = str(uuid.uuid4())
         cursor.execute('''
-            INSERT INTO approval_actions 
+            INSERT INTO approval_actions
             (action_id, approval_id, action, approved_by, notes, new_schedule)
             VALUES (?, ?, ?, ?, ?, ?)
         ''', (action_id, approval_id, action, approved_by, notes, new_schedule))
@@ -535,17 +535,17 @@ class MobileApprovalSystem:
 
         # Get pending stats
         cursor.execute('''
-            SELECT COUNT(*), urgency 
-            FROM pending_approvals 
-            WHERE status = 'pending' 
+            SELECT COUNT(*), urgency
+            FROM pending_approvals
+            WHERE status = 'pending'
             GROUP BY urgency
         ''')
         urgency_stats = dict(cursor.fetchall())
 
         # Get action stats
         cursor.execute('''
-            SELECT COUNT(*), action 
-            FROM approval_actions 
+            SELECT COUNT(*), action
+            FROM approval_actions
             WHERE timestamp >= date('now', '-7 days')
             GROUP BY action
         ''')

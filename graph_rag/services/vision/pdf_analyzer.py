@@ -23,7 +23,7 @@ class PDFAnalyzer:
 
     def __init__(self, image_processor: Optional['ImageProcessor'] = None):
         """Initialize the PDFAnalyzer.
-        
+
         Args:
             image_processor: ImageProcessor instance for OCR text extraction
         """
@@ -32,10 +32,10 @@ class PDFAnalyzer:
 
     async def extract_content(self, pdf_path: str) -> dict[str, any]:
         """Extract content from PDF including text and images.
-        
+
         Args:
             pdf_path: Path to the PDF file
-            
+
         Returns:
             Dictionary with keys:
             - 'text': Extracted text content from PDF
@@ -101,11 +101,11 @@ class PDFAnalyzer:
 
     async def _extract_images_from_page(self, page, page_num: int) -> list[str]:
         """Extract images from a PDF page and run OCR on them.
-        
+
         Args:
             page: PyMuPDF page object
             page_num: Page number for logging
-            
+
         Returns:
             List of text strings extracted from images
         """
@@ -157,10 +157,10 @@ class PDFAnalyzer:
 
     def is_pdf_file(self, file_path: str) -> bool:
         """Check if file is a PDF.
-        
+
         Args:
             file_path: Path to check
-            
+
         Returns:
             True if file is PDF, False otherwise
         """

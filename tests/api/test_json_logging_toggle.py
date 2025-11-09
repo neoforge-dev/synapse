@@ -1,6 +1,5 @@
 """Test JSON logging toggle functionality."""
 
-import logging
 import os
 from unittest.mock import patch
 
@@ -50,7 +49,6 @@ def test_json_logging_format_configuration():
     app = FastAPI()
 
     # Capture logging configuration
-    original_basicConfig = logging.basicConfig
     captured_config = {}
 
     def mock_basicConfig(**kwargs):

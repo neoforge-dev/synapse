@@ -1,7 +1,7 @@
 """
 Database Consolidation Validation Tests for Epic 10
 
-This module provides comprehensive testing for database consolidation 
+This module provides comprehensive testing for database consolidation
 from 17+ databases to 3 optimized databases.
 """
 

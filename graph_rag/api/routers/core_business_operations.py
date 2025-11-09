@@ -6,7 +6,7 @@ Business Protection: $1.158M consultation pipeline with 16 contacts
 
 This router consolidates:
 - Documents management (from documents.py)
-- Document ingestion pipeline (from ingestion.py) 
+- Document ingestion pipeline (from ingestion.py)
 - Vector and graph search (from search.py)
 - GraphRAG query processing (from query.py)
 - Epic 7 Sales Automation CRM (from epic7_sales_automation.py)

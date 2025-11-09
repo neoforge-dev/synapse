@@ -335,7 +335,7 @@ class EnterpriseLoadTestFramework:
             self.metrics.throughput_rps = self.metrics.successful_requests / duration
 
         # Calculate per-endpoint metrics
-        for endpoint, metrics in self.endpoint_metrics.items():
+        for _endpoint, metrics in self.endpoint_metrics.items():
             if metrics.total_requests > 0:
                 metrics.error_rate = (metrics.failed_requests / metrics.total_requests) * 100
                 # Note: endpoint-specific response times would require more complex tracking
@@ -582,7 +582,7 @@ class EnterpriseLoadTestRunner:
             ]
 
             # Add specific recommendations based on failure patterns
-            for scenario, result in all_results.items():
+            for _scenario, result in all_results.items():
                 if isinstance(result, dict) and "recommendations" in result:
                     recommendations.extend(result["recommendations"])
 

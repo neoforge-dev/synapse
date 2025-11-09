@@ -48,7 +48,7 @@ def test_store_clear_requires_yes(monkeypatch):
     with patch.object(typer, "echo", side_effect=fake_echo):
         try:
             store_mod.store_clear(confirm=False)
-            assert False, "Expected typer.Exit"
+            raise AssertionError("Expected typer.Exit")
         except typer.Exit as e:
             assert e.exit_code == 1
     assert outputs and "Refusing to clear without --yes" in outputs[0]

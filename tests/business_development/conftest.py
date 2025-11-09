@@ -35,7 +35,7 @@ def temp_business_db():
         db_path = tmp.name
 
     # Initialize the database with proper schema
-    engine = LinkedInBusinessDevelopmentEngine(db_path=db_path)
+    LinkedInBusinessDevelopmentEngine(db_path=db_path)
     yield db_path
 
     # Cleanup

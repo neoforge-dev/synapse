@@ -260,7 +260,7 @@ class SecurityDashboard:
 
                 # Process security events for alerts
                 for event_type, events in recent_events.items():
-                    for event in events[-10:]:  # Check last 10 events
+                    for _event in events[-10:]:  # Check last 10 events
                         security_events_total.labels(
                             event_type=event_type,
                             severity=self._determine_event_severity(event_type)
@@ -533,13 +533,13 @@ def create_dashboard_app(security_dashboard: SecurityDashboard) -> FastAPI:
                     try {
                         const response = await fetch('/api/dashboard');
                         const data = await response.json();
-                        document.getElementById('dashboard-data').innerHTML = 
+                        document.getElementById('dashboard-data').innerHTML =
                             '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
                     } catch (error) {
                         console.error('Error refreshing dashboard:', error);
                     }
                 }
-                
+
                 setInterval(refreshDashboard, 10000); // Refresh every 10 seconds
                 window.onload = refreshDashboard;
             </script>
@@ -549,7 +549,7 @@ def create_dashboard_app(security_dashboard: SecurityDashboard) -> FastAPI:
                 <h1>🔒 Synapse Security Dashboard</h1>
                 <p>Real-time Zero-Trust Security Monitoring</p>
             </div>
-            
+
             <div id="dashboard-data">
                 Loading security metrics...
             </div>

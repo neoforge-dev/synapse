@@ -921,7 +921,7 @@ class PerformanceMetricsOrchestrator:
     def generate_comprehensive_dashboard(self) -> dict[str, Any]:
         """Generate comprehensive operational excellence dashboard"""
         overall_health = self.calculate_overall_health_score()
-        client_success = self.generate_client_success_dashboard()
+        self.generate_client_success_dashboard()
         capacity_analysis = self.generate_capacity_planning_analysis()
 
         return {

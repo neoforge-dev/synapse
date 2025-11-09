@@ -110,7 +110,7 @@ class BatchOperationsService:
         enable_progress_callback: bool = True
     ):
         """Initialize batch operations service.
-        
+
         Args:
             ingestion_service: Service for document ingestion
             search_service: Service for advanced search operations
@@ -139,11 +139,11 @@ class BatchOperationsService:
         progress_callback: Callable[[int, int], None] | None = None
     ) -> BatchOperationResult:
         """Ingest multiple documents in batch.
-        
+
         Args:
             request: Batch ingestion request
             progress_callback: Optional callback for progress updates
-            
+
         Returns:
             BatchOperationResult with ingestion results
         """
@@ -281,11 +281,11 @@ class BatchOperationsService:
         progress_callback: Callable[[int, int], None] | None = None
     ) -> BatchOperationResult:
         """Perform batch search operations.
-        
+
         Args:
             request: Batch search request
             progress_callback: Optional callback for progress updates
-            
+
         Returns:
             BatchOperationResult with search results
         """
@@ -431,11 +431,11 @@ class BatchOperationsService:
         progress_callback: Callable[[int, int], None] | None = None
     ) -> BatchOperationResult:
         """Generate embeddings for multiple texts in batch.
-        
+
         Args:
             texts: List of texts to generate embeddings for
             progress_callback: Optional callback for progress updates
-            
+
         Returns:
             BatchOperationResult with embedding results
         """
@@ -541,11 +541,11 @@ class BatchOperationsService:
         progress_callback: Callable[[int, int], None] | None = None
     ) -> BatchOperationResult:
         """Delete multiple documents in batch.
-        
+
         Args:
             document_ids: List of document IDs to delete
             progress_callback: Optional callback for progress updates
-            
+
         Returns:
             BatchOperationResult with deletion results
         """
@@ -662,10 +662,10 @@ class BatchOperationsService:
         results: list[BatchOperationResult]
     ) -> dict[str, Any]:
         """Generate statistics from batch operation results.
-        
+
         Args:
             results: List of batch operation results
-            
+
         Returns:
             Dictionary with comprehensive statistics
         """

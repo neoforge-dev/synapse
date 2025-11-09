@@ -86,9 +86,9 @@ async def get_document_statistics(graph_repo: MemgraphGraphRepository) -> dict[s
 
     # Get documents by category
     category_query = """
-    MATCH (d:Document) 
-    WHERE d.category IS NOT NULL 
-    RETURN d.category as category, count(d) as count 
+    MATCH (d:Document)
+    WHERE d.category IS NOT NULL
+    RETURN d.category as category, count(d) as count
     ORDER BY count DESC
     """
     category_result = await graph_repo.execute_query(category_query)
@@ -96,8 +96,8 @@ async def get_document_statistics(graph_repo: MemgraphGraphRepository) -> dict[s
 
     # Get documents by data type
     type_query = """
-    MATCH (d:Document) 
-    WHERE d.data_type IS NOT NULL 
+    MATCH (d:Document)
+    WHERE d.data_type IS NOT NULL
     RETURN d.data_type as data_type, count(d) as count
     """
     type_result = await graph_repo.execute_query(type_query)
@@ -105,8 +105,8 @@ async def get_document_statistics(graph_repo: MemgraphGraphRepository) -> dict[s
 
     # Get chunk statistics
     chunk_query = """
-    MATCH (c:Chunk) 
-    RETURN count(c) as total_chunks, 
+    MATCH (c:Chunk)
+    RETURN count(c) as total_chunks,
            avg(size(c.content)) as avg_chunk_size,
            min(size(c.content)) as min_chunk_size,
            max(size(c.content)) as max_chunk_size
@@ -126,7 +126,7 @@ async def get_entity_statistics(graph_repo: MemgraphGraphRepository) -> dict[str
 
     # Get all entity type labels (excluding Document, Chunk, Topic)
     entity_labels_query = """
-    MATCH (n) 
+    MATCH (n)
     WHERE NOT n:Document AND NOT n:Chunk AND NOT n:Topic
     WITH DISTINCT labels(n) as node_labels
     UNWIND node_labels as label
@@ -138,7 +138,7 @@ async def get_entity_statistics(graph_repo: MemgraphGraphRepository) -> dict[str
 
     # Get total entity count by counting all nodes that are not Document, Chunk, or Topic
     total_entities_query = """
-    MATCH (e) 
+    MATCH (e)
     WHERE NOT e:Document AND NOT e:Chunk AND NOT e:Topic
     RETURN count(e) as total
     """
@@ -177,8 +177,8 @@ async def get_relationship_statistics(graph_repo: MemgraphGraphRepository) -> di
 
     # Get relationship type counts
     rel_type_query = """
-    MATCH ()-[r]->() 
-    RETURN type(r) as relationship_type, count(r) as count 
+    MATCH ()-[r]->()
+    RETURN type(r) as relationship_type, count(r) as count
     ORDER BY count DESC
     """
     rel_type_result = await graph_repo.execute_query(rel_type_query)
@@ -208,8 +208,8 @@ async def get_content_insights(graph_repo: MemgraphGraphRepository) -> dict[str,
     # Get technology mentions
     tech_query = """
     MATCH (e)-[:MENTIONS]-(c:Chunk)
-    WHERE NOT e:Document AND NOT e:Chunk AND NOT e:Topic 
-       AND (labels(e)[0] IN ['ORG', 'PRODUCT', 'TECHNOLOGY'] 
+    WHERE NOT e:Document AND NOT e:Chunk AND NOT e:Topic
+       AND (labels(e)[0] IN ['ORG', 'PRODUCT', 'TECHNOLOGY']
        OR toLower(e.name) =~ '.*(react|python|javascript|typescript|docker|kubernetes|aws|azure|api|database|sql|nosql|microservice|blockchain|ai|ml|machine learning|fastapi|django|flask).*')
     RETURN e.name as technology, count(*) as mentions
     ORDER BY mentions DESC LIMIT 15
@@ -220,7 +220,7 @@ async def get_content_insights(graph_repo: MemgraphGraphRepository) -> dict[str,
     # Get business concepts
     business_query = """
     MATCH (e)-[:MENTIONS]-(c:Chunk)
-    WHERE NOT e:Document AND NOT e:Chunk AND NOT e:Topic 
+    WHERE NOT e:Document AND NOT e:Chunk AND NOT e:Topic
        AND toLower(e.name) =~ '.*(strategy|business|client|customer|revenue|growth|marketing|sales|product|service|solution|development|consulting|freelancing|startup|mvp|prototype).*'
     RETURN e.name as concept, count(*) as mentions
     ORDER BY mentions DESC LIMIT 15
@@ -344,22 +344,22 @@ def generate_html_dashboard(data: dict) -> str:
     <div class="container">
         <h1>📊 Knowledge Base Dashboard</h1>
         <p>Generated at: {data.get('generated_at', 'Unknown')}</p>
-        
+
         <div class="stats">
             <h3>📚 Document Overview</h3>
             <div class="stat-item">Total Documents: <strong>{data['document_stats']['total_documents']}</strong></div>
             <div class="stat-item">Total Entities: <strong>{data['entity_stats']['total_entities']}</strong></div>
             <div class="stat-item">Total Chunks: <strong>{data['document_stats']['chunk_stats'].get('total_chunks', 'N/A')}</strong></div>
         </div>
-        
+
         <div class="chart-container">
             <canvas id="categoriesChart"></canvas>
         </div>
-        
+
         <div class="chart-container">
             <canvas id="entityTypesChart"></canvas>
         </div>
-        
+
         <script>
             // Categories Chart
             const categoriesData = {json.dumps(list(data['document_stats']['categories'].items())[:10])};
@@ -379,7 +379,7 @@ def generate_html_dashboard(data: dict) -> str:
                     }}
                 }}
             }});
-            
+
             // Entity Types Chart
             const entityTypesData = {json.dumps(list(data['entity_stats']['entity_types'].items())[:8])};
             const entityTypesChart = new Chart(document.getElementById('entityTypesChart'), {{

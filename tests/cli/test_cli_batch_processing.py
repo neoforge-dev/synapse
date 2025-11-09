@@ -63,8 +63,8 @@ def test_auto_batch_processing_for_large_collections(runner, large_test_director
     """Test that batch processing is automatically enabled for large collections."""
     # Mock the database connections to avoid actual database calls
     with patch('graph_rag.api.dependencies.create_graph_repository') as mock_repo, \
-         patch('graph_rag.api.dependencies.create_embedding_service') as mock_embed, \
-         patch('graph_rag.api.dependencies.create_vector_store') as mock_vector:
+         patch('graph_rag.api.dependencies.create_embedding_service'), \
+         patch('graph_rag.api.dependencies.create_vector_store'):
 
         # Configure mocks
         mock_repo_instance = mock_repo.return_value
@@ -91,8 +91,8 @@ def test_auto_batch_processing_for_large_collections(runner, large_test_director
 def test_manual_batch_processing_enable(runner, small_test_directory):
     """Test manually enabling batch processing with --batch flag."""
     with patch('graph_rag.api.dependencies.create_graph_repository') as mock_repo, \
-         patch('graph_rag.api.dependencies.create_embedding_service') as mock_embed, \
-         patch('graph_rag.api.dependencies.create_vector_store') as mock_vector:
+         patch('graph_rag.api.dependencies.create_embedding_service'), \
+         patch('graph_rag.api.dependencies.create_vector_store'):
 
         # Configure mocks
         mock_repo_instance = mock_repo.return_value
@@ -120,8 +120,8 @@ def test_manual_batch_processing_enable(runner, small_test_directory):
 def test_manual_batch_processing_disable(runner, large_test_directory):
     """Test manually disabling batch processing with --no-batch flag."""
     with patch('graph_rag.api.dependencies.create_graph_repository') as mock_repo, \
-         patch('graph_rag.api.dependencies.create_embedding_service') as mock_embed, \
-         patch('graph_rag.api.dependencies.create_vector_store') as mock_vector:
+         patch('graph_rag.api.dependencies.create_embedding_service'), \
+         patch('graph_rag.api.dependencies.create_vector_store'):
 
         # Configure mocks
         mock_repo_instance = mock_repo.return_value
@@ -149,8 +149,8 @@ def test_manual_batch_processing_disable(runner, large_test_directory):
 def test_custom_batch_size(runner, small_test_directory):
     """Test using custom batch size."""
     with patch('graph_rag.api.dependencies.create_graph_repository') as mock_repo, \
-         patch('graph_rag.api.dependencies.create_embedding_service') as mock_embed, \
-         patch('graph_rag.api.dependencies.create_vector_store') as mock_vector:
+         patch('graph_rag.api.dependencies.create_embedding_service'), \
+         patch('graph_rag.api.dependencies.create_vector_store'):
 
         # Configure mocks
         mock_repo_instance = mock_repo.return_value
@@ -205,8 +205,8 @@ def test_batch_processing_performance_characteristics(runner):
             file_path.write_text(f"# Performance Test {i}\nContent for performance testing document {i}.")
 
         with patch('graph_rag.api.dependencies.create_graph_repository') as mock_repo, \
-             patch('graph_rag.api.dependencies.create_embedding_service') as mock_embed, \
-             patch('graph_rag.api.dependencies.create_vector_store') as mock_vector:
+             patch('graph_rag.api.dependencies.create_embedding_service'), \
+             patch('graph_rag.api.dependencies.create_vector_store'):
 
             # Configure mocks
             mock_repo_instance = mock_repo.return_value
@@ -256,8 +256,8 @@ def test_batch_processing_with_include_exclude_filters(runner):
             py_file.write_text(f"# Python script {i}\nprint('hello')")
 
         with patch('graph_rag.api.dependencies.create_graph_repository') as mock_repo, \
-             patch('graph_rag.api.dependencies.create_embedding_service') as mock_embed, \
-             patch('graph_rag.api.dependencies.create_vector_store') as mock_vector:
+             patch('graph_rag.api.dependencies.create_embedding_service'), \
+             patch('graph_rag.api.dependencies.create_vector_store'):
 
             # Configure mocks
             mock_repo_instance = mock_repo.return_value
@@ -302,8 +302,8 @@ def test_batch_processing_error_handling(runner):
 def test_batch_size_validation(runner, small_test_directory):
     """Test that batch size is validated."""
     with patch('graph_rag.api.dependencies.create_graph_repository') as mock_repo, \
-         patch('graph_rag.api.dependencies.create_embedding_service') as mock_embed, \
-         patch('graph_rag.api.dependencies.create_vector_store') as mock_vector:
+         patch('graph_rag.api.dependencies.create_embedding_service'), \
+         patch('graph_rag.api.dependencies.create_vector_store'):
 
         # Configure mocks
         mock_repo_instance = mock_repo.return_value

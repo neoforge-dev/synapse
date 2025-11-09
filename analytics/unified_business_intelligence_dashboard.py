@@ -70,25 +70,25 @@ class UnifiedBusinessIntelligenceDashboard:
                     CREATE TABLE IF NOT EXISTS real_time_business_metrics (
                         metric_id SERIAL PRIMARY KEY,
                         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    
+
                     -- Content Performance
                     daily_posts INTEGER DEFAULT 0,
                     avg_engagement_rate REAL DEFAULT 0,
                     total_impressions INTEGER DEFAULT 0,
                     viral_posts INTEGER DEFAULT 0,
-                    
-                    -- Business Development  
+
+                    -- Business Development
                     consultation_inquiries INTEGER DEFAULT 0,
                     pipeline_value_usd REAL DEFAULT 0,
                     conversion_rate REAL DEFAULT 0,
                     avg_deal_size REAL DEFAULT 0,
-                    
+
                     -- Graph-RAG Insights
                     graph_insights_generated INTEGER DEFAULT 0,
                     high_priority_insights INTEGER DEFAULT 0,
                     predictions_accuracy REAL DEFAULT 0,
                     optimization_opportunities INTEGER DEFAULT 0,
-                    
+
                     -- System Performance
                     api_response_time_ms REAL DEFAULT 0,
                     analytics_processing_time_s REAL DEFAULT 0,
@@ -101,23 +101,23 @@ class UnifiedBusinessIntelligenceDashboard:
                     CREATE TABLE IF NOT EXISTS business_funnel_metrics (
                         funnel_id SERIAL PRIMARY KEY,
                         date DATE DEFAULT CURRENT_DATE,
-                        
+
                         -- Top of Funnel
                         linkedin_impressions INTEGER DEFAULT 0,
                         profile_visits INTEGER DEFAULT 0,
                         content_engagement INTEGER DEFAULT 0,
-                        
-                        -- Middle of Funnel  
+
+                        -- Middle of Funnel
                         consultation_inquiries INTEGER DEFAULT 0,
                         discovery_calls_scheduled INTEGER DEFAULT 0,
                         discovery_calls_completed INTEGER DEFAULT 0,
-                        
+
                         -- Bottom of Funnel
                         proposals_sent INTEGER DEFAULT 0,
                         proposals_accepted INTEGER DEFAULT 0,
                         deals_closed INTEGER DEFAULT 0,
                         revenue_generated REAL DEFAULT 0,
-                        
+
                         -- Conversion Rates
                         impression_to_inquiry_rate REAL DEFAULT 0,
                         inquiry_to_call_rate REAL DEFAULT 0,
@@ -442,7 +442,7 @@ class UnifiedBusinessIntelligenceDashboard:
         real_time = self.get_real_time_metrics()
         funnel = self.get_business_funnel_metrics()
         insights = self.get_latest_graph_insights()
-        predictions = self.get_consultation_predictions()
+        self.get_consultation_predictions()
         optimizations = self.get_autonomous_optimizations()
 
         # Calculate comprehensive ROI metrics
@@ -514,7 +514,7 @@ class UnifiedBusinessIntelligenceDashboard:
             # Get today's metrics
             today = datetime.now().date().isoformat()
             linkedin_cursor.execute('''
-                SELECT 
+                SELECT
                     COUNT(*) as posts_today,
                     AVG(actual_engagement_rate) as avg_engagement,
                     SUM(impressions) as total_impressions,
@@ -631,11 +631,11 @@ DASHBOARD_HTML_TEMPLATE = '''
     <title>Unified Business Intelligence Dashboard - Epic 3</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { 
-            font-family: 'Segoe UI', Arial, sans-serif; 
-            margin: 0; 
-            padding: 20px; 
-            background-color: #f5f5f5; 
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
         }
         .dashboard-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -810,7 +810,7 @@ DASHBOARD_HTML_TEMPLATE = '''
                     data: [145000, 8420, 47, 28, 18, 8],
                     backgroundColor: [
                         '#667eea',
-                        '#764ba2', 
+                        '#764ba2',
                         '#f093fb',
                         '#f5576c',
                         '#4facfe',
@@ -870,17 +870,17 @@ DASHBOARD_HTML_TEMPLATE = '''
             try {
                 const response = await fetch('/api/real-time-metrics');
                 const data = await response.json();
-                
+
                 // Update metric cards
-                document.getElementById('engagementRate').textContent = 
+                document.getElementById('engagementRate').textContent =
                     (data.content_performance.avg_engagement_rate * 100).toFixed(1) + '%';
-                document.getElementById('consultationInquiries').textContent = 
+                document.getElementById('consultationInquiries').textContent =
                     data.business_development.consultation_inquiries_today;
-                document.getElementById('pipelineValue').textContent = 
+                document.getElementById('pipelineValue').textContent =
                     '$' + (data.business_development.pipeline_value_today / 1000) + 'K';
-                document.getElementById('graphInsights').textContent = 
+                document.getElementById('graphInsights').textContent =
                     data.graph_rag_analytics.insights_generated_today;
-                
+
                 console.log('Dashboard data refreshed successfully');
             } catch (error) {
                 console.error('Failed to refresh data:', error);
@@ -889,7 +889,7 @@ DASHBOARD_HTML_TEMPLATE = '''
 
         // Auto-refresh every 5 minutes
         setInterval(refreshAllData, 300000);
-        
+
         // Initial load
         refreshAllData();
     </script>

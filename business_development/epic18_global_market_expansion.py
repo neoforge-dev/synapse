@@ -1423,7 +1423,7 @@ class GlobalMarketExpansionEngine:
         # Save global markets
         for market in self.target_regions:
             cursor.execute('''
-                INSERT OR REPLACE INTO global_markets 
+                INSERT OR REPLACE INTO global_markets
                 (region_id, region_name, countries, fortune500_targets, market_size_billions,
                  digital_maturity_score, regulatory_complexity, competitive_intensity,
                  entry_strategy, investment_required, projected_arr, time_to_market_months,

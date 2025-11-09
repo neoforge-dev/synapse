@@ -254,7 +254,7 @@ class CrossPlatformCorrelator:
 
         # Compare each piece of content with others
         for i, content1 in enumerate(all_content):
-            for j, content2 in enumerate(all_content[i+1:], i+1):
+            for _j, content2 in enumerate(all_content[i+1:], i+1):
                 # Skip if same platform and not iteration type
                 if content1.platform == content2.platform:
                     continue
@@ -488,7 +488,7 @@ class CrossPlatformCorrelator:
 
         # Find Notion content that hasn't been published to LinkedIn
         notion_content = [c for c in self.content_cache.values() if c.platform == ContentPlatform.NOTION]
-        linkedin_content = [c for c in self.content_cache.values() if c.platform == ContentPlatform.LINKEDIN]
+        [c for c in self.content_cache.values() if c.platform == ContentPlatform.LINKEDIN]
 
         for notion_item in notion_content:
             # Check if there's related LinkedIn content

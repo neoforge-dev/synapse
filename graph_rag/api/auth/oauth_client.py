@@ -91,7 +91,7 @@ class EnterpriseOAuthClient:
 
     def generate_pkce_challenge(self) -> tuple[str, str]:
         """Generate PKCE code challenge and verifier for enhanced security.
-        
+
         Returns:
             tuple: (code_verifier, code_challenge)
         """
@@ -104,13 +104,13 @@ class EnterpriseOAuthClient:
     def create_authorization_url(self, provider: SSOProvider, redirect_uri: str,
                                scopes: list[str] | None = None, use_pkce: bool = True) -> tuple[str, OAuthState]:
         """Create OAuth 2.0 authorization URL with enterprise security features.
-        
+
         Args:
             provider: Enterprise SSO provider configuration
             redirect_uri: OAuth callback URL
             scopes: OAuth scopes to request
             use_pkce: Use PKCE for enhanced security
-            
+
         Returns:
             tuple: (authorization_url, oauth_state)
         """
@@ -166,12 +166,12 @@ class EnterpriseOAuthClient:
 
     async def exchange_authorization_code(self, code: str, state: str, provider: SSOProvider) -> OIDCTokenResponse:
         """Exchange authorization code for access token and ID token.
-        
+
         Args:
             code: Authorization code from OAuth provider
             state: State parameter for CSRF validation
             provider: Enterprise SSO provider configuration
-            
+
         Returns:
             OIDCTokenResponse: Token response from provider
         """
@@ -235,11 +235,11 @@ class EnterpriseOAuthClient:
 
     async def get_user_info(self, access_token: str, provider: SSOProvider) -> OIDCUserInfo:
         """Get user information from OAuth provider.
-        
+
         Args:
             access_token: Access token from OAuth provider
             provider: Enterprise SSO provider configuration
-            
+
         Returns:
             OIDCUserInfo: User information from provider
         """
@@ -275,12 +275,12 @@ class EnterpriseOAuthClient:
     def parse_id_token(self, id_token: str, provider: SSOProvider,
                       validate_signature: bool = False) -> IDTokenClaims:
         """Parse and validate OpenID Connect ID token.
-        
+
         Args:
             id_token: JWT ID token from provider
             provider: Enterprise SSO provider configuration
             validate_signature: Whether to validate JWT signature (requires provider public key)
-            
+
         Returns:
             IDTokenClaims: Parsed ID token claims
         """
@@ -305,12 +305,12 @@ class EnterpriseOAuthClient:
     def map_oidc_user_to_synapse_user(self, userinfo: OIDCUserInfo, id_token: IDTokenClaims | None,
                                      provider: SSOProvider) -> User:
         """Map OpenID Connect user information to Synapse User object.
-        
+
         Args:
             userinfo: User information from provider
             id_token: ID token claims (optional)
             provider: Enterprise SSO provider configuration
-            
+
         Returns:
             User: Synapse user object
         """
@@ -367,11 +367,11 @@ class EnterpriseOAuthClient:
 
     async def refresh_access_token(self, refresh_token: str, provider: SSOProvider) -> OIDCTokenResponse:
         """Refresh access token using refresh token.
-        
+
         Args:
             refresh_token: Refresh token from previous authentication
             provider: Enterprise SSO provider configuration
-            
+
         Returns:
             OIDCTokenResponse: New token response
         """
@@ -418,11 +418,11 @@ class EnterpriseOAuthClient:
 
     def cleanup_expired_states(self) -> int:
         """Clean up expired OAuth states.
-        
+
         Returns:
             int: Number of states cleaned up
         """
-        now = datetime.utcnow()
+        datetime.utcnow()
         expired_states = [
             state for state, oauth_state in self.states.items()
             if oauth_state.is_expired()

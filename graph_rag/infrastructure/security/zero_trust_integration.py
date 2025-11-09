@@ -240,7 +240,7 @@ class ZeroTrustSecurityManager:
             identity = self._create_identity_from_session(session_info)
 
             # Convert resource type and access level to enums
-            resource_type_enum = self._convert_resource_type(resource_type)
+            self._convert_resource_type(resource_type)
             access_level_enum = self._convert_access_level(access_level)
 
             # Perform access check

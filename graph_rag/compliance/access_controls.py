@@ -585,7 +585,7 @@ class ComplianceAccessController:
                         (datetime.utcnow() - s.created_at).total_seconds() < 300]  # Last 5 minutes
 
         if len(recent_logins) > 1:
-            unique_ips = set(s.source_ip for s in recent_logins)
+            unique_ips = {s.source_ip for s in recent_logins}
             if len(unique_ips) > 1:
                 session.add_anomaly("multiple_concurrent_ips")
                 logger.warning(f"Multiple concurrent IPs for user {user_id}: {unique_ips}")

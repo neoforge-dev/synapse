@@ -178,12 +178,12 @@ class BusinessContinuityValidator:
                         with conn.cursor() as cur:
                             # Check if pipeline data exists and is consistent
                             cur.execute("""
-                                SELECT 
+                                SELECT
                                     COUNT(*) as consultation_count,
                                     COALESCE(SUM(estimated_value), 0) as total_value,
                                     MAX(last_updated) as last_update
-                                FROM information_schema.tables 
-                                WHERE table_schema = 'business' 
+                                FROM information_schema.tables
+                                WHERE table_schema = 'business'
                                 AND table_name = 'consultations'
                             """)
 
@@ -201,7 +201,7 @@ class BusinessContinuityValidator:
                             # Test data encryption by inserting test record
                             cur.execute("""
                                 CREATE SCHEMA IF NOT EXISTS bc_validation;
-                                
+
                                 CREATE TABLE IF NOT EXISTS bc_validation.pipeline_test (
                                     id SERIAL PRIMARY KEY,
                                     test_data JSONB,
@@ -214,7 +214,7 @@ class BusinessContinuityValidator:
                             # Insert encrypted test data
                             encrypted_data = self.encrypt_sensitive_data(json.dumps(test_pipeline_data))
                             cur.execute("""
-                                INSERT INTO bc_validation.pipeline_test 
+                                INSERT INTO bc_validation.pipeline_test
                                 (test_data, data_hash, encrypted_field)
                                 VALUES (%s, %s, %s)
                                 RETURNING id;
@@ -228,8 +228,8 @@ class BusinessContinuityValidator:
 
                             # Verify encryption and decryption
                             cur.execute("""
-                                SELECT encrypted_field, data_hash 
-                                FROM bc_validation.pipeline_test 
+                                SELECT encrypted_field, data_hash
+                                FROM bc_validation.pipeline_test
                                 WHERE id = %s
                             """, (test_id,))
 
@@ -259,10 +259,10 @@ class BusinessContinuityValidator:
             # Analyze validation results
             if len(validation_result['regions_validated']) >= 2:  # At least primary + one replica
                 validation_result['success'] = True
-                validation_result['data_consistency'] = len(set(
+                validation_result['data_consistency'] = len({
                     regional_data[r].get('total_value', 0)
                     for r in validation_result['regions_validated']
-                )) <= 1  # Values should be consistent
+                }) <= 1  # Values should be consistent
 
                 validation_result['encryption_verified'] = all(
                     regional_data[r].get('encryption_verified', False)
@@ -498,7 +498,7 @@ class BusinessContinuityValidator:
             healthy_connections = 0
             total_connections = len(DB_ENDPOINTS)
 
-            for region, endpoint in DB_ENDPOINTS.items():
+            for _region, endpoint in DB_ENDPOINTS.items():
                 try:
                     conn = self.get_secure_db_connection(endpoint)
                     if conn:

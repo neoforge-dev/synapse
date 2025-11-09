@@ -263,7 +263,7 @@ class TestLoadTesting:
                 asyncio.set_event_loop(loop)
 
                 tasks = [stress_operation() for _ in range(load_level)]
-                results = loop.run_until_complete(asyncio.gather(*tasks))
+                loop.run_until_complete(asyncio.gather(*tasks))
 
                 end_time = time.perf_counter()
                 duration = end_time - start_time
@@ -475,7 +475,7 @@ class TestResourceUtilization:
         cpu_measurements = []
 
         # Simple CPU-intensive task simulation
-        for i in range(10):
+        for _i in range(10):
             cpu_percent = psutil.cpu_percent(interval=0.1)
             cpu_measurements.append(cpu_percent)
 

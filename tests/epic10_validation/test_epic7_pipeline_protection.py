@@ -1,7 +1,7 @@
 """
 Epic 7 Pipeline Protection Validation Tests
 
-This module validates that Epic 7's $1,158,000 consultation pipeline 
+This module validates that Epic 7's $1,158,000 consultation pipeline
 is protected during Epic 10 consolidation activities.
 """
 
@@ -113,14 +113,14 @@ class Epic7PipelineValidator:
 
             # Get qualified contacts (Epic 7 specific)
             cursor.execute("""
-                SELECT COUNT(*) FROM contacts 
+                SELECT COUNT(*) FROM contacts
                 WHERE status IN ('qualified', 'consultation_requested', 'proposal_sent')
             """)
             qualified_count = cursor.fetchone()[0] if cursor.fetchone() else 0
 
             # Get recent contacts (last 30 days)
             cursor.execute("""
-                SELECT COUNT(*) FROM contacts 
+                SELECT COUNT(*) FROM contacts
                 WHERE created_date >= datetime('now', '-30 days')
             """)
             recent_count = cursor.fetchone()[0] if cursor.fetchone() else 0
@@ -146,7 +146,7 @@ class Epic7PipelineValidator:
 
             # Get total pipeline value
             cursor.execute("""
-                SELECT SUM(value) FROM opportunities 
+                SELECT SUM(value) FROM opportunities
                 WHERE status IN ('active', 'qualified', 'proposal', 'negotiation')
             """)
             result = cursor.fetchone()
@@ -154,8 +154,8 @@ class Epic7PipelineValidator:
 
             # Get opportunity count by stage
             cursor.execute("""
-                SELECT status, COUNT(*), SUM(value) 
-                FROM opportunities 
+                SELECT status, COUNT(*), SUM(value)
+                FROM opportunities
                 GROUP BY status
             """)
             stages = {}
@@ -164,7 +164,7 @@ class Epic7PipelineValidator:
 
             # Get high-value opportunities (>$50k)
             cursor.execute("""
-                SELECT COUNT(*) FROM opportunities 
+                SELECT COUNT(*) FROM opportunities
                 WHERE value >= 50000 AND status IN ('active', 'qualified', 'proposal')
             """)
             high_value_count = cursor.fetchone()[0] if cursor.fetchone() else 0
@@ -192,7 +192,7 @@ class Epic7PipelineValidator:
 
             # Get active proposals
             cursor.execute("""
-                SELECT COUNT(*) FROM proposals 
+                SELECT COUNT(*) FROM proposals
                 WHERE status IN ('sent', 'under_review', 'negotiation')
             """)
             active_count = cursor.fetchone()[0] if cursor.fetchone() else 0
@@ -225,7 +225,7 @@ class Epic7PipelineValidator:
 
             # Get active campaigns
             cursor.execute("""
-                SELECT COUNT(*) FROM campaigns 
+                SELECT COUNT(*) FROM campaigns
                 WHERE status = 'active' AND end_date >= date('now')
             """)
             active_count = cursor.fetchone()[0] if cursor.fetchone() else 0
@@ -247,7 +247,7 @@ class Epic7PipelineValidator:
 
             # Check for Epic 7 metadata markers
             cursor.execute("""
-                SELECT COUNT(*) FROM contacts 
+                SELECT COUNT(*) FROM contacts
                 WHERE source LIKE '%epic7%' OR tags LIKE '%epic7%'
             """)
             result = cursor.fetchone()
@@ -255,7 +255,7 @@ class Epic7PipelineValidator:
 
             # Check for LinkedIn integration data
             cursor.execute("""
-                SELECT COUNT(*) FROM contacts 
+                SELECT COUNT(*) FROM contacts
                 WHERE linkedin_profile IS NOT NULL AND linkedin_profile != ''
             """)
             result = cursor.fetchone()
@@ -263,7 +263,7 @@ class Epic7PipelineValidator:
 
             # Check for consultation inquiry tracking
             cursor.execute("""
-                SELECT COUNT(*) FROM opportunities 
+                SELECT COUNT(*) FROM opportunities
                 WHERE opportunity_type = 'consultation' OR description LIKE '%consultation%'
             """)
             result = cursor.fetchone()

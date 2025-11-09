@@ -424,7 +424,7 @@ class DatabasePerformanceManager:
         """Initialize async connection pools"""
         logger.info("🚀 Initializing async connection pools...")
 
-        for db_name, async_pool in self.async_pools.items():
+        for _db_name, async_pool in self.async_pools.items():
             await async_pool.create_pool()
 
         logger.info("✅ All async pools initialized")
@@ -560,7 +560,7 @@ class DatabasePerformanceManager:
         """Close all connection pools"""
         logger.info("🔒 Closing all connection pools...")
 
-        for db_name, pool in self.pools.items():
+        for _db_name, pool in self.pools.items():
             pool.close()
 
         logger.info("✅ All connection pools closed")
@@ -569,7 +569,7 @@ class DatabasePerformanceManager:
         """Close all async connection pools"""
         logger.info("🔒 Closing all async connection pools...")
 
-        for db_name, async_pool in self.async_pools.items():
+        for _db_name, async_pool in self.async_pools.items():
             await async_pool.close()
 
         logger.info("✅ All async connection pools closed")
@@ -593,14 +593,6 @@ async def main():
         logger.info("🔍 Testing consultation pipeline query performance...")
 
         # Simulate consultation pipeline query
-        consultation_query = """
-            SELECT 
-                COUNT(*) as total_inquiries,
-                SUM(estimated_value) as total_pipeline_value
-            FROM consultation_inquiries 
-            WHERE status IN ('new', 'qualified', 'proposal')
-              AND created_at >= CURRENT_DATE - INTERVAL '30 days'
-        """
 
         # Execute with monitoring (would work when databases are available)
         # result = performance_manager.execute_query_with_monitoring(

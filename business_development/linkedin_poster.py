@@ -28,9 +28,9 @@ class LinkedInPosterInterface:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT post_id, day, business_objective, expected_engagement_rate, 
+            SELECT post_id, day, business_objective, expected_engagement_rate,
                    expected_consultation_inquiries, posted_at
-            FROM linkedin_posts 
+            FROM linkedin_posts
             WHERE impressions = 0
             ORDER BY posted_at
         ''')
@@ -135,7 +135,7 @@ class LinkedInPosterInterface:
         cursor = conn.cursor()
 
         cursor.execute('''
-            UPDATE linkedin_posts 
+            UPDATE linkedin_posts
             SET posted_at = ?
             WHERE post_id = ?
         ''', (datetime.now().isoformat(), post_id))
