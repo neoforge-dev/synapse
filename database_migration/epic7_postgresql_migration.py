@@ -372,7 +372,7 @@ class Epic7PostgreSQLMigrator:
                                         processed_row.append(json.loads(value))
                                     else:
                                         processed_row.append(value)
-                                except:
+                                except (json.JSONDecodeError, TypeError, ValueError):
                                     processed_row.append(value)
                             else:
                                 processed_row.append(value)

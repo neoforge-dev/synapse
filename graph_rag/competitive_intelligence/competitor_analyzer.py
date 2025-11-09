@@ -822,7 +822,7 @@ class CompetitorAnalyzer:
                 days_old = (now - last_updated).days
                 freshness = max(0.0, 1.0 - (days_old / 30.0))  # Decay over 30 days
                 freshness_scores.append(freshness)
-            except:
+            except (ValueError, AttributeError, TypeError):
                 freshness_scores.append(0.5)  # Default if parsing fails
 
         return np.mean(freshness_scores)

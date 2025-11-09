@@ -119,7 +119,7 @@ class PostgreSQLReplicator:
             if proposal_data.get('roi_calculation'):
                 try:
                     roi_data = json.loads(proposal_data['roi_calculation']) if isinstance(proposal_data['roi_calculation'], str) else {}
-                except:
+                except (json.JSONDecodeError, TypeError, ValueError):
                     roi_data = {"raw": str(proposal_data['roi_calculation'])}
 
             cursor.execute("""

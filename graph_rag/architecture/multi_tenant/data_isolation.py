@@ -301,7 +301,7 @@ class DatabasePerTenantStrategy(DatabaseIsolationStrategy):
             cursor = conn.execute("SELECT schema_version FROM tenant_info LIMIT 1")
             result = cursor.fetchone()
             return result[0] if result else "1.0"
-        except:
+        except sqlite3.Error:
             return "1.0"
 
     async def _set_schema_version(self, conn: sqlite3.Connection, version: str) -> None:

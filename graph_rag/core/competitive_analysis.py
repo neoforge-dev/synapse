@@ -344,7 +344,7 @@ class ContentAnalyzer:
                     else:
                         timestamp = content['timestamp']
                     timestamps.append(timestamp)
-                except:
+                except (ValueError, AttributeError, TypeError):
                     continue
 
         if len(timestamps) < 2:
@@ -433,7 +433,7 @@ class ContentAnalyzer:
                     concepts = await self.concept_extractor.extract_concepts(text)
                     topics = [c.name for c in concepts if c.concept_type in ['STRATEGY', 'INNOVATION', 'TREND']]
                     all_topics.extend(topics)
-                except:
+                except Exception:
                     continue
 
         # Count topic frequency and return top topics
@@ -558,7 +558,7 @@ class ContentAnalyzer:
                     else:
                         timestamp = content['timestamp']
                     timestamps.append(timestamp)
-                except:
+                except (ValueError, AttributeError, TypeError):
                     continue
 
         if len(timestamps) < 2:
@@ -651,7 +651,7 @@ class ContentAnalyzer:
 
                     if timestamp > newest_timestamp:
                         newest_timestamp = timestamp
-                except:
+                except (ValueError, AttributeError, TypeError):
                     continue
 
         if newest_timestamp == datetime.min.replace(tzinfo=None):
@@ -955,7 +955,7 @@ class MarketGapAnalyzer:
                     if "month" in part and i > 0:
                         months = int(parts[i-1].split('-')[0])
                         break
-            except:
+            except (ValueError, IndexError, AttributeError):
                 pass
 
             timeline_adjustment = max(0.3, 1.0 - (months - 1) * 0.1)

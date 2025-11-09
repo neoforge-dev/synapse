@@ -583,7 +583,7 @@ class IntegrationValidation:
             try:
                 jwt.decode(session["access_token"], "wrong_secret", algorithms=["HS256"])
                 security_results['jwt_security'] = False  # Should not succeed
-            except:
+            except Exception:
                 security_results['jwt_security'] = True   # Should fail with wrong secret
 
             # Test session management

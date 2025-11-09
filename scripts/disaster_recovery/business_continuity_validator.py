@@ -504,7 +504,7 @@ class BusinessContinuityValidator:
                     if conn:
                         conn.close()
                         healthy_connections += 1
-                except:
+                except Exception:
                     pass
 
             if healthy_connections >= (total_connections // 2 + 1):

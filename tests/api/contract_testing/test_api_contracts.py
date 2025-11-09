@@ -156,7 +156,7 @@ class APIContractTester:
                 try:
                     response_data = response.json()
                     response_schema = self._extract_schema(response_data)
-                except:
+                except (ValueError, json.JSONDecodeError):
                     response_schema = {"type": "text", "content_type": response.headers.get("content-type")}
 
             return EndpointContract(

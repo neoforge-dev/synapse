@@ -64,7 +64,7 @@ class AutomatedBackupSystem:
         # Kubernetes client
         try:
             config.load_incluster_config()
-        except:
+        except Exception:
             config.load_kube_config()
         self.k8s_v1 = client.CoreV1Api()
         self.k8s_apps = client.AppsV1Api()

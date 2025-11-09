@@ -110,7 +110,7 @@ class Epic7AlignedMigrator:
                 if row[5]:  # roi_calculation
                     try:
                         roi_data = json.loads(row[5]) if isinstance(row[5], str) else {}
-                    except:
+                    except (json.JSONDecodeError, TypeError, ValueError):
                         roi_data = {"raw": str(row[5])}
 
                 pg_cursor.execute("""
@@ -164,7 +164,7 @@ class Epic7AlignedMigrator:
                 if row[5]:  # sequence_data
                     try:
                         action_data = json.loads(row[5]) if isinstance(row[5], str) else {"raw": str(row[5])}
-                    except:
+                    except (json.JSONDecodeError, TypeError, ValueError):
                         action_data = {"raw": str(row[5])}
 
                 action_data.update({

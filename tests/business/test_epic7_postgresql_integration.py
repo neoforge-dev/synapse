@@ -158,7 +158,7 @@ def crm_service(test_db_engine) -> Generator[CRMService, None, None]:
     # Cleanup: Close any open connections
     try:
         service.close()
-    except:
+    except Exception:
         pass
 
 

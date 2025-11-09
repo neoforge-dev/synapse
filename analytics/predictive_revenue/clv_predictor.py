@@ -489,7 +489,7 @@ class CLVPredictor:
                 if (days_since_acquisition <= new_rules["customer_age_max"] and
                     profile.engagement_score >= new_rules["min_engagement"]):
                     return CustomerSegment.NEW
-            except:
+            except (ValueError, AttributeError, TypeError):
                 pass
 
         # Check for Potential

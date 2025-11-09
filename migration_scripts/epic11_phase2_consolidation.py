@@ -439,7 +439,7 @@ class Epic11Phase2Consolidation:
                     table_count = cursor.fetchone()[0]
                     conn.close()
                     report.append(f"  - Tables: {table_count}")
-                except:
+                except sqlite3.Error:
                     pass
             else:
                 report.append(f"- **{db_name}**: ❌ Missing")

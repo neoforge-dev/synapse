@@ -102,7 +102,7 @@ class SearchSystemEvaluator:
                 # Test keyword search if available
                 try:
                     keyword_result = self.test_search_accuracy(query, "keyword", 3)
-                except:
+                except Exception:
                     keyword_result = {"error": "keyword search not available"}
 
                 category_results.append({
