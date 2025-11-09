@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import logging
 import time
 from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -62,13 +65,6 @@ from graph_rag.core.entity_extractor import MockEntityExtractor, SpacyEntityExtr
 # Import Concrete Implementations needed for lifespan setup
 from graph_rag.core.graph_rag_engine import SimpleGraphRAGEngine
 
-# Import Core Interfaces/Base Classes directly from their modules
-from graph_rag.core.interfaces import (
-    EmbeddingService,
-    EntityExtractor,
-    GraphRAGEngine,
-    VectorStore,
-)
 from graph_rag.core.knowledge_graph_builder import SimpleKnowledgeGraphBuilder
 from graph_rag.core.vector_store import MockVectorStore
 from graph_rag.infrastructure.document_processor.simple_processor import (
@@ -87,7 +83,16 @@ except Exception:  # pragma: no cover - allow CI without mgclient
     class MemgraphGraphRepository:  # type: ignore
         ...
 from graph_rag.services.embedding import SentenceTransformerEmbeddingService
-from graph_rag.services.ingestion import IngestionService  # Needed for type hint
+
+# Type-only imports (deferred to type-check time for faster startup)
+if TYPE_CHECKING:
+    from graph_rag.core.interfaces import (
+        EmbeddingService,
+        EntityExtractor,
+        GraphRAGEngine,
+        VectorStore,
+    )
+    from graph_rag.services.ingestion import IngestionService
 
 try:
     from prometheus_client import (
