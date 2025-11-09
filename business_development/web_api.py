@@ -136,7 +136,7 @@ async def health_check():
         )
     except Exception as e:
         logger.error(f"Health check failed: {e}")
-        raise HTTPException(status_code=500, detail="Health check failed")
+        raise HTTPException(status_code=500, detail="Health check failed") from e
 
 @app.get("/metrics")
 async def metrics_endpoint():
@@ -152,7 +152,7 @@ async def metrics_endpoint():
         )
     except Exception as e:
         logger.error(f"Metrics generation failed: {e}")
-        raise HTTPException(status_code=500, detail="Metrics generation failed")
+        raise HTTPException(status_code=500, detail="Metrics generation failed") from e
 
 @app.get("/api/v1/status", response_model=dict)
 async def get_system_status(token: str = Depends(verify_token)):
@@ -171,7 +171,7 @@ async def get_system_status(token: str = Depends(verify_token)):
         }
     except Exception as e:
         logger.error(f"Status endpoint failed: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get system status")
+        raise HTTPException(status_code=500, detail="Failed to get system status") from e
 
 @app.get("/api/v1/content/queue", response_model=ContentQueueStatus)
 async def get_queue_status(token: str = Depends(verify_token)):
@@ -202,7 +202,7 @@ async def generate_content(
         }
     except Exception as e:
         logger.error(f"Content generation failed: {e}")
-        raise HTTPException(status_code=500, detail="Content generation failed")
+        raise HTTPException(status_code=500, detail="Content generation failed") from e
 
 @app.post("/api/v1/system/maintenance")
 async def trigger_maintenance(
@@ -225,7 +225,7 @@ async def trigger_maintenance(
         }
     except Exception as e:
         logger.error(f"Maintenance action {action} failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Maintenance action failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Maintenance action failed: {e}") from e
 
 @app.get("/api/v1/analytics/performance")
 async def get_performance_analytics(
@@ -237,7 +237,7 @@ async def get_performance_analytics(
         return get_performance_data(days)
     except Exception as e:
         logger.error(f"Performance analytics failed: {e}")
-        raise HTTPException(status_code=500, detail="Performance analytics failed")
+        raise HTTPException(status_code=500, detail="Performance analytics failed") from e
 
 @app.post("/api/v1/alerts/configure")
 async def configure_alert(
@@ -256,7 +256,7 @@ async def configure_alert(
         }
     except Exception as e:
         logger.error(f"Alert configuration failed: {e}")
-        raise HTTPException(status_code=500, detail="Alert configuration failed")
+        raise HTTPException(status_code=500, detail="Alert configuration failed") from e
 
 # Helper functions
 

@@ -263,7 +263,7 @@ async def import_inquiries():
         return {"success": True, "imported_count": len(contacts), "contacts": [c.__dict__ for c in contacts]}
     except Exception as e:
         logger.error(f"Failed to import inquiries: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/api/generate-proposal")
 async def generate_proposal(request: ProposalRequest):
@@ -275,7 +275,7 @@ async def generate_proposal(request: ProposalRequest):
         return {"success": True, "proposal": proposal}
     except Exception as e:
         logger.error(f"Failed to generate proposal: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.put("/api/contacts/{contact_id}")
 async def update_contact(contact_id: str, contact_update: ContactUpdate):
@@ -307,7 +307,7 @@ async def update_contact(contact_id: str, contact_update: ContactUpdate):
         return {"success": True, "updated_fields": list(contact_update.dict(exclude_unset=True).keys())}
     except Exception as e:
         logger.error(f"Failed to update contact: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/api/proposals/{proposal_id}/send")
 async def send_proposal(proposal_id: str):
@@ -328,7 +328,7 @@ async def send_proposal(proposal_id: str):
         return {"success": True, "message": "Proposal marked as sent"}
     except Exception as e:
         logger.error(f"Failed to send proposal: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.get("/api/pipeline-summary")
 async def pipeline_summary():
@@ -338,7 +338,7 @@ async def pipeline_summary():
         return summary
     except Exception as e:
         logger.error(f"Failed to get pipeline summary: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 # Initialize templates directory and HTML templates
 def create_templates():
