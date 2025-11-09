@@ -503,11 +503,11 @@ class PromptOptimizer:
         }
 
         # Apply modifications
-        for field, value in modifications.items():
-            if field in template_dict:
-                template_dict[field] = value
+        for field_name, value in modifications.items():
+            if field_name in template_dict:
+                template_dict[field_name] = value
             else:
-                logger.warning(f"Unknown field '{field}' in template customization")
+                logger.warning(f"Unknown field '{field_name}' in template customization")
 
         # Create new template
         custom_template = PromptTemplate(**template_dict)

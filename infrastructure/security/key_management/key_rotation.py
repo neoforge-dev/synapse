@@ -242,14 +242,14 @@ class AutomaticKeyRotation:
         """Check for and execute pending rotations."""
         current_time = datetime.utcnow()
 
-        for _schedule_key, schedule in self.rotation_schedules.items():
-            if (schedule.status == RotationStatus.PENDING and
-                current_time >= schedule.next_rotation):
+        for _schedule_key, rotation_schedule in self.rotation_schedules.items():
+            if (rotation_schedule.status == RotationStatus.PENDING and
+                current_time >= rotation_schedule.next_rotation):
 
                 # Check if we're in the rotation window
                 current_hour = current_time.hour
-                if current_hour in schedule.policy.rotation_window_hours:
-                    await self._execute_scheduled_rotation(schedule)
+                if current_hour in rotation_schedule.policy.rotation_window_hours:
+                    await self._execute_scheduled_rotation(rotation_schedule)
 
     async def _execute_scheduled_rotation(self, schedule: RotationSchedule):
         """Execute a scheduled rotation."""
@@ -410,15 +410,15 @@ class AutomaticKeyRotation:
         current_time = datetime.utcnow()
         overdue_schedules = []
 
-        for schedule_key, schedule in self.rotation_schedules.items():
-            if schedule.status in [RotationStatus.PENDING, RotationStatus.FAILED]:
-                days_overdue = (current_time - schedule.next_rotation).days
+        for schedule_key, rotation_schedule in self.rotation_schedules.items():
+            if rotation_schedule.status in [RotationStatus.PENDING, RotationStatus.FAILED]:
+                days_overdue = (current_time - rotation_schedule.next_rotation).days
                 if days_overdue > 0:
                     overdue_schedules.append({
                         "schedule_key": schedule_key,
-                        "tenant_id": schedule.tenant_id,
+                        "tenant_id": rotation_schedule.tenant_id,
                         "days_overdue": days_overdue,
-                        "policy": schedule.policy.compliance_framework
+                        "policy": rotation_schedule.policy.compliance_framework
                     })
 
         if overdue_schedules:
@@ -461,20 +461,20 @@ class AutomaticKeyRotation:
             }
 
         # Find overdue and upcoming rotations
-        for schedule in self.rotation_schedules.values():
-            days_until_rotation = (schedule.next_rotation - current_time).days
+        for rotation_schedule in self.rotation_schedules.values():
+            days_until_rotation = (rotation_schedule.next_rotation - current_time).days
 
             if days_until_rotation < 0:
                 report["overdue_rotations"].append({
-                    "tenant_id": str(schedule.tenant_id),
+                    "tenant_id": str(rotation_schedule.tenant_id),
                     "days_overdue": abs(days_until_rotation),
-                    "compliance_framework": schedule.policy.compliance_framework
+                    "compliance_framework": rotation_schedule.policy.compliance_framework
                 })
             elif days_until_rotation <= 7:
                 report["upcoming_rotations"].append({
-                    "tenant_id": str(schedule.tenant_id),
+                    "tenant_id": str(rotation_schedule.tenant_id),
                     "days_until_rotation": days_until_rotation,
-                    "compliance_framework": schedule.policy.compliance_framework
+                    "compliance_framework": rotation_schedule.policy.compliance_framework
                 })
 
         logger.info(f"Generated compliance report: {report['compliance_status']}")
@@ -504,17 +504,17 @@ class AutomaticKeyRotation:
 
         current_time = datetime.utcnow()
 
-        for schedule in tenant_schedules:
+        for rotation_schedule in tenant_schedules:
             schedule_info = {
-                "key_type": schedule.key_type,
-                "policy": schedule.policy.compliance_framework,
-                "status": schedule.status.value,
-                "next_rotation": schedule.next_rotation.isoformat(),
-                "days_until_rotation": (schedule.next_rotation - current_time).days,
-                "rotation_history": schedule.rotation_history[-5:]  # Last 5 rotations
+                "key_type": rotation_schedule.key_type,
+                "policy": rotation_schedule.policy.compliance_framework,
+                "status": rotation_schedule.status.value,
+                "next_rotation": rotation_schedule.next_rotation.isoformat(),
+                "days_until_rotation": (rotation_schedule.next_rotation - current_time).days,
+                "rotation_history": rotation_schedule.rotation_history[-5:]  # Last 5 rotations
             }
 
-            if schedule.status == RotationStatus.FAILED or current_time > schedule.next_rotation:
+            if rotation_schedule.status == RotationStatus.FAILED or current_time > rotation_schedule.next_rotation:
                 status["overall_status"] = "non_compliant"
 
             status["schedules"].append(schedule_info)
