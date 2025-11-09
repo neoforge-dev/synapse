@@ -130,13 +130,13 @@ def create_enterprise_platform_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=str(e)
-            )
+            ) from e
         except Exception as e:
             logger.error(f"User registration failed: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Registration failed"
-            )
+            ) from e
 
     @router.post("/auth/login", response_model=TokenResponse, tags=["Authentication"])
     async def login_user(
@@ -239,7 +239,7 @@ def create_enterprise_platform_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create API key"
-            )
+            ) from e
 
     @router.get("/auth/api-keys", response_model=list[APIKey], tags=["Authentication"])
     async def list_api_keys(
@@ -287,7 +287,7 @@ def create_enterprise_platform_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=str(e)
-            )
+            ) from e
 
     @router.get("/auth/admin/users/{user_id}", response_model=User, tags=["Authentication"])
     async def get_user_admin(
@@ -346,13 +346,13 @@ def create_enterprise_platform_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=str(e)
-            )
+            ) from e
         except Exception as e:
             logger.error(f"Tenant creation failed: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create tenant"
-            )
+            ) from e
 
     @router.get("/auth/enterprise/tenants/{tenant_id}", tags=["Enterprise Authentication"])
     async def get_tenant(
@@ -393,7 +393,7 @@ def create_enterprise_platform_router() -> APIRouter:
 
             return {"message": "SAML configuration created", "config_id": config.id}
         except ValueError as e:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     @router.post("/auth/enterprise/saml/login", response_model=TokenResponse, tags=["Enterprise Authentication"])
     async def saml_login(
@@ -433,7 +433,7 @@ def create_enterprise_platform_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="SAML authentication failed"
-            )
+            ) from e
 
     # --- OAuth 2.0/OpenID Connect Endpoints ---
     @router.post("/auth/enterprise/oauth/configure", tags=["Enterprise Authentication"])
@@ -459,7 +459,7 @@ def create_enterprise_platform_router() -> APIRouter:
 
             return {"message": "OAuth configuration created", "config_id": config.id}
         except ValueError as e:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     # --- Multi-Factor Authentication Endpoints ---
     @router.post("/auth/enterprise/mfa/setup", tags=["Enterprise Authentication"])
@@ -494,7 +494,7 @@ def create_enterprise_platform_router() -> APIRouter:
             return response
 
         except ValueError as e:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     # ===============================
     # COMPLIANCE MANAGEMENT ENDPOINTS
@@ -529,13 +529,13 @@ def create_enterprise_platform_router() -> APIRouter:
                 "message": f"GDPR {request_type} request submitted. Please check your email for verification."
             }
         except ValueError as e:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
         except Exception as e:
             logger.error(f"GDPR request submission failed: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to submit GDPR request"
-            )
+            ) from e
 
     @router.post("/compliance/soc2/controls/{control_id}/test", tags=["Compliance Management"])
     async def test_soc2_control(
@@ -565,13 +565,13 @@ def create_enterprise_platform_router() -> APIRouter:
                 "message": "Control test recorded successfully"
             }
         except ValueError as e:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
         except Exception as e:
             logger.error(f"SOC 2 control test failed: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to record control test"
-            )
+            ) from e
 
     @router.post("/compliance/hipaa/risk-assessment", tags=["Compliance Management"])
     async def conduct_hipaa_risk_assessment(
@@ -601,7 +601,7 @@ def create_enterprise_platform_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to conduct HIPAA risk assessment"
-            )
+            ) from e
 
     @router.get("/compliance/dashboard/overview", tags=["Compliance Management"])
     async def get_compliance_overview(
@@ -649,7 +649,7 @@ def create_enterprise_platform_router() -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to generate compliance overview"
-            )
+            ) from e
 
     @router.get("/compliance/frameworks", tags=["Compliance Management"])
     async def list_compliance_frameworks():
@@ -715,7 +715,7 @@ def create_enterprise_platform_router() -> APIRouter:
             return {"status": "unknown"}
         except Exception as e:
             admin_logger.error(f"vector_stats failed: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     @router.post("/admin/vector/rebuild", status_code=status.HTTP_202_ACCEPTED, tags=["System Administration"])
     async def vector_rebuild(
@@ -730,7 +730,7 @@ def create_enterprise_platform_router() -> APIRouter:
             raise
         except Exception as e:
             admin_logger.error(f"vector_rebuild failed: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     @router.get("/admin/integrity/check", tags=["System Administration"])
     async def integrity_check(
@@ -764,7 +764,7 @@ def create_enterprise_platform_router() -> APIRouter:
             return {"graph_chunks": graph_chunks, "vectors": vectors, "ok": ok, "warnings": warnings}
         except Exception as e:
             admin_logger.error(f"integrity_check failed: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     @router.get("/admin/health/detailed", response_model=SystemHealth, tags=["System Administration"])
     async def detailed_health_check(
