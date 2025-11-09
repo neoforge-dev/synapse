@@ -590,8 +590,8 @@ async def test_get_relationship_by_id_not_found(memgraph_repo: MemgraphGraphRepo
 
 # @pytest.mark.xfail(reason="get_relationship_by_id not implemented yet") # XFAIL Removed
 @pytest.mark.asyncio
-async def test_add_get_relationship(memgraph_repo: MemgraphGraphRepository):
-    """Tests adding and then retrieving a relationship by its ID."""
+async def test_add_get_relationship_with_nodes(memgraph_repo: MemgraphGraphRepository):
+    """Tests adding and then retrieving a relationship by its ID (with explicit node creation)."""
     repo = memgraph_repo
     source_id = uid("source-node")
     target_id = uid("target-node")

@@ -45,12 +45,6 @@ class DocumentIngestRequest(BaseModel):
     )
 
 
-class IngestionResponse(BaseModel):
-    document_id: str
-    status: str = "processing started"
-    # We might not know chunk IDs immediately if processing is async
-
-
 # --- Search Schemas ---
 
 
@@ -67,17 +61,6 @@ class ErrorDetail(BaseModel):
 
     message: str
     type: str | None = None
-
-
-class SearchQueryResponse(BaseModel):
-    query: str
-    search_type: str
-    results: list[SearchResultSchema] = []
-    llm_response: str | None = None
-    graph_context: str | None = None
-    # Fields specifically for batch responses
-    status_code: int | None = None
-    error: ErrorDetail | None = None
 
 
 class SearchBatchQueryRequest(BaseModel):
@@ -137,16 +120,6 @@ class DocumentCreate(BaseModel):
         ..., min_length=1, description="The text content of the document."
     )  # Add validation
     metadata: dict[str, Any] | None = None
-
-
-class DocumentResponse(BaseModel):
-    """Response model for a single document, matching repository structure."""
-
-    id: str
-    metadata: dict[str, Any] = Field(default_factory=dict)  # Direct metadata field
-    type: str | None = None  # Add type to match test expectations
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
 
 
 class DocumentMetadataUpdate(BaseModel):

@@ -174,13 +174,13 @@ class MockGraphRepository(GraphStore, GraphRepository):
         }
 
     # GraphStore interface methods (synchronous)
-    def add_entity(self, entity: Entity):
-        """Adds or updates an entity (node) in the graph."""
+    def add_entity_sync(self, entity: Entity):
+        """Adds or updates an entity (node) in the graph (sync wrapper)."""
         self._entities[entity.id] = entity
         logger.debug(f"MockGraphRepository: Added entity {entity.id} (sync)")
 
-    def add_relationship(self, relationship: Relationship):
-        """Adds a relationship (edge) between two entities."""
+    def add_relationship_sync(self, relationship: Relationship):
+        """Adds a relationship (edge) between two entities (sync wrapper)."""
         async def _add_relationship():
             self._relationships[relationship.id] = relationship
             logger.debug(f"MockGraphRepository: Added relationship {relationship.id} (sync->async)")
@@ -191,9 +191,9 @@ class MockGraphRepository(GraphStore, GraphRepository):
     ):
         """Adds multiple entities and relationships."""
         for entity in entities:
-            self.add_entity(entity)
+            self.add_entity_sync(entity)
         for relationship in relationships:
-            self.add_relationship(relationship)
+            self.add_relationship_sync(relationship)
         logger.debug(f"MockGraphRepository: Added {len(entities)} entities and {len(relationships)} relationships (sync)")
 
     # Removed sync add_document - conflicts with async version
@@ -213,17 +213,17 @@ class MockGraphRepository(GraphStore, GraphRepository):
         logger.debug(f"MockGraphRepository: Retrieved document {document_id}: {'found' if doc else 'not found'} (sync)")
         return doc
 
-    def get_neighbors(
+    def get_neighbors_sync(
         self,
         entity_id: str,
         relationship_types: list[str] | None = None,
         direction: str = "both",
     ) -> tuple[list[Entity], list[Relationship]]:
-        """Retrieves direct neighbors (entities and relationships) of a given entity."""
+        """Retrieves direct neighbors (entities and relationships) of a given entity (sync wrapper)."""
         logger.debug(f"MockGraphRepository: Getting neighbors for {entity_id} (returning empty lists) (sync)")
         return [], []
 
-    async def search_entities_by_properties(
+    def search_entities_by_properties_sync(
         self, properties: dict[str, Any], limit: int | None = None
     ) -> list[Entity]:
         """Searches for entities matching specific properties."""

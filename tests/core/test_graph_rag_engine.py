@@ -13,7 +13,6 @@ from graph_rag.core.graph_store import MockGraphStore  # Corrected location
 from graph_rag.core.interfaces import (
     ChunkData,
     DocumentProcessor,
-    EmbeddingService,
     EntityExtractor,
     ExtractedEntity,
     ExtractionResult,
@@ -25,7 +24,6 @@ from graph_rag.core.interfaces import (
     VectorSearcher,
     VectorStore,
 )
-from graph_rag.core.knowledge_graph_builder import KnowledgeGraphBuilder
 from graph_rag.domain.models import Edge
 from graph_rag.llm import (
     MockLLMService,

@@ -281,42 +281,7 @@ def mock_doc_no_entities() -> Document:
     )
 
 
-# Test Cases for MockEntityExtractor
-@pytest.mark.asyncio
-async def test_mock_extractor_finds_entities(mock_doc_with_entities: Document):
-    """Test that the mock extractor returns predefined entities and relationships."""
-    extractor = MockEntityExtractor()
-    processed_doc: ProcessedDocument = await extractor.extract(mock_doc_with_entities)
-
-    assert processed_doc.id == mock_doc_with_entities.id
-    assert processed_doc.content == mock_doc_with_entities.content
-    assert processed_doc.metadata == mock_doc_with_entities.metadata
-    assert processed_doc.chunks == mock_doc_with_entities.chunks
-
-    assert len(processed_doc.entities) == 3
-    assert len(processed_doc.relationships) == 1
-
-    entity_names = {e.name for e in processed_doc.entities}
-    assert "Alice" in entity_names
-    assert "Bob" in entity_names
-    assert "GraphRAG" in entity_names
-
-    relationship = processed_doc.relationships[0]
-    assert relationship.type == "KNOWS"
-    # Assuming Relationship model has source/target attributes that are Entity objects
-    assert relationship.source.name == "Alice"
-    assert relationship.target.name == "Bob"
-
-
-@pytest.mark.asyncio
-async def test_mock_extractor_no_entities(mock_doc_no_entities: Document):
-    """Test that the mock extractor returns empty lists when no entities match."""
-    extractor = MockEntityExtractor()
-    processed_doc: ProcessedDocument = await extractor.extract(mock_doc_no_entities)
-
-    assert processed_doc.id == mock_doc_no_entities.id
-    assert processed_doc.content == mock_doc_no_entities.content
-    assert len(processed_doc.entities) == 0
+# Note: Original test cases for MockEntityExtractor defined earlier (lines 209-244) are used
     assert len(processed_doc.relationships) == 0
 
 
