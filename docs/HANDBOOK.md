@@ -1,7 +1,7 @@
 # Synapse Graph-RAG Handbook
 
 **Complete Developer and User Reference**
-**Last Updated**: 2025-11-09 (Week 45 Sprint Complete)
+**Last Updated**: 2025-11-10 (Week 45 Performance Optimization Sprint Complete)
 
 ---
 
@@ -500,16 +500,30 @@ GET  /api/v1/compliance/frameworks
 
 **System Administration**
 
+**Vector Store & Index Management**
 ```http
 GET  /api/v1/admin/vector/stats                # Vector store statistics
 POST /api/v1/admin/vector/rebuild              # Rebuild vector index
+```
+
+**Cache Statistics & Monitoring (Week 45 Performance Optimizations)**
+```http
+GET  /api/v1/admin/cache/stats                 # All cache statistics (performance dashboard)
+DELETE /api/v1/admin/cache/clear               # Clear all caches (admin only)
+GET  /api/v1/cache/stats                       # Combined cache metrics (embeddings + entities + search)
+GET  /api/v1/cache/embeddings/stats            # Embedding cache statistics (hit rate, size, entries)
+GET  /api/v1/cache/entities/stats              # Entity extraction cache statistics
+GET  /api/v1/search/cache/stats                # Search result cache statistics
+POST /api/v1/search/cache/invalidate           # Invalidate search cache (after ingestion)
+```
+
+**System Health & Metrics**
+```http
 GET  /api/v1/admin/integrity/check             # Data integrity check
 GET  /api/v1/admin/health/detailed             # Detailed health check
-GET  /api/v1/admin/performance/stats
-GET  /api/v1/admin/cache/stats
-DELETE /api/v1/admin/cache/clear
-GET  /api/v1/admin/system/metrics
-GET  /api/v1/admin/platform/info
+GET  /api/v1/admin/performance/stats           # Performance metrics
+GET  /api/v1/admin/system/metrics              # System resource metrics
+GET  /api/v1/admin/platform/info               # Platform information
 ```
 
 **Health Checks**
