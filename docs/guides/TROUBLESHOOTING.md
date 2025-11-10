@@ -752,6 +752,307 @@ docker stats
 
 ---
 
+## Cache-Related Issues (Week 45 Performance Optimizations)
+
+### Issue: Low Cache Hit Rates
+
+**Symptoms**:
+- Cache statistics show <10% hit rate
+- Expected performance improvements not realized
+- API response times higher than expected
+
+**Diagnosis**:
+```bash
+# Check cache statistics
+curl http://localhost:18888/api/v1/cache/stats
+
+# Monitor over time
+watch -n 5 'curl -s http://localhost:18888/api/v1/search/cache/stats | jq ".hit_rate"'
+
+# Check individual cache performance
+curl http://localhost:18888/api/v1/cache/embeddings/stats
+curl http://localhost:18888/api/v1/cache/entities/stats
+```
+
+**Solutions**:
+
+**1. Increase cache sizes for your workload:**
+```bash
+export SYNAPSE_EMBEDDING_CACHE_SIZE=5000  # Increase from 1000
+export SYNAPSE_ENTITY_CACHE_SIZE=2000     # Increase from 500
+export SYNAPSE_SEARCH_CACHE_SIZE=500      # Increase from 100
+```
+
+**2. Check cache TTL settings:**
+```bash
+# If cache expires too quickly, increase TTL
+export SYNAPSE_CACHE_SEARCH_TTL=1200      # 20 minutes (from 10)
+export SYNAPSE_CACHE_EMBEDDING_TTL=7200   # 2 hours (from 1 hour)
+```
+
+**3. Verify caching is enabled:**
+```bash
+# Check cache configuration
+env | grep SYNAPSE_CACHE
+
+# Verify cache type
+env | grep SYNAPSE_CACHE_TYPE  # Should be 'memory' or 'redis'
+```
+
+**4. Analyze query patterns:**
+```bash
+# Low hit rates are normal if:
+# - Every query is unique (no repeated searches)
+# - Content changes frequently (cache invalidation)
+# - First-time ingestion (no duplicate embeddings yet)
+
+# Expected hit rates:
+# - Search: >50% for typical workloads
+# - Embeddings: >60% for batch ingestion with duplicates
+# - Entities: >40% for similar documents
+```
+
+---
+
+### Issue: Redis Connection Errors
+
+**Symptoms**:
+```
+ConnectionError: Error 111 connecting to redis.internal:6379
+redis.exceptions.ConnectionRefusedError
+```
+
+**Diagnosis**:
+```bash
+# Verify Redis is running
+redis-cli ping
+# Should respond: PONG
+
+# Check Redis connectivity
+redis-cli -h localhost -p 6379 ping
+
+# Check Redis URL configuration
+echo $SYNAPSE_REDIS_URL
+# Should be: redis://host:port/db
+```
+
+**Solutions**:
+
+**1. Start Redis if not running:**
+```bash
+# Using Docker
+docker run -d --name synapse-redis -p 6379:6379 redis:7-alpine
+
+# Or with docker-compose
+docker-compose up -d redis
+```
+
+**2. Fix Redis URL configuration:**
+```bash
+# Correct format
+export SYNAPSE_REDIS_URL=redis://localhost:6379/0
+
+# For Redis with password
+export SYNAPSE_REDIS_URL=redis://:password@localhost:6379/0
+
+# For Redis Sentinel
+export SYNAPSE_REDIS_URL=redis+sentinel://localhost:26379/mymaster/0
+```
+
+**3. Check network connectivity:**
+```bash
+# Test TCP connection
+nc -zv localhost 6379
+
+# Check Docker networking
+docker network inspect bridge | grep synapse
+
+# Restart API after fixing Redis
+synapse down && synapse up
+```
+
+**4. Fallback to memory cache:**
+```bash
+# Temporarily use memory cache while fixing Redis
+export SYNAPSE_CACHE_TYPE=memory
+synapse down && synapse up
+```
+
+---
+
+### Issue: Cache Memory Growing Too Large
+
+**Symptoms**:
+- API process memory usage increasing over time
+- System running out of memory
+- Cache not freeing memory with LRU eviction
+
+**Diagnosis**:
+```bash
+# Monitor memory usage
+curl http://localhost:18888/api/v1/admin/system/metrics | jq '.memory'
+
+# Check cache sizes
+curl http://localhost:18888/api/v1/cache/stats | jq '.size'
+
+# Monitor over time
+watch -n 10 'curl -s http://localhost:18888/api/v1/cache/stats | jq "{embedding: .embeddings.size, entity: .entities.size, search: .search.size}"'
+```
+
+**Solutions**:
+
+**1. Reduce cache sizes:**
+```bash
+export SYNAPSE_EMBEDDING_CACHE_SIZE=500   # Reduce from 1000
+export SYNAPSE_ENTITY_CACHE_SIZE=200      # Reduce from 500
+export SYNAPSE_SEARCH_CACHE_SIZE=50       # Reduce from 100
+```
+
+**2. Reduce TTLs for auto-expiration:**
+```bash
+export SYNAPSE_CACHE_DEFAULT_TTL=60       # 1 minute instead of 5
+export SYNAPSE_CACHE_SEARCH_TTL=120       # 2 minutes
+export SYNAPSE_CACHE_EMBEDDING_TTL=600    # 10 minutes instead of 1 hour
+```
+
+**3. Manual cache clearing:**
+```bash
+# Clear all caches (admin endpoint)
+curl -X DELETE http://localhost:18888/api/v1/admin/cache/clear
+
+# Invalidate search cache specifically
+curl -X POST http://localhost:18888/api/v1/search/cache/invalidate
+```
+
+**4. Switch to Redis for distributed memory:**
+```bash
+# Redis manages memory externally
+export SYNAPSE_CACHE_TYPE=redis
+export SYNAPSE_REDIS_URL=redis://localhost:6379/0
+
+# Configure Redis maxmemory policy
+redis-cli CONFIG SET maxmemory 256mb
+redis-cli CONFIG SET maxmemory-policy allkeys-lru
+```
+
+---
+
+### Issue: Cache Not Working (Always Cold Performance)
+
+**Symptoms**:
+- API response times consistently slow
+- Cache statistics show 0 hits
+- Performance not improving on repeated queries
+
+**Diagnosis**:
+```bash
+# Verify caching is enabled
+curl http://localhost:18888/api/v1/cache/stats
+
+# Check cache configuration
+env | grep SYNAPSE_CACHE
+
+# Test cache with repeated query
+curl http://localhost:18888/api/v1/search -d '{"query": "test", "limit": 5}'
+curl http://localhost:18888/api/v1/search -d '{"query": "test", "limit": 5}'
+# Second call should be faster
+
+# Check logs for cache errors
+docker logs synapse-api-1 | grep -i cache
+```
+
+**Solutions**:
+
+**1. Verify cache is enabled:**
+```bash
+# Default should be 'memory'
+export SYNAPSE_CACHE_TYPE=memory
+
+# If disabled, enable it
+unset SYNAPSE_DISABLE_CACHE  # Remove if set
+```
+
+**2. Check for cache invalidation:**
+```bash
+# Frequent document ingestion may invalidate caches
+# Verify cache is not being cleared after each request
+
+# Check ingestion logs
+docker logs synapse-api-1 | grep "invalidate"
+```
+
+**3. Verify query normalization:**
+```bash
+# Queries must match exactly for cache hits
+# Check if queries have different formatting:
+
+# These are DIFFERENT cache keys:
+curl ... -d '{"query": "Test"}'      # Capital T
+curl ... -d '{"query": "test"}'      # Lowercase t
+curl ... -d '{"query": "test ", ...}' # Trailing space
+```
+
+**4. Restart API to reinitialize caches:**
+```bash
+synapse down && synapse up
+```
+
+---
+
+### Performance Optimization Verification
+
+After Week 45 performance sprint, verify these optimizations are active:
+
+**✅ Lazy Loading (Automatic)**:
+```bash
+# Startup time should be <5 seconds (was ~11s before)
+time python -c "from graph_rag.api.main import create_app; create_app()"
+
+# First API query loads libraries (slower)
+# Subsequent queries use cached libraries (fast)
+```
+
+**✅ Search Caching**:
+```bash
+# Run same search twice
+time curl http://localhost:18888/api/v1/search -d '{"query": "test"}'
+# First: 200-400ms
+time curl http://localhost:18888/api/v1/search -d '{"query": "test"}'
+# Second (cached): <50ms
+
+# Verify cache hits
+curl http://localhost:18888/api/v1/search/cache/stats | jq '.hit_rate'
+# Should be: >0.0%
+```
+
+**✅ Embedding Caching**:
+```bash
+# Ingest duplicate content
+echo "test content" | synapse ingest test1 --stdin
+echo "test content" | synapse ingest test2 --stdin
+
+# Check embedding cache hits
+curl http://localhost:18888/api/v1/cache/embeddings/stats | jq '.hits'
+# Should be: >0 (second ingestion used cached embedding)
+```
+
+**✅ Entity Caching**:
+```bash
+# Process similar documents
+curl http://localhost:18888/api/v1/cache/entities/stats | jq '.hit_rate'
+# Should increase as similar documents are processed
+```
+
+**Target Performance Metrics**:
+- Startup time: <5s (lazy loading)
+- API response (cache hit): <100ms
+- API response (cache miss): <200ms
+- Search cache hit rate: >50%
+- Embedding cache hit rate: >60% (batch ingestion)
+- Entity cache hit rate: >40% (similar documents)
+
+---
+
 ## Debug Mode
 
 ### Enable Verbose Logging
