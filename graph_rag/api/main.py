@@ -83,6 +83,7 @@ except Exception:  # pragma: no cover - allow CI without mgclient
     class MemgraphGraphRepository:  # type: ignore
         ...
 from graph_rag.services.embedding import SentenceTransformerEmbeddingService
+from graph_rag.services.ingestion import IngestionService
 
 # Type-only imports (deferred to type-check time for faster startup)
 if TYPE_CHECKING:
