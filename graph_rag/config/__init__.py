@@ -481,6 +481,34 @@ class Settings(BaseSettings):
         description="Enable cross-region data replication for DR. Default: False"
     )
 
+    # --- PostHog Analytics Settings ---
+    posthog_api_key: str | None = Field(
+        None,
+        description="PostHog API key for product analytics. Leave empty to disable."
+    )
+    posthog_host: str = Field(
+        "https://eu.posthog.com",
+        description="PostHog host URL. Default: https://eu.posthog.com"
+    )
+
+    # --- Stripe Billing Settings ---
+    stripe_secret_key: str | None = Field(
+        None,
+        description="Stripe secret key for billing. Leave empty to use mock billing."
+    )
+    stripe_publishable_key: str | None = Field(
+        None,
+        description="Stripe publishable key for frontend."
+    )
+    stripe_webhook_secret: str | None = Field(
+        None,
+        description="Stripe webhook secret for event verification."
+    )
+    stripe_mock: bool = Field(
+        True,
+        description="Use mock Stripe for development. Default: True"
+    )
+
     # Add other settings as needed...
 
     @model_validator(mode="after")

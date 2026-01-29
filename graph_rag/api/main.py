@@ -40,6 +40,7 @@ from graph_rag.api.routers.core_business_operations import (
     create_core_business_operations_router_factory,
 )
 from graph_rag.api.routers.enterprise_platform import create_enterprise_platform_router_factory
+from graph_rag.api.routers import monitoring
 
 # Legacy routers - deprecated in Epic 15 Phase 2 (functionality moved to consolidated routers)
 # from graph_rag.api.routers import documents, ingestion, query, search
@@ -76,6 +77,7 @@ from graph_rag.observability.middleware import (
     PerformanceMiddleware,
     RequestSizeMiddleware,
 )
+from graph_rag.observability.sentry_config import init_sentry
 
 try:
     from graph_rag.infrastructure.graph_stores.memgraph_store import MemgraphGraphRepository
@@ -84,6 +86,7 @@ except Exception:  # pragma: no cover - allow CI without mgclient
         ...
 from graph_rag.services.embedding import SentenceTransformerEmbeddingService
 from graph_rag.services.ingestion import IngestionService
+from graph_rag.services.posthog_analytics import PostHogAnalytics
 
 # Type-only imports (deferred to type-check time for faster startup)
 if TYPE_CHECKING:
@@ -136,6 +139,9 @@ async def lifespan(app: FastAPI):
         f"LIFESPAN START: Starting API... Config: {current_settings.model_dump(exclude={'memgraph_password'})}"
     )  # Use current_settings
     app.state.settings = current_settings  # Store in state
+
+    # Initialize Sentry for error tracking
+    init_sentry()
 
     # Initialize monitoring system
     try:
@@ -517,7 +523,15 @@ async def lifespan(app: FastAPI):
         app.state.business_engine = None
         app.state.analytics_engine = None
 
-    # 10. Initialize Unified Platform Orchestrator (Epic 6 Week 4)
+    # 10. Initialize PostHog Analytics
+    logger.info("LIFESPAN: Initializing PostHog Analytics...")
+    try:
+        PostHogAnalytics.initialize()
+        logger.info("LIFESPAN: PostHog Analytics initialized.")
+    except Exception as e:
+        logger.warning(f"LIFESPAN: PostHog initialization failed: {e}. Analytics disabled.")
+
+    # 11. Initialize Unified Platform Orchestrator (Epic 6 Week 4)
     logger.info("LIFESPAN: Initializing Unified Platform Orchestrator...")
     if not hasattr(app.state, "unified_platform") or app.state.unified_platform is None:
         try:
@@ -849,6 +863,9 @@ def create_app() -> FastAPI:
 
     # 4. Advanced Features (graph + reasoning + specialized features)
     api_router.include_router(advanced_features_router, tags=["Advanced Features"])
+
+    # 5. Monitoring and Health Checks (production observability)
+    api_router.include_router(monitoring.router, tags=["Monitoring"])
 
     # Note: Authentication, enterprise auth, and compliance are now consolidated
     # into the Enterprise Platform router above. Legacy endpoints removed to

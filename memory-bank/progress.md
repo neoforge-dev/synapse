@@ -34,6 +34,11 @@
 - Added advanced integration recipes to `README.md` (jq/xargs for discover→parse→store, multi-root stdin, metadata augmentation, filtering, parallel batching, per-chunk outputs).
 - Documented vector store considerations in `README.md` (idempotent re-ingestion and rebuild notes).
 - Expanded `docs/ARCHITECTURE.md` with CLI decomposition and typed metadata support.
+- ✅ **Deployment readiness verification script created** (`scripts/verify_deployment_readiness.py`) - Jan 21, 2026
+- ✅ **Demo environment setup script created** (`scripts/setup_demo_environment.sh`) - Jan 21, 2026
+- ✅ **Deployment readiness report generated** (`docs/DEPLOYMENT_READINESS_REPORT.md`) - Infrastructure ready, services ready
+- ✅ **Deployment guide generated** (`docs/DEPLOYMENT_GUIDE.md`) - Complete deployment instructions
+- ✅ **Demo setup guide created** (`docs/DEMO_SETUP_GUIDE.md`) - 20-minute demo flow documented
 
 ## Other Important Tasks (Post-Critical Path)
 - Robust error mapping in API (uniform problem details)

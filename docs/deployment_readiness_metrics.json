@@ -1,0 +1,76 @@
+{
+  "infrastructure": {
+    "python_version": true,
+    "docker_available": {
+      "available": true,
+      "status": "Docker version 28.5.2, build ecc6942"
+    },
+    "memgraph_available": {
+      "available": true,
+      "status": "Docker Compose configured"
+    },
+    "dependencies": {
+      "available": false,
+      "status": "3/4 key dependencies available",
+      "missing": [
+        "mgclient"
+      ]
+    },
+    "uv_available": {
+      "available": true,
+      "status": "uv 0.9.26 (Homebrew 2026-01-15)"
+    }
+  },
+  "services": {
+    "api_health_endpoint": {
+      "operational": true,
+      "status": "Health endpoint found"
+    },
+    "memgraph_connection": {
+      "operational": true,
+      "status": "2 Memgraph-related files found"
+    },
+    "makefile_targets": {
+      "operational": true,
+      "status": "5/5 required targets found",
+      "found": [
+        "install-dev",
+        "up",
+        "run-api",
+        "run-memgraph",
+        "test"
+      ],
+      "missing": []
+    }
+  },
+  "configuration": {
+    "settings_file": {
+      "valid": false,
+      "status": "Settings file not found"
+    },
+    "env_example": {
+      "valid": true,
+      "status": ".env.example found"
+    },
+    "config_validation": {
+      "valid": true,
+      "status": "2 config files found"
+    }
+  },
+  "security": {
+    "secrets_scan": {
+      "clean": false,
+      "status": "Potential secrets found - review required"
+    },
+    "dependency_audit": {
+      "clean": false,
+      "status": "Audit had issues"
+    },
+    "auth_implementation": {
+      "clean": true,
+      "status": "Auth implementation found (8 auth files, 2 JWT files)"
+    }
+  },
+  "issues": [],
+  "recommendations": []
+}

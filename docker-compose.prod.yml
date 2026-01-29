@@ -1,0 +1,189 @@
+version: "3.8"
+
+services:
+  graph-rag:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: synapse-graph-rag:latest
+    container_name: synapse-api
+    ports:
+      - "8000:8000"
+    environment:
+      # Memgraph connection
+      SYNAPSE_MEMGRAPH_HOST: ${SYNAPSE_MEMGRAPH_HOST:-memgraph}
+      SYNAPSE_MEMGRAPH_PORT: ${SYNAPSE_MEMGRAPH_PORT:-7687}
+      SYNAPSE_MEMGRAPH_USERNAME: ${SYNAPSE_MEMGRAPH_USERNAME:-}
+      SYNAPSE_MEMGRAPH_PASSWORD: ${SYNAPSE_MEMGRAPH_PASSWORD:-}
+
+      # PostgreSQL connection
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_USER: ${POSTGRES_USER:-synapse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-synapse_password}
+      POSTGRES_DB: ${POSTGRES_DB:-synapse_business_core}
+
+      # API configuration
+      SYNAPSE_API_HOST: 0.0.0.0
+      SYNAPSE_API_PORT: 8000
+      SYNAPSE_ENVIRONMENT: ${SYNAPSE_ENVIRONMENT:-production}
+      SYNAPSE_VERSION: ${SYNAPSE_VERSION:-0.1.0}
+
+      # Authentication
+      SYNAPSE_ENABLE_AUTHENTICATION: ${SYNAPSE_ENABLE_AUTHENTICATION:-true}
+      SYNAPSE_JWT_SECRET_KEY: ${SYNAPSE_JWT_SECRET_KEY}
+      SYNAPSE_JWT_ALGORITHM: ${SYNAPSE_JWT_ALGORITHM:-HS256}
+      SYNAPSE_ACCESS_TOKEN_EXPIRE_MINUTES: ${SYNAPSE_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+
+      # LLM configuration
+      SYNAPSE_LLM_TYPE: ${SYNAPSE_LLM_TYPE:-openai}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+      # Monitoring
+      SENTRY_DSN: ${SENTRY_DSN}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.1}
+      SENTRY_PROFILES_SAMPLE_RATE: ${SENTRY_PROFILES_SAMPLE_RATE:-0.1}
+
+      # Vector store
+      SYNAPSE_VECTOR_STORE_TYPE: ${SYNAPSE_VECTOR_STORE_TYPE:-faiss}
+      SYNAPSE_EMBEDDING_PROVIDER: ${SYNAPSE_EMBEDDING_PROVIDER:-sentence-transformers}
+
+    depends_on:
+      memgraph:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - graph-network
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+  memgraph:
+    image: memgraph/memgraph:latest
+    container_name: synapse-memgraph
+    ports:
+      - "7687:7687"
+      - "7444:7444"
+    command: --bolt-port=7687 --log-level=WARNING
+    volumes:
+      - memgraph_data:/var/lib/memgraph
+      - memgraph_logs:/var/log/memgraph
+    restart: unless-stopped
+    networks:
+      - graph-network
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'SELECT 1;' | mgconsole || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: synapse-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-synapse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-synapse_password}
+      POSTGRES_DB: ${POSTGRES_DB:-synapse_business_core}
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    restart: unless-stopped
+    networks:
+      - graph-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U synapse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # Prometheus for metrics collection (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: synapse-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+    restart: unless-stopped
+    networks:
+      - graph-network
+    profiles:
+      - monitoring
+
+  # Grafana for metrics visualization (optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: synapse-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    restart: unless-stopped
+    networks:
+      - graph-network
+    profiles:
+      - monitoring
+
+networks:
+  graph-network:
+    driver: bridge
+
+volumes:
+  memgraph_data:
+    driver: local
+  memgraph_logs:
+    driver: local
+  postgres_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local

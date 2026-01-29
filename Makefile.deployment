@@ -1,0 +1,194 @@
+# Synapse Graph-RAG - Deployment Makefile
+# Production deployment and operations commands
+
+.PHONY: help docker-build docker-push deploy-staging deploy-production rollback health-check logs
+
+# Configuration
+REGISTRY := ghcr.io
+IMAGE_NAME := neoforge-ai/synapse-graph-rag
+VERSION := $(shell git describe --tags --always --dirty)
+ENVIRONMENT ?= staging
+
+help: ## Show this help message
+	@echo 'Usage: make [target]'
+	@echo ''
+	@echo 'Available targets:'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
+
+# Docker Operations
+docker-build: ## Build Docker image
+	@echo "Building Docker image: $(IMAGE_NAME):$(VERSION)"
+	docker build -t $(IMAGE_NAME):$(VERSION) -t $(IMAGE_NAME):latest .
+	@echo "✅ Docker image built successfully"
+
+docker-push: ## Push Docker image to registry
+	@echo "Pushing Docker image to $(REGISTRY)"
+	docker tag $(IMAGE_NAME):$(VERSION) $(REGISTRY)/$(IMAGE_NAME):$(VERSION)
+	docker tag $(IMAGE_NAME):latest $(REGISTRY)/$(IMAGE_NAME):latest
+	docker push $(REGISTRY)/$(IMAGE_NAME):$(VERSION)
+	docker push $(REGISTRY)/$(IMAGE_NAME):latest
+	@echo "✅ Docker image pushed successfully"
+
+docker-build-push: docker-build docker-push ## Build and push Docker image
+
+# Local Testing
+test-docker: ## Test Docker image locally
+	@echo "Starting services with Docker Compose..."
+	docker-compose -f docker-compose.prod.yml up -d
+	@echo "Waiting for services to be ready..."
+	sleep 10
+	@echo "Running health check..."
+	curl -f http://localhost:8000/health || exit 1
+	@echo "✅ Docker image working correctly"
+
+test-docker-clean: ## Clean up test Docker environment
+	docker-compose -f docker-compose.prod.yml down -v
+
+# Deployment Operations
+deploy-staging: ## Deploy to staging environment
+	@echo "Deploying to staging environment..."
+	@if [ -z "$$RAILWAY_TOKEN" ]; then \
+		echo "❌ RAILWAY_TOKEN not set"; \
+		exit 1; \
+	fi
+	railway up --service synapse-staging --environment staging
+	@echo "Waiting for deployment..."
+	sleep 30
+	$(MAKE) health-check URL=https://staging.synapse.neoforge.dev
+	@echo "✅ Staging deployment complete"
+
+deploy-production: ## Deploy to production environment
+	@echo "🚨 Deploying to PRODUCTION environment"
+	@read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || exit 1
+	@if [ -z "$$RAILWAY_TOKEN" ]; then \
+		echo "❌ RAILWAY_TOKEN not set"; \
+		exit 1; \
+	fi
+	railway up --service synapse-prod --environment production
+	@echo "Waiting for deployment..."
+	sleep 45
+	$(MAKE) health-check URL=https://synapse.neoforge.dev
+	@echo "✅ Production deployment complete"
+
+rollback-staging: ## Rollback staging to previous version
+	@echo "Rolling back staging environment..."
+	railway deployments rollback --service synapse-staging --environment staging
+	sleep 30
+	$(MAKE) health-check URL=https://staging.synapse.neoforge.dev
+	@echo "✅ Staging rollback complete"
+
+rollback-production: ## Rollback production to previous version
+	@echo "🚨 Rolling back PRODUCTION environment"
+	@read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || exit 1
+	railway deployments rollback --service synapse-prod --environment production
+	sleep 45
+	$(MAKE) health-check URL=https://synapse.neoforge.dev
+	@echo "✅ Production rollback complete"
+
+# Health Checks
+health-check: ## Check health of deployed service (requires URL variable)
+	@echo "Checking health of $(URL)..."
+	@if curl -sf $(URL)/health > /dev/null; then \
+		echo "✅ Health check passed"; \
+		curl -s $(URL)/health | jq '.'; \
+	else \
+		echo "❌ Health check failed"; \
+		exit 1; \
+	fi
+
+smoke-tests: ## Run smoke tests (requires URL variable)
+	@echo "Running smoke tests on $(URL)..."
+	@curl -sf $(URL)/docs > /dev/null || (echo "❌ API docs failed" && exit 1)
+	@curl -sf $(URL)/api/v1/health > /dev/null || (echo "❌ API health failed" && exit 1)
+	@curl -sf $(URL)/monitoring/health > /dev/null || (echo "❌ Monitoring health failed" && exit 1)
+	@echo "✅ All smoke tests passed"
+
+# Monitoring and Logs
+logs-staging: ## View staging logs
+	railway logs --service synapse-staging --environment staging --tail 100
+
+logs-production: ## View production logs
+	railway logs --service synapse-prod --environment production --tail 100
+
+logs-follow-staging: ## Follow staging logs
+	railway logs --service synapse-staging --environment staging --follow
+
+logs-follow-production: ## Follow production logs
+	railway logs --service synapse-prod --environment production --follow
+
+metrics-staging: ## View staging metrics
+	@curl -s https://staging.synapse.neoforge.dev/monitoring/metrics/system | jq '.'
+
+metrics-production: ## View production metrics
+	@curl -s https://synapse.neoforge.dev/monitoring/metrics/system | jq '.'
+
+# Database Operations
+db-backup: ## Backup production database
+	@echo "Creating database backup..."
+	@timestamp=$$(date +%Y%m%d_%H%M%S); \
+	docker-compose -f docker-compose.prod.yml exec postgres \
+		pg_dump -U synapse synapse_business_core > backups/backup_$$timestamp.sql
+	@echo "✅ Backup created: backups/backup_$$timestamp.sql"
+
+db-restore: ## Restore database from backup (requires BACKUP_FILE variable)
+	@echo "🚨 Restoring database from $(BACKUP_FILE)"
+	@read -p "This will overwrite the current database. Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ] || exit 1
+	docker-compose -f docker-compose.prod.yml exec -T postgres \
+		psql -U synapse synapse_business_core < $(BACKUP_FILE)
+	@echo "✅ Database restored from $(BACKUP_FILE)"
+
+# Security
+security-scan: ## Run security scan on Docker image
+	@echo "Running security scan..."
+	docker scout cves $(IMAGE_NAME):$(VERSION) || echo "⚠️  Vulnerabilities found"
+	trivy image $(IMAGE_NAME):$(VERSION) || echo "⚠️  Vulnerabilities found"
+
+secrets-rotate: ## Rotate production secrets (manual process)
+	@echo "🔐 Secret Rotation Checklist:"
+	@echo "1. Generate new SYNAPSE_JWT_SECRET_KEY"
+	@echo "   python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+	@echo "2. Update in Railway production environment"
+	@echo "3. Generate new POSTGRES_PASSWORD"
+	@echo "   python -c 'import secrets; print(secrets.token_urlsafe(24))'"
+	@echo "4. Update in Railway production environment"
+	@echo "5. Update OPENAI_API_KEY if needed"
+	@echo "6. Deploy to apply changes: make deploy-production"
+
+# Monitoring Stack
+monitoring-up: ## Start monitoring stack (Prometheus + Grafana)
+	@echo "Starting monitoring stack..."
+	docker-compose -f docker-compose.prod.yml --profile monitoring up -d prometheus grafana
+	@echo "✅ Monitoring stack started"
+	@echo "Prometheus: http://localhost:9090"
+	@echo "Grafana: http://localhost:3000 (admin/admin)"
+
+monitoring-down: ## Stop monitoring stack
+	docker-compose -f docker-compose.prod.yml --profile monitoring down
+
+# Cleanup
+clean-docker: ## Clean up Docker resources
+	@echo "Cleaning up Docker resources..."
+	docker-compose -f docker-compose.prod.yml down -v
+	docker system prune -f
+	@echo "✅ Cleanup complete"
+
+# CI/CD
+ci-test: ## Run CI tests locally (requires act)
+	@echo "Running CI tests locally with act..."
+	act -j test --secret-file .env.test
+
+# Quick Commands
+staging: deploy-staging ## Quick deploy to staging
+production: deploy-production ## Quick deploy to production
+
+status-staging: ## Check staging status
+	@echo "=== Staging Status ==="
+	@$(MAKE) health-check URL=https://staging.synapse.neoforge.dev
+	@echo ""
+	@$(MAKE) metrics-staging
+
+status-production: ## Check production status
+	@echo "=== Production Status ==="
+	@$(MAKE) health-check URL=https://synapse.neoforge.dev
+	@echo ""
+	@$(MAKE) metrics-production

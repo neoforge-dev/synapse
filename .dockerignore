@@ -1,0 +1,95 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Documentation
+docs/_build/
+docs/.doctrees/
+*.md
+!README.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment files
+.env
+.env.*
+!.env.production.example
+
+# Testing
+tests/
+.pytest_cache/
+coverage.xml
+*.cover
+
+# Logs
+logs/
+*.log
+
+# Data
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Docker
+docker-compose*.yml
+!docker-compose.prod.yml
+Dockerfile*
+!Dockerfile
+
+# Backup files
+backups/
+*.backup
+*.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Development
+.editorconfig
+.pre-commit-config.yaml
+Makefile
+!Makefile.deployment

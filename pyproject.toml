@@ -56,6 +56,9 @@ dependencies = [
   "asyncpg>=0.30.0",
   "cryptography>=46.0.3",
   "bcrypt>=5.0.0",
+  "posthog>=3.0.0",
+  "stripe>=8.0.0",
+  "sentry-sdk[fastapi]>=2.0.0",
 ]
 keywords = ["rag", "graph", "memgraph", "faiss", "notion", "mcp", "retrieval", "ai", "nlp", "vscode", "claude", "ide"]
 
