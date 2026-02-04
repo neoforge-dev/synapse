@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables and/or .env file."""
 
     model_config = SettingsConfigDict(
-        # Load .env file if present
-        env_file=".env",
+        # Load local and user-level .env files if present
+        env_file=(".env", "~/.synapse/.env"),
         env_file_encoding="utf-8",
         # Environment variables are case-insensitive by default with Pydantic v2
         case_sensitive=False,
